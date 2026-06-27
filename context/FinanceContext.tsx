@@ -30,7 +30,7 @@ interface FinanceContextType {
   updateTransactionSeries: (t: Transaction, updateFuture: boolean) => void;
   updateDebtTransaction: (t: Transaction, redistribute: boolean) => void;
   recalculateDebtSeries: (transactionId: string, newAmount: number) => void;
-  deleteTransaction: (id: string) => void;
+  deleteTransaction: (id: string, deleteSeries?: boolean) => void;
   checkTransactionImpact: (amount: number, date: string) => { compromisedTransaction: Transaction } | null;
   
   addCategory: (c: Omit<Category, 'id'>) => void;
@@ -265,7 +265,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     saveTransactions(newTransactions);
   };
 
-  const deleteTransaction = (id: string) => saveTransactions(transactions.filter(t => t.id !== id));
+  const deleteTransaction = (id: string, deleteSeries: boolean = false) => {
+    const target = transactions.find(t => t.id === id);
+    if (deleteSeries && target && target.fixedGroupId) {
+      saveTransactions(transactions.filter(t => t.fixedGroupId !== target.fixedGroupId));
+    } else {
+      saveTransactions(transactions.filter(t => t.id !== id));
+    }
+  };
 
   const checkTransactionImpact = (amount: number, date: string): { compromisedTransaction: Transaction } | null => {
     const today = new Date();

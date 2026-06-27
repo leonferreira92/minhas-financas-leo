@@ -7,7 +7,8 @@ import {
   Settings as SettingsIcon, CreditCard, Sparkles, 
   PieChart, Clock, Target, CalendarDays, PlusCircle, 
   ArrowUpCircle, ChevronRight, Receipt, BarChart3,
-  AlertCircle, Wallet, X, CalendarRange, Check, Zap
+  AlertCircle, Wallet, X, CalendarRange, Check, Zap,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TransactionForm } from './TransactionForm';
@@ -42,7 +43,8 @@ const HubButton = ({ icon: Icon, label, color, onClick }: { icon: any, label: st
 export const Dashboard = () => {
   const { 
     getBalanceSummary, transactions, categories, getSystemAlerts, 
-    accounts, settings, getAccountBalance, isBlurred, toggleBlur
+    accounts, settings, getAccountBalance, isBlurred, toggleBlur,
+    updateTransaction
   } = useFinance();
   
   const navigate = useNavigate();
@@ -75,14 +77,16 @@ export const Dashboard = () => {
   const freeToSpendPercent = Math.max(0, Math.min(100, (freeToSpend / (summary.realBalance + summary.pendingIncome)) * 100));
 
   const recentTransactions = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     return [...transactions]
+      .filter(t => t.date <= todayStr) // Filtra para evitar que lançamentos futuros inundem a dashboard de atividades recentes
       .sort((a, b) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
         if (dateB !== dateA) return dateB - dateA;
         return (b.createdAt || 0) - (a.createdAt || 0);
       })
-      .slice(0, 4);
+      .slice(0, 5); // Aumentado para 5 para uma visualização mais completa
   }, [transactions]);
 
   const formatCurrency = (val: number) => 
@@ -305,35 +309,109 @@ export const Dashboard = () => {
                Ver Tudo <ChevronRight size={14} className="ml-0.5" />
             </Link>
          </div>
-         <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
+         <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm">
             {recentTransactions.length === 0 ? (
                <div className="text-center py-12 opacity-30">
                   <Clock size={32} className="mx-auto mb-3 text-slate-300" />
                   <p className="text-xs font-black uppercase text-slate-400">Sem registros recentes</p>
                </div>
             ) : (
-               <div className="divide-y divide-slate-50 dark:divide-slate-800">
+               <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {recentTransactions.map(t => {
                      const cat = categories.find(c => c.id === t.categoryId);
-                     const Icon = cat ? getIcon(cat.icon) : Clock;
+                     const Icon = t.type === 'transfer' ? ArrowRightLeft : (cat ? getIcon(cat.icon) : Clock);
+                     const isPending = t.status === 'pending';
+                     const todayStr = new Date().toISOString().slice(0, 10);
+                     const isOverdue = isPending && t.date < todayStr;
+                     const isToday = isPending && t.date === todayStr;
+
+                     const fromAcc = accounts.find(a => a.id === t.accountId);
+                     const toAcc = accounts.find(a => a.id === t.destinationAccountId);
+
+                     const descriptionText = t.type === 'transfer'
+                       ? (fromAcc && toAcc ? `${fromAcc.name} ➔ ${toAcc.name}` : 'Transferência entre Contas')
+                       : t.description;
+
+                     const categoryName = t.type === 'transfer' ? 'Transferência' : (cat?.name || 'Geral');
+
                      return (
-                        <div key={t.id} onClick={() => navigate('/transactions')} className="flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group">
-                           <div className="flex items-center space-x-4 min-w-0">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 transition-all">
-                                 <Icon size={20} style={{ color: cat?.color }} />
+                        <div 
+                          key={t.id} 
+                          onClick={() => navigate('/transactions')} 
+                          className="flex items-center justify-between p-4.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all cursor-pointer group"
+                        >
+                           <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+                              <div 
+                                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 group-hover:scale-105 transition-all shrink-0"
+                                style={{ 
+                                  backgroundColor: t.type === 'transfer' ? 'rgba(99, 102, 241, 0.1)' : (cat ? `${cat.color}15` : 'rgba(148, 163, 184, 0.1)'),
+                                  color: t.type === 'transfer' ? '#6366f1' : (cat?.color || '#64748b')
+                                }}
+                              >
+                                 <Icon size={18} strokeWidth={2.5} />
                               </div>
-                              <div className="min-w-0">
-                                 <p className="text-sm font-black text-slate-800 dark:text-white truncate group-hover:text-indigo-600 transition-colors">{t.description}</p>
-                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{cat?.name || 'Geral'}</p>
+                              <div className="min-w-0 flex-1 pr-2">
+                                 <div className="flex items-center space-x-2">
+                                    <p className="text-sm font-black text-slate-800 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                       {descriptionText}
+                                    </p>
+                                    {isOverdue && (
+                                       <span className="shrink-0 px-1.5 py-0.5 bg-rose-500/10 text-rose-500 text-[8px] font-black uppercase tracking-wider rounded-md animate-pulse">
+                                          Atrasado
+                                       </span>
+                                    )}
+                                    {isToday && (
+                                       <span className="shrink-0 px-1.5 py-0.5 bg-amber-500/10 text-amber-500 text-[8px] font-black uppercase tracking-wider rounded-md">
+                                          Hoje
+                                       </span>
+                                    )}
+                                    {isPending && !isOverdue && !isToday && (
+                                       <span className="shrink-0 px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 text-[8px] font-black uppercase tracking-wider rounded-md">
+                                          Pendente
+                                       </span>
+                                    )}
+                                 </div>
+                                 <div className="flex items-center space-x-2 mt-0.5">
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{categoryName}</span>
+                                    {fromAcc && t.type !== 'transfer' && (
+                                       <>
+                                          <span className="text-[9px] text-slate-300 dark:text-slate-700">•</span>
+                                          <span className="text-[9px] font-semibold uppercase tracking-wider truncate max-w-[80px]" style={{ color: fromAcc.color }}>
+                                             {fromAcc.name}
+                                          </span>
+                                       </>
+                                    )}
+                                 </div>
                               </div>
                            </div>
-                           <div className="text-right ml-4">
-                              <p className={`text-sm font-black tabular-nums ${t.type === 'expense' ? 'text-slate-800 dark:text-white' : 'text-emerald-500'}`}>
-                                 {t.type === 'expense' ? '-' : '+'} {formatCurrency(t.amount)}
-                              </p>
-                              <p className="text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase mt-0.5">
-                                 {new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                              </p>
+                           <div className="flex items-center space-x-3.5 shrink-0 ml-2">
+                              <div className="text-right">
+                                 <p className={`text-sm font-black tabular-nums ${
+                                    t.type === 'expense' 
+                                      ? 'text-rose-500 dark:text-rose-400' 
+                                      : t.type === 'income' 
+                                        ? 'text-emerald-500' 
+                                        : 'text-slate-500 dark:text-slate-400'
+                                 }`}>
+                                    {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : '⇄'} {formatCurrency(t.amount)}
+                                 </p>
+                                 <p className="text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase mt-0.5">
+                                    {new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                 </p>
+                              </div>
+
+                              {isPending && (
+                                 <button
+                                   onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateTransaction({ ...t, status: 'paid' });
+                                   }}
+                                   title="Baixar Lançamento"
+                                   className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-500 dark:hover:text-white flex items-center justify-center transition-all active:scale-90 border border-emerald-100/50 dark:border-emerald-900/30"
+                                 >
+                                    <Check size={14} strokeWidth={3} />
+                                 </button>
+                              )}
                            </div>
                         </div>
                      );
