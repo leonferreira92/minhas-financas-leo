@@ -296,7 +296,53 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setBudgets(storedBudgets);
     setGoals(storedGoals);
     const storedShows = StorageService.getShows();
-    setShows(storedShows);
+
+    // Self-healing: ensure all show receipts (including future/pending ones) have synced transactions
+    let txModified = false;
+    let showsModified = false;
+    let finalTransactions = [...storedTransactions];
+    let finalShows = [...storedShows];
+
+    finalShows = finalShows.map(show => {
+      let currentShowChanged = false;
+      const updatedReceipts = (show.receipts || []).map(r => {
+        const txExists = r.transactionId && finalTransactions.some(tx => tx.id === r.transactionId);
+        if (!txExists && r.amount > 0) {
+          const newTxId = r.transactionId || crypto.randomUUID();
+          finalTransactions.push({
+            id: newTxId,
+            date: r.expectedDate || show.date,
+            amount: r.amount,
+            type: 'income',
+            categoryId: 'cat_33',
+            description: `Recebimento [${r.type || 'Parcela'}] - Show: ${show.name}`,
+            status: r.status === 'Recebido' ? 'paid' : 'pending',
+            accountId: r.accountId || 'acc_bank',
+            createdAt: show.createdAt || Date.now()
+          });
+          txModified = true;
+          currentShowChanged = true;
+          return { ...r, transactionId: newTxId };
+        }
+        return r;
+      });
+
+      if (currentShowChanged) {
+        showsModified = true;
+        return { ...show, receipts: updatedReceipts };
+      }
+      return show;
+    });
+
+    if (txModified) {
+      StorageService.saveTransactions(finalTransactions);
+    }
+    if (showsModified) {
+      StorageService.saveShows(finalShows);
+    }
+
+    setTransactions(finalTransactions);
+    setShows(finalShows);
     if (storedGoals.length > 0 && !localStorage.getItem('fin_app_goals')) {
       StorageService.saveGoals(storedGoals);
     }

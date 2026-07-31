@@ -15,7 +15,7 @@ export const MusicianShowScreen = () => {
   const navigate = useNavigate();
   const { 
     shows, addShow, updateShow, deleteShow, 
-    accounts, addTransaction, updateTransaction, deleteTransaction, 
+    accounts, transactions, addTransaction, updateTransaction, deleteTransaction, 
     categories, isBlurred, getAccountBalance
   } = useFinance();
 
@@ -237,6 +237,7 @@ export const MusicianShowScreen = () => {
       let txId = prevTxIds[key];
 
       if (amount > 0) {
+        const expStatus = status === 'Realizado' ? 'paid' : 'pending';
         if (txId) {
           // Update existing transaction
           updateTransaction({
@@ -246,7 +247,7 @@ export const MusicianShowScreen = () => {
             type: 'expense',
             categoryId: exp.categoryId,
             description: `${exp.label} - Show: ${eventName.trim()}`,
-            status: 'paid',
+            status: expStatus,
             accountId: chosenAccountId,
             createdAt: Date.now()
           });
@@ -260,7 +261,7 @@ export const MusicianShowScreen = () => {
             type: 'expense',
             categoryId: exp.categoryId,
             description: `${exp.label} - Show: ${eventName.trim()}`,
-            status: 'paid',
+            status: expStatus,
             accountId: chosenAccountId
           });
           updatedTxIds[key] = newTxId;
@@ -335,6 +336,7 @@ export const MusicianShowScreen = () => {
     const chosenAccountId = expenseAccountId || (activeAccs.length > 0 ? activeAccs[0].id : 'acc_bank');
     const expenseTransactionIds: Record<string, string> = {};
 
+    const initialExpStatus = status === 'Realizado' ? 'paid' : 'pending';
     expenseLaunchList.forEach(exp => {
       if (exp.amount > 0) {
         const newTxId = crypto.randomUUID();
@@ -345,23 +347,36 @@ export const MusicianShowScreen = () => {
           type: 'expense',
           categoryId: exp.categoryId,
           description: `${exp.label} - Show: ${eventName.trim()}`,
-          status: 'paid',
+          status: initialExpStatus,
           accountId: chosenAccountId
         });
         expenseTransactionIds[exp.type] = newTxId;
       }
     });
 
-    // Create default receipt for the total cache value so they have a starting point
+    // Create default receipt for the total cache value with its corresponding transaction in extratos
     const initialReceiptId = crypto.randomUUID();
+    const initialTxId = crypto.randomUUID();
+    addTransaction({
+      id: initialTxId,
+      date,
+      amount: parsedCache,
+      type: 'income',
+      categoryId: 'cat_33',
+      description: `Recebimento [Pagamento final] - Show: ${eventName.trim()}`,
+      status: status === 'Realizado' ? 'paid' : 'pending',
+      accountId: chosenAccountId
+    });
+
     const defaultReceipt: Receipt = {
       id: initialReceiptId,
       amount: parsedCache,
       expectedDate: date,
       accountId: chosenAccountId,
       paymentMethod: 'Pix',
-      status: 'Previsto',
-      type: 'Pagamento final'
+      status: status === 'Realizado' ? 'Recebido' : 'Previsto',
+      type: 'Pagamento final',
+      transactionId: initialTxId
     };
 
     const newShow: Show = {
@@ -432,6 +447,20 @@ export const MusicianShowScreen = () => {
           notes: notes.trim(),
           status,
         };
+        const targetStatus = status === 'Realizado' ? 'paid' : 'pending';
+        if (showToUpdate.expenseTransactionIds) {
+          Object.values(showToUpdate.expenseTransactionIds).forEach(txId => {
+            const tx = transactions.find(t => t.id === txId);
+            if (tx) {
+              updateTransaction({
+                ...tx,
+                date,
+                status: targetStatus,
+                createdAt: Date.now()
+              });
+            }
+          });
+        }
         updateShow(updatedShow);
         setFormStep(2);
         return;
@@ -508,6 +537,8 @@ export const MusicianShowScreen = () => {
     const prevTxIds = showToUpdate.expenseTransactionIds || {};
     const updatedTxIds = { ...prevTxIds };
 
+    const expStatus = showToUpdate.status === 'Realizado' ? 'paid' : 'pending';
+
     // Let's keep it simple, clean, and 100% bug-free:
     expenseLaunchList.forEach(exp => {
       const key = exp.type;
@@ -524,7 +555,7 @@ export const MusicianShowScreen = () => {
             type: 'expense',
             categoryId: exp.categoryId,
             description: `${exp.label} - Show: ${showToUpdate.name}`,
-            status: 'paid',
+            status: expStatus,
             accountId: chosenAccountId,
             createdAt: Date.now()
           });
@@ -538,7 +569,7 @@ export const MusicianShowScreen = () => {
             type: 'expense',
             categoryId: exp.categoryId,
             description: `${exp.label} - Show: ${showToUpdate.name}`,
-            status: 'paid',
+            status: expStatus,
             accountId: chosenAccountId
           });
           updatedTxIds[key] = newTxId;
@@ -629,6 +660,8 @@ export const MusicianShowScreen = () => {
 
     const updatedReceipts = [...show.receipts];
 
+    const txStatus = receiptStatus === 'Recebido' ? 'paid' : 'pending';
+
     if (editingReceiptId) {
       // EDIT RECEIPT MODE
       const idx = updatedReceipts.findIndex(r => r.id === editingReceiptId);
@@ -636,41 +669,32 @@ export const MusicianShowScreen = () => {
         const oldReceipt = updatedReceipts[idx];
         let tid = oldReceipt.transactionId;
 
-        if (receiptStatus === 'Recebido') {
-          if (tid) {
-            // Already has transaction, let's update it!
-            updateTransaction({
-              id: tid,
-              date: receiptExpectedDate,
-              amount: parsedAmount,
-              type: 'income',
-              categoryId: 'cat_33', // Shows / Cachês
-              description: `Recebimento [${receiptType}] - Show: ${show.name}`,
-              status: 'paid',
-              accountId: receiptAccountId,
-              createdAt: Date.now()
-            });
-          } else {
-            // Changed from Previsto to Recebido, create a transaction
-            tid = crypto.randomUUID();
-            addTransaction({
-              id: tid,
-              date: receiptExpectedDate,
-              amount: parsedAmount,
-              type: 'income',
-              categoryId: 'cat_33',
-              description: `Recebimento [${receiptType}] - Show: ${show.name}`,
-              status: 'paid',
-              accountId: receiptAccountId
-            });
-          }
+        if (tid) {
+          // Already has transaction, update it
+          updateTransaction({
+            id: tid,
+            date: receiptExpectedDate,
+            amount: parsedAmount,
+            type: 'income',
+            categoryId: 'cat_33', // Shows / Cachês
+            description: `Recebimento [${receiptType}] - Show: ${show.name}`,
+            status: txStatus,
+            accountId: receiptAccountId,
+            createdAt: Date.now()
+          });
         } else {
-          // Status is now 'Previsto'
-          if (tid) {
-            // Reverted from Recebido to Previsto, delete transaction
-            deleteTransaction(tid);
-            tid = undefined;
-          }
+          // Create transaction for receipt
+          tid = crypto.randomUUID();
+          addTransaction({
+            id: tid,
+            date: receiptExpectedDate,
+            amount: parsedAmount,
+            type: 'income',
+            categoryId: 'cat_33',
+            description: `Recebimento [${receiptType}] - Show: ${show.name}`,
+            status: txStatus,
+            accountId: receiptAccountId
+          });
         }
 
         updatedReceipts[idx] = {
@@ -687,21 +711,17 @@ export const MusicianShowScreen = () => {
       }
     } else {
       // NEW RECEIPT MODE
-      let tid: string | undefined = undefined;
-
-      if (receiptStatus === 'Recebido') {
-        tid = crypto.randomUUID();
-        addTransaction({
-          id: tid,
-          date: receiptExpectedDate,
-          amount: parsedAmount,
-          type: 'income',
-          categoryId: 'cat_33',
-          description: `Recebimento [${receiptType}] - Show: ${show.name}`,
-          status: 'paid',
-          accountId: receiptAccountId
-        });
-      }
+      const tid = crypto.randomUUID();
+      addTransaction({
+        id: tid,
+        date: receiptExpectedDate,
+        amount: parsedAmount,
+        type: 'income',
+        categoryId: 'cat_33',
+        description: `Recebimento [${receiptType}] - Show: ${show.name}`,
+        status: txStatus,
+        accountId: receiptAccountId
+      });
 
       const newReceipt: Receipt = {
         id: crypto.randomUUID(),
@@ -741,18 +761,32 @@ export const MusicianShowScreen = () => {
     const updatedReceipts = show.receipts.map(r => {
       if (r.id === receiptId) {
         if (r.status === 'Previsto') {
-          // Change to Recebido: Create Transaction
-          const tid = crypto.randomUUID();
-          addTransaction({
-            id: tid,
-            date: r.expectedDate,
-            amount: r.amount,
-            type: 'income',
-            categoryId: 'cat_33',
-            description: `Recebimento [${r.type}] - Show: ${show.name}`,
-            status: 'paid',
-            accountId: r.accountId
-          });
+          // Change to Recebido: Update transaction to paid or create if missing
+          const tid = r.transactionId || crypto.randomUUID();
+          if (r.transactionId) {
+            updateTransaction({
+              id: r.transactionId,
+              date: r.expectedDate,
+              amount: r.amount,
+              type: 'income',
+              categoryId: 'cat_33',
+              description: `Recebimento [${r.type}] - Show: ${show.name}`,
+              status: 'paid',
+              accountId: r.accountId,
+              createdAt: Date.now()
+            });
+          } else {
+            addTransaction({
+              id: tid,
+              date: r.expectedDate,
+              amount: r.amount,
+              type: 'income',
+              categoryId: 'cat_33',
+              description: `Recebimento [${r.type}] - Show: ${show.name}`,
+              status: 'paid',
+              accountId: r.accountId
+            });
+          }
           return {
             ...r,
             status: 'Recebido' as const,
@@ -760,15 +794,37 @@ export const MusicianShowScreen = () => {
             transactionId: tid
           };
         } else {
-          // Change to Previsto: Remove Transaction
+          // Change to Previsto: Update transaction to pending or create if missing
+          const tid = r.transactionId || crypto.randomUUID();
           if (r.transactionId) {
-            deleteTransaction(r.transactionId);
+            updateTransaction({
+              id: r.transactionId,
+              date: r.expectedDate,
+              amount: r.amount,
+              type: 'income',
+              categoryId: 'cat_33',
+              description: `Recebimento [${r.type}] - Show: ${show.name}`,
+              status: 'pending',
+              accountId: r.accountId,
+              createdAt: Date.now()
+            });
+          } else {
+            addTransaction({
+              id: tid,
+              date: r.expectedDate,
+              amount: r.amount,
+              type: 'income',
+              categoryId: 'cat_33',
+              description: `Recebimento [${r.type}] - Show: ${show.name}`,
+              status: 'pending',
+              accountId: r.accountId
+            });
           }
           return {
             ...r,
             status: 'Previsto' as const,
             effectiveDate: undefined,
-            transactionId: undefined
+            transactionId: tid
           };
         }
       }
@@ -842,6 +898,39 @@ export const MusicianShowScreen = () => {
     deleteShow(showId);
     if (expandedShowId === showId) {
       setExpandedShowId(null);
+    }
+  };
+
+  // Confirm show realization and effectuate expense transactions
+  const handleConfirmShowRealization = (showId: string) => {
+    const show = shows.find(s => s.id === showId);
+    if (!show) return;
+
+    if (!confirm('Deseja confirmar a realização deste evento e efetivar as transações de despesas?')) {
+      return;
+    }
+
+    if (show.expenseTransactionIds) {
+      Object.values(show.expenseTransactionIds).forEach(txId => {
+        const tx = transactions.find(t => t.id === txId);
+        if (tx) {
+          updateTransaction({
+            ...tx,
+            status: 'paid',
+            createdAt: Date.now()
+          });
+        }
+      });
+    }
+
+    const updatedShow: Show = {
+      ...show,
+      status: 'Realizado'
+    };
+
+    updateShow(updatedShow);
+    if (activeShowId === showId) {
+      setStatus('Realizado');
     }
   };
 
@@ -920,6 +1009,16 @@ export const MusicianShowScreen = () => {
               <span className="text-lg font-black text-purple-300 tabular-nums block mt-0.5">{formatCurrency(show.totalCache)}</span>
             </div>
           </div>
+          {show.status !== 'Realizado' && (
+            <button
+              type="button"
+              onClick={() => handleConfirmShowRealization(show.id)}
+              className="relative z-10 mt-4 w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-900/30 transition active:scale-95 flex items-center justify-center space-x-1.5"
+            >
+              <CheckCircle2 size={15} strokeWidth={2.5} />
+              <span>Confirmar Realização do Evento</span>
+            </button>
+          )}
         </div>
 
         {/* Details and Edit Form */}
@@ -1829,6 +1928,22 @@ export const MusicianShowScreen = () => {
                         </span>
                       </div>
                     </div>
+
+                    {show.status !== 'Realizado' && (
+                      <div className="pt-2 border-t border-slate-50 dark:border-slate-850 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleConfirmShowRealization(show.id);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 border border-emerald-200/50 dark:border-emerald-800/40 transition active:scale-95"
+                        >
+                          <CheckCircle2 size={12} strokeWidth={2.5} />
+                          <span>Confirmar Realização</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
