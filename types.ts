@@ -156,6 +156,7 @@ export interface Show {
     commission?: string;
     others?: string;
   };
+  expenseAccountId?: string; // ID da conta bancária de onde saíram as despesas
   createdAt: number;
   isImported?: boolean; // Indica se foi gerado por importação automática
 }
