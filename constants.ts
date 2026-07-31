@@ -11,7 +11,7 @@ import {
   Landmark, ShieldCheck, Heart, Umbrella, Users,
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
-  BarChart3, Fingerprint, LayoutDashboard, Clock
+  BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy
 } from 'lucide-react';
 
 export const DEFAULT_CATEGORIES: Category[] = [

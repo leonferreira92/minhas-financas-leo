@@ -17,6 +17,8 @@ import { TransactionForm } from './TransactionForm';
 import { TransactionType } from '../types';
 import { CalendarModal } from './CalendarModal';
 import { DashboardSkeleton } from './Skeleton';
+import { GoalManagerModal } from './GoalManagerModal';
+import { GoalDetail } from './GoalDetail';
 
 const HubButton = ({ icon: Icon, label, color, onClick }: { icon: any, label: string, color: string, onClick: () => void }) => {
   const colorMap: Record<string, string> = {
@@ -53,6 +55,8 @@ export const Dashboard = () => {
   const [balanceMode, setBalanceMode] = useState<'real' | 'projected'>('real');
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isGoalManagerOpen, setIsGoalManagerOpen] = useState(false);
+  const [selectedGoalDetailId, setSelectedGoalDetailId] = useState<string | null>(null);
   
   // State for Transaction Modal Actions
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -348,13 +352,16 @@ export const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Reserva para Conquistas */}
           <div 
-            onClick={() => navigate('/summary')}
-            className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+            onClick={() => setIsGoalManagerOpen(true)}
+            className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between relative overflow-hidden"
           >
+            {/* Efeito de brilho de fundo sutil */}
+            <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-indigo-500/5 via-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none -mr-10 -mt-10"></div>
+
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
                     <Target size={20} strokeWidth={2.5} />
                   </div>
                   <div>
@@ -362,52 +369,84 @@ export const Dashboard = () => {
                     <p className="text-sm font-black text-slate-800 dark:text-white">Reserva para Conquistas</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                  {reservaConquistasData.progressPercent}% Salvo
-                </span>
+                
+                {/* Botão + Nova Conquista direto no card */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsGoalManagerOpen(true);
+                  }}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95 shadow-sm hover:shadow"
+                  title="Criar ou gerenciar metas"
+                >
+                  <Plus size={13} />
+                  <span>Gerenciar</span>
+                </button>
               </div>
 
               <div className="mb-4">
-                <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums">
-                  {!isBlurred ? formatCurrency(reservaConquistasData.totalSaved) : '••••••••'}
-                  <span className="text-xs font-bold text-slate-400 ml-1.5">
-                    / {!isBlurred ? formatCurrency(reservaConquistasData.totalTarget) : '••••'}
+                <div className="flex items-baseline justify-between mb-1">
+                  <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums">
+                    {!isBlurred ? formatCurrency(reservaConquistasData.totalSaved) : '••••••••'}
+                    <span className="text-xs font-bold text-slate-400 ml-1.5">
+                      / {!isBlurred ? formatCurrency(reservaConquistasData.totalTarget) : '••••'}
+                    </span>
+                  </p>
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
+                    {reservaConquistasData.progressPercent}% Salvo
                   </span>
-                </p>
-                <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                </div>
+
+                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/50 dark:border-slate-800">
                   <div 
-                    className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-1000"
+                    className="h-full bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-400 rounded-full transition-all duration-1000 shadow-sm"
                     style={{ width: `${Math.min(100, reservaConquistasData.progressPercent)}%` }}
                   ></div>
                 </div>
               </div>
             </div>
 
-            {/* Carrossel/Lista Rápida de Conquistas */}
+            {/* Carrossel/Lista Rápida Interativa de Conquistas */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
               <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                <span>Conquistas Ativas ({reservaConquistasData.activeGoals.length})</span>
-                <span className="text-indigo-500 group-hover:underline flex items-center">
-                  Gerenciar <ChevronRight size={12} className="ml-0.5" />
+                <span>Conquistas ({reservaConquistasData.activeGoals.length}) • Clique para Detalhes</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-black group-hover:underline flex items-center">
+                  Painel de Metas <ChevronRight size={12} className="ml-0.5" />
                 </span>
               </div>
+
               <div className="flex flex-wrap gap-2">
                 {reservaConquistasData.activeGoals.slice(0, 3).map(goal => {
                   const IconComp = getIcon(goal.icon);
                   const goalProg = goal.targetAmount > 0 ? Math.round((goal.currentAmount / goal.targetAmount) * 100) : 0;
                   return (
-                    <div 
-                      key={goal.id} 
-                      className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300"
+                    <button
+                      key={goal.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedGoalDetailId(goal.id);
+                      }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50/70 dark:bg-slate-800/60 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-800/60 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-all active:scale-95"
                     >
-                      <IconComp size={12} style={{ color: goal.color }} />
-                      <span className="truncate max-w-[100px]">{goal.name}</span>
-                      <span className="text-[9px] font-black opacity-60">({goalProg}%)</span>
-                    </div>
+                      <div 
+                        className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[9px]"
+                        style={{ backgroundColor: goal.color }}
+                      >
+                        <IconComp size={10} />
+                      </div>
+                      <span className="truncate max-w-[110px]">{goal.name}</span>
+                      <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400">
+                        {goalProg}%
+                      </span>
+                    </button>
                   );
                 })}
                 {reservaConquistasData.activeGoals.length === 0 && (
-                  <span className="text-xs text-slate-400 font-medium">Nenhuma conquista cadastrada ainda.</span>
+                  <div className="flex items-center justify-between w-full p-2 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                    <span>Crie uma reserva para viagem, setup ou reserva de emergência</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white px-2 py-1 rounded-lg">Criar</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -882,6 +921,25 @@ export const Dashboard = () => {
           }}
           initialType={transactionType}
           initialCategoryId={transactionCategoryId}
+        />
+      )}
+
+      {/* Modal de Gerenciamento de Metas & Conquistas */}
+      {isGoalManagerOpen && (
+        <GoalManagerModal
+          onClose={() => setIsGoalManagerOpen(false)}
+          onOpenGoalDetail={(goalId) => {
+            setIsGoalManagerOpen(false);
+            setSelectedGoalDetailId(goalId);
+          }}
+        />
+      )}
+
+      {/* Modal de Detalhes da Meta com IA */}
+      {selectedGoalDetailId && (
+        <GoalDetail
+          goalId={selectedGoalDetailId}
+          onClose={() => setSelectedGoalDetailId(null)}
         />
       )}
     </div>
