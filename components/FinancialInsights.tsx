@@ -14,7 +14,7 @@ import {
 import { 
   AreaChart, Area, ResponsiveContainer, Tooltip
 } from 'recharts';
-import { ICON_MAP, getIcon } from '../constants';
+import { ICON_MAP, getIcon, parseCurrencyInput } from '../constants';
 import { Transaction } from '../types';
 import { TransactionForm } from './TransactionForm';
 
@@ -713,6 +713,7 @@ export const FinancialInsights = () => {
                             <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Valor (R$)</label>
                             <input
                               type="number"
+                              step="any"
                               value={suggestionAmount}
                               onChange={(e) => setSuggestionAmount(e.target.value)}
                               className="w-full p-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-lg text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -751,7 +752,7 @@ export const FinancialInsights = () => {
                             onClick={() => {
                               addTransaction({
                                 description: suggestion.description,
-                                amount: parseFloat(suggestionAmount) || suggestion.estimatedAmount,
+                                amount: parseCurrencyInput(suggestionAmount) || suggestion.estimatedAmount,
                                 categoryId: suggestion.categoryId,
                                 date: suggestionDate,
                                 accountId: suggestionAccount,

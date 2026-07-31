@@ -1,5 +1,5 @@
 
-import { Category } from './types';
+import { Category, Account } from './types';
 import { 
   ShoppingBag, Utensils, Home, Car, HeartPulse, 
   Zap, Smartphone, Briefcase, DollarSign, Coffee,
@@ -54,6 +54,15 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future' },
   { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future' },
   { id: 'cat_32', name: 'Rendimentos', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future' },
+  { id: 'cat_transfer', name: 'Transferência entre Contas', type: 'transfer', color: '#64748b', icon: 'ArrowRightLeft', classification: 'future' },
+  { id: 'cat_adjustment', name: 'Ajuste de Saldo', type: 'adjustment', color: '#64748b', icon: 'Calculator', classification: 'personal' },
+];
+
+export const DEFAULT_ACCOUNTS: Account[] = [
+  { id: 'acc_bank', name: 'Conta Corrente', type: 'bank', color: '#3b82f6', initialBalance: 1500, enabled: true },
+  { id: 'acc_wallet', name: 'Carteira', type: 'wallet', color: '#10b981', initialBalance: 250, enabled: true },
+  { id: 'acc_savings', name: 'Economias', type: 'savings', color: '#f59e0b', initialBalance: 3000, enabled: true },
+  { id: 'acc_invest', name: 'Investimentos', type: 'investment', color: '#8b5cf6', initialBalance: 5000, enabled: true },
 ];
 
 export const ICON_MAP: Record<string, any> = {
@@ -80,4 +89,12 @@ export const APP_THEMES: Record<string, Record<string, string>> = {
   violet: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95', 950: '#2e1065' },
   rose: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337', 950: '#4c0519' },
   orange: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12', 950: '#431407' }
+};
+
+export const parseCurrencyInput = (val: string | number | undefined | null): number => {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const cleanStr = val.toString().replace(/,/g, '.').replace(/[^\d.-]/g, '');
+  const parsed = parseFloat(cleanStr);
+  return isNaN(parsed) ? 0 : parsed;
 };

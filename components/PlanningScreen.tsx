@@ -7,7 +7,7 @@ import {
   AlertCircle, Sparkles, Filter, PiggyBank, Heart, 
   Activity, ShieldCheck, Flame, Info, Calendar
 } from 'lucide-react';
-import { getIcon } from '../constants';
+import { getIcon, parseCurrencyInput } from '../constants';
 import { GoalDetail } from './GoalDetail';
 import { CalendarModal } from './CalendarModal';
 
@@ -285,10 +285,10 @@ const BudgetForm = ({ categories, onSave }: any) => {
           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Teto Mensal</label>
           <div className="relative">
              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">R$</span>
-             <input type="number" step="0.01" value={limit} onChange={e => setLimit(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-lg dark:text-white transition" placeholder="0,00" />
+             <input type="number" step="any" value={limit} onChange={e => setLimit(e.target.value)} className="w-full pl-12 pr-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-lg dark:text-white transition" placeholder="0" />
           </div>
        </div>
-       <button onClick={() => onSave({ categoryId: catId, limit: parseFloat(limit) })} disabled={!catId || !limit} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 disabled:opacity-30 transition-all">Salvar Teto</button>
+       <button onClick={() => onSave({ categoryId: catId, limit: parseCurrencyInput(limit) })} disabled={!catId || !limit} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 disabled:opacity-30 transition-all">Salvar Teto</button>
     </div>
   );
 };
@@ -309,11 +309,11 @@ const GoalForm = ({ onSave }: any) => {
        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Valor Alvo</label>
-            <input type="number" value={target} onChange={e => setTarget(e.target.value)} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="R$ 0,00" />
+            <input type="number" step="any" value={target} onChange={e => setTarget(e.target.value)} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="R$ 0" />
           </div>
           <div>
             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Já tenho</label>
-            <input type="number" value={current} onChange={e => setCurrent(e.target.value)} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="R$ 0,00" />
+            <input type="number" step="any" value={current} onChange={e => setCurrent(e.target.value)} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="R$ 0" />
           </div>
        </div>
        <div>
@@ -328,7 +328,7 @@ const GoalForm = ({ onSave }: any) => {
              <Calendar size={18} className="text-slate-400" />
           </div>
        </div>
-       <button onClick={() => onSave({ name, targetAmount: parseFloat(target), currentAmount: parseFloat(current), deadline, color: '#f59e0b', icon: 'PiggyBank' })} disabled={!name || !target} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 disabled:opacity-30 transition-all">Criar Meta</button>
+       <button onClick={() => onSave({ name, targetAmount: parseCurrencyInput(target), currentAmount: parseCurrencyInput(current), deadline, color: '#f59e0b', icon: 'PiggyBank' })} disabled={!name || !target} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 disabled:opacity-30 transition-all">Criar Meta</button>
        
        <CalendarModal 
          isOpen={isCalendarOpen} 

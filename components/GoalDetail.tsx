@@ -7,7 +7,7 @@ import {
   Calendar, Info, Sparkles, PiggyBank,
   Plus, ArrowRight, Star, Target
 } from 'lucide-react';
-import { getIcon } from '../constants';
+import { getIcon, parseCurrencyInput } from '../constants';
 import { 
   AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer 
@@ -76,7 +76,7 @@ export const GoalDetail: React.FC<Props> = ({ goalId, onClose }) => {
 
   // Simulação dinâmica
   const simResult = useMemo(() => {
-    const val = parseFloat(simValue);
+    const val = parseCurrencyInput(simValue);
     if (isNaN(val) || val <= 0) return null;
     const months = remainingAmount / val;
     const completionDate = new Date();
@@ -218,10 +218,11 @@ export const GoalDetail: React.FC<Props> = ({ goalId, onClose }) => {
                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">R$</span>
                  <input 
                    type="number" 
+                   step="any"
                    value={simValue}
                    onChange={e => setSimValue(e.target.value)}
                    className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 rounded-2xl text-base font-black outline-none dark:text-white transition"
-                   placeholder="0,00"
+                   placeholder="0"
                  />
               </div>
            </div>
@@ -282,16 +283,29 @@ export const GoalDetail: React.FC<Props> = ({ goalId, onClose }) => {
       </div>
 
       {/* --- Quick Deposit Modal --- */}
-      {isDepositModalOpen && (
+      {isDepositModalOpen && goal && (
         <div className="fixed inset-0 bg-slate-950/60 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl animate-slide-up">
               <div className="flex justify-between items-center mb-8">
-                 <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Novo Depósito</h2>
+                 <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Novo Aporte (Depósito)</h2>
                  <button onClick={() => setIsDepositModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600"><X size={24} /></button>
               </div>
               <DepositForm 
-                onSave={(amount) => {
+                accounts={accounts}
+                onSave={(amount, accountId) => {
                   updateGoal({ ...goal, currentAmount: goal.currentAmount + amount });
+                  if (accountId) {
+                    addTransaction({
+                      description: `Aporte em Objetivo: ${goal.name}`,
+                      amount: amount,
+                      type: 'goal_deposit',
+                      status: 'paid',
+                      date: new Date().toISOString().slice(0, 10),
+                      categoryId: categories[0]?.id || 'goal-transfer',
+                      accountId: accountId,
+                      goalId: goal.id
+                    });
+                  }
                   setIsDepositModalOpen(false);
                 }} 
               />
@@ -302,31 +316,56 @@ export const GoalDetail: React.FC<Props> = ({ goalId, onClose }) => {
   );
 };
 
-// Form auxiliar para depósitos rápidos
-const DepositForm = ({ onSave }: { onSave: (amount: number) => void }) => {
+// Form auxiliar para depósitos rápidos e aportes sem alterar patrimônio total
+const DepositForm = ({ accounts, onSave }: { accounts: any[]; onSave: (amount: number, accountId: string) => void }) => {
   const [val, setVal] = useState('');
+  const activeAccounts = accounts.filter(a => a.enabled);
+  const [selectedAcc, setSelectedAcc] = useState(activeAccounts[0]?.id || '');
+
   return (
     <div className="space-y-6">
        <div>
-          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Valor do Depósito</label>
+          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Valor do Aporte</label>
           <div className="relative">
              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">R$</span>
              <input 
                type="number" 
+               step="any"
                value={val} 
                onChange={e => setVal(e.target.value)} 
                className="w-full pl-14 pr-5 py-5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-blue-500 rounded-[1.5rem] dark:text-white outline-none font-black text-2xl" 
-               placeholder="0,00"
+               placeholder="0"
                autoFocus
              />
           </div>
        </div>
+
+       {activeAccounts.length > 0 && (
+         <div>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Conta de Origem</label>
+            <select
+              value={selectedAcc}
+              onChange={e => setSelectedAcc(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm text-slate-800 dark:text-white outline-none"
+            >
+              {activeAccounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name} — Saldo
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              O Aporte move o saldo para o Cofrinho sem diminuir seu Patrimônio Total.
+            </p>
+         </div>
+       )}
+
        <button 
-         onClick={() => onSave(parseFloat(val))}
-         disabled={!val || parseFloat(val) <= 0}
+         onClick={() => onSave(parseCurrencyInput(val), selectedAcc)}
+         disabled={!val || parseCurrencyInput(val) <= 0}
          className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-100 disabled:opacity-30 transition-all"
        >
-         Confirmar Depósito
+         Confirmar Aporte
        </button>
     </div>
   );

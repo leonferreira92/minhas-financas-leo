@@ -50,7 +50,7 @@ interface FinanceContextType {
 
   saveBudget: (b: Budget) => void;
   deleteBudget: (categoryId: string) => void;
-  addGoal: (g: Omit<Goal, 'id'>) => void;
+  addGoal: (g: Omit<Goal, 'id'> & { id?: string }) => void;
   updateGoal: (g: Goal) => void;
   deleteGoal: (id: string) => void;
 
@@ -180,10 +180,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     transactions.forEach(t => {
       if (t.status === 'pending') return;
       if (t.accountId === accountId) {
-        if (t.type === 'income') balance += Number(t.amount);
-        else balance -= Number(t.amount);
+        if (t.type === 'income' || (t.type === 'goal_withdraw' && account.type !== 'savings' && accountId !== 'acc_savings')) {
+          balance += Number(t.amount);
+        } else if (t.type === 'expense' || t.type === 'goal_deposit' || t.type === 'transfer' || (t.type === 'goal_withdraw' && (account.type === 'savings' || accountId === 'acc_savings'))) {
+          balance -= Number(t.amount);
+        } else if (t.type === 'adjustment') {
+          balance += Number(t.amount);
+        }
       }
-      if (t.type === 'transfer' && t.destinationAccountId === accountId) balance += Number(t.amount);
+      if (t.type === 'transfer' && t.destinationAccountId === accountId) {
+        balance += Number(t.amount);
+      }
+      if (t.type === 'goal_deposit' && (account.type === 'savings' || accountId === 'acc_savings') && t.accountId !== accountId) {
+        balance += Number(t.amount);
+      }
     });
     return parseFloat(balance.toFixed(2));
   };
@@ -191,35 +201,55 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const reconcileBalance = (accountId: string, realBalance: number) => {
     const diff = realBalance - getAccountBalance(accountId);
     if (Math.abs(diff) < 0.01) return;
-    const type: TransactionType = diff > 0 ? 'income' : 'expense';
-    const cat = categories.find(c => c.type === type) || categories[0];
-    addTransaction({ amount: Math.abs(diff), type, description: 'Ajuste de Saldo', date: new Date().toISOString().slice(0, 10), status: 'paid', accountId, categoryId: cat.id });
+    const cat = categories.find(c => c.id === 'cat_adjustment' || c.type === 'adjustment') || categories[0];
+    addTransaction({
+      amount: Number(diff.toFixed(2)),
+      type: 'adjustment',
+      description: 'Ajuste de Saldo',
+      date: new Date().toISOString().slice(0, 10),
+      status: 'paid',
+      accountId,
+      categoryId: cat ? cat.id : 'cat_adjustment'
+    });
   };
 
   const addTransaction = (t: Omit<Transaction, 'id' | 'createdAt'>) => {
     const fixedGroupId = t.isFixed ? crypto.randomUUID() : undefined;
-    const txs = [...transactions];
-    txs.push({ ...t, id: crypto.randomUUID(), createdAt: Date.now(), fixedGroupId });
-    if (t.isFixed && fixedGroupId) {
-      for (let i = 1; i < 12; i++) {
-        const d = new Date(t.date); d.setMonth(d.getMonth() + i);
-        txs.push({ ...t, id: crypto.randomUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId });
+    setTransactions(prev => {
+      const txs = [...prev];
+      txs.push({ ...t, id: crypto.randomUUID(), createdAt: Date.now(), fixedGroupId });
+      if (t.isFixed && fixedGroupId) {
+        for (let i = 1; i < 12; i++) {
+          const d = new Date(t.date); d.setMonth(d.getMonth() + i);
+          txs.push({ ...t, id: crypto.randomUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId });
+        }
       }
-    }
-    saveTransactions(txs);
+      StorageService.saveTransactions(txs);
+      return txs;
+    });
   };
 
-  const updateTransaction = (updatedT: Transaction) => saveTransactions(transactions.map(t => t.id === updatedT.id ? updatedT : t));
+  const updateTransaction = (updatedT: Transaction) => {
+    setTransactions(prev => {
+      const txs = prev.map(t => t.id === updatedT.id ? updatedT : t);
+      StorageService.saveTransactions(txs);
+      return txs;
+    });
+  };
   
   const updateTransactionSeries = (updatedT: Transaction, updateFuture: boolean) => {
     if (!updateFuture || !updatedT.fixedGroupId) { updateTransaction(updatedT); return; }
-    saveTransactions(transactions.map(t => {
-      if (t.id === updatedT.id) return updatedT;
-      if (t.fixedGroupId === updatedT.fixedGroupId && new Date(t.date) > new Date(updatedT.date)) {
-        return { ...t, amount: updatedT.amount, categoryId: updatedT.categoryId, description: updatedT.description, type: updatedT.type, accountId: updatedT.accountId };
-      }
-      return t;
-    }));
+    setTransactions(prev => {
+      const txs = prev.map(t => {
+        if (t.id === updatedT.id) return updatedT;
+        if (t.fixedGroupId === updatedT.fixedGroupId && new Date(t.date) > new Date(updatedT.date)) {
+          return { ...t, amount: updatedT.amount, categoryId: updatedT.categoryId, description: updatedT.description, type: updatedT.type, accountId: updatedT.accountId };
+        }
+        return t;
+      });
+      StorageService.saveTransactions(txs);
+      return txs;
+    });
   };
 
   const updateDebtTransaction = (t: Transaction, redistribute: boolean) => {
@@ -269,12 +299,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const deleteTransaction = (id: string, deleteSeries: boolean = false) => {
-    const target = transactions.find(t => t.id === id);
-    if (deleteSeries && target && target.fixedGroupId) {
-      saveTransactions(transactions.filter(t => t.fixedGroupId !== target.fixedGroupId));
-    } else {
-      saveTransactions(transactions.filter(t => t.id !== id));
-    }
+    setTransactions(prev => {
+      const target = prev.find(t => t.id === id);
+      let txs;
+      if (deleteSeries && target && target.fixedGroupId) {
+        txs = prev.filter(t => t.fixedGroupId !== target.fixedGroupId);
+      } else {
+        txs = prev.filter(t => t.id !== id);
+      }
+      StorageService.saveTransactions(txs);
+      return txs;
+    });
   };
 
   const checkTransactionImpact = (amount: number, date: string): { compromisedTransaction: Transaction } | null => {
@@ -417,38 +452,62 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     saveBudgetsInternal(newBudgets);
   };
   const deleteBudget = (categoryId: string) => saveBudgetsInternal(budgets.filter(b => b.categoryId !== categoryId));
-  const addGoal = (g: Omit<Goal, 'id'>) => saveGoalsInternal([...goals, { ...g, id: crypto.randomUUID() }]);
-  const updateGoal = (g: Goal) => saveGoalsInternal(goals.map(goal => goal.id === g.id ? g : goal));
-  const deleteGoal = (id: string) => saveGoalsInternal(goals.filter(g => g.id !== id));
+  const addGoal = (g: Omit<Goal, 'id'> & { id?: string }) => {
+    setGoals(prev => {
+      const goalId = g.id || crypto.randomUUID();
+      const updated = [...prev, { ...g, id: goalId }];
+      StorageService.saveGoals(updated);
+      return updated;
+    });
+  };
+  const updateGoal = (g: Goal) => {
+    setGoals(prev => {
+      const updated = prev.map(goal => goal.id === g.id ? g : goal);
+      StorageService.saveGoals(updated);
+      return updated;
+    });
+  };
+  const deleteGoal = (id: string) => {
+    setGoals(prev => {
+      const updated = prev.filter(g => g.id !== id);
+      StorageService.saveGoals(updated);
+      return updated;
+    });
+  };
 
   const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string): ExtendedSummary => {
     const projLimit = new Date(projectionDateStr + 'T23:59:59').getTime();
     const today = new Date();
     const dayOfMonth = today.getDate();
     
-    let realBalance = accounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
-    let projectedBalance = realBalance;
+    const accountsTotal = accounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
+    const goalsTotal = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
+    let realBalance = accountsTotal;
+
+    const operatingAccountsTotal = accounts
+      .filter(acc => !(acc.type === 'savings' || acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva')))
+      .reduce((s, acc) => s + getAccountBalance(acc.id), 0);
+    let projectedBalance = operatingAccountsTotal;
+
     let monthlyIncome = 0, monthlyExpense = 0, pendingIncome = 0, pendingExpense = 0;
 
     transactions.forEach(t => {
       const amount = Number(t.amount) || 0;
       const isPaid = t.status === 'paid';
-      const isInc = t.type === 'income';
-      const isTrans = t.type === 'transfer';
       const tTime = new Date(t.date + 'T12:00:00').getTime();
 
       if (!isPaid && tTime <= projLimit) {
-        if (isInc) projectedBalance += amount;
-        else if (!isTrans) projectedBalance -= amount;
+        if (t.type === 'income') projectedBalance += amount;
+        else if (t.type === 'expense') projectedBalance -= amount;
       }
 
-      if (t.date.startsWith(viewMonthStr) && !isTrans) {
-        if (isInc) { 
-          monthlyIncome += isPaid ? amount : 0; 
-          if (!isPaid) pendingIncome += amount; 
-        } else { 
-          monthlyExpense += isPaid ? amount : 0; 
-          if (!isPaid) pendingExpense += amount; 
+      if (t.date.startsWith(viewMonthStr)) {
+        if (t.type === 'income') {
+          monthlyIncome += isPaid ? amount : 0;
+          if (!isPaid) pendingIncome += amount;
+        } else if (t.type === 'expense') {
+          monthlyExpense += isPaid ? amount : 0;
+          if (!isPaid) pendingExpense += amount;
         }
       }
     });
@@ -470,7 +529,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       safetyMargin,
       savingsRate,
       comparisonToLastMonth: 0, // Simplificado para este MVP
-      freeToSpend: Number(freeToSpend.toFixed(2))
+      freeToSpend: Number(freeToSpend.toFixed(2)),
+      accountsTotal: Number(accountsTotal.toFixed(2)),
+      goalsTotal: Number(goalsTotal.toFixed(2))
     };
   };
 

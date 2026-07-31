@@ -8,6 +8,7 @@ import {
   AlertCircle, ChevronRight, Landmark, Calculator, AlertTriangle
 } from 'lucide-react';
 import { Transaction } from '../types';
+import { parseCurrencyInput } from '../constants';
 
 interface Props {
   debtId: string;
@@ -235,7 +236,7 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
 
 const RecalculateModal = ({ transaction, onClose, onSave }: { transaction: Transaction, onClose: () => void, onSave: (id: string, amount: number) => void }) => {
    const [amount, setAmount] = useState(transaction.amount.toString());
-   const diff = parseFloat(amount) - transaction.amount;
+   const diff = parseCurrencyInput(amount) - transaction.amount;
 
    return (
       <div className="fixed inset-0 bg-slate-900/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
@@ -252,7 +253,7 @@ const RecalculateModal = ({ transaction, onClose, onSave }: { transaction: Trans
                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">R$</span>
                      <input 
                         type="number" 
-                        step="0.01"
+                        step="any"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         className="w-full pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] text-3xl font-black outline-none dark:text-white tabular-nums shadow-inner"
@@ -277,7 +278,7 @@ const RecalculateModal = ({ transaction, onClose, onSave }: { transaction: Trans
                )}
 
                <button 
-                  onClick={() => onSave(transaction.id, parseFloat(amount))}
+                  onClick={() => onSave(transaction.id, parseCurrencyInput(amount))}
                   className="w-full py-5 bg-slate-900 dark:bg-indigo-600 hover:scale-[1.02] text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl transition-all active:scale-95"
                >
                   Confirmar Recalculo

@@ -10,15 +10,15 @@ import {
   AlertCircle, Wallet, X, CalendarRange, Check, Zap,
   ArrowRightLeft, Music, Mic, Laptop, Car, Plane,
   Briefcase, ShieldAlert, DollarSign, CheckCircle2,
-  Plus, Flame
+  Plus, Flame, PiggyBank
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TransactionForm } from './TransactionForm';
 import { TransactionType } from '../types';
 import { CalendarModal } from './CalendarModal';
 import { DashboardSkeleton } from './Skeleton';
-import { GoalManagerModal } from './GoalManagerModal';
 import { GoalDetail } from './GoalDetail';
+import { AccountBalanceModal } from './AccountBalanceModal';
 
 const HubButton = ({ icon: Icon, label, color, onClick }: { icon: any, label: string, color: string, onClick: () => void }) => {
   const colorMap: Record<string, string> = {
@@ -55,8 +55,8 @@ export const Dashboard = () => {
   const [balanceMode, setBalanceMode] = useState<'real' | 'projected'>('real');
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [isGoalManagerOpen, setIsGoalManagerOpen] = useState(false);
   const [selectedGoalDetailId, setSelectedGoalDetailId] = useState<string | null>(null);
+  const [selectedAccountForBalanceEdit, setSelectedAccountForBalanceEdit] = useState<any | null>(null);
   
   // State for Transaction Modal Actions
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -322,7 +322,11 @@ export const Dashboard = () => {
                   <div className="py-2 px-4 bg-white/5 rounded-2xl border border-white/5 text-[9px] font-black uppercase text-slate-500">Nenhuma conta ativa</div>
                 ) : (
                   accounts.map(acc => (
-                    <div key={acc.id} className="flex flex-col shrink-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-2.5 min-w-[120px] transition-transform active:scale-95">
+                    <div 
+                      key={acc.id} 
+                      onClick={() => setSelectedAccountForBalanceEdit(acc)}
+                      className="flex flex-col shrink-0 bg-white/5 backdrop-blur-md border border-white/10 hover:border-white/20 hover:bg-white/10 rounded-2xl px-4 py-2.5 min-w-[120px] transition-transform active:scale-95 cursor-pointer shadow-sm"
+                    >
                       <div className="flex items-center space-x-2 mb-1">
                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: acc.color }}></div>
                          <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest truncate max-w-[80px]">{acc.name}</span>
@@ -352,7 +356,7 @@ export const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Card 1: Reserva para Conquistas */}
           <div 
-            onClick={() => setIsGoalManagerOpen(true)}
+            onClick={() => navigate('/metas')}
             className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between relative overflow-hidden"
           >
             {/* Efeito de brilho de fundo sutil */}
@@ -365,8 +369,8 @@ export const Dashboard = () => {
                     <Target size={20} strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Metas & Sonhos</h4>
-                    <p className="text-sm font-black text-slate-800 dark:text-white">Reserva para Conquistas</p>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Conta Economias & Metas</h4>
+                    <p className="text-sm font-black text-slate-800 dark:text-white">Reservas & Objetivos Inteligentes</p>
                   </div>
                 </div>
                 
@@ -374,7 +378,7 @@ export const Dashboard = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsGoalManagerOpen(true);
+                    navigate('/metas');
                   }}
                   className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all active:scale-95 shadow-sm hover:shadow"
                   title="Criar ou gerenciar metas"
@@ -763,7 +767,7 @@ export const Dashboard = () => {
                <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {recentTransactions.map(t => {
                      const cat = categories.find(c => c.id === t.categoryId);
-                     const Icon = t.type === 'transfer' ? ArrowRightLeft : (cat ? getIcon(cat.icon) : Clock);
+                     const Icon = t.type === 'transfer' ? ArrowRightLeft : (t.type === 'goal_deposit' || t.type === 'goal_withdraw' ? PiggyBank : (cat ? getIcon(cat.icon) : Clock));
                      const isPending = t.status === 'pending';
                      const todayStr = new Date().toISOString().slice(0, 10);
                      const isOverdue = isPending && t.date < todayStr;
@@ -776,7 +780,7 @@ export const Dashboard = () => {
                        ? (fromAcc && toAcc ? `${fromAcc.name} ➔ ${toAcc.name}` : 'Transferência entre Contas')
                        : t.description;
 
-                     const categoryName = t.type === 'transfer' ? 'Transferência' : (cat?.name || 'Geral');
+                     const categoryName = t.type === 'transfer' ? 'Transferência' : (t.type === 'goal_deposit' ? 'Aporte em Meta' : t.type === 'goal_withdraw' ? 'Resgate de Meta' : (cat?.name || 'Geral'));
 
                      return (
                         <div 
@@ -788,8 +792,8 @@ export const Dashboard = () => {
                               <div 
                                 className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 group-hover:scale-105 transition-all shrink-0"
                                 style={{ 
-                                  backgroundColor: t.type === 'transfer' ? 'rgba(99, 102, 241, 0.1)' : (cat ? `${cat.color}15` : 'rgba(148, 163, 184, 0.1)'),
-                                  color: t.type === 'transfer' ? '#6366f1' : (cat?.color || '#64748b')
+                                  backgroundColor: t.type === 'transfer' || t.type === 'goal_deposit' || t.type === 'goal_withdraw' ? 'rgba(99, 102, 241, 0.1)' : (cat ? `${cat.color}15` : 'rgba(148, 163, 184, 0.1)'),
+                                  color: t.type === 'transfer' || t.type === 'goal_deposit' || t.type === 'goal_withdraw' ? '#6366f1' : (cat?.color || '#64748b')
                                 }}
                               >
                                  <Icon size={18} strokeWidth={2.5} />
@@ -831,13 +835,13 @@ export const Dashboard = () => {
                            <div className="flex items-center space-x-3.5 shrink-0 ml-2">
                               <div className="text-right">
                                  <p className={`text-sm font-black tabular-nums ${
-                                    t.type === 'expense' 
+                                    t.type === 'expense' || t.type === 'goal_deposit'
                                       ? 'text-rose-500 dark:text-rose-400' 
-                                      : t.type === 'income' 
+                                      : t.type === 'income' || t.type === 'goal_withdraw'
                                         ? 'text-emerald-500' 
                                         : 'text-slate-500 dark:text-slate-400'
                                  }`}>
-                                    {t.type === 'expense' ? '-' : t.type === 'income' ? '+' : '⇄'} {formatCurrency(t.amount)}
+                                    {t.type === 'expense' || t.type === 'goal_deposit' ? '-' : t.type === 'income' || t.type === 'goal_withdraw' ? '+' : '⇄'} {formatCurrency(t.amount)}
                                  </p>
                                  <p className="text-[8px] font-black text-slate-300 dark:text-slate-600 uppercase mt-0.5">
                                     {new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
@@ -924,22 +928,19 @@ export const Dashboard = () => {
         />
       )}
 
-      {/* Modal de Gerenciamento de Metas & Conquistas */}
-      {isGoalManagerOpen && (
-        <GoalManagerModal
-          onClose={() => setIsGoalManagerOpen(false)}
-          onOpenGoalDetail={(goalId) => {
-            setIsGoalManagerOpen(false);
-            setSelectedGoalDetailId(goalId);
-          }}
-        />
-      )}
-
       {/* Modal de Detalhes da Meta com IA */}
       {selectedGoalDetailId && (
         <GoalDetail
           goalId={selectedGoalDetailId}
           onClose={() => setSelectedGoalDetailId(null)}
+        />
+      )}
+
+      {/* Modal de Edição de Saldo e Detalhes da Conta */}
+      {selectedAccountForBalanceEdit && (
+        <AccountBalanceModal
+          account={selectedAccountForBalanceEdit}
+          onClose={() => setSelectedAccountForBalanceEdit(null)}
         />
       )}
     </div>

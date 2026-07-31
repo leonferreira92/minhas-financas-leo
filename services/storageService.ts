@@ -1,6 +1,6 @@
 
 import { Transaction, Category, AppSettings, Debt, Account, Budget, Goal } from '../types';
-import { DEFAULT_CATEGORIES } from '../constants';
+import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 
 const KEYS = {
   TRANSACTIONS: 'fin_app_transactions',
@@ -83,9 +83,36 @@ export const StorageService = {
   getAccounts: (): Account[] => {
     try {
       const data = localStorage.getItem(KEYS.ACCOUNTS);
-      return data ? JSON.parse(data) : [];
+      if (!data) {
+        localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
+        return DEFAULT_ACCOUNTS;
+      }
+      const parsed: Account[] = JSON.parse(data);
+      if (!parsed || parsed.length === 0) {
+        localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
+        return DEFAULT_ACCOUNTS;
+      }
+      const hasSavings = parsed.some(acc => acc.type === 'savings' || acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva'));
+      let result = parsed.map(acc => {
+        if (acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva')) {
+          return { ...acc, type: 'savings' as const };
+        }
+        return acc;
+      });
+      if (!hasSavings) {
+        result.push({
+          id: 'acc_savings',
+          name: 'Economias',
+          type: 'savings',
+          color: '#f59e0b',
+          initialBalance: 0,
+          enabled: true
+        });
+        localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(result));
+      }
+      return result;
     } catch (e) {
-      return [];
+      return DEFAULT_ACCOUNTS;
     }
   },
 
@@ -115,35 +142,24 @@ export const StorageService = {
       return [
         {
           id: 'goal_pc',
-          name: 'Novo Computador',
-          description: 'Setup de produção musical e gravação',
-          targetAmount: 8500,
-          currentAmount: 3400,
-          deadline: '2026-12-31',
+          name: 'PC Gamer',
+          description: 'Setup dos sonhos para jogos e produção',
+          targetAmount: 4500,
+          currentAmount: 1500,
+          deadline: '2026-11-27',
           color: '#3b82f6',
           icon: 'Laptop',
           createdAt: new Date().toISOString()
         },
         {
-          id: 'goal_carro',
-          name: 'Troca de Carro',
-          description: 'Carro novo para viagens e shows',
-          targetAmount: 45000,
-          currentAmount: 16500,
+          id: 'goal_reserva',
+          name: 'Reserva de Emergência',
+          description: 'Segurança financeira e tranquilidade',
+          targetAmount: 10000,
+          currentAmount: 1500,
           deadline: '2027-06-30',
           color: '#10b981',
-          icon: 'CarFront',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'goal_viagem',
-          name: 'Viagem de Férias',
-          description: 'Descanso e lazer em família',
-          targetAmount: 7000,
-          currentAmount: 2800,
-          deadline: '2027-01-15',
-          color: '#8b5cf6',
-          icon: 'Plane',
+          icon: 'ShieldCheck',
           createdAt: new Date().toISOString()
         }
       ];

@@ -9,6 +9,7 @@ import {
   Calculator, Landmark, ShieldCheck, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { CalendarModal } from './CalendarModal';
+import { parseCurrencyInput } from '../constants';
 
 interface Props {
   onClose: () => void;
@@ -49,8 +50,8 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
 
   useEffect(() => {
     if (!isManualInstallment && step === 1) {
-       const total = parseFloat(totalAmount) || 0;
-       const entry = parseFloat(downPayment) || 0;
+       const total = parseCurrencyInput(totalAmount);
+       const entry = parseCurrencyInput(downPayment);
        const qty = parseInt(installments) || 1;
        const calc = Math.max(0, (total - entry) / qty);
        setInstallmentValue(calc.toFixed(2));
@@ -60,25 +61,25 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
   const handleInstallmentChange = (val: string) => {
     setInstallmentValue(val);
     setIsManualInstallment(true);
-    const instVal = parseFloat(val) || 0;
-    const entry = parseFloat(downPayment) || 0;
+    const instVal = parseCurrencyInput(val);
+    const entry = parseCurrencyInput(downPayment);
     const qty = parseInt(installments) || 1;
     const newTotal = entry + (instVal * qty);
     setTotalAmount(newTotal.toFixed(2));
   };
 
-  const isEntryInvalid = parseFloat(downPayment) >= parseFloat(totalAmount);
+  const isEntryInvalid = parseCurrencyInput(downPayment) >= parseCurrencyInput(totalAmount);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const total = parseFloat(totalAmount);
+    const total = parseCurrencyInput(totalAmount);
     if (!name || isNaN(total) || total <= 0 || !categoryId || !accountId || isEntryInvalid) return;
 
     addDebt({ name, type, totalAmount: total, startDate: firstDate, installmentCount: parseInt(installments) || 1 }, {
-      downPayment: parseFloat(downPayment) || 0,
+      downPayment: parseCurrencyInput(downPayment),
       installments: parseInt(installments) || 1,
       firstDate, categoryId, autoPayPast, accountId,
-      fixedInstallmentValue: parseFloat(installmentValue)
+      fixedInstallmentValue: parseCurrencyInput(installmentValue)
     });
     onClose();
   };
@@ -135,7 +136,7 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Valor Total</label>
                   <div className="relative">
                     <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 font-black text-2xl">R$</span>
-                    <input type="number" step="0.01" value={totalAmount} onChange={(e) => { setTotalAmount(e.target.value); setIsManualInstallment(false); }} className="w-full pl-16 pr-6 py-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] outline-none font-black text-3xl text-slate-800 dark:text-white shadow-inner tabular-nums" placeholder="0,00" />
+                    <input type="number" step="any" value={totalAmount} onChange={(e) => { setTotalAmount(e.target.value); setIsManualInstallment(false); }} className="w-full pl-16 pr-6 py-6 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] outline-none font-black text-3xl text-slate-800 dark:text-white shadow-inner tabular-nums" placeholder="0" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -172,12 +173,12 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
                     </div>
                     <div className="flex items-end space-x-3 relative border-b border-white/10 pb-4 mb-4">
                        <span className="text-2xl font-black text-indigo-400 mb-2">R$</span>
-                       <input type="number" step="0.01" value={installmentValue} onChange={(e) => handleInstallmentChange(e.target.value)} className="w-full bg-transparent border-none outline-none text-5xl font-black tracking-tighter text-white tabular-nums" placeholder="0.00" />
+                       <input type="number" step="any" value={installmentValue} onChange={(e) => handleInstallmentChange(e.target.value)} className="w-full bg-transparent border-none outline-none text-5xl font-black tracking-tighter text-white tabular-nums" placeholder="0" />
                        <span className="text-xs text-slate-500 font-black mb-4 uppercase tracking-widest shrink-0">Mês</span>
                     </div>
                     <div className="flex justify-between items-center text-[10px] text-slate-400 font-black uppercase tracking-widest">
                        <span>Custo Efetivo Total</span>
-                       <span className="text-white">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(totalAmount))}</span>
+                       <span className="text-white">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseCurrencyInput(totalAmount))}</span>
                     </div>
                  </div>
 
@@ -186,7 +187,7 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${isEntryInvalid ? 'text-rose-500' : 'text-slate-400'}`}>Entrada</label>
                      <div className="relative">
                        <span className={`absolute left-0 top-1/2 -translate-y-1/2 font-black text-lg ${isEntryInvalid ? 'text-rose-300' : 'text-slate-400'}`}>R$</span>
-                       <input type="number" step="0.01" value={downPayment} onChange={(e) => { setDownPayment(e.target.value); setIsManualInstallment(false); }} className={`w-full pl-8 bg-transparent outline-none font-black text-xl tabular-nums ${isEntryInvalid ? 'text-rose-500' : 'dark:text-white'}`} placeholder="0,00" />
+                       <input type="number" step="any" value={downPayment} onChange={(e) => { setDownPayment(e.target.value); setIsManualInstallment(false); }} className={`w-full pl-8 bg-transparent outline-none font-black text-xl tabular-nums ${isEntryInvalid ? 'text-rose-500' : 'dark:text-white'}`} placeholder="0" />
                      </div>
                    </div>
                    <div className="bg-slate-50 dark:bg-slate-900 p-5 rounded-[2rem] border-2 border-transparent focus-within:border-indigo-500 transition-all shadow-inner">

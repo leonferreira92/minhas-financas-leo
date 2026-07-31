@@ -6,9 +6,9 @@ import {
   X, Check, Trash2, Bell, BellRing, Repeat, Copy, Layers, 
   Sparkles, Loader2, TrendingUp, ArrowRightLeft, Calculator, 
   AlertTriangle, RefreshCw, Lock, AlertCircle, Calendar as CalendarIcon,
-  ChevronDown, Wallet
+  ChevronDown, Wallet, Target, Plus, ShieldCheck, DollarSign
 } from 'lucide-react';
-import { getIcon } from '../constants';
+import { getIcon, parseCurrencyInput } from '../constants';
 import { GeminiService } from '../services/geminiService';
 import { CalendarModal } from './CalendarModal';
 
@@ -22,8 +22,21 @@ interface Props {
 export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
   const { 
     addTransaction, updateTransactionSeries, updateDebtTransaction, 
-    deleteTransaction, categories, transactions, accounts, checkTransactionImpact 
+    deleteTransaction, categories, transactions, accounts, checkTransactionImpact,
+    goals, addGoal, updateGoal
   } = useFinance();
+
+  // Objetivos Inteligentes (Aporte na Receita)
+  const [showSmartAporteModal, setShowSmartAporteModal] = useState(false);
+  const [pendingIncomeData, setPendingIncomeData] = useState<any>(null);
+  const [selectedAporteGoalId, setSelectedAporteGoalId] = useState<string>('');
+  const [aporteAmountStr, setAporteAmountStr] = useState<string>('');
+  const [remainderAccountId, setRemainderAccountId] = useState<string>('');
+  const [isCreatingGoalInline, setIsCreatingGoalInline] = useState(false);
+  const [inlineGoalName, setInlineGoalName] = useState('PC Gamer');
+  const [inlineGoalTarget, setInlineGoalTarget] = useState('4500');
+  const [inlineGoalDeadline, setInlineGoalDeadline] = useState('2026-11-27');
+  const [inlineGoalIcon, setInlineGoalIcon] = useState('Laptop');
   
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
@@ -76,8 +89,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   }, [transaction]);
 
   useEffect(() => {
-    if (type === 'expense' && amount && !isNaN(parseFloat(amount))) {
-      const result = checkTransactionImpact(parseFloat(amount), date);
+    const val = parseCurrencyInput(amount);
+    if (type === 'expense' && val > 0) {
+      const result = checkTransactionImpact(val, date);
       setImpact(result);
     } else {
       setImpact(null);
@@ -103,7 +117,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
   const diffAmount = useMemo(() => {
     if (!transaction?.debtId) return 0;
-    const currentVal = parseFloat(amount);
+    const currentVal = parseCurrencyInput(amount);
     if (isNaN(currentVal)) return 0;
     return currentVal - baseAmount;
   }, [amount, baseAmount, transaction]);
@@ -133,7 +147,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(amount);
+    const val = parseCurrencyInput(amount);
     
     if (!val || val <= 0 || !description || !accountId) {
         alert("Preencha todos os campos obrigatórios.");
@@ -162,7 +176,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     }
 
     const data: any = {
-      type, amount: val, description, categoryId: type === 'transfer' ? '' : categoryId,
+      type, amount: val, description, categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
       accountId, destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
       date, status,
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
@@ -182,16 +196,92 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
          onClose();
       }
     } else {
-      addTransaction(data);
-      onClose();
+      if (type === 'income' && status === 'paid' && val > 0) {
+        setPendingIncomeData(data);
+        const defaultAccount = data.accountId || accounts[0]?.id || '';
+        setRemainderAccountId(defaultAccount);
+        const defaultGoal = goals[0]?.id || '';
+        setSelectedAporteGoalId(defaultGoal);
+        setAporteAmountStr('');
+        setShowSmartAporteModal(true);
+      } else {
+        addTransaction(data);
+        onClose();
+      }
     }
+  };
+
+  const handleSkipAporte = () => {
+    if (pendingIncomeData) {
+      addTransaction(pendingIncomeData);
+    }
+    setShowSmartAporteModal(false);
+    onClose();
+  };
+
+  const handleConfirmAporte = () => {
+    if (!pendingIncomeData) return;
+    const valAporte = parseCurrencyInput(aporteAmountStr);
+    const totalIncome = Number(pendingIncomeData.amount || 0);
+    const destAcc = remainderAccountId || pendingIncomeData.accountId || accounts[0]?.id || '';
+
+    // 1. Registra a receita na conta de destino escolhida pelo usuário
+    addTransaction({
+      ...pendingIncomeData,
+      accountId: destAcc
+    });
+
+    // 2. Se o aporte for maior que zero e houver uma meta selecionada, faz o aporte na conta Economias
+    const chosenGoal = goals.find(g => g.id === selectedAporteGoalId);
+    if (chosenGoal && valAporte > 0) {
+      const actualAporte = Math.min(valAporte, totalIncome);
+      addTransaction({
+        description: `Aporte em Objetivo: ${chosenGoal.name} (${pendingIncomeData.description})`,
+        amount: actualAporte,
+        type: 'goal_deposit',
+        status: 'paid',
+        date: pendingIncomeData.date || new Date().toISOString().slice(0, 10),
+        categoryId: categories[0]?.id || 'goal-transfer',
+        accountId: destAcc,
+        goalId: chosenGoal.id
+      });
+      updateGoal({
+        ...chosenGoal,
+        currentAmount: Number(chosenGoal.currentAmount || 0) + actualAporte
+      });
+    }
+
+    setShowSmartAporteModal(false);
+    onClose();
+  };
+
+  const handleCreateInlineGoal = () => {
+    const target = parseCurrencyInput(inlineGoalTarget);
+    if (!inlineGoalName.trim() || target <= 0) {
+      alert("Preencha o nome e valor da meta.");
+      return;
+    }
+    const newId = crypto.randomUUID();
+    addGoal({
+      id: newId,
+      name: inlineGoalName.trim(),
+      description: 'Objetivo Inteligente cadastrado via Entrada',
+      targetAmount: target,
+      currentAmount: 0,
+      deadline: inlineGoalDeadline || '2026-11-27',
+      color: '#3b82f6',
+      icon: inlineGoalIcon,
+      createdAt: new Date().toISOString()
+    });
+    setSelectedAporteGoalId(newId);
+    setIsCreatingGoalInline(false);
   };
 
   const handleConfirmRecurringUpdate = (updateFuture: boolean) => {
     if (!transaction) return;
-    const val = parseFloat(amount);
+    const val = parseCurrencyInput(amount);
     const data: any = {
-      type, amount: val, description, categoryId: type === 'transfer' ? '' : categoryId,
+      type, amount: val, description, categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
       accountId, destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
       date, status,
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
@@ -236,8 +326,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                   <span className={`text-3xl font-black mr-2 ${amount ? (type === 'expense' ? 'text-rose-600' : type === 'income' ? 'text-emerald-600' : 'text-blue-600') : 'text-slate-300'}`}>R$</span>
                   <input 
                     type="number" 
-                    step="0.01" 
-                    min={transaction?.debtId ? baseAmount : 0.01} 
+                    step="any" 
+                    min="0" 
                     value={amount} 
                     onChange={(e) => setAmount(e.target.value)} 
                     className={`w-full bg-transparent text-center text-6xl font-black outline-none placeholder:text-slate-200 dark:placeholder:text-slate-800 transition-colors ${type === 'expense' ? 'text-rose-600 caret-rose-600' : type === 'income' ? 'text-emerald-600 caret-emerald-600' : 'text-blue-600 caret-blue-600'}`}
@@ -470,6 +560,228 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                  <button onClick={() => setShowRecurringEditModal(false)} className="w-full py-4 text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest mt-2">Cancelar</button>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* MODAL DE OBJETIVOS INTELIGENTES (APORTE NA ENTRADA DE DINHEIRO) */}
+      {showSmartAporteModal && pendingIncomeData && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[130] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 md:p-8 animate-scale-in">
+            {/* Top Badge & Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                  <Target size={24} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">
+                    Objetivos Inteligentes
+                  </span>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white leading-tight">
+                    Quer fazer um aporte?
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSkipAporte}
+                className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-6 bg-indigo-50/70 dark:bg-indigo-950/40 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
+              Você registrou uma entrada de <strong className="text-slate-900 dark:text-white font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pendingIncomeData.amount)}</strong>. Deseja direcionar parte desse valor para um de seus objetivos na conta <strong className="text-emerald-600 dark:text-emerald-400">Economias</strong>?
+            </p>
+
+            {!isCreatingGoalInline ? (
+              <div className="space-y-5">
+                {/* 1. SELECIONE O OBJETIVO */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                      Qual Objetivo?
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingGoalInline(true)}
+                      className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
+                    >
+                      <Plus size={13} />
+                      <span>+ Cadastrar Meta (Ex.: PC Gamer)</span>
+                    </button>
+                  </div>
+                  <select
+                    value={selectedAporteGoalId}
+                    onChange={(e) => setSelectedAporteGoalId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {goals.map(g => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} — Meta: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(g.targetAmount)} {g.deadline ? `(Prazo: ${new Date(g.deadline + 'T12:00:00').toLocaleDateString('pt-BR')})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. QUANTO DESEJA APORTAR? */}
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                    Quanto? (R$)
+                  </label>
+                  <div className="relative mb-2">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">R$</span>
+                    <input
+                      type="text"
+                      placeholder="0,00"
+                      value={aporteAmountStr}
+                      onChange={(e) => setAporteAmountStr(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-lg font-black text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setAporteAmountStr('500,00')}
+                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    >
+                      R$ 500
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAporteAmountStr('1000,00')}
+                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    >
+                      R$ 1.000
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAporteAmountStr((pendingIncomeData.amount / 2).toFixed(2).replace('.', ','))}
+                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    >
+                      50%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAporteAmountStr(pendingIncomeData.amount.toFixed(2).replace('.', ','))}
+                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    >
+                      100% (Tudo)
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. CONTA DE DESTINO PARA O RESTANTE */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                    <span>Aporte na Meta (Economias):</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                      + {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseCurrencyInput(aporteAmountStr))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                    <span>Restante da Entrada:</span>
+                    <span className="text-slate-900 dark:text-white font-black">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.max(0, pendingIncomeData.amount - parseCurrencyInput(aporteAmountStr)))}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                      Destino do Restante
+                    </label>
+                    <select
+                      value={remainderAccountId}
+                      onChange={(e) => setRemainderAccountId(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-white"
+                    >
+                      {accounts.filter(a => a.type !== 'savings').map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.type === 'wallet' ? 'Carteira' : 'Conta Corrente'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Botões do Modal */}
+                <div className="flex items-center space-x-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={handleSkipAporte}
+                    className="flex-1 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                  >
+                    ○ Não (Apenas Entrada)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmAporte}
+                    className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs font-black uppercase tracking-widest hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
+                  >
+                    ○ Sim (Confirmar Aporte)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* CADASTRO INLINE DE OBJETIVO */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-black uppercase text-indigo-500">Cadastrar Novo Objetivo</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingGoalInline(false)}
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                  >
+                    Voltar
+                  </button>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                    Nome do Objetivo
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex.: PC Gamer"
+                    value={inlineGoalName}
+                    onChange={(e) => setInlineGoalName(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                      Meta (R$)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="4500"
+                      value={inlineGoalTarget}
+                      onChange={(e) => setInlineGoalTarget(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                      Prazo
+                    </label>
+                    <input
+                      type="date"
+                      value={inlineGoalDeadline}
+                      onChange={(e) => setInlineGoalDeadline(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCreateInlineGoal}
+                  className="w-full py-3.5 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md mt-2"
+                >
+                  Salvar e Selecionar Objetivo
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

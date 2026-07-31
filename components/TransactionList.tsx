@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { getIcon } from '../constants';
-import { ArrowDownCircle, CheckCircle2, Search, Filter, Clock, Bell, Repeat, Calendar, XCircle, ChevronDown, TrendingUp, TrendingDown, Check, Circle, Wallet, ArrowRightLeft, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowDownCircle, CheckCircle2, Search, Filter, Clock, Bell, Repeat, Calendar, XCircle, ChevronDown, TrendingUp, TrendingDown, Check, Circle, Wallet, ArrowRightLeft, Layers, ChevronLeft, ChevronRight, PiggyBank } from 'lucide-react';
 import { Transaction } from '../types';
 import { TransactionForm } from './TransactionForm';
 
@@ -25,6 +25,8 @@ export const TransactionList = () => {
         // Filter by Type/Status
         if (activeFilter === 'all') return true;
         if (activeFilter === 'pending') return t.status === 'pending';
+        if (activeFilter === 'income') return t.type === 'income' || t.type === 'goal_withdraw';
+        if (activeFilter === 'expense') return t.type === 'expense' || t.type === 'goal_deposit';
         return t.type === activeFilter;
       })
       .filter(t => {
@@ -43,8 +45,8 @@ export const TransactionList = () => {
     let pendingCount = 0;
     
     sortedTransactions.forEach(t => {
-      if (t.type === 'income') income += t.amount;
-      else if (t.type === 'expense') expense += t.amount;
+      if (t.type === 'income' || t.type === 'goal_withdraw') income += t.amount;
+      else if (t.type === 'expense' || t.type === 'goal_deposit') expense += t.amount;
       if (t.status === 'pending') pendingCount++;
     });
     return { income, expense, total: income - expense, pendingCount };
@@ -262,7 +264,8 @@ export const TransactionList = () => {
                  {items.map((t) => {
                   const category = categories.find(c => c.id === t.categoryId);
                   const Icon = category ? getIcon(category.icon) : ArrowDownCircle;
-                  const isExpense = t.type === 'expense';
+                  const isExpense = t.type === 'expense' || t.type === 'goal_deposit';
+                  const isIncome = t.type === 'income' || t.type === 'goal_withdraw';
                   const isPending = t.status === 'pending';
                   const account = accounts.find(a => a.id === t.accountId);
 
@@ -270,20 +273,22 @@ export const TransactionList = () => {
                     <div 
                       key={t.id} 
                       onClick={() => setEditingTransaction(t)}
-                      className={`group relative bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 active:scale-[0.98] transition-all cursor-pointer ${isPending ? 'border-l-4 border-l-amber-400' : ''}`}
+                      className={`group relative bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/80 hover:border-indigo-100 dark:hover:border-slate-700 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all cursor-pointer ${isPending ? 'bg-amber-500/[0.015] dark:bg-amber-500/[0.01]' : ''}`}
                     >
                       <div className="flex items-center">
                         {/* Icon */}
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-4 shrink-0 shadow-sm border border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-800 z-10 relative`}>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mr-4 shrink-0 shadow-sm border border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-800 z-10 relative group-hover:scale-105 transition-transform`}>
                            {t.type === 'transfer' ? (
                              <ArrowRightLeft size={20} className="text-blue-500" />
+                           ) : t.type === 'goal_deposit' || t.type === 'goal_withdraw' ? (
+                             <PiggyBank size={20} className="text-indigo-500" />
                            ) : (
                              <Icon size={20} style={{ color: category?.color || '#64748b' }} />
                            )}
                            
                            {/* Status Mini Indicator */}
                            {isPending && (
-                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center">
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border border-2 border-white dark:border-slate-900 flex items-center justify-center">
                                  <Clock size={8} className="text-white" />
                               </div>
                            )}
@@ -297,10 +302,15 @@ export const TransactionList = () => {
                           
                           <div className="flex flex-wrap items-center gap-2 mt-1">
                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                                {t.type === 'transfer' ? 'Transferência' : category?.name}
+                                {t.type === 'transfer' ? 'Transferência' : (t.type === 'goal_deposit' ? 'Aporte em Meta' : t.type === 'goal_withdraw' ? 'Resgate de Meta' : category?.name)}
                              </span>
 
                              {/* Tags/Badges */}
+                             {isPending && (
+                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/20 dark:border-amber-900/40 uppercase">
+                                  Pendente
+                               </span>
+                             )}
                              {t.isFixed && (
                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 uppercase">
                                   <Repeat size={8} className="mr-1" /> Fixa
@@ -321,8 +331,16 @@ export const TransactionList = () => {
 
                         {/* Amount & Action */}
                         <div className="flex flex-col items-end justify-center">
-                          <span className={`text-sm font-black tabular-nums mb-1 ${isPending ? 'text-slate-400' : isExpense ? 'text-slate-800 dark:text-white' : 'text-emerald-500'}`}>
-                              {isExpense ? '- ' : '+ '}{formatCurrency(t.amount)}
+                          <span className={`text-sm font-black tabular-nums mb-1 ${
+                            isPending 
+                              ? 'text-slate-400' 
+                              : isExpense 
+                                ? 'text-slate-800 dark:text-white' 
+                                : isIncome 
+                                  ? 'text-emerald-500' 
+                                  : 'text-slate-500 dark:text-slate-400'
+                          }`}>
+                              {isExpense ? '- ' : isIncome ? '+ ' : '⇄ '}{formatCurrency(t.amount)}
                           </span>
                           
                           {/* Quick Action Button */}

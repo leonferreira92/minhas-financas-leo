@@ -8,11 +8,12 @@ import {
   ShieldCheck, Landmark, History, User, Bell, Clock,
   ChevronLeft, LayoutGrid, Database, AppWindow,
   GripVertical, Eye, EyeOff, ArrowUp, ArrowDown, AlertTriangle,
-  LogOut, Zap
+  LogOut, Zap, PiggyBank
 } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { useFinance } from '../context/FinanceContext';
 import { Account, DashboardWidgetConfig } from '../types';
+import { parseCurrencyInput } from '../constants';
 
 export const Settings = () => {
   const { 
@@ -32,7 +33,7 @@ export const Settings = () => {
   // Account Form State
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [accName, setAccName] = useState('');
-  const [accType, setAccType] = useState<'wallet'|'bank'|'investment'>('bank');
+  const [accType, setAccType] = useState<'wallet'|'bank'|'savings'|'investment'|'other'>('bank');
   const [accColor, setAccColor] = useState('#6366f1');
 
   // Reconcile State
@@ -106,8 +107,10 @@ export const Settings = () => {
   };
 
   const handleReconcile = () => {
-    if (!reconcileAccountId || isNaN(parseFloat(actualBalance))) return;
-    reconcileBalance(reconcileAccountId, parseFloat(actualBalance));
+    if (!reconcileAccountId) return;
+    const val = parseCurrencyInput(actualBalance);
+    if (isNaN(val)) return;
+    reconcileBalance(reconcileAccountId, val);
     setIsReconcileModalOpen(false);
   };
   
@@ -223,6 +226,7 @@ export const Settings = () => {
   const getAccountIcon = (type: string) => {
       switch(type) {
           case 'wallet': return Wallet;
+          case 'savings': return PiggyBank;
           case 'investment': return TrendingUp;
           case 'bank': default: return Landmark;
       }
@@ -330,7 +334,7 @@ export const Settings = () => {
                         </div>
                         <div>
                            <h3 className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{acc.name}</h3>
-                           <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{acc.type === 'wallet' ? 'Carteira' : acc.type === 'bank' ? 'Conta Corrente' : 'Investimento'}</span>
+                           <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{acc.type === 'wallet' ? 'Carteira' : acc.type === 'bank' ? 'Conta Corrente' : acc.type === 'savings' ? 'Economias' : 'Investimento'}</span>
                         </div>
                      </div>
                      <div className="flex flex-col items-end">
@@ -505,13 +509,13 @@ export const Settings = () => {
                   <div>
                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Categoria</label>
                      <div className="flex p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                        {(['bank', 'wallet', 'investment'] as const).map(t => (
+                        {(['bank', 'wallet', 'savings', 'investment'] as const).map(t => (
                            <button 
                              key={t} 
                              onClick={() => setAccType(t)} 
                              className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${accType === t ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-md scale-[1.02]' : 'text-slate-400'}`}
                            >
-                              {t === 'bank' ? 'Banco' : t === 'wallet' ? 'Bolso' : 'Inv.'}
+                              {t === 'bank' ? 'Banco' : t === 'wallet' ? 'Bolso' : t === 'savings' ? 'Reserva' : 'Inv.'}
                            </button>
                         ))}
                      </div>
@@ -581,11 +585,11 @@ export const Settings = () => {
                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">R$</span>
                        <input 
                          type="number" 
-                         step="0.01" 
+                         step="any" 
                          value={actualBalance} 
                          onChange={e => setActualBalance(e.target.value)} 
                          className="w-full pl-14 pr-5 py-5 bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 focus:border-indigo-500 rounded-[1.5rem] dark:text-white outline-none font-black text-2xl shadow-sm" 
-                         placeholder="0,00"
+                         placeholder="0"
                        />
                     </div>
                  </div>

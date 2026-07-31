@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { SystemAlert } from '../types';
 
 export const AlertsScreen = () => {
-  const { getSystemAlerts, updateTransaction, transactions, accounts, getBalanceSummary } = useFinance();
+  const { getSystemAlerts, updateTransaction, transactions, accounts, getAccountBalance } = useFinance();
   const navigate = useNavigate();
   
   const alerts = useMemo(() => getSystemAlerts(), [transactions]);
@@ -22,18 +22,7 @@ export const AlertsScreen = () => {
       .reduce((sum, a) => sum + a.amount, 0);
 
     const totalAvailable = accounts.reduce((sum, acc) => {
-      // Usamos uma lógica simplificada de saldo real aqui
-      let bal = acc.initialBalance;
-      transactions.forEach(t => {
-        if (t.status === 'paid' && t.accountId === acc.id) {
-          if (t.type === 'income') bal += t.amount;
-          else if (t.type === 'expense' || t.type === 'transfer') bal -= t.amount;
-        }
-        if (t.type === 'transfer' && t.destinationAccountId === acc.id && t.status === 'paid') {
-          bal += t.amount;
-        }
-      });
-      return sum + bal;
+      return sum + getAccountBalance(acc.id);
     }, 0);
 
     return {

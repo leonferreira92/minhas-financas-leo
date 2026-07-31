@@ -1,6 +1,7 @@
 
-export type TransactionType = 'income' | 'expense' | 'transfer';
+export type TransactionType = 'income' | 'expense' | 'transfer' | 'adjustment' | 'goal_deposit' | 'goal_withdraw';
 export type TransactionStatus = 'paid' | 'pending';
+export type AccountType = 'wallet' | 'bank' | 'savings' | 'investment' | 'other';
 
 export type DebtType = 'bank' | 'person' | 'card_installment' | 'car_financing';
 export type DebtStatus = 'active' | 'paid';
@@ -36,7 +37,7 @@ export interface Goal {
 export interface Account {
   id: string;
   name: string;
-  type: 'wallet' | 'bank' | 'investment' | 'other';
+  type: AccountType;
   color: string;
   initialBalance: number;
   enabled: boolean;
@@ -71,6 +72,7 @@ export interface Transaction {
   isFixed?: boolean;
   fixedGroupId?: string;
   interest?: number; // Valor excedente pago considerado como juros
+  goalId?: string; // ID da meta/cofrinho para aportes ou resgates
 }
 
 export interface SystemAlert {
@@ -90,6 +92,8 @@ export interface BalanceSummary {
   monthlyExpense: number;
   pendingIncome: number;
   pendingExpense: number;
+  accountsTotal?: number;
+  goalsTotal?: number;
 }
 
 export type DashboardWidgetId = 'balance' | 'shortcuts' | 'goals' | 'status' | 'recent' | 'debts' | 'radar';
