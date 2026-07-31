@@ -15,10 +15,11 @@ import { CalendarModal } from './CalendarModal';
 interface Props {
   onClose: () => void;
   initialType?: TransactionType;
+  initialCategoryId?: string;
   transaction?: Transaction | null;
 }
 
-export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', transaction }) => {
+export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
   const { 
     addTransaction, updateTransactionSeries, updateDebtTransaction, 
     deleteTransaction, categories, transactions, accounts, checkTransactionImpact 
@@ -27,7 +28,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  const [categoryId, setCategoryId] = useState(initialCategoryId || '');
   const [accountId, setAccountId] = useState('');
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));

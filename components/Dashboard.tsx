@@ -8,7 +8,9 @@ import {
   PieChart, Clock, Target, CalendarDays, PlusCircle, 
   ArrowUpCircle, ChevronRight, Receipt, BarChart3,
   AlertCircle, Wallet, X, CalendarRange, Check, Zap,
-  ArrowRightLeft
+  ArrowRightLeft, Music, Mic, Laptop, Car, Plane,
+  Briefcase, ShieldAlert, DollarSign, CheckCircle2,
+  Plus, Flame
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TransactionForm } from './TransactionForm';
@@ -44,7 +46,7 @@ export const Dashboard = () => {
   const { 
     getBalanceSummary, transactions, categories, getSystemAlerts, 
     accounts, settings, getAccountBalance, isBlurred, toggleBlur,
-    updateTransaction
+    updateTransaction, goals, debts, getDebtProgress
   } = useFinance();
   
   const navigate = useNavigate();
@@ -55,6 +57,7 @@ export const Dashboard = () => {
   // State for Transaction Modal Actions
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<TransactionType>('expense');
+  const [transactionCategoryId, setTransactionCategoryId] = useState<string | undefined>(undefined);
   
   const [projectionDate, setProjectionDate] = useState(() => {
     const now = new Date();
@@ -92,6 +95,106 @@ export const Dashboard = () => {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
+  const reservaConquistasData = useMemo(() => {
+    const activeGoals = goals || [];
+    const totalTarget = activeGoals.reduce((sum, g) => sum + (g.targetAmount || 0), 0);
+    const totalSaved = activeGoals.reduce((sum, g) => sum + (g.currentAmount || 0), 0);
+    const progressPercent = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
+    return { activeGoals, totalTarget, totalSaved, progressPercent };
+  }, [goals]);
+
+  const showsVsSalaryData = useMemo(() => {
+    const nowStr = new Date().toISOString().slice(0, 7);
+    const monthIncomes = transactions.filter(t => t.type === 'income' && t.date.startsWith(nowStr));
+
+    let showsTotal = 0;
+    let showsCount = 0;
+    let salaryTotal = 0;
+    let otherTotal = 0;
+
+    monthIncomes.forEach(t => {
+      const cat = categories.find(c => c.id === t.categoryId);
+      const catName = (cat?.name || '').toLowerCase();
+      const desc = (t.description || '').toLowerCase();
+      const isShow = 
+        t.categoryId === 'cat_33' ||
+        /show|cachê|cache|música|musica|artista|gig|evento|banda|casamento/i.test(catName) ||
+        /show|cachê|cache|música|musica|gig|evento|banda|casamento/i.test(desc);
+      
+      const isSalary = 
+        !isShow && (
+          t.categoryId === 'cat_6' ||
+          /salário|salario|holerite|adiantamento|pró-labore|pro-labore/i.test(catName) ||
+          /salário|salario|holerite|adiantamento/i.test(desc)
+        );
+
+      if (isShow) {
+        showsTotal += t.amount;
+        showsCount += 1;
+      } else if (isSalary) {
+        salaryTotal += t.amount;
+      } else {
+        otherTotal += t.amount;
+      }
+    });
+
+    const totalMonthIncome = showsTotal + salaryTotal + otherTotal;
+    const showsPercent = totalMonthIncome > 0 ? Math.round((showsTotal / totalMonthIncome) * 100) : 0;
+    const salaryPercent = totalMonthIncome > 0 ? Math.round((salaryTotal / totalMonthIncome) * 100) : 0;
+    const otherPercent = totalMonthIncome > 0 ? Math.round((otherTotal / totalMonthIncome) * 100) : 0;
+
+    return {
+      showsTotal,
+      showsCount,
+      salaryTotal,
+      otherTotal,
+      totalMonthIncome,
+      showsPercent,
+      salaryPercent,
+      otherPercent
+    };
+  }, [transactions, categories]);
+
+  const receitaMesData = useMemo(() => {
+    const nowStr = new Date().toISOString().slice(0, 7);
+    const monthIncomes = transactions.filter(t => t.type === 'income' && t.date.startsWith(nowStr));
+    const total = monthIncomes.reduce((sum, t) => sum + t.amount, 0);
+    const paid = monthIncomes.filter(t => t.status === 'paid').reduce((sum, t) => sum + t.amount, 0);
+    const pending = monthIncomes.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0);
+    const percentPaid = total > 0 ? Math.round((paid / total) * 100) : 100;
+
+    return { total, paid, pending, percentPaid };
+  }, [transactions]);
+
+  const dividasRestantesData = useMemo(() => {
+    const activeDebts = (debts || []).filter(d => {
+      const prog = getDebtProgress(d.id);
+      return prog.remaining > 0 && prog.status === 'active';
+    });
+
+    let totalRemaining = 0;
+    let totalOriginal = 0;
+    let totalPaid = 0;
+
+    activeDebts.forEach(d => {
+      const prog = getDebtProgress(d.id);
+      totalRemaining += prog.remaining;
+      totalOriginal += prog.totalReal;
+      totalPaid += prog.paid;
+    });
+
+    const progressPercent = totalOriginal > 0 ? Math.round((totalPaid / totalOriginal) * 100) : 0;
+
+    return {
+      activeDebts,
+      activeCount: activeDebts.length,
+      totalRemaining,
+      totalOriginal,
+      totalPaid,
+      progressPercent
+    };
+  }, [debts]);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Bom dia";
@@ -111,8 +214,9 @@ export const Dashboard = () => {
     setIsDateModalOpen(false);
   };
 
-  const openTransactionModal = (type: TransactionType) => {
+  const openTransactionModal = (type: TransactionType, catId?: string) => {
     setTransactionType(type);
+    setTransactionCategoryId(catId);
     setIsTransactionModalOpen(true);
   };
 
@@ -226,6 +330,307 @@ export const Dashboard = () => {
                   ))
                 )}
              </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PAINEL PRINCIPAL DO DIA A DIA (INDICADORES EXECUTIVOS) */}
+      <div className="px-1 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center">
+            <Flame size={14} className="mr-2 text-indigo-500" /> Painel Principal do Dia a Dia
+          </h3>
+          <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+            Resumo Diário
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card 1: Reserva para Conquistas */}
+          <div 
+            onClick={() => navigate('/summary')}
+            className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <Target size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Metas & Sonhos</h4>
+                    <p className="text-sm font-black text-slate-800 dark:text-white">Reserva para Conquistas</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  {reservaConquistasData.progressPercent}% Salvo
+                </span>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums">
+                  {!isBlurred ? formatCurrency(reservaConquistasData.totalSaved) : '••••••••'}
+                  <span className="text-xs font-bold text-slate-400 ml-1.5">
+                    / {!isBlurred ? formatCurrency(reservaConquistasData.totalTarget) : '••••'}
+                  </span>
+                </p>
+                <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="h-full bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.min(100, reservaConquistasData.progressPercent)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Carrossel/Lista Rápida de Conquistas */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                <span>Conquistas Ativas ({reservaConquistasData.activeGoals.length})</span>
+                <span className="text-indigo-500 group-hover:underline flex items-center">
+                  Gerenciar <ChevronRight size={12} className="ml-0.5" />
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {reservaConquistasData.activeGoals.slice(0, 3).map(goal => {
+                  const IconComp = getIcon(goal.icon);
+                  const goalProg = goal.targetAmount > 0 ? Math.round((goal.currentAmount / goal.targetAmount) * 100) : 0;
+                  return (
+                    <div 
+                      key={goal.id} 
+                      className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300"
+                    >
+                      <IconComp size={12} style={{ color: goal.color }} />
+                      <span className="truncate max-w-[100px]">{goal.name}</span>
+                      <span className="text-[9px] font-black opacity-60">({goalProg}%)</span>
+                    </div>
+                  );
+                })}
+                {reservaConquistasData.activeGoals.length === 0 && (
+                  <span className="text-xs text-slate-400 font-medium">Nenhuma conquista cadastrada ainda.</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Shows Fechados no Mês (Origem da Renda: Shows vs Salário) */}
+          <div 
+            onClick={() => navigate('/transactions')}
+            className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+                    <Music size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Receitas de Música</h4>
+                    <p className="text-sm font-black text-slate-800 dark:text-white">Shows Fechados no Mês</p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openTransactionModal('income', 'cat_33');
+                  }}
+                  className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-violet-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 transition-all active:scale-95 shadow-sm"
+                >
+                  <Plus size={12} />
+                  <span>Cachê</span>
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums">
+                      {showsVsSalaryData.showsCount} {showsVsSalaryData.showsCount === 1 ? 'Show Fechado' : 'Shows Fechados'}
+                    </p>
+                    <p className="text-xs font-bold text-violet-600 dark:text-violet-400 mt-0.5">
+                      {!isBlurred ? formatCurrency(showsVsSalaryData.showsTotal) : '••••'} <span className="text-slate-400 font-medium">em cachês neste mês</span>
+                    </p>
+                  </div>
+                  <span className="text-xs font-black text-slate-400">
+                    {showsVsSalaryData.showsPercent}% da receita
+                  </span>
+                </div>
+
+                {/* Barra proporcional Shows x Salário x Outros */}
+                <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-3 flex">
+                  <div 
+                    className="h-full bg-violet-500 transition-all duration-1000"
+                    style={{ width: `${showsVsSalaryData.showsPercent}%` }}
+                    title={`Shows: ${showsVsSalaryData.showsPercent}%`}
+                  ></div>
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-1000"
+                    style={{ width: `${showsVsSalaryData.salaryPercent}%` }}
+                    title={`Salário: ${showsVsSalaryData.salaryPercent}%`}
+                  ></div>
+                  <div 
+                    className="h-full bg-slate-300 dark:bg-slate-700 transition-all duration-1000"
+                    style={{ width: `${showsVsSalaryData.otherPercent}%` }}
+                    title={`Outros: ${showsVsSalaryData.otherPercent}%`}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Legenda comparativa de onde vem o dinheiro */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                <span>Origem da Receita no Mês</span>
+                <span className="text-violet-500 group-hover:underline flex items-center">
+                  Ver Extrato <ChevronRight size={12} className="ml-0.5" />
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="p-2 rounded-xl bg-violet-500/5 dark:bg-violet-950/20 border border-violet-500/20 text-center">
+                  <p className="text-[8px] font-black uppercase text-violet-500 tracking-wider">🎤 Shows</p>
+                  <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 tabular-nums truncate">
+                    {!isBlurred ? formatCurrency(showsVsSalaryData.showsTotal) : '••••'}
+                  </p>
+                  <span className="text-[8px] font-bold text-slate-400">{showsVsSalaryData.showsPercent}%</span>
+                </div>
+                <div className="p-2 rounded-xl bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/20 text-center">
+                  <p className="text-[8px] font-black uppercase text-blue-500 tracking-wider">💼 Salário</p>
+                  <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 tabular-nums truncate">
+                    {!isBlurred ? formatCurrency(showsVsSalaryData.salaryTotal) : '••••'}
+                  </p>
+                  <span className="text-[8px] font-bold text-slate-400">{showsVsSalaryData.salaryPercent}%</span>
+                </div>
+                <div className="p-2 rounded-xl bg-slate-500/5 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-center">
+                  <p className="text-[8px] font-black uppercase text-slate-400 tracking-wider">📦 Outros</p>
+                  <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 tabular-nums truncate">
+                    {!isBlurred ? formatCurrency(showsVsSalaryData.otherTotal) : '••••'}
+                  </p>
+                  <span className="text-[8px] font-bold text-slate-400">{showsVsSalaryData.otherPercent}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Receita do Mês */}
+          <div 
+            onClick={() => navigate('/transactions')}
+            className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <TrendingUp size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Entradas</h4>
+                    <p className="text-sm font-black text-slate-800 dark:text-white">Receita do Mês</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  {new Date().toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums">
+                    {!isBlurred ? formatCurrency(receitaMesData.total) : '••••••••'}
+                  </p>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {receitaMesData.percentPaid}% Recebido
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.min(100, receitaMesData.percentPaid)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recebido vs Previsto */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/10">
+                  <p className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-widest">Já Recebido</p>
+                  <p className="text-sm font-black text-slate-800 dark:text-white tabular-nums mt-0.5">
+                    {!isBlurred ? formatCurrency(receitaMesData.paid) : '••••'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">A Receber (Previsto)</p>
+                  <p className="text-sm font-black text-slate-600 dark:text-slate-300 tabular-nums mt-0.5">
+                    {!isBlurred ? formatCurrency(receitaMesData.pending) : '••••'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Dívidas Restantes */}
+          <div 
+            onClick={() => navigate('/debts')}
+            className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                    <TrendingDown size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Compromissos</h4>
+                    <p className="text-sm font-black text-slate-800 dark:text-white">Dívidas Restantes</p>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${dividasRestantesData.activeCount === 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                  {dividasRestantesData.activeCount === 0 ? 'Quitado' : `${dividasRestantesData.activeCount} ${dividasRestantesData.activeCount === 1 ? 'Ativa' : 'Ativas'}`}
+                </span>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-2xl font-black text-slate-800 dark:text-white tracking-tight tabular-nums">
+                    {!isBlurred ? formatCurrency(dividasRestantesData.totalRemaining) : '••••••••'}
+                  </p>
+                  <span className="text-xs font-bold text-slate-400">
+                    {dividasRestantesData.progressPercent}% Quitado
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <div 
+                    className="h-full bg-rose-500 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.min(100, dividasRestantesData.progressPercent)}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quitado vs Restante */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                <span>Progresso das Dívidas</span>
+                <span className="text-rose-500 group-hover:underline flex items-center">
+                  Gerenciar <ChevronRight size={12} className="ml-0.5" />
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Já Pago</p>
+                  <p className="text-sm font-black text-slate-800 dark:text-white tabular-nums mt-0.5">
+                    {!isBlurred ? formatCurrency(dividasRestantesData.totalPaid) : '••••'}
+                  </p>
+                </div>
+                <div className="p-3 rounded-2xl bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/10">
+                  <p className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 tracking-widest">A Quitar</p>
+                  <p className="text-sm font-black text-slate-800 dark:text-white tabular-nums mt-0.5">
+                    {!isBlurred ? formatCurrency(dividasRestantesData.totalRemaining) : '••••'}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -471,8 +876,12 @@ export const Dashboard = () => {
       {/* Modal de Transação Rápida */}
       {isTransactionModalOpen && (
         <TransactionForm 
-          onClose={() => setIsTransactionModalOpen(false)}
+          onClose={() => {
+            setIsTransactionModalOpen(false);
+            setTransactionCategoryId(undefined);
+          }}
           initialType={transactionType}
+          initialCategoryId={transactionCategoryId}
         />
       )}
     </div>

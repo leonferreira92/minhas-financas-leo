@@ -145,6 +145,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setAccounts(storedAccounts);
     setBudgets(storedBudgets);
     setGoals(storedGoals);
+    if (storedGoals.length > 0 && !localStorage.getItem('fin_app_goals')) {
+      StorageService.saveGoals(storedGoals);
+    }
     
     const mergedSettings = {
       ...storedSettings,

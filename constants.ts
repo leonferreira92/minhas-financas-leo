@@ -49,6 +49,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
 
   // --- RECEITAS ---
   { id: 'cat_6', name: 'Salário', type: 'income', color: '#3b82f6', icon: 'Briefcase', classification: 'future' },
+  { id: 'cat_33', name: 'Shows / Cachês', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'future' },
   { id: 'cat_7', name: 'Pró-Labore', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future' },
   { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future' },
   { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future' },

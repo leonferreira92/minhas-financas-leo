@@ -111,7 +111,42 @@ export const StorageService = {
   getGoals: (): Goal[] => {
     try {
       const data = localStorage.getItem(KEYS.GOALS);
-      return data ? JSON.parse(data) : [];
+      if (data) return JSON.parse(data);
+      return [
+        {
+          id: 'goal_pc',
+          name: 'Novo Computador',
+          description: 'Setup de produção musical e gravação',
+          targetAmount: 8500,
+          currentAmount: 3400,
+          deadline: '2026-12-31',
+          color: '#3b82f6',
+          icon: 'Laptop',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'goal_carro',
+          name: 'Troca de Carro',
+          description: 'Carro novo para viagens e shows',
+          targetAmount: 45000,
+          currentAmount: 16500,
+          deadline: '2027-06-30',
+          color: '#10b981',
+          icon: 'CarFront',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'goal_viagem',
+          name: 'Viagem de Férias',
+          description: 'Descanso e lazer em família',
+          targetAmount: 7000,
+          currentAmount: 2800,
+          deadline: '2027-01-15',
+          color: '#8b5cf6',
+          icon: 'Plane',
+          createdAt: new Date().toISOString()
+        }
+      ];
     } catch (e) {
       return [];
     }
