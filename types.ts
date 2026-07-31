@@ -111,3 +111,52 @@ export interface AppSettings {
   notificationInterval?: number;
   dashboardLayout: DashboardWidgetConfig[];
 }
+
+export interface ShowExpenses {
+  fuel: number;         // Combustível
+  food: number;         // Alimentação / Lanche
+  toll: number;         // Pedágio
+  commission: number;   // Comissão
+  others: number;       // Outros
+}
+
+export interface Receipt {
+  id: string;
+  amount: number;
+  expectedDate: string; // Data prevista
+  effectiveDate?: string; // Data efetiva do recebimento (opcional)
+  accountId: string; // Conta financeira onde foi depositado
+  paymentMethod: string; // Pix, Dinheiro, Cartão, Transferência etc.
+  status: 'Previsto' | 'Recebido'; // Situação
+  type: 'Sinal' | 'Parcela' | 'Pagamento final' | 'Bônus' | 'Outro'; // Tipo do recebimento
+  transactionId?: string; // ID correspondente no financeiro
+  isImported?: boolean; // Indica se foi gerado por importação automática
+}
+
+export interface Show {
+  id: string;
+  name: string;           // Nome do evento / Show
+  contractorName: string; // Nome do contratante
+  location: string;       // Local da apresentação
+  date: string;           // Data da apresentação
+  time: string;           // Horário
+  totalCache: number;     // Valor total do cachê
+  cacheCombined: number;  // Cachê combinado (para compatibilidade anterior)
+  cacheReceived: number;  // Cachê recebido totalizado (para compatibilidade anterior)
+  paymentMethod: string;  // Forma de pagamento do show
+  notes: string;          // Observações
+  status: 'Agendado' | 'Confirmado' | 'Realizado' | 'Cancelado'; // Status do show
+  receipts: Receipt[];    // Lista de recebimentos vinculados
+  expensesLaunched: boolean; // Se já lançou despesas
+  expenses: ShowExpenses;
+  expenseTransactionIds?: {
+    fuel?: string;
+    food?: string;
+    toll?: string;
+    commission?: string;
+    others?: string;
+  };
+  createdAt: number;
+  isImported?: boolean; // Indica se foi gerado por importação automática
+}
+

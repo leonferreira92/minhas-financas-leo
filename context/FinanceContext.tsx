@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, Goal, DashboardWidgetConfig } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, Goal, DashboardWidgetConfig, Show } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES } from '../constants';
@@ -20,12 +20,13 @@ interface FinanceContextType {
   accounts: Account[];
   budgets: Budget[];
   goals: Goal[];
+  shows: Show[];
   settings: AppSettings;
   isBlurred: boolean;
   toggleBlur: () => void;
   
   // Methods
-  addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => void;
   updateTransaction: (t: Transaction) => void;
   updateTransactionSeries: (t: Transaction, updateFuture: boolean) => void;
   updateDebtTransaction: (t: Transaction, redistribute: boolean) => void;
@@ -54,6 +55,10 @@ interface FinanceContextType {
   updateGoal: (g: Goal) => void;
   deleteGoal: (id: string) => void;
 
+  addShow: (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => void;
+  updateShow: (s: Show) => void;
+  deleteShow: (id: string) => void;
+
   getSystemAlerts: () => SystemAlert[];
   updateSettings: (s: Partial<AppSettings>) => void;
   getBalanceSummary: (month: string, projectionDate: string) => ExtendedSummary;
@@ -81,6 +86,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [shows, setShows] = useState<Show[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ 
     theme: 'light', 
     primaryColor: 'lime', 
@@ -99,7 +105,151 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
-  useEffect(() => { refreshData(); }, []);
+  const syncShowsWithTransactions = useCallback((currentTransactions: Transaction[], currentShows: Show[]) => {
+    let showsChanged = false;
+    let updatedShows = [...currentShows];
+
+    // 1. Check for any transaction of category "cat_33" that is NOT linked to any show
+    const cacheTransactions = currentTransactions.filter(t => t.categoryId === 'cat_33');
+    
+    cacheTransactions.forEach(t => {
+      // Is this transaction linked to any receipt in any show?
+      const isLinked = updatedShows.some(show => 
+        show.receipts && show.receipts.some(r => r.transactionId === t.id)
+      );
+
+      if (!isLinked) {
+        // Not linked! Let's auto-create a Show for it
+        const showId = crypto.randomUUID();
+        const newShow: Show = {
+          id: showId,
+          name: t.description || 'Show / Evento',
+          contractorName: t.description || 'Contratante Geral',
+          location: 'Geral',
+          date: t.date,
+          time: '20:00',
+          totalCache: t.amount,
+          cacheCombined: t.amount,
+          cacheReceived: t.status === 'paid' ? t.amount : 0,
+          paymentMethod: 'Pix',
+          notes: `Importado automaticamente a partir do lançamento de receita em "${t.description}"`,
+          status: t.status === 'paid' ? 'Realizado' : 'Confirmado',
+          receipts: [{
+            id: crypto.randomUUID(),
+            amount: t.amount,
+            expectedDate: t.date,
+            effectiveDate: t.status === 'paid' ? t.date : undefined,
+            accountId: t.accountId,
+            paymentMethod: 'Pix',
+            status: t.status === 'paid' ? 'Recebido' : 'Previsto',
+            type: 'Pagamento final',
+            transactionId: t.id,
+            isImported: true
+          }],
+          expensesLaunched: false,
+          expenses: {
+            fuel: 0,
+            food: 0,
+            toll: 0,
+            commission: 0,
+            others: 0
+          },
+          createdAt: t.createdAt || Date.now(),
+          isImported: true
+        };
+        updatedShows.push(newShow);
+        showsChanged = true;
+      }
+    });
+
+    // 2. Check for any show that is linked to a transaction of category "cat_33"
+    // we want to make sure the values, dates, accounts, status are in perfect sync!
+    updatedShows = updatedShows.map(show => {
+      let showReceiptsChanged = false;
+      const updatedReceipts = show.receipts ? show.receipts.map(r => {
+        if (r.transactionId) {
+          const correspondingTx = currentTransactions.find(tx => tx.id === r.transactionId);
+          if (correspondingTx) {
+            const txStatusMapped = correspondingTx.status === 'paid' ? 'Recebido' : 'Previsto';
+            if (
+              r.amount !== correspondingTx.amount ||
+              r.expectedDate !== correspondingTx.date ||
+              r.accountId !== correspondingTx.accountId ||
+              r.status !== txStatusMapped
+            ) {
+              showReceiptsChanged = true;
+              return {
+                ...r,
+                amount: correspondingTx.amount,
+                expectedDate: correspondingTx.date,
+                effectiveDate: correspondingTx.status === 'paid' ? correspondingTx.date : undefined,
+                accountId: correspondingTx.accountId,
+                status: txStatusMapped as any
+              };
+            }
+          } else {
+            showReceiptsChanged = true;
+            return {
+              ...r,
+              transactionId: undefined
+            };
+          }
+        }
+        return r;
+      }) : [];
+
+      if (showReceiptsChanged) {
+        showsChanged = true;
+        const totalReceivedSum = updatedReceipts
+          .filter(r => r.status === 'Recebido')
+          .reduce((sum, r) => sum + r.amount, 0);
+
+        let totalCacheVal = show.totalCache;
+        if (show.isImported && updatedReceipts.length === 1) {
+          totalCacheVal = updatedReceipts[0].amount;
+        }
+
+        return {
+          ...show,
+          receipts: updatedReceipts,
+          totalCache: totalCacheVal,
+          cacheCombined: totalCacheVal,
+          cacheReceived: totalReceivedSum
+        };
+      }
+      return show;
+    });
+
+    // 3. Remove imported shows whose transaction was deleted or moved to a different category
+    const finalShowsList: Show[] = [];
+    updatedShows.forEach(show => {
+      if (show.isImported) {
+        const hasActiveTx = show.receipts && show.receipts.some(r => 
+          r.transactionId && currentTransactions.some(tx => tx.id === r.transactionId && tx.categoryId === 'cat_33')
+        );
+        if (!hasActiveTx) {
+          showsChanged = true;
+          return;
+        }
+      }
+      finalShowsList.push(show);
+    });
+
+    if (showsChanged) {
+      setShows(finalShowsList);
+      StorageService.saveShows(finalShowsList);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshData();
+  }, []);
+
+  useEffect(() => {
+    if (transactions.length > 0 || shows.length > 0) {
+      syncShowsWithTransactions(transactions, shows);
+    }
+  }, [transactions, shows, syncShowsWithTransactions]);
 
   useEffect(() => {
     if (settings.theme === 'dark') document.documentElement.classList.add('dark');
@@ -145,6 +295,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setAccounts(storedAccounts);
     setBudgets(storedBudgets);
     setGoals(storedGoals);
+    const storedShows = StorageService.getShows();
+    setShows(storedShows);
     if (storedGoals.length > 0 && !localStorage.getItem('fin_app_goals')) {
       StorageService.saveGoals(storedGoals);
     }
@@ -213,11 +365,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
-  const addTransaction = (t: Omit<Transaction, 'id' | 'createdAt'>) => {
+  const addTransaction = (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => {
     const fixedGroupId = t.isFixed ? crypto.randomUUID() : undefined;
     setTransactions(prev => {
       const txs = [...prev];
-      txs.push({ ...t, id: crypto.randomUUID(), createdAt: Date.now(), fixedGroupId });
+      const tid = t.id || crypto.randomUUID();
+      txs.push({ ...t, id: tid, createdAt: Date.now(), fixedGroupId });
       if (t.isFixed && fixedGroupId) {
         for (let i = 1; i < 12; i++) {
           const d = new Date(t.date); d.setMonth(d.getMonth() + i);
@@ -475,6 +628,31 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
+  const addShow = (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => {
+    setShows(prev => {
+      const id = s.id || crypto.randomUUID();
+      const updated = [...prev, { ...s, id, createdAt: Date.now() }];
+      StorageService.saveShows(updated);
+      return updated;
+    });
+  };
+
+  const updateShow = (s: Show) => {
+    setShows(prev => {
+      const updated = prev.map(show => show.id === s.id ? s : show);
+      StorageService.saveShows(updated);
+      return updated;
+    });
+  };
+
+  const deleteShow = (id: string) => {
+    setShows(prev => {
+      const updated = prev.filter(show => show.id !== id);
+      StorageService.saveShows(updated);
+      return updated;
+    });
+  };
+
   const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string): ExtendedSummary => {
     const projLimit = new Date(projectionDateStr + 'T23:59:59').getTime();
     const today = new Date();
@@ -557,12 +735,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   return (
     <FinanceContext.Provider value={{
-      transactions, categories, debts, accounts, budgets, goals, settings, isBlurred, toggleBlur,
+      transactions, categories, debts, accounts, budgets, goals, shows, settings, isBlurred, toggleBlur,
       addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget, addGoal, updateGoal, deleteGoal,
+      addShow, updateShow, deleteShow,
       getSystemAlerts, updateSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission
     }}>

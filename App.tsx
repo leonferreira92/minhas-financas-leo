@@ -15,6 +15,7 @@ import { DebtList } from './components/DebtList';
 import { AlertsScreen } from './components/AlertsScreen';
 import { CalendarScreen } from './components/CalendarScreen';
 import { GoalsScreen } from './components/GoalsScreen';
+import { MusicianShowScreen } from './components/MusicianShowScreen';
 
 const AppContent = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -30,6 +31,7 @@ const AppContent = () => {
         <Route path="/debts" element={<DebtList />} />
         <Route path="/alerts" element={<AlertsScreen />} />
         <Route path="/metas" element={<GoalsScreen />} />
+        <Route path="/shows" element={<MusicianShowScreen />} />
         <Route path="/insights" element={<FinancialInsights />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/categories" element={<CategoryList />} />

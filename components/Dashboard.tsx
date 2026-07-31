@@ -458,7 +458,7 @@ export const Dashboard = () => {
 
           {/* Card 2: Shows Fechados no Mês (Origem da Renda: Shows vs Salário) */}
           <div 
-            onClick={() => navigate('/transactions')}
+            onClick={() => navigate('/shows')}
             className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div>
@@ -475,12 +475,12 @@ export const Dashboard = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    openTransactionModal('income', 'cat_33');
+                    navigate('/shows');
                   }}
                   className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-violet-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-violet-600 transition-all active:scale-95 shadow-sm"
                 >
                   <Plus size={12} />
-                  <span>Cachê</span>
+                  <span>Gerenciar</span>
                 </button>
               </div>
 
@@ -723,11 +723,11 @@ export const Dashboard = () => {
          </h3>
          <div className="grid grid-cols-3 gap-3">
             <HubButton icon={Receipt} label="Extrato" color="indigo" onClick={() => navigate('/transactions')} />
+            <HubButton icon={Music} label="Shows" color="purple" onClick={() => navigate('/shows')} />
             <HubButton icon={CalendarDays} label="Agenda" color="blue" onClick={() => navigate('/calendar')} />
             <HubButton icon={CreditCard} label="Dívidas" color="rose" onClick={() => navigate('/debts')} />
             <HubButton icon={BarChart3} label="Análise" color="purple" onClick={() => navigate('/insights')} />
             <HubButton icon={PieChart} label="Resumo" color="emerald" onClick={() => navigate('/summary')} />
-            <HubButton icon={AlertCircle} label="Alertas" color="amber" onClick={() => navigate('/alerts')} />
          </div>
       </div>
 
