@@ -48,7 +48,7 @@ export const Dashboard = () => {
   const { 
     getBalanceSummary, transactions, categories, getSystemAlerts, 
     accounts, settings, getAccountBalance, isBlurred, toggleBlur,
-    updateTransaction, goals, debts, getDebtProgress
+    updateTransaction, goals, debts, getDebtProgress, shows
   } = useFinance();
   
   const navigate = useNavigate();
@@ -111,6 +111,11 @@ export const Dashboard = () => {
     const nowStr = new Date().toISOString().slice(0, 7);
     const monthIncomes = transactions.filter(t => t.type === 'income' && t.date.startsWith(nowStr));
 
+    // Get current month active shows registered in Musician Module
+    const currentMonthShows = (shows || []).filter(s => s.date && s.date.startsWith(nowStr) && s.status !== 'Cancelado');
+    const registeredShowsCount = currentMonthShows.length;
+    const registeredShowsCache = currentMonthShows.reduce((sum, s) => sum + (s.totalCache || 0), 0);
+
     let showsTotal = 0;
     let showsCount = 0;
     let salaryTotal = 0;
@@ -142,6 +147,14 @@ export const Dashboard = () => {
       }
     });
 
+    // If registered shows exist in current month, ensure count and cache reflect them accurately
+    if (registeredShowsCount > 0) {
+      showsCount = Math.max(showsCount, registeredShowsCount);
+      if (showsTotal === 0 && registeredShowsCache > 0) {
+        showsTotal = registeredShowsCache;
+      }
+    }
+
     const totalMonthIncome = showsTotal + salaryTotal + otherTotal;
     const showsPercent = totalMonthIncome > 0 ? Math.round((showsTotal / totalMonthIncome) * 100) : 0;
     const salaryPercent = totalMonthIncome > 0 ? Math.round((salaryTotal / totalMonthIncome) * 100) : 0;
@@ -157,7 +170,7 @@ export const Dashboard = () => {
       salaryPercent,
       otherPercent
     };
-  }, [transactions, categories]);
+  }, [transactions, categories, shows]);
 
   const receitaMesData = useMemo(() => {
     const nowStr = new Date().toISOString().slice(0, 7);

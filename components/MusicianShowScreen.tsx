@@ -7,7 +7,7 @@ import {
   ArrowRight, Coins, CheckCircle2, AlertCircle, Clock, 
   User, Clipboard, Landmark, Edit3, DollarSign, CalendarDays,
   ChevronDown, ArrowLeft, Check, TrendingUp, PlusCircle, Percent,
-  Briefcase
+  Briefcase, ChevronRight, Search
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -68,6 +68,47 @@ export const MusicianShowScreen = () => {
   const [expandedShowId, setExpandedShowId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('Todos');
 
+  // Month & Search Filter States (Defaults strictly to current month as requested)
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [monthFilterMode, setMonthFilterMode] = useState<'currentMonth' | 'allMonths'>('currentMonth');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
+
+  const selectedMonthLabel = useMemo(() => {
+    if (!selectedMonth) return 'Mês Atual';
+    const [year, month] = selectedMonth.split('-').map(Number);
+    if (!year || !month) return 'Mês Atual';
+    const dateObj = new Date(year, month - 1, 15);
+    const label = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }, [selectedMonth]);
+
+  const handlePrevMonth = () => {
+    if (!selectedMonth) return;
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const d = new Date(year, month - 2, 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    setSelectedMonth(`${yyyy}-${mm}`);
+    setMonthFilterMode('currentMonth');
+  };
+
+  const handleNextMonth = () => {
+    if (!selectedMonth) return;
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const d = new Date(year, month, 1);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    setSelectedMonth(`${yyyy}-${mm}`);
+    setMonthFilterMode('currentMonth');
+  };
+
+  const handleResetToCurrentMonth = () => {
+    setSelectedMonth(currentMonthStr);
+    setMonthFilterMode('currentMonth');
+  };
+
   // Helper to safely parse localized currency inputs
   const parseCurrency = (val: string | number): number => {
     if (typeof val === 'number') return val;
@@ -102,13 +143,22 @@ export const MusicianShowScreen = () => {
     }
   };
 
-  // Aggregate Stats Calculations
+  // Shows filtered by month selection
+  const monthShows = useMemo(() => {
+    if (monthFilterMode === 'allMonths') return shows;
+    if (!selectedMonth) return shows;
+    return shows.filter(s => s.date && s.date.startsWith(selectedMonth));
+  }, [shows, selectedMonth, monthFilterMode]);
+
+  // Aggregate Stats Calculations for Selected/Current Month
   const stats = useMemo(() => {
     let totalRevenue = 0;
     let totalExpenses = 0;
     let totalReceived = 0;
     
-    shows.forEach(s => {
+    const activeMonthShows = monthShows.filter(s => s.status !== 'Cancelado');
+
+    activeMonthShows.forEach(s => {
       totalRevenue += s.totalCache;
       
       // Calculate expenses
@@ -124,18 +174,23 @@ export const MusicianShowScreen = () => {
       });
     });
 
+    const pendingToReceive = Math.max(0, totalRevenue - totalReceived);
     const netProfit = totalRevenue - totalExpenses;
     const margin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
+    const percentReceived = totalRevenue > 0 ? Math.round((totalReceived / totalRevenue) * 100) : 0;
 
     return {
-      totalShows: shows.length,
+      totalShows: monthShows.length,
+      activeShowsCount: activeMonthShows.length,
       totalRevenue,
       totalReceived,
+      pendingToReceive,
       totalExpenses,
       netProfit,
-      margin
+      margin,
+      percentReceived
     };
-  }, [shows]);
+  }, [monthShows]);
 
   // Open the wizard to register a new Show
   const handleOpenNewShow = () => {
@@ -934,11 +989,25 @@ export const MusicianShowScreen = () => {
     }
   };
 
-  // Filter shows dynamically based on the dashboard status selection
+  // Filter shows dynamically based on month, status selection, and searchQuery
   const filteredShows = useMemo(() => {
-    if (statusFilter === 'Todos') return shows;
-    return shows.filter(s => s.status === statusFilter);
-  }, [shows, statusFilter]);
+    let result = monthShows;
+
+    if (statusFilter !== 'Todos') {
+      result = result.filter(s => s.status === statusFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(s => 
+        (s.name || '').toLowerCase().includes(q) ||
+        (s.contractorName || '').toLowerCase().includes(q) ||
+        (s.location || '').toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [monthShows, statusFilter, searchQuery]);
 
   // Render Section
   if (showDetailScreenId) {
@@ -1752,20 +1821,86 @@ export const MusicianShowScreen = () => {
     <div className="space-y-6 pb-28 text-slate-900 dark:text-slate-100">
       
       {/* Top Header */}
-      <div className="flex items-center space-x-3 pt-4">
-        <button 
-          onClick={() => navigate('/')} 
-          className="p-3 bg-white dark:bg-slate-900 rounded-2xl text-slate-400 border border-slate-100 dark:border-slate-800 transition active:scale-95 shadow-sm"
+      <div className="flex items-center justify-between pt-4">
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => navigate('/')} 
+            className="p-3 bg-white dark:bg-slate-900 rounded-2xl text-slate-400 border border-slate-100 dark:border-slate-800 transition active:scale-95 shadow-sm"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div>
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">Módulo Corporativo</span>
+            <h1 className="text-xl font-black text-slate-800 dark:text-white leading-none tracking-tight">Vida de Músico 🎸</h1>
+          </div>
+        </div>
+
+        {/* Quick Reset to Current Month */}
+        <button
+          onClick={handleResetToCurrentMonth}
+          className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition border active:scale-95 flex items-center space-x-1 ${
+            selectedMonth === currentMonthStr && monthFilterMode === 'currentMonth'
+              ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-purple-300'
+          }`}
         >
-          <ChevronLeft size={20} />
+          <CalendarDays size={13} />
+          <span>Mês Atual</span>
         </button>
-        <div>
-          <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">Módulo Corporativo</span>
-          <h1 className="text-xl font-black text-slate-800 dark:text-white leading-none tracking-tight">Vida de Músico 🎸</h1>
+      </div>
+
+      {/* Modern Month Switcher Header Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handlePrevMonth}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 transition active:scale-95"
+            title="Mês anterior"
+          >
+            <ChevronLeft size={18} strokeWidth={2.5} />
+          </button>
+          <div className="text-center min-w-[120px]">
+            <p className="text-[9px] font-black uppercase text-purple-600 dark:text-purple-400 tracking-widest">
+              {selectedMonth === currentMonthStr ? 'Relatório Mês Atual' : 'Relatório do Mês'}
+            </p>
+            <p className="text-xs font-black text-slate-800 dark:text-white">
+              {selectedMonthLabel}
+            </p>
+          </div>
+          <button
+            onClick={handleNextMonth}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 transition active:scale-95"
+            title="Próximo mês"
+          >
+            <ChevronRight size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        <div className="flex items-center space-x-1">
+          <button
+            onClick={() => setMonthFilterMode('currentMonth')}
+            className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
+              monthFilterMode === 'currentMonth'
+                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+            }`}
+          >
+            Filtrar Mês
+          </button>
+          <button
+            onClick={() => setMonthFilterMode('allMonths')}
+            className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition ${
+              monthFilterMode === 'allMonths'
+                ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+            }`}
+          >
+            Todos
+          </button>
         </div>
       </div>
 
-      {/* Corporate Dashboard Panel - Modernized & High-Contrast Visuals */}
+      {/* Corporate Dashboard Panel - Modernized & Current Month Metrics */}
       <div className="bg-slate-900 text-white rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden">
         {/* Glow effect with mathematical purpose */}
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-purple-600 rounded-full blur-[80px] opacity-25"></div>
@@ -1775,40 +1910,74 @@ export const MusicianShowScreen = () => {
           <div className="flex justify-between items-center">
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center">
               <Briefcase size={12} className="mr-1 text-purple-400" />
-              Gestão Financeira Corporativa
+              Gestão Financeira • {selectedMonthLabel}
             </span>
             <span className="px-2 py-0.5 bg-purple-500/10 text-purple-300 text-[8px] font-black uppercase tracking-widest rounded-lg border border-purple-500/20">
               Musician Inc.
             </span>
           </div>
 
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Resultado Líquido do Portfólio</p>
-            <p className="text-3xl font-black tracking-tight mt-0.5 tabular-nums text-white">
-              {!isBlurred ? formatCurrency(stats.netProfit) : 'R$ ••••••••'}
-            </p>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Lucro Líquido ({selectedMonthLabel})</p>
+              <p className="text-3xl font-black tracking-tight mt-0.5 tabular-nums text-white">
+                {!isBlurred ? formatCurrency(stats.netProfit) : 'R$ ••••••••'}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-[9px] font-black uppercase text-purple-400 tracking-wider">Margem Líquida</span>
+              <p className="text-xl font-black text-purple-300">{stats.margin}%</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 pt-3 border-t border-white/5 text-center">
-            <div>
+          {/* Visual Progress Bar for Receipts in Current Month */}
+          <div className="space-y-1.5 pt-2 border-t border-white/10">
+            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-slate-300">
+              <span>Status do Cachê ({stats.percentReceived}% recebido)</span>
+              <span>{!isBlurred ? formatCurrency(stats.totalReceived) : '•••'} de {!isBlurred ? formatCurrency(stats.totalRevenue) : '•••'}</span>
+            </div>
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden flex">
+              <div 
+                className="bg-emerald-400 h-full transition-all duration-500" 
+                style={{ width: `${stats.percentReceived}%` }}
+                title={`Recebido: ${stats.percentReceived}%`}
+              ></div>
+              <div 
+                className="bg-amber-400/80 h-full transition-all duration-500" 
+                style={{ width: `${100 - stats.percentReceived}%` }}
+                title={`Pendente: ${100 - stats.percentReceived}%`}
+              ></div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-5 gap-1.5 pt-3 border-t border-white/5 text-center">
+            <div className="bg-white/5 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Shows</p>
               <p className="text-xs font-black text-white mt-0.5">{stats.totalShows}</p>
             </div>
-            <div>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Faturamento</p>
-              <p className="text-xs font-black text-emerald-400 mt-0.5">
+            <div className="bg-white/5 p-2 rounded-xl">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Bruto</p>
+              <p className="text-xs font-black text-emerald-400 mt-0.5 truncate">
                 {!isBlurred ? formatCurrency(stats.totalRevenue) : 'R$ •••'}
               </p>
             </div>
-            <div>
+            <div className="bg-white/5 p-2 rounded-xl">
               <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Recebido</p>
-              <p className="text-xs font-black text-indigo-400 mt-0.5">
+              <p className="text-xs font-black text-indigo-400 mt-0.5 truncate">
                 {!isBlurred ? formatCurrency(stats.totalReceived) : 'R$ •••'}
               </p>
             </div>
-            <div>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Margem</p>
-              <p className="text-xs font-black text-purple-300 mt-0.5">{stats.margin}%</p>
+            <div className="bg-white/5 p-2 rounded-xl">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">A Receber</p>
+              <p className="text-xs font-black text-amber-400 mt-0.5 truncate">
+                {!isBlurred ? formatCurrency(stats.pendingToReceive) : 'R$ •••'}
+              </p>
+            </div>
+            <div className="bg-white/5 p-2 rounded-xl">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Despesas</p>
+              <p className="text-xs font-black text-rose-400 mt-0.5 truncate">
+                {!isBlurred ? formatCurrency(stats.totalExpenses) : 'R$ •••'}
+              </p>
             </div>
           </div>
         </div>
@@ -1823,22 +1992,50 @@ export const MusicianShowScreen = () => {
         <span>Cadastrar Novo Show</span>
       </button>
 
-      {/* Modern Horizontal Filter Status Tabs */}
-      <div className="space-y-4">
+      {/* Search & Filters Section */}
+      <div className="space-y-3">
+        {/* Search Input Bar */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar por contratante, evento ou local..."
+            className="w-full pl-10 pr-8 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-semibold placeholder:text-slate-400 focus:outline-none focus:border-purple-500 transition-colors shadow-sm"
+          />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Modern Horizontal Filter Status Tabs */}
         <div className="space-y-1">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Filtrar por Situação</h3>
+          <div className="flex justify-between items-center px-1">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filtrar por Situação</h3>
+            <span className="text-[9px] font-bold text-slate-400">
+              {filteredShows.length} evento(s)
+            </span>
+          </div>
           <div className="flex overflow-x-auto space-x-1.5 pb-2 scrollbar-none">
             {['Todos', 'Confirmado', 'Agendado', 'Realizado', 'Cancelado'].map(f => {
               const isActive = statusFilter === f;
-              const count = f === 'Todos' ? shows.length : shows.filter(s => s.status === f).length;
+              const count = f === 'Todos' 
+                ? monthShows.length 
+                : monthShows.filter(s => s.status === f).length;
               return (
                 <button
                   key={f}
                   onClick={() => setStatusFilter(f)}
                   className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border shrink-0 transition active:scale-95 flex items-center space-x-1 ${
                     isActive
-                      ? 'bg-purple-600 border-purple-600 text-white'
-                      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                      ? 'bg-purple-600 border-purple-600 text-white shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'
                   }`}
                 >
                   <span>{f}</span>
@@ -1853,22 +2050,18 @@ export const MusicianShowScreen = () => {
 
         {/* Dynamic Shows list rendered as clickable high-end widgets */}
         <div className="space-y-3.5">
-          <div className="flex justify-between items-center px-1">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contratos Registrados ({filteredShows.length})</h4>
-          </div>
-
           {filteredShows.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 text-center text-slate-400 shadow-sm">
               <Music size={28} className="mx-auto mb-2 text-slate-300" />
-              <p className="text-[10px] font-black uppercase tracking-wider">Nenhum show encontrado</p>
-              <p className="text-[9px] text-slate-400 mt-0.5">Tente mudar o filtro acima ou cadastre um novo evento.</p>
+              <p className="text-[10px] font-black uppercase tracking-wider">Nenhum show neste filtro</p>
+              <p className="text-[9px] text-slate-400 mt-0.5">Tente selecionar outro mês, limpar a busca ou cadastrar um novo evento.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {filteredShows.map(show => {
                 const showExpTotal = (show.expenses?.fuel || 0) + (show.expenses?.food || 0) + (show.expenses?.toll || 0) + (show.expenses?.commission || 0) + (show.expenses?.others || 0);
                 const profit = show.totalCache - showExpTotal;
-                const formattedDate = new Date(show.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                const formattedDate = new Date(show.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
                 
                 const showReceipts = show.receipts || [];
                 const totalReceived = showReceipts
@@ -1899,10 +2092,16 @@ export const MusicianShowScreen = () => {
                           {show.contractorName}
                         </h4>
                         <p className="text-[10px] text-slate-400 font-bold mt-0.5 truncate max-w-[200px]">Evento: {show.name}</p>
+                        {show.location && (
+                          <p className="text-[9px] text-slate-400 flex items-center mt-0.5 truncate max-w-[200px]">
+                            <MapPin size={10} className="mr-0.5 text-slate-400 shrink-0" />
+                            <span>{show.location}</span>
+                          </p>
+                        )}
                       </div>
 
                       <div className="text-right">
-                        <span className="text-[8px] font-black uppercase text-slate-400">Cachê</span>
+                        <span className="text-[8px] font-black uppercase text-slate-400">Cachê Bruto</span>
                         <p className="text-xs font-black text-slate-800 dark:text-white mt-0.5">{formatCurrency(show.totalCache)}</p>
                       </div>
                     </div>
