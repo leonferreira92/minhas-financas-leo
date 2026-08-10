@@ -640,7 +640,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addCategory = (c: Omit<Category, 'id'>) => saveCategories([...categories, { ...c, id: crypto.randomUUID() }]);
-  const updateCategory = (c: Category) => saveCategories(categories.map(cat => cat.id === c.id ? cat : cat));
+  const updateCategory = (c: Category) => saveCategories(categories.map(cat => cat.id === c.id ? c : cat));
   const deleteCategory = (id: string) => saveCategories(categories.filter(c => c.id !== id));
 
   const saveBudget = (b: Budget) => {
