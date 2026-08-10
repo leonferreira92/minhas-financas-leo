@@ -1,702 +1,453 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
-import { getIcon } from '../constants';
-import { 
-  Eye, EyeOff, TrendingUp, TrendingDown, Bell, 
-  Settings as SettingsIcon, CreditCard, Sparkles, 
-  PieChart, Clock, Target, CalendarDays, PlusCircle, 
-  ArrowUpCircle, ChevronRight, Receipt, BarChart3,
-  AlertCircle, Wallet, X, CalendarRange, Check, Zap,
-  ArrowRightLeft, Music, Mic, Laptop, Car, Plane,
-  Briefcase, ShieldAlert, DollarSign, CheckCircle2,
-  Plus, Flame, PiggyBank, FolderTree, ArrowUpRight, 
-  ArrowDownRight, Layers, Building2, User, Activity,
-  Sliders, Calendar, Filter, Sparkle, ArrowRight,
-  ChevronDown
-} from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
 import { TransactionForm } from './TransactionForm';
-import { TransactionType } from '../types';
 import { CalendarModal } from './CalendarModal';
-import { DashboardSkeleton } from './Skeleton';
 import { GoalDetail } from './GoalDetail';
 import { AccountBalanceModal } from './AccountBalanceModal';
+import { 
+  Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Calendar, 
+  ChevronRight, Eye, EyeOff, ShieldCheck, AlertTriangle, ShieldAlert, 
+  Info, Plus, Music, PiggyBank, Receipt, Sliders, X, 
+  CheckCircle2, Clock, ArrowRightLeft, Target, PieChart, Bell, 
+  Sparkles, CalendarDays, Check
+} from 'lucide-react';
+import { DEFAULT_CATEGORIES } from '../constants';
+import * as Icons from 'lucide-react';
 
-export const Dashboard = () => {
-  const { 
-    getBalanceSummary, transactions, categories, getSystemAlerts, 
-    accounts, settings, getAccountBalance, isBlurred, toggleBlur,
-    goals, debts, getDebtProgress, shows
-  } = useFinance();
-  
+export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [balanceMode, setBalanceMode] = useState<'real' | 'projected'>('real');
-  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const { 
+    transactions, 
+    categories, 
+    accounts, 
+    goals, 
+    shows, 
+    isBlurred, 
+    toggleBlur,
+    getBalanceSummary,
+    updateTransaction,
+    getSystemAlerts
+  } = useFinance();
+
+  // Local state for month selection & projection
+  const [currentMonth, setCurrentMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [projectionDate, setProjectionDate] = useState<string>(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+  });
+
+  // Modals state
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw'>('expense');
+  const [transactionCategoryId, setTransactionCategoryId] = useState<string | undefined>();
+  
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedGoalDetailId, setSelectedGoalDetailId] = useState<string | null>(null);
-  const [selectedAccountForBalanceEdit, setSelectedAccountForBalanceEdit] = useState<any | null>(null);
-  
-  // State for Transaction Modal Actions
-  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
-  const [transactionType, setTransactionType] = useState<TransactionType>('expense');
-  const [transactionCategoryId, setTransactionCategoryId] = useState<string | undefined>(undefined);
-
-  // Custom Shortcuts Customization State
+  const [selectedAccountForBalanceEdit, setSelectedAccountForBalanceEdit] = useState<any>(null);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [showShortcutConfig, setShowShortcutConfig] = useState(false);
+
+  // Explanatory Modals
+  const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
+  const [isFreeSpendModalOpen, setIsFreeSpendModalOpen] = useState(false);
+
+  // Shortcuts config state
   const [enabledShortcuts, setEnabledShortcuts] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('fintech_shortcuts_v1');
-      return saved ? JSON.parse(saved) : ['expense', 'income', 'show', 'transfer', 'goal', 'debt'];
-    } catch {
-      return ['expense', 'income', 'show', 'transfer', 'goal', 'debt'];
-    }
+    const saved = localStorage.getItem('fin_home_shortcuts');
+    return saved ? JSON.parse(saved) : ['expense', 'income', 'show', 'transfer', 'goal_deposit', 'extrato', 'planning'];
   });
 
   const toggleShortcut = (id: string) => {
-    const updated = enabledShortcuts.includes(id)
-      ? enabledShortcuts.filter(s => s !== id)
+    const updated = enabledShortcuts.includes(id) 
+      ? enabledShortcuts.filter(s => s !== id) 
       : [...enabledShortcuts, id];
     setEnabledShortcuts(updated);
-    localStorage.setItem('fintech_shortcuts_v1', JSON.stringify(updated));
+    localStorage.setItem('fin_home_shortcuts', JSON.stringify(updated));
   };
 
-  const [projectionDate, setProjectionDate] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-  });
+  // Metric summaries from FinanceContext
+  const summary = useMemo(() => {
+    return getBalanceSummary(currentMonth, projectionDate);
+  }, [getBalanceSummary, currentMonth, projectionDate, transactions, accounts, goals]);
 
-  const [isLoaded, setIsLoaded] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 500);
-    return () => clearTimeout(timer);
-  }, []);
+  // System alerts count
+  const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  // Derived financial health status
+  const financialHealth = useMemo(() => {
+    const avail = summary.realBalance;
+    const pendingExp = summary.pendingExpense;
+    const pendingInc = summary.pendingIncome;
+    const projectedResult = summary.projectedBalance;
 
-  const alerts = useMemo(() => getSystemAlerts(), [transactions]);
-  const summary = useMemo(() => getBalanceSummary(currentMonth, projectionDate), [transactions, currentMonth, projectionDate, accounts]);
-
-  const freeToSpend = summary.freeToSpend;
-
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-  // 1. INTELLIGENT ATTENTION PANEL DATA
-  const attentionCards = useMemo(() => {
-    const cards: Array<{
-      id: string;
-      title: string;
-      subtitle: string;
-      amount?: number;
-      type: 'warning' | 'income' | 'show' | 'goal';
-      badge: string;
-      actionText: string;
-      actionUrl?: string;
-      onAction?: () => void;
-    }> = [];
-
-    // Check shows today
-    const showsToday = (shows || []).filter(s => s.date === todayStr && s.status !== 'Cancelado');
-    showsToday.forEach(s => {
-      cards.push({
-        id: `show_${s.id}`,
-        title: `Show Confirmado Hoje! 🎸`,
-        subtitle: `${s.contractorName} • ${s.time || 'Horário a definir'} em ${s.location || 'Local do evento'}`,
-        amount: s.totalCache,
-        type: 'show',
-        badge: 'Hoje',
-        actionText: 'Ver Show',
-        actionUrl: '/shows'
-      });
-    });
-
-    // Check pending incomes today
-    const incomeToday = transactions.filter(t => t.type === 'income' && t.status === 'pending' && t.date === todayStr);
-    incomeToday.forEach(t => {
-      cards.push({
-        id: `inc_${t.id}`,
-        title: `Recebimento Previsto para Hoje 💰`,
-        subtitle: t.description || 'Entrada programada',
-        amount: t.amount,
-        type: 'income',
-        badge: 'Entrada Hoje',
-        actionText: 'Ver Detalhes',
-        actionUrl: '/transactions'
-      });
-    });
-
-    // Check overdue or due today expenses
-    const expensesDueTodayOrOverdue = transactions.filter(
-      t => t.type === 'expense' && t.status === 'pending' && t.date <= todayStr
-    );
-    if (expensesDueTodayOrOverdue.length > 0) {
-      const totalOverdue = expensesDueTodayOrOverdue.reduce((s, t) => s + t.amount, 0);
-      const isOverdueStrict = expensesDueTodayOrOverdue.some(t => t.date < todayStr);
-      cards.push({
-        id: 'expenses_alert',
-        title: isOverdueStrict ? 'Contas Vencidas ou Vencendo Hoje ⚠️' : 'Contas Vencendo Hoje 🔔',
-        subtitle: `${expensesDueTodayOrOverdue.length} compromisso(s) pendente(s) necessitam da sua atenção`,
-        amount: totalOverdue,
-        type: 'warning',
-        badge: isOverdueStrict ? 'Atenção Crítica' : 'Vence Hoje',
-        actionText: 'Quitar / Pagar',
-        actionUrl: '/transactions'
-      });
+    if (projectedResult < 0 || (avail < pendingExp && avail + pendingInc < pendingExp)) {
+      return {
+        status: 'RISCO' as const,
+        color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50',
+        badgeColor: 'bg-rose-500 text-white',
+        icon: ShieldAlert,
+        label: 'Situação de Risco',
+        desc: 'Atenção: Suas obrigações pendentes superam os recursos disponíveis e previstos.'
+      };
+    } else if (avail < pendingExp) {
+      return {
+        status: 'ATENÇÃO' as const,
+        color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/50',
+        badgeColor: 'bg-amber-500 text-white',
+        icon: AlertTriangle,
+        label: 'Requer Atenção',
+        desc: 'Necessário receber entradas previstas no mês para cobrir todos os compromissos.'
+      };
+    } else {
+      return {
+        status: 'CONTROLADO' as const,
+        color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50',
+        badgeColor: 'bg-emerald-500 text-white',
+        icon: ShieldCheck,
+        label: 'Situação Controlada',
+        desc: 'Seus recursos atuais e receitas cobrem com folga suas despesas registradas.'
+      };
     }
+  }, [summary]);
 
-    // Check goals close to completion (>= 80%)
-    (goals || []).forEach(g => {
-      const prog = g.targetAmount > 0 ? (g.currentAmount / g.targetAmount) * 100 : 0;
-      if (prog >= 80 && prog < 100) {
-        cards.push({
-          id: `goal_${g.id}`,
-          title: `Meta Quase Atingida! 🎯`,
-          subtitle: `A meta "${g.name}" atingiu ${Math.round(prog)}% do objetivo!`,
-          amount: g.targetAmount - g.currentAmount,
-          type: 'goal',
-          badge: `${Math.round(prog)}% Concluído`,
-          actionText: 'Finalizar Meta',
-          onAction: () => setSelectedGoalDetailId(g.id)
-        });
-      }
-    });
-
-    return cards;
-  }, [shows, transactions, goals, todayStr]);
-
-  // 2. INDICADORES INTELIGENTES (SMART METRICS)
-  const smartMetrics = useMemo(() => {
-    // Total Patrimony (Accounts + Goals)
-    const accountsTotal = accounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
-    const goalsTotal = (goals || []).reduce((s, g) => s + (g.currentAmount || 0), 0);
-    const totalPatrimony = accountsTotal + goalsTotal;
-
-    // Monthly Flow
-    const monthTx = transactions.filter(t => t.date.startsWith(currentMonth));
-    const incomeTotal = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenseTotal = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-
-    // Days of Financial Reserve Covered
-    const dayOfMonth = Math.max(1, new Date().getDate());
-    const dailyAvgExpense = expenseTotal > 0 ? (expenseTotal / dayOfMonth) : 50; // Fallback default
-    const reserveDays = Math.round(totalPatrimony / Math.max(1, dailyAvgExpense));
-
-    // Income Commitment Rate (%)
-    const incomeCommitment = incomeTotal > 0 ? Math.min(100, Math.round((expenseTotal / incomeTotal) * 100)) : 0;
-
-    // Health Score (0 - 100)
-    let score = 70;
-    if (incomeTotal > expenseTotal) score += 15;
-    else score -= 15;
-
-    if (freeToSpend > 0) score += 10;
-    else score -= 20;
-
-    if (reserveDays >= 90) score += 10;
-    else if (reserveDays < 30) score -= 10;
-
-    const overdueCount = transactions.filter(t => t.type === 'expense' && t.status === 'pending' && t.date < todayStr).length;
-    if (overdueCount > 0) score -= 15;
-
-    const finalScore = Math.max(0, Math.min(100, score));
-
-    return {
-      totalPatrimony,
-      incomeTotal,
-      expenseTotal,
-      dailyAvgExpense,
-      reserveDays,
-      incomeCommitment,
-      healthScore: finalScore,
-      healthLabel: finalScore >= 80 ? 'Excelente' : finalScore >= 60 ? 'Saudável' : 'Atenção'
-    };
-  }, [accounts, goals, transactions, currentMonth, freeToSpend, todayStr]);
-
-  // 3. SHOWS DO MÊS (MODULO TRABALHO)
-  const showsModuleData = useMemo(() => {
-    const monthShows = (shows || []).filter(s => s.date && s.date.startsWith(currentMonth) && s.status !== 'Cancelado');
-    const showsCount = monthShows.length;
-    const totalCache = monthShows.reduce((s, show) => s + (show.totalCache || 0), 0);
-    
-    let cacheReceived = 0;
-    monthShows.forEach(s => {
-      if (s.receipts && s.receipts.length > 0) {
-        cacheReceived += s.receipts
-          .filter(r => r.status === 'Recebido')
-          .reduce((sum, r) => sum + r.amount, 0);
-      } else {
-        cacheReceived += (s.cacheReceived || 0);
-      }
-    });
-
-    const cachePending = Math.max(0, totalCache - cacheReceived);
-    
-    // Expenses
-    let totalExpenses = 0;
-    monthShows.forEach(s => {
-      if (s.expenses) {
-        totalExpenses += (s.expenses.fuel || 0) + (s.expenses.food || 0) + (s.expenses.toll || 0) + (s.expenses.commission || 0) + (s.expenses.others || 0);
-      }
-    });
-
-    const netProfit = totalCache - totalExpenses;
-    const profitMargin = totalCache > 0 ? Math.round((netProfit / totalCache) * 100) : 0;
-    const receivedPercent = totalCache > 0 ? Math.round((cacheReceived / totalCache) * 100) : 0;
-
-    return {
-      showsCount,
-      totalCache,
-      cacheReceived,
-      cachePending,
-      totalExpenses,
-      netProfit,
-      profitMargin,
-      receivedPercent
-    };
-  }, [shows, currentMonth]);
-
-  // 4. RECENT TRANSACTIONS (MAX 4)
-  const recentTransactions = useMemo(() => {
-    return [...transactions]
-      .sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        if (dateB !== dateA) return dateB - dateA;
-        return (b.createdAt || 0) - (a.createdAt || 0);
-      })
+  // Upcoming Pending Expenses (Próximos Compromissos)
+  const upcomingCommitments = useMemo(() => {
+    return transactions
+      .filter(t => t.type === 'expense' && t.status === 'pending')
+      .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 4);
   }, [transactions]);
 
-  // 5. GOALS DATA
-  const goalsData = useMemo(() => {
-    const list = goals || [];
-    const totalTarget = list.reduce((sum, g) => sum + (g.targetAmount || 0), 0);
-    const totalSaved = list.reduce((sum, g) => sum + (g.currentAmount || 0), 0);
-    const overallProgress = totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0;
-    return { list, totalTarget, totalSaved, overallProgress };
-  }, [goals]);
+  // Shows breakdown for variable income
+  const monthlyShowsSummary = useMemo(() => {
+    const monthShows = shows.filter(s => s.date.startsWith(currentMonth));
+    const count = monthShows.length;
+    let totalContracted = 0;
+    let totalReceived = 0;
+    let totalPending = 0;
 
-  // Shortcut Definitions
+    monthShows.forEach(show => {
+      totalContracted += (Number(show.totalCache) || 0);
+      if (show.receipts && show.receipts.length > 0) {
+        show.receipts.forEach(r => {
+          if (r.status === 'Recebido') totalReceived += (Number(r.amount) || 0);
+          else totalPending += (Number(r.amount) || 0);
+        });
+      } else {
+        if (show.status === 'Realizado') totalReceived += (Number(show.totalCache) || 0);
+        else totalPending += (Number(show.totalCache) || 0);
+      }
+    });
+
+    const pctReceived = totalContracted > 0 ? Math.min(100, Math.round((totalReceived / totalContracted) * 100)) : 0;
+
+    return {
+      count,
+      totalContracted: Number(totalContracted.toFixed(2)),
+      totalReceived: Number(totalReceived.toFixed(2)),
+      totalPending: Number(totalPending.toFixed(2)),
+      pctReceived
+    };
+  }, [shows, currentMonth]);
+
+  // Recent transactions (Últimas Movimentações)
+  const recentTransactions = useMemo(() => {
+    return [...transactions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 4);
+  }, [transactions]);
+
+  // Helper for dynamic category icons
+  const getIcon = (iconName: string) => {
+    const IconComponent = (Icons as any)[iconName];
+    return IconComponent || Receipt;
+  };
+
+  // Helper for formatting currency
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  };
+
+  // Mark pending expense as paid directly
+  const handleMarkAsPaid = (t: any) => {
+    updateTransaction({
+      ...t,
+      status: 'paid'
+    });
+  };
+
+  // Open modal helper for shortcut buttons
+  const handleOpenModal = (type: 'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw') => {
+    setTransactionType(type);
+    setIsTransactionModalOpen(true);
+  };
+
+  // Master list of available shortcuts
   const allShortcuts = [
-    { id: 'expense', label: 'Nova Despesa', icon: ArrowDownRight, color: 'text-rose-500 bg-rose-500/10 hover:bg-rose-500/20', action: () => openTransactionModal('expense') },
-    { id: 'income', label: 'Nova Receita', icon: ArrowUpRight, color: 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20', action: () => openTransactionModal('income') },
-    { id: 'show', label: 'Novo Show', icon: Music, color: 'text-purple-500 bg-purple-500/10 hover:bg-purple-500/20', action: () => navigate('/shows') },
-    { id: 'transfer', label: 'Transferência', icon: ArrowRightLeft, color: 'text-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20', action: () => openTransactionModal('transfer') },
-    { id: 'goal', label: 'Minhas Metas', icon: Target, color: 'text-blue-500 bg-blue-500/10 hover:bg-blue-500/20', action: () => navigate('/metas') },
-    { id: 'debt', label: 'Compromissos', icon: CreditCard, color: 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20', action: () => navigate('/debts') },
-    { id: 'extrato', label: 'Ver Extrato', icon: Receipt, color: 'text-slate-500 bg-slate-500/10 hover:bg-slate-500/20', action: () => navigate('/transactions') },
-    { id: 'flow', label: 'Fluxo DRE', icon: BarChart3, color: 'text-teal-500 bg-teal-500/10 hover:bg-teal-500/20', action: () => navigate('/flow') },
+    { id: 'expense', label: 'Nova Despesa', icon: ArrowDownRight, color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400', action: () => handleOpenModal('expense') },
+    { id: 'income', label: 'Nova Receita', icon: ArrowUpRight, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', action: () => handleOpenModal('income') },
+    { id: 'show', label: 'Novo Show', icon: Music, color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400', action: () => navigate('/shows') },
+    { id: 'transfer', label: 'Transferência', icon: ArrowRightLeft, color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', action: () => handleOpenModal('transfer') },
+    { id: 'goal_deposit', label: 'Aporte Cofrinho', icon: PiggyBank, color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', action: () => handleOpenModal('goal_deposit') },
+    { id: 'extrato', label: 'Ver Extrato', icon: Receipt, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', action: () => navigate('/transactions') },
+    { id: 'planning', label: 'Planejamento', icon: Target, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', action: () => navigate('/planning') },
+    { id: 'alerts', label: 'Central Alertas', icon: Bell, color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400', action: () => navigate('/alerts') }
   ];
 
   const activeShortcutsList = allShortcuts.filter(s => enabledShortcuts.includes(s.id));
 
-  const openTransactionModal = (type: TransactionType, catId?: string) => {
-    setTransactionType(type);
-    setTransactionCategoryId(catId);
-    setIsTransactionModalOpen(true);
-  };
+  // Calculate day tags for upcoming commitments
+  const getDaysTag = (dateStr: string) => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const itemDate = new Date(dateStr + 'T12:00:00');
+    itemDate.setHours(0,0,0,0);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
-  };
+    const diffDays = Math.round((itemDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (!isLoaded) return <DashboardSkeleton />;
+    if (diffDays < 0) return { label: 'Vencido', color: 'bg-rose-500/10 text-rose-600 border-rose-200' };
+    if (diffDays === 0) return { label: 'Hoje', color: 'bg-amber-500/10 text-amber-600 border-amber-200' };
+    if (diffDays === 1) return { label: 'Amanhã', color: 'bg-indigo-500/10 text-indigo-600 border-indigo-200' };
+    return { label: `Em ${diffDays} dias`, color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+  };
 
   return (
-    <div className="space-y-6 pb-28 text-slate-900 dark:text-slate-100 animate-fade-in max-w-7xl mx-auto">
+    <div className="space-y-6 pb-20 animate-fade-in selection:bg-indigo-100 selection:text-indigo-700">
       
-      {/* HEADER EXECUTIVO LIMPO (ESTILO NOTION / NUBANK) */}
-      <div className="flex justify-between items-center px-1 pt-2">
-        <div className="flex items-center space-x-3 cursor-pointer group" onClick={() => navigate('/settings')}>
-           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 dark:from-indigo-600 dark:to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-slate-900/10 dark:shadow-indigo-500/20 active:scale-95 transition-transform">
-             {settings.userName?.charAt(0).toUpperCase() || 'F'}
-           </div>
-           <div className="flex flex-col">
-             <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">{getGreeting()},</span>
-             <h1 className="text-xl font-black text-slate-800 dark:text-white leading-none tracking-tight flex items-center group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-               <span>{settings.userName || 'Investidor'}</span>
-               <ChevronRight size={14} className="ml-1 text-slate-400" />
-             </h1>
-           </div>
+      {/* HEADER SUPERIOR: PERFIL & AÇÕES DE PAINEL */}
+      <div className="flex items-center justify-between pt-1">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/50">
+              Cockpit Financeiro 2.0
+            </span>
+          </div>
+          <h1 className="text-xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight flex items-center">
+            Visão Geral
+          </h1>
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* Quick Date Modal Trigger */}
+          {/* Calendar projection date button */}
           <button
             onClick={() => setIsDateModalOpen(true)}
-            className="hidden sm:flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 rounded-2xl text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 transition-all active:scale-95 border border-slate-200/60 dark:border-slate-800"
+            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-95 shadow-sm flex items-center space-x-1"
+            title="Alterar Data de Projeção"
           >
-            <CalendarDays size={14} className="text-indigo-500" />
-            <span>Projeção: {new Date(projectionDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', day: '2-digit' })}</span>
+            <CalendarDays size={18} className="text-indigo-600 dark:text-indigo-400" />
           </button>
 
-          <Link 
-            to="/alerts" 
-            className="relative p-3 bg-white dark:bg-slate-900 rounded-2xl text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 transition-all active:scale-95 shadow-sm hover:border-indigo-300"
+          {/* Alerts Counter */}
+          <button
+            onClick={() => navigate('/alerts')}
+            className="relative p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-95 shadow-sm"
             title="Alertas do Sistema"
           >
-             <Bell size={20} />
-             {alerts.length > 0 && (
-               <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-950 animate-pulse"></span>
-             )}
-          </Link>
-
-          <Link 
-            to="/settings" 
-            className="p-3 bg-white dark:bg-slate-900 rounded-2xl text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 transition-all active:scale-95 shadow-sm hover:border-indigo-300"
-            title="Configurações e Perfil"
-          >
-             <SettingsIcon size={20} />
-          </Link>
-        </div>
-      </div>
-
-      {/* 1. SEÇÃO PRINCIPAL: RESUMO FINANCEIRO (MAIOR DESTAQUE VISUAL) */}
-      <div className="relative bg-slate-900 dark:bg-black rounded-[2.5rem] p-6 sm:p-8 text-white shadow-2xl overflow-hidden border border-slate-800/80">
-        {/* Glow de Fundo Elegante */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-indigo-600/30 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 bg-purple-600/20 rounded-full blur-[80px] pointer-events-none"></div>
-
-        <div className="relative z-10 space-y-6">
-          {/* Header Superior do Card Hero */}
-          <div className="flex justify-between items-center">
-            <div className="flex bg-white/10 backdrop-blur-xl rounded-2xl p-1 border border-white/10 shadow-inner">
-               <button 
-                onClick={() => setBalanceMode('real')} 
-                className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${balanceMode === 'real' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
-               >
-                 Saldo Disponível
-               </button>
-               <button 
-                onClick={() => setBalanceMode('projected')} 
-                className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${balanceMode === 'projected' ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'}`}
-               >
-                 Saldo Previsto
-               </button>
-            </div>
-
-            <button 
-              onClick={toggleBlur} 
-              className="text-slate-400 hover:text-white transition-all p-2.5 bg-white/10 rounded-2xl border border-white/10 active:scale-95"
-              title={isBlurred ? "Exibir valores" : "Ocultar valores"}
-            >
-              {!isBlurred ? <Eye size={18} /> : <EyeOff size={18} />}
-            </button>
-          </div>
-
-          {/* Valor Principal em Destaque Absoluto */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-90">
-                {balanceMode === 'real' ? 'Quanto tenho hoje (Saldo Líquido)' : `Saldo Previsto até ${new Date(projectionDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`}
-              </p>
-              {balanceMode === 'projected' && (
-                <button 
-                  onClick={() => setIsDateModalOpen(true)}
-                  className="flex items-center space-x-1.5 bg-indigo-500/20 border border-indigo-500/30 px-3 py-1 rounded-xl text-[9px] font-black uppercase text-indigo-200 hover:bg-indigo-500/30 transition-all active:scale-95"
-                >
-                  <CalendarRange size={12} className="text-indigo-400" />
-                  <span>Mudar Data</span>
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-baseline">
-              {!isBlurred ? (
-                <h2 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter tabular-nums leading-none">
-                  <span className="text-2xl sm:text-3xl font-bold text-slate-400 mr-2">R$</span>
-                  <span>
-                    {(balanceMode === 'real' ? summary.realBalance : summary.projectedBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </h2>
-              ) : (
-                <span className="text-4xl sm:text-5xl tracking-widest font-black text-slate-300">••••••••</span>
-              )}
-            </div>
-
-            {/* Sub-Métricas: Dinheiro Livre para Gastar & Patrimônio */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-5 border-t border-white/10 mt-5">
-              <div className="bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-white/10">
-                <span className="text-[9px] font-black uppercase text-indigo-300 tracking-wider flex items-center">
-                  <Zap size={11} className="mr-1 text-indigo-400" /> Posso Gastar (Livre)
-                </span>
-                <p className="text-base sm:text-lg font-black text-white mt-0.5 tabular-nums">
-                  {!isBlurred ? formatCurrency(freeToSpend) : '••••'}
-                </p>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-white/10">
-                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center">
-                  <PieChart size={11} className="mr-1 text-purple-400" /> Patrimônio Total
-                </span>
-                <p className="text-base sm:text-lg font-black text-white mt-0.5 tabular-nums">
-                  {!isBlurred ? formatCurrency(smartMetrics.totalPatrimony) : '••••'}
-                </p>
-              </div>
-
-              <div className="bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-white/10 col-span-2 sm:col-span-1">
-                <span className="text-[9px] font-black uppercase text-emerald-400 tracking-wider flex items-center">
-                  <TrendingUp size={11} className="mr-1 text-emerald-400" /> Receitas a Entrar
-                </span>
-                <p className="text-base sm:text-lg font-black text-emerald-300 mt-0.5 tabular-nums">
-                  {!isBlurred ? formatCurrency(summary.pendingIncome) : '••••'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Carrossel Integrado de Contas Vinculadas */}
-          <div className="pt-2">
-            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2.5">
-              <span>Contas Bancárias ({accounts.length})</span>
-              <span className="text-indigo-400 hover:underline cursor-pointer" onClick={() => navigate('/settings')}>
-                Gerenciar Contas
+            <Bell size={18} />
+            {alerts.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900">
+                {alerts.length}
               </span>
-            </div>
+            )}
+          </button>
 
-            <div className="overflow-x-auto no-scrollbar flex items-center space-x-2.5 pb-1">
-              {accounts.length === 0 ? (
-                <button 
-                  onClick={() => navigate('/settings')}
-                  className="py-2.5 px-4 bg-white/5 rounded-2xl border border-white/10 text-[10px] font-black uppercase text-indigo-300 hover:bg-white/10 transition flex items-center space-x-1.5"
-                >
-                  <Plus size={14} />
-                  <span>Cadastrar Conta Bancária</span>
-                </button>
-              ) : (
-                <>
-                  {accounts.map(acc => (
-                    <div 
-                      key={acc.id} 
-                      onClick={() => setSelectedAccountForBalanceEdit(acc)}
-                      className="flex flex-col shrink-0 bg-white/10 backdrop-blur-md border border-white/10 hover:border-white/30 hover:bg-white/15 rounded-2xl px-4 py-3 min-w-[140px] transition-all active:scale-95 cursor-pointer shadow-sm group/acc"
-                      title="Clique para ajustar o saldo desta conta"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                         <div className="flex items-center space-x-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: acc.color }}></div>
-                            <span className="text-[10px] font-black text-slate-200 uppercase tracking-widest truncate max-w-[90px]">{acc.name}</span>
-                         </div>
-                         <ChevronRight size={12} className="text-slate-400 opacity-0 group-hover/acc:opacity-100 transition-opacity" />
-                      </div>
-                      <span className="text-xs font-black tabular-nums text-white">
-                        {!isBlurred ? formatCurrency(getAccountBalance(acc.id)) : '••••'}
-                      </span>
-                    </div>
-                  ))}
-                  <button 
-                    onClick={() => navigate('/settings')}
-                    className="flex items-center justify-center shrink-0 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl px-3.5 py-3 text-[10px] font-black text-slate-300 transition active:scale-95"
-                    title="Adicionar nova conta"
-                  >
-                    <Plus size={16} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          {/* Blur Toggle */}
+          <button
+            onClick={toggleBlur}
+            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition active:scale-95 shadow-sm"
+            title={isBlurred ? "Exibir Valores" : "Ocultar Valores"}
+          >
+            {isBlurred ? <EyeOff size={18} className="text-indigo-500" /> : <Eye size={18} />}
+          </button>
         </div>
       </div>
 
-      {/* 2. PAINEL DE ATENÇÃO INTELIGENTE (APARECE APENAS QUANDO HOUVER NECESSIDADE) */}
-      {attentionCards.length > 0 && (
-        <div className="space-y-3 animate-fade-in">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center">
-              <AlertCircle size={14} className="mr-1.5 text-amber-500 animate-pulse" /> Painel de Atenção e Avisos ({attentionCards.length})
-            </h3>
-            <span className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
-              Ação Necessária
+      {/* SEÇÃO 1: PAINEL PRINCIPAL DE SITUAÇÃO FINANCEIRA (CARD FINTECH) */}
+      <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-900 text-white rounded-[2.5rem] p-6 shadow-2xl border border-slate-800/80 space-y-6">
+        
+        {/* Glow ambient background accents */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top bar of Situation Card: Label + Health Badge */}
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-indigo-300">
+              <Wallet size={18} />
+            </div>
+            <span className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+              Disponível Agora
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {attentionCards.map(card => (
-              <div 
-                key={card.id}
-                className={`p-4 rounded-3xl border shadow-sm flex items-center justify-between transition-all ${
-                  card.type === 'warning' 
-                    ? 'bg-rose-500/5 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-950 dark:text-rose-100'
-                    : card.type === 'show'
-                    ? 'bg-purple-500/5 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/50 text-purple-950 dark:text-purple-100'
-                    : card.type === 'income'
-                    ? 'bg-emerald-500/5 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-950 dark:text-emerald-100'
-                    : 'bg-indigo-500/5 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900/50 text-indigo-950 dark:text-indigo-100'
-                }`}
-              >
-                <div className="space-y-1 pr-3">
-                  <div className="flex items-center space-x-2">
-                    <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                      card.type === 'warning' ? 'bg-rose-500 text-white' : 'bg-purple-600 text-white'
-                    }`}>
-                      {card.badge}
-                    </span>
-                    <h4 className="text-xs font-black truncate">{card.title}</h4>
-                  </div>
-                  <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{card.subtitle}</p>
-                  {card.amount !== undefined && (
-                    <p className="text-xs font-black tabular-nums">
-                      Valor: {!isBlurred ? formatCurrency(card.amount) : '••••'}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (card.onAction) card.onAction();
-                    else if (card.actionUrl) navigate(card.actionUrl);
-                  }}
-                  className="shrink-0 px-3.5 py-2 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-wider hover:opacity-90 transition active:scale-95 shadow-md"
-                >
-                  {card.actionText}
-                </button>
-              </div>
-            ))}
-          </div>
+          {/* Health Status Badge */}
+          <button
+            onClick={() => setIsHealthModalOpen(true)}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition active:scale-95 backdrop-blur-md ${financialHealth.color}`}
+          >
+            <financialHealth.icon size={13} />
+            <span>{financialHealth.status}</span>
+            <Info size={12} className="ml-0.5 opacity-80" />
+          </button>
         </div>
-      )}
 
-      {/* 3. INDICADORES INTELIGENTES EXECUTIVOS (SMART DECISION CENTER) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* Saúde Financeira */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Saúde Financeira</span>
-            <Activity size={16} className="text-indigo-500" />
-          </div>
+        {/* Big Highlight Number: Disponível Agora (Saldo Real em Contas Operacionais) */}
+        <div className="relative z-10 space-y-1">
           <div className="flex items-baseline space-x-2">
-            <span className="text-2xl font-black text-slate-800 dark:text-white tabular-nums">{smartMetrics.healthScore}</span>
-            <span className="text-[10px] font-bold text-slate-400">/100</span>
+            <span className="text-3xl sm:text-4xl font-black tracking-tight tabular-nums text-white">
+              {!isBlurred ? formatCurrency(summary.realBalance) : 'R$ •••••••'}
+            </span>
           </div>
-          <span className={`text-[9px] font-black uppercase tracking-widest mt-1 ${
-            smartMetrics.healthScore >= 80 ? 'text-emerald-600' : smartMetrics.healthScore >= 60 ? 'text-indigo-600' : 'text-rose-600'
-          }`}>
-            Status: {smartMetrics.healthLabel}
+          <p className="text-[11px] font-medium text-slate-400">
+            Total efetivo em contas bancárias e carteiras operacionais
+          </p>
+        </div>
+
+        {/* Sub-grid of derived core metrics (3 columns) */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
+          
+          {/* LIVRE PARA GASTAR */}
+          <div 
+            onClick={() => setIsFreeSpendModalOpen(true)}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">Livre p/ Gastar</span>
+              <Info size={12} className="group-hover:text-indigo-400 transition-colors" />
+            </div>
+            <span className={`text-sm font-black tabular-nums block ${summary.freeToSpend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {!isBlurred ? formatCurrency(summary.freeToSpend) : '••••'}
+            </span>
+            <span className="text-[9px] text-slate-400 font-medium block mt-0.5 truncate">
+              Após contas do mês
+            </span>
+          </div>
+
+          {/* COMPROMETIDO / A PAGAR */}
+          <div 
+            onClick={() => navigate('/transactions?type=expense&status=pending')}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">A Pagar (Mês)</span>
+              <ArrowDownRight size={12} className="text-rose-400" />
+            </div>
+            <span className="text-sm font-black tabular-nums text-rose-400 block">
+              {!isBlurred ? formatCurrency(summary.pendingExpense) : '••••'}
+            </span>
+            <span className="text-[9px] text-slate-400 font-medium block mt-0.5 truncate">
+              Obrigações pendentes
+            </span>
+          </div>
+
+          {/* A RECEBER */}
+          <div 
+            onClick={() => navigate('/transactions?type=income&status=pending')}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition cursor-pointer group col-span-2 sm:col-span-1"
+          >
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider">A Receber (Mês)</span>
+              <ArrowUpRight size={12} className="text-emerald-400" />
+            </div>
+            <span className="text-sm font-black tabular-nums text-emerald-400 block">
+              {!isBlurred ? formatCurrency(summary.pendingIncome) : '••••'}
+            </span>
+            <span className="text-[9px] text-slate-400 font-medium block mt-0.5 truncate">
+              Receitas previstas
+            </span>
+          </div>
+
+        </div>
+
+        {/* Footer info: Saldo Projetado ao final do mês */}
+        <div className="relative z-10 p-3.5 rounded-2xl bg-indigo-950/60 border border-indigo-800/50 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300 block">
+              Saldo Projetado (até {new Date(projectionDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })})
+            </span>
+            <p className="text-[10px] text-slate-400 font-medium">
+              Calculado: Saldo Atual + A Receber - A Pagar
+            </p>
+          </div>
+          <span className={`text-base font-black tabular-nums ${summary.projectedBalance >= 0 ? 'text-indigo-200' : 'text-rose-400'}`}>
+            {!isBlurred ? formatCurrency(summary.projectedBalance) : '••••'}
           </span>
         </div>
 
-        {/* Reserva Financeira em Dias */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Reserva de Emergência</span>
-            <ShieldAlert size={16} className="text-purple-500" />
-          </div>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-2xl font-black text-slate-800 dark:text-white tabular-nums">{smartMetrics.reserveDays}</span>
-            <span className="text-[10px] font-bold text-slate-400">dias</span>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-            Custo Diário ~{formatCurrency(smartMetrics.dailyAvgExpense)}
-          </span>
-        </div>
-
-        {/* Comprometimento da Renda */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Comprometimento</span>
-            <BarChart3 size={16} className="text-amber-500" />
-          </div>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-2xl font-black text-slate-800 dark:text-white tabular-nums">{smartMetrics.incomeCommitment}%</span>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-            das receitas em saídas
-          </span>
-        </div>
-
-        {/* Progresso de Metas */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Progresso de Metas</span>
-            <Target size={16} className="text-emerald-500" />
-          </div>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-2xl font-black text-slate-800 dark:text-white tabular-nums">{goalsData.overallProgress}%</span>
-          </div>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">
-            {!isBlurred ? formatCurrency(goalsData.totalSaved) : '••••'} guardados
-          </span>
-        </div>
       </div>
 
-      {/* 4. SEÇÃO METAS FINANCEIRAS (FOCO EM PROGRESSO VISUAL) */}
+      {/* SEÇÃO 2: PRÓXIMOS COMPROMISSOS (FLUXO FUTURO) */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <PiggyBank size={20} strokeWidth={2.5} />
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <Clock size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Progresso de Metas</h3>
-              <p className="text-base font-black text-slate-800 dark:text-white">Minhas Conquistas & Reservas</p>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Fluxo Futuro</h3>
+              <p className="text-base font-black text-slate-800 dark:text-white">Próximos Vencimentos</p>
             </div>
           </div>
 
           <button
-            onClick={() => navigate('/metas')}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider hover:bg-indigo-100 transition active:scale-95 border border-indigo-100 dark:border-indigo-900/40"
+            onClick={() => navigate('/transactions')}
+            className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:underline flex items-center"
           >
-            <Plus size={13} />
-            <span>Gerenciar</span>
+            Ver Extrato <ChevronRight size={12} className="ml-0.5" />
           </button>
         </div>
 
-        {goalsData.list.length === 0 ? (
-          <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center text-slate-400 border border-slate-100 dark:border-slate-800">
-            <Target size={28} className="mx-auto mb-2 text-slate-300" />
-            <p className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">Nenhuma meta criada ainda</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Defina objetivos financeiros para guardar dinheiro com disciplina.</p>
-            <button
-              onClick={() => navigate('/metas')}
-              className="mt-3 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition"
-            >
-              Criar Primeira Meta
-            </button>
+        {upcomingCommitments.length === 0 ? (
+          <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-1 border border-dashed border-slate-200 dark:border-slate-800">
+            <CheckCircle2 size={24} className="mx-auto text-emerald-500 mb-1" />
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Tudo em dia!</p>
+            <p className="text-[11px] text-slate-400 font-medium">Nenhuma despesa pendente agendada para os próximos dias.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {goalsData.list.map(goal => {
-              const IconComp = getIcon(goal.icon);
-              const prog = goal.targetAmount > 0 ? Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100)) : 0;
-              
+          <div className="space-y-2.5">
+            {upcomingCommitments.map(item => {
+              const daysTag = getDaysTag(item.date);
+              const cat = categories.find(c => c.id === item.categoryId);
+              const IconComp = cat ? getIcon(cat.icon) : Receipt;
+
               return (
                 <div 
-                  key={goal.id}
-                  onClick={() => setSelectedGoalDetailId(goal.id)}
-                  className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 border border-slate-100 dark:border-slate-800 transition-all cursor-pointer group"
+                  key={item.id}
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-100 dark:border-slate-800 transition flex items-center justify-between"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2.5">
-                      <div 
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm"
-                        style={{ backgroundColor: goal.color }}
-                      >
-                        <IconComp size={16} />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-black text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {goal.name}
-                        </h4>
-                        <p className="text-[10px] text-slate-400 font-medium">
-                          {!isBlurred ? formatCurrency(goal.currentAmount) : '••••'} de {!isBlurred ? formatCurrency(goal.targetAmount) : '••••'}
-                        </p>
-                      </div>
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                      <IconComp size={18} />
                     </div>
-
-                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
-                      {prog}%
-                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-xs font-black text-slate-800 dark:text-white truncate">
+                          {item.description}
+                        </h4>
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black border uppercase tracking-wider shrink-0 ${daysTag.color}`}>
+                          {daysTag.label}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        Vencimento: {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5">
-                    <div 
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${prog}%`, backgroundColor: goal.color }}
-                    ></div>
+                  <div className="flex items-center space-x-3 shrink-0 ml-2">
+                    <span className="text-xs font-black tabular-nums text-slate-900 dark:text-white">
+                      {!isBlurred ? formatCurrency(item.amount) : '••••'}
+                    </span>
+                    
+                    <button
+                      onClick={() => handleMarkAsPaid(item)}
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider transition active:scale-95 shadow-sm flex items-center space-x-1"
+                      title="Marcar como Pago"
+                    >
+                      <Check size={12} strokeWidth={3} />
+                      <span className="hidden sm:inline">Pagar</span>
+                    </button>
                   </div>
                 </div>
               );
@@ -705,88 +456,166 @@ export const Dashboard = () => {
         )}
       </div>
 
-      {/* 5. SEÇÃO TRABALHO & EVENTOS (SHOWS DO MÊS) */}
+      {/* SEÇÃO 3: METAS E RESERVAS (COFRINHOS) */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <PiggyBank size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Poupança e Objetivos</h3>
+              <p className="text-base font-black text-slate-800 dark:text-white">Metas & Cofrinhos</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/metas')}
+            className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:underline flex items-center"
+          >
+            Gerenciar <ChevronRight size={12} className="ml-0.5" />
+          </button>
+        </div>
+
+        {/* Card Resumo do Total em Reservas */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/20 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+              Total Guardado em Reservas
+            </span>
+            <span className="text-lg font-black tabular-nums text-slate-900 dark:text-white mt-0.5 block">
+              {!isBlurred ? formatCurrency(summary.goalsTotal || 0) : 'R$ •••••••'}
+            </span>
+          </div>
+
+          <button
+            onClick={() => handleOpenModal('goal_deposit')}
+            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-wider transition active:scale-95 shadow-md flex items-center space-x-1"
+          >
+            <Plus size={14} strokeWidth={3} />
+            <span>Aporte</span>
+          </button>
+        </div>
+
+        {/* Grid de Metas Ativas (max 2) */}
+        {goals.length === 0 ? (
+          <p className="text-center text-xs font-bold text-slate-400 py-3">
+            Nenhuma meta cadastrada. Clique em gerenciar para criar seu primeiro cofrinho.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {goals.slice(0, 2).map(goal => {
+              const current = Number(goal.currentAmount) || 0;
+              const target = Number(goal.targetAmount) || 1;
+              const pct = Math.min(100, Math.round((current / target) * 100));
+
+              return (
+                <div 
+                  key={goal.id}
+                  onClick={() => setSelectedGoalDetailId(goal.id)}
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 transition cursor-pointer space-y-2"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-800 dark:text-white truncate">
+                      {goal.name}
+                    </h4>
+                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400">
+                      {pct}%
+                    </span>
+                  </div>
+
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-amber-500 h-2 rounded-full transition-all duration-500" 
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] font-medium text-slate-400">
+                    <span>{!isBlurred ? formatCurrency(current) : '••••'}</span>
+                    <span>Meta: {!isBlurred ? formatCurrency(target) : '••••'}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* SEÇÃO 4: RENDA VARIÁVEL / SHOWS DO MÊS */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
               <Music size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Trabalho & Eventos</h3>
-              <p className="text-base font-black text-slate-800 dark:text-white">Shows do Mês ({showsModuleData.showsCount})</p>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Renda Variável</h3>
+              <p className="text-base font-black text-slate-800 dark:text-white">Shows & Eventos do Mês</p>
             </div>
           </div>
 
           <button
             onClick={() => navigate('/shows')}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-wider hover:bg-purple-700 transition active:scale-95 shadow-sm"
+            className="text-[10px] font-black uppercase text-sky-600 dark:text-sky-400 hover:underline flex items-center"
           >
-            <Plus size={13} />
-            <span>Gerenciar Shows</span>
+            Gerenciar Shows <ChevronRight size={12} className="ml-0.5" />
           </button>
         </div>
 
-        {/* Métricas Principais de Cachê do Mês */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div className="p-3.5 rounded-2xl bg-purple-500/5 dark:bg-purple-950/20 border border-purple-500/20">
-            <span className="text-[9px] font-black uppercase text-purple-600 dark:text-purple-400 tracking-wider">Receita Prevista</span>
-            <p className="text-sm sm:text-base font-black text-slate-800 dark:text-white mt-0.5 tabular-nums">
-              {!isBlurred ? formatCurrency(showsModuleData.totalCache) : '••••'}
-            </p>
+        <div className="p-4 rounded-2xl bg-sky-50/50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-sky-900 dark:text-sky-200">
+              {monthlyShowsSummary.count} {monthlyShowsSummary.count === 1 ? 'Show Contratado' : 'Shows Contratados'} no Mês
+            </span>
+            <span className="text-xs font-black text-sky-600 dark:text-sky-400">
+              {monthlyShowsSummary.pctReceived}% Recebido
+            </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20">
-            <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">Valor Recebido</span>
-            <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
-              {!isBlurred ? formatCurrency(showsModuleData.cacheReceived) : '••••'}
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20">
-            <span className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">A Receber</span>
-            <p className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 mt-0.5 tabular-nums">
-              {!isBlurred ? formatCurrency(showsModuleData.cachePending) : '••••'}
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-indigo-500/5 dark:bg-indigo-950/20 border border-indigo-500/20">
-            <span className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">Lucro Líquido</span>
-            <p className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400 mt-0.5 tabular-nums">
-              {!isBlurred ? formatCurrency(showsModuleData.netProfit) : '••••'}
-            </p>
-          </div>
-        </div>
-
-        {/* Barra de Progresso de Cachês Recebidos */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-1.5">
-          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-slate-500">
-            <span>Status dos Cachês ({showsModuleData.receivedPercent}% Pago)</span>
-            <span>{!isBlurred ? formatCurrency(showsModuleData.cacheReceived) : '•••'} de {!isBlurred ? formatCurrency(showsModuleData.totalCache) : '•••'}</span>
-          </div>
-          <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden flex">
+          {/* Progress Bar of Cache received */}
+          <div className="w-full bg-sky-200/60 dark:bg-sky-900/50 rounded-full h-2.5 overflow-hidden">
             <div 
-              className="bg-emerald-500 h-full transition-all duration-700" 
-              style={{ width: `${showsModuleData.receivedPercent}%` }}
-            ></div>
-            <div 
-              className="bg-amber-400 h-full transition-all duration-700" 
-              style={{ width: `${100 - showsModuleData.receivedPercent}%` }}
-            ></div>
+              className="bg-sky-600 dark:bg-sky-400 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${monthlyShowsSummary.pctReceived}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/30">
+              <span className="text-[9px] font-black uppercase text-slate-400 block">Total Cachês</span>
+              <span className="text-xs font-black text-slate-800 dark:text-white tabular-nums">
+                {!isBlurred ? formatCurrency(monthlyShowsSummary.totalContracted) : '••••'}
+              </span>
+            </div>
+
+            <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/30">
+              <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 block">Recebido</span>
+              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                {!isBlurred ? formatCurrency(monthlyShowsSummary.totalReceived) : '••••'}
+              </span>
+            </div>
+
+            <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/30">
+              <span className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 block">A Receber</span>
+              <span className="text-xs font-black text-amber-600 dark:text-amber-400 tabular-nums">
+                {!isBlurred ? formatCurrency(monthlyShowsSummary.totalPending) : '••••'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 6. FLUXO FINANCEIRO (DRE RESUMIDO) */}
+      {/* SEÇÃO 5: FLUXO DO MÊS (REALIZADO VS PROJETADO) */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
             <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <BarChart3 size={20} strokeWidth={2.5} />
+              <PieChart size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Fluxo Financeiro</h3>
-              <p className="text-base font-black text-slate-800 dark:text-white">Balanço do Mês Atual</p>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Balanço do Mês</h3>
+              <p className="text-base font-black text-slate-800 dark:text-white">Realizado vs Projetado</p>
             </div>
           </div>
 
@@ -794,43 +623,90 @@ export const Dashboard = () => {
             onClick={() => navigate('/flow')}
             className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:underline flex items-center"
           >
-            Ver DRE Completo <ChevronRight size={12} className="ml-0.5" />
+            Ver Detalhes <ChevronRight size={12} className="ml-0.5" />
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="p-3.5 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20">
-            <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">Entradas</span>
-            <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
-              {!isBlurred ? formatCurrency(summary.monthlyIncome) : '••••'}
-            </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          
+          {/* PAINEL REALIZADO */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                1. Realizado (Até Hoje)
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/10 text-emerald-600">
+                Efetivado
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Entradas:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {!isBlurred ? formatCurrency(summary.monthlyIncome) : '••••'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Saídas:</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                  {!isBlurred ? formatCurrency(summary.monthlyExpense) : '••••'}
+                </span>
+              </div>
+              <div className="flex justify-between pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 font-black">
+                <span className="text-slate-800 dark:text-slate-200">Resultado Atual:</span>
+                <span className={`tabular-nums ${summary.monthlyIncome - summary.monthlyExpense >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {!isBlurred ? formatCurrency(summary.monthlyIncome - summary.monthlyExpense) : '••••'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/20">
-            <span className="text-[9px] font-black uppercase text-rose-600 dark:text-rose-400 tracking-wider">Saídas</span>
-            <p className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 mt-1 tabular-nums">
-              {!isBlurred ? formatCurrency(summary.monthlyExpense) : '••••'}
-            </p>
+          {/* PAINEL PROJETADO */}
+          <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-indigo-100 dark:border-indigo-900/40">
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                2. Projetado (Fim do Mês)
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                Estimativa
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Entradas Totais:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {!isBlurred ? formatCurrency(summary.monthlyIncome + summary.pendingIncome) : '••••'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Saídas Totais:</span>
+                <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                  {!isBlurred ? formatCurrency(summary.monthlyExpense + summary.pendingExpense) : '••••'}
+                </span>
+              </div>
+              <div className="flex justify-between pt-1.5 border-t border-indigo-100 dark:border-indigo-900/40 font-black">
+                <span className="text-indigo-900 dark:text-indigo-200">Resultado Projetado:</span>
+                <span className={`tabular-nums ${(summary.monthlyIncome + summary.pendingIncome) - (summary.monthlyExpense + summary.pendingExpense) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {!isBlurred ? formatCurrency((summary.monthlyIncome + summary.pendingIncome) - (summary.monthlyExpense + summary.pendingExpense)) : '••••'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className={`p-3.5 rounded-2xl border ${summary.monthlyIncome >= summary.monthlyExpense ? 'bg-indigo-500/5 border-indigo-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
-            <span className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">Resultado</span>
-            <p className={`text-sm sm:text-base font-black mt-1 tabular-nums ${summary.monthlyIncome >= summary.monthlyExpense ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {!isBlurred ? formatCurrency(summary.monthlyIncome - summary.monthlyExpense) : '••••'}
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* 7. ÚLTIMAS MOVIMENTAÇÕES RELEVANTES */}
+      {/* SEÇÃO 6: ÚLTIMAS MOVIMENTAÇÕES */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center">
-              <Clock size={20} strokeWidth={2.5} />
+            <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+              <Receipt size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Extrato Recente</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Atividade Recente</h3>
               <p className="text-base font-black text-slate-800 dark:text-white">Últimas Movimentações</p>
             </div>
           </div>
@@ -844,7 +720,7 @@ export const Dashboard = () => {
         </div>
 
         {recentTransactions.length === 0 ? (
-          <p className="text-center text-xs font-bold text-slate-400 py-6">Nenhuma movimentação registrada.</p>
+          <p className="text-center text-xs font-bold text-slate-400 py-4">Nenhuma movimentação registrada.</p>
         ) : (
           <div className="space-y-2">
             {recentTransactions.map(t => {
@@ -856,16 +732,16 @@ export const Dashboard = () => {
                 <div 
                   key={t.id}
                   onClick={() => navigate('/transactions')}
-                  className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/80 border border-slate-100 dark:border-slate-800 flex items-center justify-between transition-all cursor-pointer"
+                  className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-between transition cursor-pointer"
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-3 min-w-0">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                       isIncome ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
                     }`}>
                       <IconComp size={18} />
                     </div>
-                    <div>
-                      <h4 className="text-xs font-black text-slate-800 dark:text-white truncate max-w-[180px] sm:max-w-[300px]">
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-black text-slate-800 dark:text-white truncate">
                         {t.description || (cat ? cat.name : 'Transação')}
                       </h4>
                       <p className="text-[10px] text-slate-400 font-medium">
@@ -874,9 +750,12 @@ export const Dashboard = () => {
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <span className={`text-xs font-black tabular-nums ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-white'}`}>
+                  <div className="text-right shrink-0 ml-2">
+                    <span className={`text-xs font-black tabular-nums block ${isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-white'}`}>
                       {isIncome ? '+' : '-'}{!isBlurred ? formatCurrency(t.amount) : '••••'}
+                    </span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${t.status === 'paid' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                      {t.status === 'paid' ? 'Pago' : 'Pendente'}
                     </span>
                   </div>
                 </div>
@@ -886,7 +765,7 @@ export const Dashboard = () => {
         )}
       </div>
 
-      {/* 8. ATALHOS PERSONALIZÁVEIS / CONFIGURÁVEIS */}
+      {/* SEÇÃO 7: ACESSOS RÁPIDOS (ATALHOS CONFIGURÁVEIS) */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -894,8 +773,8 @@ export const Dashboard = () => {
               <Sliders size={20} strokeWidth={2.5} />
             </div>
             <div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Acesso Rápido</h3>
-              <p className="text-base font-black text-slate-800 dark:text-white">Atalhos Configuráveis</p>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Atalhos</h3>
+              <p className="text-base font-black text-slate-800 dark:text-white">Acesso Rápido</p>
             </div>
           </div>
 
@@ -911,7 +790,7 @@ export const Dashboard = () => {
         {showShortcutConfig && (
           <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 space-y-2">
             <p className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300 mb-2">
-              Selecione os atalhos que deseja manter no seu painel:
+              Selecione os atalhos exibidos na sua Home:
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {allShortcuts.map(s => {
@@ -941,7 +820,7 @@ export const Dashboard = () => {
             <button
               key={item.id}
               onClick={item.action}
-              className="flex items-center space-x-3 p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 transition-all active:scale-95 group text-left"
+              className="flex items-center space-x-3 p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 transition active:scale-95 group text-left"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 ${item.color}`}>
                 <item.icon size={20} strokeWidth={2.5} />
@@ -954,50 +833,108 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* MODAIS AUXILIARES */}
-      {isTransactionModalOpen && (
-        <TransactionForm
-          onClose={() => setIsTransactionModalOpen(false)}
-          initialType={transactionType}
-          initialCategoryId={transactionCategoryId}
-        />
+      {/* MODAL EXPLICATIVO: SITUAÇÃO DO MÊS */}
+      {isHealthModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <financialHealth.icon size={20} className={financialHealth.color.split(' ')[1]} />
+                <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                  Diagnóstico: {financialHealth.status}
+                </h3>
+              </div>
+              <button onClick={() => setIsHealthModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+              {financialHealth.desc}
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 space-y-2 text-xs border border-slate-100 dark:border-slate-700">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Saldo Disponível Agora:</span>
+                <span className="font-bold tabular-nums">{formatCurrency(summary.realBalance)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Despesas a Pagar (Mês):</span>
+                <span className="font-bold text-rose-600 tabular-nums">-{formatCurrency(summary.pendingExpense)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Receitas a Receber (Mês):</span>
+                <span className="font-bold text-emerald-600 tabular-nums">+{formatCurrency(summary.pendingIncome)}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700 font-black">
+                <span>Resultado Projetado:</span>
+                <span className="tabular-nums">{formatCurrency(summary.projectedBalance)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsHealthModalOpen(false)}
+              className="w-full p-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wider hover:bg-indigo-700 active:scale-95 transition"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
       )}
 
-      {isCalendarOpen && (
-        <CalendarModal
-          isOpen={isCalendarOpen}
-          onClose={() => setIsCalendarOpen(false)}
-          selectedDate={projectionDate}
-          onSelect={(d) => {
-            setProjectionDate(d);
-            setIsCalendarOpen(false);
-          }}
-          title="Selecione a Data de Projeção"
-        />
+      {/* MODAL EXPLICATIVO: LIVRE PARA GASTAR */}
+      {isFreeSpendModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <Info size={20} className="text-indigo-500" />
+                <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                  Como é Calculado?
+                </h3>
+              </div>
+              <button onClick={() => setIsFreeSpendModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+              O valor <strong>Livre para Gastar</strong> é a quantia do seu saldo atual que não está reservada para pagar contas pendentes do mês.
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 space-y-2 text-xs border border-indigo-100 dark:border-indigo-900/40">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Saldo Atual Disponível:</span>
+                <span className="font-bold tabular-nums">{formatCurrency(summary.realBalance)}</span>
+              </div>
+              <div className="flex justify-between text-rose-600">
+                <span>(-) Despesas Pendentes Mês:</span>
+                <span className="font-bold tabular-nums">-{formatCurrency(summary.pendingExpense)}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-indigo-200 dark:border-indigo-800 font-black text-indigo-900 dark:text-indigo-200 text-sm">
+                <span>= Livre para Gastar:</span>
+                <span className="tabular-nums">{formatCurrency(summary.freeToSpend)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsFreeSpendModalOpen(false)}
+              className="w-full p-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wider hover:bg-indigo-700 active:scale-95 transition"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
       )}
 
-      {selectedGoalDetailId && (
-        <GoalDetail
-          goalId={selectedGoalDetailId}
-          onClose={() => setSelectedGoalDetailId(null)}
-        />
-      )}
-
-      {selectedAccountForBalanceEdit && (
-        <AccountBalanceModal
-          account={selectedAccountForBalanceEdit}
-          onClose={() => setSelectedAccountForBalanceEdit(null)}
-        />
-      )}
-
-      {/* Date Projection Modal */}
+      {/* MODAL: PROJEÇÃO DE CAIXA / DATA */}
       {isDateModalOpen && (
         <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-fade-in">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-wider flex items-center">
                 <CalendarDays size={16} className="mr-2 text-indigo-500" />
-                Data de Projeção de Caixa
+                Data Limit de Projeção
               </h3>
               <button onClick={() => setIsDateModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
                 <X size={18} />
@@ -1005,7 +942,7 @@ export const Dashboard = () => {
             </div>
 
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Escolha até qual data deseja calcular todas as receitas e despesas previstas.
+              Selecione até qual data limite deseja calcular o saldo projetado considerando contas a vencer.
             </p>
 
             <input 
@@ -1040,6 +977,42 @@ export const Dashboard = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* AUXILIARY MODALS */}
+      {isTransactionModalOpen && (
+        <TransactionForm
+          onClose={() => setIsTransactionModalOpen(false)}
+          initialType={transactionType}
+          initialCategoryId={transactionCategoryId}
+        />
+      )}
+
+      {isCalendarOpen && (
+        <CalendarModal
+          isOpen={isCalendarOpen}
+          onClose={() => setIsCalendarOpen(false)}
+          selectedDate={projectionDate}
+          onSelect={(d) => {
+            setProjectionDate(d);
+            setIsCalendarOpen(false);
+          }}
+          title="Selecione a Data de Projeção"
+        />
+      )}
+
+      {selectedGoalDetailId && (
+        <GoalDetail
+          goalId={selectedGoalDetailId}
+          onClose={() => setSelectedGoalDetailId(null)}
+        />
+      )}
+
+      {selectedAccountForBalanceEdit && (
+        <AccountBalanceModal
+          account={selectedAccountForBalanceEdit}
+          onClose={() => setSelectedAccountForBalanceEdit(null)}
+        />
       )}
 
     </div>

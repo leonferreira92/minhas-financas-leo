@@ -702,16 +702,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string): ExtendedSummary => {
     const projLimit = new Date(projectionDateStr + 'T23:59:59').getTime();
     const today = new Date();
-    const dayOfMonth = today.getDate();
+    const dayOfMonth = today.getDate() || 1;
     
     const accountsTotal = accounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
     const goalsTotal = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
-    let realBalance = accountsTotal;
+    const realBalance = Number(accountsTotal.toFixed(2));
 
     const operatingAccountsTotal = accounts
       .filter(acc => !(acc.type === 'savings' || acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva')))
       .reduce((s, acc) => s + getAccountBalance(acc.id), 0);
-    let projectedBalance = operatingAccountsTotal;
+    let projectedBalance = Number(operatingAccountsTotal.toFixed(2));
 
     let monthlyIncome = 0, monthlyExpense = 0, pendingIncome = 0, pendingExpense = 0;
 
@@ -727,20 +727,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (t.date.startsWith(viewMonthStr)) {
         if (t.type === 'income') {
-          monthlyIncome += isPaid ? amount : 0;
-          if (!isPaid) pendingIncome += amount;
+          if (isPaid) monthlyIncome += amount;
+          else pendingIncome += amount;
         } else if (t.type === 'expense') {
-          monthlyExpense += isPaid ? amount : 0;
-          if (!isPaid) pendingExpense += amount;
+          if (isPaid) monthlyExpense += amount;
+          else pendingExpense += amount;
         }
       }
     });
 
+    monthlyIncome = Number(monthlyIncome.toFixed(2));
+    monthlyExpense = Number(monthlyExpense.toFixed(2));
+    pendingIncome = Number(pendingIncome.toFixed(2));
+    pendingExpense = Number(pendingExpense.toFixed(2));
+    projectedBalance = Number(projectedBalance.toFixed(2));
+
     // Smart Metrics Calculation
-    const dailyBurnRate = monthlyExpense > 0 ? monthlyExpense / dayOfMonth : 0;
-    const safetyMargin = realBalance - pendingExpense;
-    const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpense) / monthlyIncome) * 100 : 0;
-    const freeToSpend = realBalance + pendingIncome - pendingExpense;
+    const dailyBurnRate = monthlyExpense > 0 ? Number((monthlyExpense / dayOfMonth).toFixed(2)) : 0;
+    const safetyMargin = Number((realBalance - pendingExpense).toFixed(2));
+    const savingsRate = monthlyIncome > 0 ? Number((((monthlyIncome - monthlyExpense) / monthlyIncome) * 100).toFixed(1)) : 0;
+    const freeToSpend = Number((realBalance - pendingExpense).toFixed(2));
 
     return { 
       realBalance: Number(realBalance.toFixed(2)), 
@@ -752,8 +758,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       dailyBurnRate,
       safetyMargin,
       savingsRate,
-      comparisonToLastMonth: 0, // Simplificado para este MVP
-      freeToSpend: Number(freeToSpend.toFixed(2)),
+      comparisonToLastMonth: 0,
+      freeToSpend,
       accountsTotal: Number(accountsTotal.toFixed(2)),
       goalsTotal: Number(goalsTotal.toFixed(2))
     };
