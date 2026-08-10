@@ -16,16 +16,24 @@ import { AlertsScreen } from './components/AlertsScreen';
 import { CalendarScreen } from './components/CalendarScreen';
 import { GoalsScreen } from './components/GoalsScreen';
 import { MusicianShowScreen } from './components/MusicianShowScreen';
+import { PlanningScreen } from './components/PlanningScreen';
 
 const AppContent = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [initialFormType, setInitialFormType] = useState<'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw'>('expense');
+
+  const handleOpenAddWithType = (type: 'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw' = 'expense') => {
+    setInitialFormType(type);
+    setIsAddModalOpen(true);
+  };
 
   return (
-    <Layout onOpenAdd={() => setIsAddModalOpen(true)}>
+    <Layout onOpenAdd={handleOpenAddWithType}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/summary" element={<FinancialSummary />} />
         <Route path="/flow" element={<MonthlyFlow />} />
+        <Route path="/planning" element={<PlanningScreen />} />
         <Route path="/transactions" element={<TransactionList />} />
         <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/debts" element={<DebtList />} />
@@ -39,7 +47,7 @@ const AppContent = () => {
       </Routes>
       
       {isAddModalOpen && (
-        <TransactionForm onClose={() => setIsAddModalOpen(false)} />
+        <TransactionForm initialType={initialFormType} onClose={() => setIsAddModalOpen(false)} />
       )}
     </Layout>
   );
