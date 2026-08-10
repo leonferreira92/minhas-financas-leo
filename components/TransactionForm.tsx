@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { Transaction, TransactionType, TransactionStatus } from '../types';
 import { 
   X, Check, Trash2, Bell, BellRing, Repeat, Copy, Layers, 
-  Sparkles, Loader2, TrendingUp, ArrowRightLeft, Calculator, 
-  AlertTriangle, RefreshCw, Lock, AlertCircle, Calendar as CalendarIcon,
-  ChevronDown, Wallet, Target, Plus, ShieldCheck, DollarSign
+  Sparkles, Loader2, TrendingUp, ArrowRightLeft, 
+  AlertTriangle, Calendar as CalendarIcon,
+  ChevronDown, Wallet, Target, Plus, Search, CheckCircle2,
+  SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { getIcon, parseCurrencyInput } from '../constants';
 import { GeminiService } from '../services/geminiService';
@@ -26,18 +26,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     goals, addGoal, updateGoal
   } = useFinance();
 
-  // Objetivos Inteligentes (Aporte na Receita)
-  const [showSmartAporteModal, setShowSmartAporteModal] = useState(false);
-  const [pendingIncomeData, setPendingIncomeData] = useState<any>(null);
-  const [selectedAporteGoalId, setSelectedAporteGoalId] = useState<string>('');
-  const [aporteAmountStr, setAporteAmountStr] = useState<string>('');
-  const [remainderAccountId, setRemainderAccountId] = useState<string>('');
-  const [isCreatingGoalInline, setIsCreatingGoalInline] = useState(false);
-  const [inlineGoalName, setInlineGoalName] = useState('PC Gamer');
-  const [inlineGoalTarget, setInlineGoalTarget] = useState('4500');
-  const [inlineGoalDeadline, setInlineGoalDeadline] = useState('2026-11-27');
-  const [inlineGoalIcon, setInlineGoalIcon] = useState('Laptop');
-  
+  // Primary Form State
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -49,28 +38,50 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [hasReminder, setHasReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [isFixed, setIsFixed] = useState(false);
+
+  // Progressive Disclosure UI States
+  const [showMoreOptions, setShowMoreOptions] = useState(!!transaction);
+  const [showAllCategoriesModal, setShowAllCategoriesModal] = useState(false);
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [userManuallySetCategory, setUserManuallySetCategory] = useState(false);
+  const [userManuallySetAccount, setUserManuallySetAccount] = useState(false);
+  const [parsedTextInfo, setParsedTextInfo] = useState<{ amount: number; text: string } | null>(null);
+
+  // Modal / Confirm States
   const [showRecurringEditModal, setShowRecurringEditModal] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
   const [baseAmount, setBaseAmount] = useState<number>(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [impact, setImpact] = useState<{ compromisedTransaction: Transaction } | null>(null);
-
-  // Calendar Modal State
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
+  // Objetivos Inteligentes (Aporte na Receita)
+  const [showSmartAporteModal, setShowSmartAporteModal] = useState(false);
+  const [pendingIncomeData, setPendingIncomeData] = useState<any>(null);
+  const [selectedAporteGoalId, setSelectedAporteGoalId] = useState<string>('');
+  const [aporteAmountStr, setAporteAmountStr] = useState<string>('');
+  const [remainderAccountId, setRemainderAccountId] = useState<string>('');
+  const [isCreatingGoalInline, setIsCreatingGoalInline] = useState(false);
+  const [inlineGoalName, setInlineGoalName] = useState('Reserva / Meta');
+  const [inlineGoalTarget, setInlineGoalTarget] = useState('5000');
+  const [inlineGoalDeadline, setInlineGoalDeadline] = useState('2026-12-31');
+  const [inlineGoalIcon, setInlineGoalIcon] = useState('Target');
+
+  // Initial Account Assignment
   useEffect(() => {
     if (!accountId && accounts.length > 0) {
       setAccountId(accounts[0].id);
     }
   }, [accounts]);
 
+  // Load existing transaction for editing
   useEffect(() => {
     if (transaction) {
       setType(transaction.type);
       setAmount(transaction.amount.toString());
       if (transaction.debtId) {
-          const originalBase = transaction.amount - (transaction.interest || 0);
-          setBaseAmount(originalBase);
+        const originalBase = transaction.amount - (transaction.interest || 0);
+        setBaseAmount(originalBase);
       }
       setDescription(transaction.description);
       setCategoryId(transaction.categoryId);
@@ -85,9 +96,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (transaction.isFixed) {
         setIsFixed(true);
       }
+      setShowMoreOptions(true);
     }
   }, [transaction]);
 
+  // Financial impact calculation for expenses
   useEffect(() => {
     const val = parseCurrencyInput(amount);
     if (type === 'expense' && val > 0) {
@@ -98,15 +111,13 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     }
   }, [amount, date, type, checkTransactionImpact]);
 
-  // Hook to check for future dates on NEW transactions
+  // Handle Date Selection (Auto-set status for new transactions based on date)
   const handleDateSelect = (newDate: string) => {
     setDate(newDate);
-    // Only auto-change status if creating a new transaction
     if (!transaction) {
       const selected = new Date(newDate + 'T12:00:00');
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Normalize today to midnight
-      
+      today.setHours(0, 0, 0, 0);
       if (selected > today) {
         setStatus('pending');
       } else {
@@ -115,6 +126,155 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     }
   };
 
+  // ==========================================
+  // 1. INTERPRETAÇÃO DE TEXTO E VALOR ("Almoço 35")
+  // ==========================================
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setDescription(val);
+
+    // Só tenta extrair valor do texto se não estiver editando transação e o campo amount estiver vazio ou originado de parser
+    if (!transaction) {
+      // Regex para encontrar número no final do texto (ex: "Almoço 35", "Gasolina 120,50", "Internet R$ 99,90")
+      const match = val.match(/^(.+?)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)$/i);
+      if (match) {
+        const cleanText = match[1].trim();
+        const extractedNumStr = match[2].replace(',', '.');
+        const numVal = parseFloat(extractedNumStr);
+
+        if (!isNaN(numVal) && numVal > 0) {
+          if (!amount || parsedTextInfo !== null) {
+            setAmount(numVal.toString());
+            setParsedTextInfo({ amount: numVal, text: cleanText });
+          }
+        }
+      } else if (parsedTextInfo !== null && !val.trim()) {
+        setParsedTextInfo(null);
+      }
+    }
+  };
+
+  // ==========================================
+  // 2. MEMÓRIA OPERACIONAL & SUGESTÕES INTELIGENTES
+  // ==========================================
+  // Analisa histórico de transações para encontrar padrão para a descrição informada
+  const smartSuggestion = useMemo(() => {
+    const cleanDesc = description.trim().toLowerCase();
+    if (!cleanDesc || cleanDesc.length < 2) return null;
+
+    // Filtra transações correspondentes no histórico
+    const matches = transactions.filter(t => {
+      const tDesc = t.description.toLowerCase();
+      return tDesc === cleanDesc || tDesc.includes(cleanDesc) || cleanDesc.includes(tDesc);
+    });
+
+    if (matches.length === 0) return null;
+
+    // Conta frequências de categoria e conta
+    const categoryCounts: Record<string, number> = {};
+    const accountCounts: Record<string, number> = {};
+    let fixedCount = 0;
+
+    matches.forEach(t => {
+      if (t.categoryId) {
+        categoryCounts[t.categoryId] = (categoryCounts[t.categoryId] || 0) + 1;
+      }
+      if (t.accountId) {
+        accountCounts[t.accountId] = (accountCounts[t.accountId] || 0) + 1;
+      }
+      if (t.isFixed) fixedCount++;
+    });
+
+    // Pega a categoria mais frequente
+    let bestCatId = '';
+    let maxCatCount = 0;
+    Object.entries(categoryCounts).forEach(([catId, count]) => {
+      if (count > maxCatCount) {
+        maxCatCount = count;
+        bestCatId = catId;
+      }
+    });
+
+    // Pega a conta mais frequente
+    let bestAccId = '';
+    let maxAccCount = 0;
+    Object.entries(accountCounts).forEach(([accId, count]) => {
+      if (count > maxAccCount) {
+        maxAccCount = count;
+        bestAccId = accId;
+      }
+    });
+
+    const isLikelyFixed = fixedCount / matches.length >= 0.5;
+
+    const suggestedCat = categories.find(c => c.id === bestCatId);
+    const suggestedAcc = accounts.find(a => a.id === bestAccId);
+
+    return {
+      categoryId: bestCatId,
+      categoryName: suggestedCat?.name || '',
+      categoryIcon: suggestedCat?.icon || '',
+      accountId: bestAccId,
+      accountName: suggestedAcc?.name || '',
+      isLikelyFixed,
+      matchCount: matches.length
+    };
+  }, [description, transactions, categories, accounts]);
+
+  // Pré-preenchimento automático inteligente com base na sugestão (quando o usuário não alterou manualmente)
+  useEffect(() => {
+    if (!transaction && smartSuggestion) {
+      if (smartSuggestion.categoryId && !userManuallySetCategory) {
+        setCategoryId(smartSuggestion.categoryId);
+      }
+      if (smartSuggestion.accountId && !userManuallySetAccount) {
+        setAccountId(smartSuggestion.accountId);
+      }
+      if (smartSuggestion.isLikelyFixed && !isFixed) {
+        setIsFixed(true);
+      }
+    }
+  }, [smartSuggestion, userManuallySetCategory, userManuallySetAccount, transaction]);
+
+  // ==========================================
+  // 3. RANKING DE CATEGORIAS (RECÊNCIA + FREQUÊNCIA)
+  // ==========================================
+  const rankedCategories = useMemo(() => {
+    const activeCats = categories.filter(c => c.type === type);
+    const now = new Date().getTime();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+    // Calcula score para cada categoria com base no histórico
+    const scores: Record<string, number> = {};
+
+    transactions.forEach(t => {
+      if (t.categoryId) {
+        const isRecent = (now - t.createdAt) < thirtyDaysMs;
+        scores[t.categoryId] = (scores[t.categoryId] || 0) + (isRecent ? 3 : 1);
+      }
+    });
+
+    // Se houver uma categoria sugerida pelo histórico, ela ganha grande prioridade
+    if (smartSuggestion?.categoryId) {
+      scores[smartSuggestion.categoryId] = (scores[smartSuggestion.categoryId] || 0) + 100;
+    }
+
+    return [...activeCats].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+  }, [categories, type, transactions, smartSuggestion]);
+
+  // Top 4 categorias para a barra rápida inicial
+  const topCategories = useMemo(() => rankedCategories.slice(0, 4), [rankedCategories]);
+
+  // Categorias filtradas para a busca no modal
+  const searchedCategories = useMemo(() => {
+    if (!categorySearchTerm.trim()) return rankedCategories;
+    const term = categorySearchTerm.toLowerCase();
+    return rankedCategories.filter(c => c.name.toLowerCase().includes(term));
+  }, [rankedCategories, categorySearchTerm]);
+
+  // ==========================================
+  // HANDLERS E SUBMISSÃO
+  // ==========================================
   const diffAmount = useMemo(() => {
     if (!transaction?.debtId) return 0;
     const currentVal = parseCurrencyInput(amount);
@@ -124,13 +284,26 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
   const isAmountInvalid = transaction?.debtId && diffAmount < -0.01;
 
-  const handleSmartFill = async () => {
+  const handleSelectCategory = (id: string) => {
+    setCategoryId(id);
+    setUserManuallySetCategory(true);
+  };
+
+  const handleSelectAccount = (id: string) => {
+    setAccountId(id);
+    setUserManuallySetAccount(true);
+  };
+
+  const handleSmartFillWithAI = async () => {
     if (!description || description.length < 3) return;
     setIsPredicting(true);
     const prediction = await GeminiService.predictTransaction(description, transactions, categories);
     setIsPredicting(false);
     if (prediction) {
-      if (prediction.categoryId) setCategoryId(prediction.categoryId);
+      if (prediction.categoryId) {
+        setCategoryId(prediction.categoryId);
+        setUserManuallySetCategory(true);
+      }
       if (prediction.type) setType(prediction.type as TransactionType);
       if (prediction.amount && prediction.amount > 0) setAmount(prediction.amount.toString());
     }
@@ -139,9 +312,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleReminderToggle = () => {
     setHasReminder(!hasReminder);
     if (!hasReminder && !reminderDate) {
-       const now = new Date();
-       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-       setReminderDate(now.toISOString().slice(0, 16));
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      setReminderDate(now.toISOString().slice(0, 16));
     }
   };
 
@@ -150,35 +323,40 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     const val = parseCurrencyInput(amount);
     
     if (!val || val <= 0 || !description || !accountId) {
-        alert("Preencha todos os campos obrigatórios.");
-        return;
+      alert("Preencha o valor, a descrição e a conta.");
+      return;
     }
 
     if (isAmountInvalid) {
-        alert("Valor inválido para dívida.");
-        return;
+      alert("Valor inválido para dívida.");
+      return;
     }
-    
+
     if (type !== 'transfer' && !categoryId) {
-       alert("Selecione uma categoria.");
-       return;
+      alert("Selecione uma categoria.");
+      return;
     }
 
     if (type === 'transfer') {
-       if (!destinationAccountId) {
-         alert("Selecione a conta de destino.");
-         return;
-       }
-       if (accountId === destinationAccountId) {
-         alert("Contas iguais.");
-         return;
-       }
+      if (!destinationAccountId) {
+        alert("Selecione a conta de destino.");
+        return;
+      }
+      if (accountId === destinationAccountId) {
+        alert("A conta de origem e destino devem ser diferentes.");
+        return;
+      }
     }
 
     const data: any = {
-      type, amount: val, description, categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
-      accountId, destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
-      date, status,
+      type, 
+      amount: val, 
+      description, 
+      categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
+      accountId, 
+      destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
+      date, 
+      status,
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
@@ -187,13 +365,13 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     if (transaction) {
       if (transaction.debtId) {
-         updateDebtTransaction({ ...transaction, ...data }, false);
-         onClose();
+        updateDebtTransaction({ ...transaction, ...data }, false);
+        onClose();
       } else if (transaction.fixedGroupId) {
-         setShowRecurringEditModal(true);
+        setShowRecurringEditModal(true);
       } else {
-         updateTransactionSeries({ ...transaction, ...data }, false);
-         onClose();
+        updateTransactionSeries({ ...transaction, ...data }, false);
+        onClose();
       }
     } else {
       if (type === 'income' && status === 'paid' && val > 0) {
@@ -211,6 +389,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     }
   };
 
+  // Smart Aporte Handlers
   const handleSkipAporte = () => {
     if (pendingIncomeData) {
       addTransaction(pendingIncomeData);
@@ -225,13 +404,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     const totalIncome = Number(pendingIncomeData.amount || 0);
     const destAcc = remainderAccountId || pendingIncomeData.accountId || accounts[0]?.id || '';
 
-    // 1. Registra a receita na conta de destino escolhida pelo usuário
     addTransaction({
       ...pendingIncomeData,
       accountId: destAcc
     });
 
-    // 2. Se o aporte for maior que zero e houver uma meta selecionada, faz o aporte na conta Economias
     const chosenGoal = goals.find(g => g.id === selectedAporteGoalId);
     if (chosenGoal && valAporte > 0) {
       const actualAporte = Math.min(valAporte, totalIncome);
@@ -265,10 +442,10 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     addGoal({
       id: newId,
       name: inlineGoalName.trim(),
-      description: 'Objetivo Inteligente cadastrado via Entrada',
+      description: 'Objetivo Cadastrado via Receita',
       targetAmount: target,
       currentAmount: 0,
-      deadline: inlineGoalDeadline || '2026-11-27',
+      deadline: inlineGoalDeadline || '2026-12-31',
       color: '#3b82f6',
       icon: inlineGoalIcon,
       createdAt: new Date().toISOString()
@@ -294,491 +471,569 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
   const handleDelete = () => { if (transaction) setShowDeleteConfirm(true); };
   const confirmDelete = () => { if (transaction) { deleteTransaction(transaction.id); onClose(); } };
-  const filteredCategories = categories.filter(c => c.type === type);
 
-  // Styles based on Type
-  const themeColor = type === 'expense' ? 'rose' : type === 'income' ? 'emerald' : 'blue';
-  const ThemeIcon = type === 'expense' ? TrendingUp : type === 'income' ? TrendingUp : ArrowRightLeft;
+  // Theme styling based on active transaction type
+  const activeColor = type === 'expense' ? 'rose' : type === 'income' ? 'emerald' : 'blue';
+  const activeBg = type === 'expense' ? 'bg-rose-500' : type === 'income' ? 'bg-emerald-500' : 'bg-blue-500';
+  const activeText = type === 'expense' ? 'text-rose-600 dark:text-rose-400' : type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400';
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-md h-[95dvh] sm:h-auto sm:max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl animate-slide-up flex flex-col relative overflow-hidden">
+      <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
+        <div className="bg-white dark:bg-slate-900 w-full max-w-md h-[95dvh] sm:h-auto sm:max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl animate-slide-up flex flex-col relative overflow-hidden border border-slate-200/50 dark:border-slate-800">
           
-          {/* --- Header / Type Selector --- */}
-          <div className="px-6 pt-6 pb-2 flex justify-between items-center z-20">
-             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full">
-                <button onClick={() => { setType('expense'); setCategoryId(''); }} className={`px-4 py-2 rounded-full text-xs font-black uppercase transition-all active:scale-95 ${type === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Despesa</button>
-                <button onClick={() => { setType('income'); setCategoryId(''); }} className={`px-4 py-2 rounded-full text-xs font-black uppercase transition-all active:scale-95 ${type === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Receita</button>
-                <button onClick={() => { setType('transfer'); setCategoryId(''); setDescription('Transferência'); }} className={`px-4 py-2 rounded-full text-xs font-black uppercase transition-all active:scale-95 ${type === 'transfer' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>Transf.</button>
-             </div>
-             <button onClick={onClose} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-95">
-               <X size={20} className="text-slate-500" />
-             </button>
-          </div>
+          {/* ========================================== */}
+          {/* 1. SELETOR DO TIPO DE TRANSAÇÃO (TOP BAR)  */}
+          {/* ========================================== */}
+          <div className="px-6 pt-5 pb-3 flex justify-between items-center z-20 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="flex bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl w-full max-w-[280px]">
+              <button 
+                type="button"
+                onClick={() => { setType('expense'); setUserManuallySetCategory(false); }} 
+                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <ArrowDownRight size={14} strokeWidth={2.5} />
+                <span>Despesa</span>
+              </button>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pb-32">
-            
-            {/* --- Hero Amount Input --- */}
-            <div className="flex flex-col items-center justify-center py-8 relative">
-               <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>Valor da Transação</span>
-               <div className="flex items-baseline justify-center relative w-full px-8">
-                  <span className={`text-3xl font-black mr-2 ${amount ? (type === 'expense' ? 'text-rose-600' : type === 'income' ? 'text-emerald-600' : 'text-blue-600') : 'text-slate-300'}`}>R$</span>
-                  <input 
-                    type="number" 
-                    step="any" 
-                    min="0" 
-                    value={amount} 
-                    onChange={(e) => setAmount(e.target.value)} 
-                    className={`w-full bg-transparent text-center text-6xl font-black outline-none placeholder:text-slate-200 dark:placeholder:text-slate-800 transition-colors ${type === 'expense' ? 'text-rose-600 caret-rose-600' : type === 'income' ? 'text-emerald-600 caret-emerald-600' : 'text-blue-600 caret-blue-600'}`}
-                    placeholder="0" 
-                    required 
-                    autoFocus={!transaction}
-                  />
-               </div>
-               {transaction?.debtId && diffAmount > 0.01 && (
-                 <div className="mt-2 text-[10px] font-bold text-amber-500 flex items-center bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg">
-                    <TrendingUp size={12} className="mr-1" /> + R$ {diffAmount.toFixed(2)} (Juros)
-                 </div>
-               )}
+              <button 
+                type="button"
+                onClick={() => { setType('income'); setUserManuallySetCategory(false); }} 
+                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <ArrowUpRight size={14} strokeWidth={2.5} />
+                <span>Receita</span>
+              </button>
 
-               {impact && (
-                 <div className="mt-4 mx-8 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50 rounded-2xl flex items-start space-x-3 animate-pulse">
-                    <AlertTriangle className="text-rose-500 shrink-0" size={20} />
-                    <div className="text-left">
-                       <p className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Alerta de Disponibilidade</p>
-                       <p className="text-[11px] font-medium text-rose-500 dark:text-rose-300 leading-tight mt-1">
-                          Esta compra compromete o pagamento da conta <span className="font-bold underline">{impact.compromisedTransaction.description}</span> no dia <span className="font-bold">{new Date(impact.compromisedTransaction.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>.
-                       </p>
-                    </div>
-                 </div>
-               )}
+              <button 
+                type="button"
+                onClick={() => { setType('transfer'); if (!description) setDescription('Transferência'); }} 
+                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'transfer' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                <ArrowRightLeft size={14} strokeWidth={2.5} />
+                <span>Transf.</span>
+              </button>
             </div>
 
-            {/* --- Main Inputs Container --- */}
-            <div className="px-6 space-y-6">
-               
-               {/* Description with AI */}
-               {type !== 'transfer' && (
-                 <div className="relative">
-                    <input 
-                      type="text" 
-                      value={description} 
-                      onChange={(e) => setDescription(e.target.value)} 
-                      className="w-full bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-200 dark:border-slate-800 focus:border-indigo-500 dark:focus:border-indigo-500 px-4 py-4 text-lg font-bold text-slate-800 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 rounded-t-2xl transition-all"
-                      placeholder="Descrição (ex: Almoço)"
-                      required 
-                    />
-                    {!transaction && (
-                      <button 
-                        type="button" 
-                        onClick={handleSmartFill} 
-                        disabled={isPredicting || !description} 
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition disabled:opacity-30 active:scale-95"
-                      >
-                        {isPredicting ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
-                      </button>
-                    )}
-                 </div>
-               )}
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-95 ml-2"
+              title="Fechar"
+            >
+              <X size={20} className="text-slate-500" />
+            </button>
+          </div>
 
-               {/* Grid for Date, Status, Account */}
-               <div className="grid grid-cols-2 gap-3">
-                  <div 
-                    onClick={() => setIsCalendarOpen(true)}
-                    className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex flex-col justify-center cursor-pointer border border-transparent hover:border-indigo-200 transition-all active:scale-95"
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pb-36">
+            
+            {/* ========================================== */}
+            {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA)   */}
+            {/* ========================================== */}
+            <div className="flex flex-col items-center justify-center pt-6 pb-4 relative px-6">
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>
+                {type === 'expense' ? 'Valor da Despesa' : type === 'income' ? 'Valor da Receita' : 'Valor da Transferência'}
+              </span>
+
+              <div className="flex items-baseline justify-center relative w-full">
+                <span className={`text-3xl font-black mr-1.5 ${amount ? activeText : 'text-slate-300 dark:text-slate-700'}`}>
+                  R$
+                </span>
+                <input 
+                  type="number" 
+                  step="any" 
+                  min="0" 
+                  value={amount} 
+                  onChange={(e) => setAmount(e.target.value)} 
+                  className={`w-full bg-transparent text-center text-5xl sm:text-6xl font-black outline-none placeholder:text-slate-200 dark:placeholder:text-slate-800 transition-colors ${activeText}`}
+                  placeholder="0,00" 
+                  required 
+                  autoFocus={!transaction}
+                />
+              </div>
+
+              {/* Tag de interpretação de valor do texto */}
+              {parsedTextInfo && (
+                <div className="mt-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800 flex items-center space-x-1 animate-fade-in">
+                  <Zap size={12} />
+                  <span>Valor extraído do texto: R$ {parsedTextInfo.amount.toFixed(2).replace('.', ',')}</span>
+                </div>
+              )}
+
+              {/* Alerta de Impacto Financeiro */}
+              {impact && (
+                <div className="mt-3 w-full p-3.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start space-x-2.5 animate-pulse">
+                  <AlertTriangle className="text-rose-500 shrink-0 mt-0.5" size={18} />
+                  <div className="text-left">
+                    <p className="text-[11px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Comprometimento de Saldo</p>
+                    <p className="text-[10px] font-medium text-rose-500 dark:text-rose-300 leading-tight mt-0.5">
+                      Esta compra compromete a conta <span className="font-bold underline">{impact.compromisedTransaction.description}</span> do dia {new Date(impact.compromisedTransaction.date + 'T12:00:00').toLocaleDateString('pt-BR')}.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ========================================== */}
+            {/* 3. CAMPO DESCRIÇÃO ("O QUE FOI?")          */}
+            {/* ========================================== */}
+            <div className="px-6 space-y-5">
+              
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={description} 
+                  onChange={handleDescriptionChange} 
+                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200/80 dark:border-slate-700/80 focus:border-indigo-500 dark:focus:border-indigo-500 px-4 py-4 text-base font-bold text-slate-800 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl transition-all shadow-sm"
+                  placeholder={type === 'expense' ? "O que foi? (ex: Almoço, Gasolina 100)" : type === 'income' ? "De onde veio? (ex: Salário, Freelance 500)" : "Descrição da transferência"}
+                  required 
+                />
+                
+                {type !== 'transfer' && !transaction && description.length >= 3 && (
+                  <button 
+                    type="button" 
+                    onClick={handleSmartFillWithAI} 
+                    disabled={isPredicting} 
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition disabled:opacity-30 active:scale-95 flex items-center space-x-1"
+                    title="Análise com IA"
                   >
-                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center">
-                        <CalendarIcon size={10} className="mr-1"/> Data
-                     </span>
-                     <span className="text-sm font-black text-slate-800 dark:text-white truncate">
-                        {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'})}
-                     </span>
+                    {isPredicting ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                  </button>
+                )}
+              </div>
+
+              {/* ========================================== */}
+              {/* 4. CARD DE SUGESTÃO INTELIGENTE & HISTÓRICO*/}
+              {/* ========================================== */}
+              {smartSuggestion && smartSuggestion.matchCount > 0 && type !== 'transfer' && (
+                <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 space-y-2.5 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <History size={15} className="text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                        Sugestão pelo Histórico ({smartSuggestion.matchCount}x)
+                      </span>
+                    </div>
+
+                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                      <CheckCircle2 size={11} />
+                      <span>Pré-preenchido</span>
+                    </span>
                   </div>
 
-                  <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-2xl flex items-center relative">
-                     <select 
-                       value={status} 
-                       onChange={(e) => setStatus(e.target.value as TransactionStatus)} 
-                       className="w-full h-full bg-transparent outline-none font-black text-sm text-slate-800 dark:text-white appearance-none px-3 z-10 cursor-pointer"
-                     >
-                        <option value="paid">{type === 'expense' ? 'Pago' : type === 'transfer' ? 'Realizado' : 'Recebido'}</option>
-                        <option value="pending">Pendente</option>
-                     </select>
-                     <ChevronDown size={16} className="absolute right-4 text-slate-400 pointer-events-none" />
-                     <span className="absolute top-2 left-5 text-[10px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">Status</span>
-                  </div>
-                  
-                  <div className={`col-span-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-2xl flex items-center relative ${type === 'transfer' ? 'border-2 border-indigo-100 dark:border-indigo-900/30' : ''}`}>
-                     <select 
-                       value={accountId} 
-                       onChange={(e) => setAccountId(e.target.value)} 
-                       className="w-full h-full bg-transparent outline-none font-black text-sm text-slate-800 dark:text-white appearance-none pl-10 pr-4 py-4 cursor-pointer"
-                     >
-                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                     </select>
-                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                        <Wallet size={18} />
-                     </div>
-                     <ChevronDown size={16} className="absolute right-4 text-slate-400 pointer-events-none" />
-                     <span className="absolute top-1 left-10 text-[9px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">
-                        {type === 'transfer' ? 'De (Origem)' : 'Conta / Carteira'}
-                     </span>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {smartSuggestion.categoryName && (
+                      <span className="text-[11px] font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700 flex items-center space-x-1">
+                        <span className="text-indigo-500 font-extrabold">Categoria:</span>
+                        <span>{smartSuggestion.categoryName}</span>
+                      </span>
+                    )}
+
+                    {smartSuggestion.accountName && (
+                      <span className="text-[11px] font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700 flex items-center space-x-1">
+                        <span className="text-indigo-500 font-extrabold">Conta:</span>
+                        <span>{smartSuggestion.accountName}</span>
+                      </span>
+                    )}
+
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700 flex items-center space-x-1">
+                      <span className="text-indigo-500 font-extrabold">Status:</span>
+                      <span>{status === 'paid' ? (type === 'expense' ? 'Pago' : 'Recebido') : 'Pendente'}</span>
+                    </span>
                   </div>
 
-                  {type === 'transfer' && (
-                    <div className="col-span-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-2xl flex items-center relative border-2 border-indigo-100 dark:border-indigo-900/30">
-                       <select 
-                         value={destinationAccountId} 
-                         onChange={(e) => setDestinationAccountId(e.target.value)} 
-                         className="w-full h-full bg-transparent outline-none font-black text-sm text-slate-800 dark:text-white appearance-none pl-10 pr-4 py-4 cursor-pointer"
-                       >
-                          <option value="">Selecione...</option>
-                          {accounts.filter(a => a.id !== accountId).map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                       </select>
-                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
-                          <ArrowRightLeft size={18} />
-                       </div>
-                       <ChevronDown size={16} className="absolute right-4 text-slate-400 pointer-events-none" />
-                       <span className="absolute top-1 left-10 text-[9px] font-black text-indigo-500 uppercase tracking-widest pointer-events-none">Para (Destino)</span>
+                  {smartSuggestion.isLikelyFixed && (
+                    <div className="pt-1 flex items-center justify-between text-[10px] text-indigo-700 dark:text-indigo-300 font-medium">
+                      <span>Esta despesa é frequentemente fixa/recorrente.</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsFixed(!isFixed)}
+                        className={`px-2.5 py-1 rounded-lg font-black uppercase text-[9px] border transition ${isFixed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-indigo-600 border-indigo-300'}`}
+                      >
+                        {isFixed ? '✓ Recorrente' : '+ Marcar Recorrente'}
+                      </button>
                     </div>
                   )}
-               </div>
+                </div>
+              )}
 
-               {/* Recurring & Reminder Toggles */}
-               {!transaction && !transaction?.debtId && type !== 'transfer' && (
-                  <div className="flex space-x-3">
-                     <button 
-                       type="button"
-                       onClick={() => setIsFixed(!isFixed)}
-                       className={`flex-1 py-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${isFixed ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}
-                     >
-                        <Repeat size={20} className="mb-1" />
-                        <span className="text-[9px] font-black uppercase">Fixa Mensal</span>
-                     </button>
-                     
-                     <button 
-                       type="button"
-                       onClick={handleReminderToggle}
-                       className={`flex-1 py-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all ${hasReminder ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}
-                     >
-                        {hasReminder ? <BellRing size={20} className="mb-1" /> : <Bell size={20} className="mb-1" />}
-                        <span className="text-[9px] font-black uppercase">Lembrete</span>
-                     </button>
+              {/* ========================================== */}
+              {/* 5. CATEGORIAS RECENTES & BOTÃO VER TODAS   */}
+              {/* ========================================== */}
+              {type !== 'transfer' && (
+                <div className="space-y-2.5">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Categorias Sugeridas & Recentes
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowAllCategoriesModal(true)}
+                      className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
+                    >
+                      <span>Ver todas</span>
+                      <ChevronDown size={14} className="-rotate-90" />
+                    </button>
                   </div>
-               )}
 
-               {hasReminder && (
-                  <div className="animate-fade-in">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 ml-1">Data Hora do Lembrete</label>
-                     <input type="datetime-local" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="w-full px-4 py-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none font-bold" />
+                  {/* Chips Rápidos Horizontal */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {topCategories.map(cat => {
+                      const Icon = getIcon(cat.icon);
+                      const isSelected = categoryId === cat.id;
+
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => handleSelectCategory(cat.id)}
+                          className={`p-3 rounded-2xl border-2 flex items-center space-x-2.5 transition-all text-left active:scale-95 ${isSelected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-white shadow-md font-extrabold' : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-300'}`}
+                        >
+                          <div 
+                            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                            style={{ backgroundColor: cat.color || '#6366f1' }}
+                          >
+                            <Icon size={16} />
+                          </div>
+                          <span className="text-xs font-bold truncate">{cat.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-               )}
+                </div>
+              )}
 
-               {/* Category Grid */}
-               {type !== 'transfer' && (
-                 <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Categoria</label>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                        {filteredCategories.map(cat => {
-                          const Icon = getIcon(cat.icon);
-                          const isSelected = categoryId === cat.id;
-                          return (
-                            <button 
-                              key={cat.id} 
-                              type="button" 
-                              onClick={() => setCategoryId(cat.id)} 
-                              className={`flex flex-col items-center justify-center p-2 rounded-2xl transition-all aspect-square active:scale-95 ${isSelected ? `bg-slate-800 dark:bg-white text-white dark:text-slate-900 shadow-xl scale-110 z-10` : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                            >
-                              <Icon size={20} className="mb-1.5" />
-                              <span className="text-[8px] font-bold text-center leading-tight line-clamp-1 w-full">{cat.name}</span>
-                            </button>
-                          );
-                        })}
+              {/* ========================================== */}
+              {/* 6. CAMPO CONTA ORIGEM & DESTINO            */}
+              {/* ========================================== */}
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">
+                  {type === 'transfer' ? 'Contas da Transferência' : 'Conta Utilizada'}
+                </span>
+
+                <div className="grid grid-cols-1 gap-2.5">
+                  {/* Conta Origem */}
+                  <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-2xl flex items-center relative border border-slate-200/80 dark:border-slate-700/80">
+                    <select 
+                      value={accountId} 
+                      onChange={(e) => handleSelectAccount(e.target.value)} 
+                      className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 dark:text-white appearance-none pl-10 pr-8 py-3 cursor-pointer"
+                    >
+                      {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                    </select>
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                      <Wallet size={18} />
                     </div>
-                 </div>
-               )}
+                    <ChevronDown size={16} className="absolute right-3 text-slate-400 pointer-events-none" />
+                    <span className="absolute top-1 left-10 text-[8px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">
+                      {type === 'transfer' ? 'De (Origem)' : 'Carteira / Conta'}
+                    </span>
+                  </div>
+
+                  {/* Conta Destino (Apenas para Transferência) */}
+                  {type === 'transfer' && (
+                    <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-2xl flex items-center relative border-2 border-indigo-200 dark:border-indigo-900/50">
+                      <select 
+                        value={destinationAccountId} 
+                        onChange={(e) => setDestinationAccountId(e.target.value)} 
+                        className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 dark:text-white appearance-none pl-10 pr-8 py-3 cursor-pointer"
+                      >
+                        <option value="">Selecione o destino...</option>
+                        {accounts.filter(a => a.id !== accountId).map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                      </select>
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
+                        <ArrowRightLeft size={18} />
+                      </div>
+                      <ChevronDown size={16} className="absolute right-3 text-slate-400 pointer-events-none" />
+                      <span className="absolute top-1 left-10 text-[8px] font-black text-indigo-500 uppercase tracking-widest pointer-events-none">Para (Destino)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ========================================== */}
+              {/* 7. PROGRESSIVE DISCLOSURE: + MAIS OPÇÕES   */}
+              {/* ========================================== */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMoreOptions(!showMoreOptions)}
+                  className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 border border-slate-200/50 dark:border-slate-700/50 active:scale-98"
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>{showMoreOptions ? '- Ocultar Detalhes' : '+ Mais Opções (Data, Status, Recorrência...)'}</span>
+                </button>
+
+                {showMoreOptions && (
+                  <div className="mt-4 space-y-4 animate-fade-in p-4 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+                    
+                    {/* Data e Status Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      
+                      {/* Data */}
+                      <div 
+                        onClick={() => setIsCalendarOpen(true)}
+                        className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl flex flex-col justify-center cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition"
+                      >
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center">
+                          <CalendarIcon size={12} className="mr-1 text-indigo-500"/> Data
+                        </span>
+                        <span className="text-xs font-black text-slate-800 dark:text-white truncate">
+                          {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'})}
+                        </span>
+                      </div>
+
+                      {/* Status */}
+                      <div className="bg-white dark:bg-slate-800 p-2 rounded-2xl flex items-center relative border border-slate-200 dark:border-slate-700">
+                        <select 
+                          value={status} 
+                          onChange={(e) => setStatus(e.target.value as TransactionStatus)} 
+                          className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 dark:text-white appearance-none px-3 pt-3 cursor-pointer"
+                        >
+                          <option value="paid">{type === 'expense' ? 'Pago' : type === 'transfer' ? 'Realizado' : 'Recebido'}</option>
+                          <option value="pending">{type === 'expense' ? 'Pendente' : 'Previsto'}</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 text-slate-400 pointer-events-none" />
+                        <span className="absolute top-1.5 left-3 text-[8px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">Status</span>
+                      </div>
+
+                    </div>
+
+                    {/* Recorrência / Lembrete */}
+                    {!transaction && !transaction?.debtId && type !== 'transfer' && (
+                      <div className="flex space-x-3 pt-1">
+                        <button 
+                          type="button"
+                          onClick={() => setIsFixed(!isFixed)}
+                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${isFixed ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-extrabold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400'}`}
+                        >
+                          <Repeat size={16} />
+                          <span className="text-[10px] font-black uppercase">Fixa Mensal</span>
+                        </button>
+                        
+                        <button 
+                          type="button"
+                          onClick={handleReminderToggle}
+                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${hasReminder ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-extrabold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400'}`}
+                        >
+                          {hasReminder ? <BellRing size={16} /> : <Bell size={16} />}
+                          <span className="text-[10px] font-black uppercase">Lembrete</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Data/Hora do Lembrete */}
+                    {hasReminder && (
+                      <div className="animate-fade-in pt-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                          Data e Hora do Lembrete
+                        </label>
+                        <input 
+                          type="datetime-local" 
+                          value={reminderDate} 
+                          onChange={(e) => setReminderDate(e.target.value)} 
+                          className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none font-bold" 
+                        />
+                      </div>
+                    )}
+
+                  </div>
+                )}
+              </div>
+
             </div>
           </form>
 
-          {/* --- Floating Footer Actions --- */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-900 dark:via-slate-900 z-30 flex items-center space-x-4">
-             {transaction && (
-                <button 
-                  type="button" 
-                  onClick={handleDelete} 
-                  className="w-16 h-16 rounded-[1.5rem] bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition active:scale-90"
-                >
-                   <Trash2 size={24} />
-                </button>
-             )}
-             <button 
-               onClick={handleSubmit} 
-               disabled={isAmountInvalid}
-               className={`flex-1 h-16 rounded-[1.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-3 text-white ${isAmountInvalid ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed' : 'bg-lime-500 hover:bg-lime-600 dark:bg-lime-600 dark:hover:bg-lime-500 text-slate-900 shadow-lime-200 dark:shadow-none'}`}
-             >
-                <Check size={24} strokeWidth={3} />
-                <span>{transaction ? 'Salvar' : 'Confirmar'}</span>
-             </button>
+          {/* ========================================== */}
+          {/* 8. BOTÃO CONFIRMAR (FIXO NO BOTTOM)        */}
+          {/* ========================================== */}
+          <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-900 dark:via-slate-900 z-30 flex items-center space-x-3 border-t border-slate-100 dark:border-slate-800/80">
+            {transaction && (
+              <button 
+                type="button" 
+                onClick={handleDelete} 
+                className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition active:scale-90 shrink-0 border border-rose-200/60 dark:border-rose-900/40"
+                title="Excluir Lançamento"
+              >
+                <Trash2 size={22} />
+              </button>
+            )}
+
+            <button 
+              onClick={handleSubmit} 
+              disabled={isAmountInvalid}
+              className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-2 text-white ${isAmountInvalid ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed' : activeBg + ' hover:opacity-90 shadow-indigo-500/20'}`}
+            >
+              <Check size={20} strokeWidth={3} />
+              <span>{transaction ? 'Salvar Alterações' : 'Confirmar e Salvar'}</span>
+            </button>
           </div>
 
-          {/* Delete Confirmation Overlay */}
+          {/* Modal de Confirmação de Exclusão */}
           {showDeleteConfirm && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-sm animate-fade-in">
-                <div className="text-center p-8">
-                    <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-                       <Trash2 size={32} />
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Excluir Lançamento?</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium max-w-[200px] mx-auto">Essa ação não pode ser desfeita.</p>
-                    <div className="flex space-x-4 justify-center">
-                        <button onClick={() => setShowDeleteConfirm(false)} className="px-6 py-3 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 rounded-xl text-xs uppercase tracking-wider">Cancelar</button>
-                        <button onClick={confirmDelete} className="px-8 py-3 text-white font-bold bg-rose-500 rounded-xl shadow-lg shadow-rose-200 dark:shadow-none text-xs uppercase tracking-wider">Sim, Excluir</button>
-                    </div>
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm animate-fade-in p-6 text-center">
+              <div>
+                <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Trash2 size={28} />
                 </div>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">Excluir Lançamento?</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">Essa ação não pode ser desfeita.</p>
+                <div className="flex space-x-3 justify-center">
+                  <button onClick={() => setShowDeleteConfirm(false)} className="px-5 py-3 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 rounded-xl text-xs uppercase">Cancelar</button>
+                  <button onClick={confirmDelete} className="px-6 py-3 text-white font-bold bg-rose-600 rounded-xl text-xs uppercase shadow-lg">Excluir</button>
+                </div>
+              </div>
             </div>
           )}
+
         </div>
       </div>
 
-      <CalendarModal 
-         isOpen={isCalendarOpen} 
-         onClose={() => setIsCalendarOpen(false)} 
-         selectedDate={date} 
-         onSelect={handleDateSelect} 
-      />
-
-      {showRecurringEditModal && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
-              <div className="flex justify-center mb-6 text-indigo-600 dark:text-indigo-400"><Layers size={56} /></div>
-              <h3 className="text-xl font-black text-center text-slate-800 dark:text-white mb-2">Editar Recorrência</h3>
-              <p className="text-center text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium">Este é um lançamento recorrente. Como deseja aplicar as mudanças?</p>
-              <div className="space-y-3">
-                 <button onClick={() => handleConfirmRecurringUpdate(false)} className="w-full py-4 px-5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 hover:border-indigo-500 transition-all rounded-2xl flex items-center group"><div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-xl mr-4 text-slate-500 group-hover:text-indigo-600"><Copy size={20} /></div><div className="text-left"><span className="block text-sm font-bold text-slate-800 dark:text-white">Apenas esta</span><span className="block text-[10px] text-slate-400 uppercase font-bold tracking-wider">Somente atual</span></div></button>
-                 <button onClick={() => handleConfirmRecurringUpdate(true)} className="w-full py-4 px-5 bg-indigo-50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-900/30 hover:border-indigo-500 transition-all rounded-2xl flex items-center group"><div className="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-xl mr-4 text-indigo-600"><Layers size={20} /></div><div className="text-left"><span className="block text-sm font-bold text-indigo-900 dark:text-indigo-100">Esta e futuras</span><span className="block text-[10px] text-indigo-400 uppercase font-bold tracking-wider">Daqui para frente</span></div></button>
-                 <button onClick={() => setShowRecurringEditModal(false)} className="w-full py-4 text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest mt-2">Cancelar</button>
+      {/* ========================================== */}
+      {/* MODAL: VER TODAS AS CATEGORIAS             */}
+      {/* ========================================== */}
+      {showAllCategoriesModal && (
+        <div className="fixed inset-0 bg-slate-950/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md h-[80dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-slide-up border border-slate-200 dark:border-slate-800">
+            
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">
+                  {type === 'expense' ? 'Categorias de Despesas' : 'Categorias de Receitas'}
+                </span>
+                <h3 className="text-lg font-black text-slate-800 dark:text-white">Selecione uma Categoria</h3>
               </div>
-           </div>
-        </div>
-      )}
-
-      {/* MODAL DE OBJETIVOS INTELIGENTES (APORTE NA ENTRADA DE DINHEIRO) */}
-      {showSmartAporteModal && pendingIncomeData && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[130] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 md:p-8 animate-scale-in">
-            {/* Top Badge & Header */}
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                  <Target size={24} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">
-                    Objetivos Inteligentes
-                  </span>
-                  <h3 className="text-xl font-black text-slate-800 dark:text-white leading-tight">
-                    Quer fazer um aporte?
-                  </h3>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleSkipAporte}
-                className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-all"
+              <button 
+                type="button" 
+                onClick={() => setShowAllCategoriesModal(false)}
+                className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-6 bg-indigo-50/70 dark:bg-indigo-950/40 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
-              Você registrou uma entrada de <strong className="text-slate-900 dark:text-white font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pendingIncomeData.amount)}</strong>. Deseja direcionar parte desse valor para um de seus objetivos na conta <strong className="text-emerald-600 dark:text-emerald-400">Economias</strong>?
+            {/* Barra de Pesquisa de Categorias */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                placeholder="Pesquisar categoria..."
+                value={categorySearchTerm}
+                onChange={(e) => setCategorySearchTerm(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-indigo-500"
+              />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+
+            {/* Grid Scrollável de Categorias */}
+            <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 gap-2.5 pr-1">
+              {searchedCategories.map(cat => {
+                const Icon = getIcon(cat.icon);
+                const isSelected = categoryId === cat.id;
+
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      handleSelectCategory(cat.id);
+                      setShowAllCategoriesModal(false);
+                    }}
+                    className={`p-3.5 rounded-2xl border-2 flex items-center space-x-3 transition-all text-left ${isSelected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-white shadow-md font-extrabold' : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-300'}`}
+                  >
+                    <div 
+                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                      style={{ backgroundColor: cat.color || '#6366f1' }}
+                    >
+                      <Icon size={18} />
+                    </div>
+                    <span className="text-xs font-bold truncate">{cat.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Calendar Modal */}
+      <CalendarModal 
+        isOpen={isCalendarOpen} 
+        onClose={() => setIsCalendarOpen(false)} 
+        selectedDate={date} 
+        onSelect={handleDateSelect} 
+      />
+
+      {/* Recurring Edit Modal */}
+      {showRecurringEditModal && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in text-center">
+            <div className="flex justify-center mb-4 text-indigo-600"><Layers size={48} /></div>
+            <h3 className="text-lg font-black text-slate-800 dark:text-white mb-1">Editar Recorrência</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">Este é um lançamento recorrente. Como deseja aplicar as mudanças?</p>
+            <div className="space-y-2">
+              <button onClick={() => handleConfirmRecurringUpdate(false)} className="w-full py-3 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"><Copy size={18} className="text-slate-500" /><div><span className="block text-xs font-bold text-slate-800 dark:text-white">Apenas esta</span><span className="block text-[9px] text-slate-400 font-bold uppercase">Somente a atual</span></div></button>
+              <button onClick={() => handleConfirmRecurringUpdate(true)} className="w-full py-3 px-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"><Layers size={18} className="text-indigo-600" /><div><span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100">Esta e futuras</span><span className="block text-[9px] text-indigo-400 font-bold uppercase">Daqui para frente</span></div></button>
+              <button onClick={() => setShowRecurringEditModal(false)} className="w-full py-3 text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest mt-1">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Objetivos Inteligentes (Aporte na Receita) */}
+      {showSmartAporteModal && pendingIncomeData && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[130] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 animate-scale-in">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg">
+                  <Target size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-indigo-500">Objetivos Inteligentes</span>
+                  <h3 className="text-lg font-black text-slate-800 dark:text-white">Quer fazer um aporte?</h3>
+                </div>
+              </div>
+              <button type="button" onClick={handleSkipAporte} className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400"><X size={18} /></button>
+            </div>
+
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-5 bg-indigo-50/70 dark:bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
+              Você registrou uma receita de <strong className="text-slate-900 dark:text-white">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pendingIncomeData.amount)}</strong>. Deseja direcionar parte desse valor para um objetivo?
             </p>
 
             {!isCreatingGoalInline ? (
-              <div className="space-y-5">
-                {/* 1. SELECIONE O OBJETIVO */}
+              <div className="space-y-4">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                      Qual Objetivo?
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsCreatingGoalInline(true)}
-                      className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
-                    >
-                      <Plus size={13} />
-                      <span>+ Cadastrar Meta (Ex.: PC Gamer)</span>
-                    </button>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-black uppercase text-slate-400">Qual Objetivo?</label>
+                    <button type="button" onClick={() => setIsCreatingGoalInline(true)} className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"><Plus size={12} /><span>+ Nova Meta</span></button>
                   </div>
-                  <select
-                    value={selectedAporteGoalId}
-                    onChange={(e) => setSelectedAporteGoalId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                  >
+                  <select value={selectedAporteGoalId} onChange={(e) => setSelectedAporteGoalId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white">
                     {goals.map(g => (
                       <option key={g.id} value={g.id}>
-                        {g.name} — Meta: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(g.targetAmount)} {g.deadline ? `(Prazo: ${new Date(g.deadline + 'T12:00:00').toLocaleDateString('pt-BR')})` : ''}
+                        {g.name} — Meta: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(g.targetAmount)}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* 2. QUANTO DESEJA APORTAR? */}
                 <div>
-                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                    Quanto? (R$)
-                  </label>
-                  <div className="relative mb-2">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">R$</span>
-                    <input
-                      type="text"
-                      placeholder="0,00"
-                      value={aporteAmountStr}
-                      onChange={(e) => setAporteAmountStr(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-lg font-black text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      onClick={() => setAporteAmountStr('500,00')}
-                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                    >
-                      R$ 500
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAporteAmountStr('1000,00')}
-                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                    >
-                      R$ 1.000
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAporteAmountStr((pendingIncomeData.amount / 2).toFixed(2).replace('.', ','))}
-                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                    >
-                      50%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAporteAmountStr(pendingIncomeData.amount.toFixed(2).replace('.', ','))}
-                      className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                    >
-                      100% (Tudo)
-                    </button>
-                  </div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Quanto Aportar? (R$)</label>
+                  <input type="text" placeholder="0,00" value={aporteAmountStr} onChange={(e) => setAporteAmountStr(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-base font-black text-slate-800 dark:text-white" />
                 </div>
 
-                {/* 3. CONTA DE DESTINO PARA O RESTANTE */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
-                    <span>Aporte na Meta (Economias):</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-black">
-                      + {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseCurrencyInput(aporteAmountStr))}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
-                    <span>Restante da Entrada:</span>
-                    <span className="text-slate-900 dark:text-white font-black">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.max(0, pendingIncomeData.amount - parseCurrencyInput(aporteAmountStr)))}
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                      Destino do Restante
-                    </label>
-                    <select
-                      value={remainderAccountId}
-                      onChange={(e) => setRemainderAccountId(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-white"
-                    >
-                      {accounts.filter(a => a.type !== 'savings').map(a => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({a.type === 'wallet' ? 'Carteira' : 'Conta Corrente'})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Botões do Modal */}
-                <div className="flex items-center space-x-3 pt-3">
-                  <button
-                    type="button"
-                    onClick={handleSkipAporte}
-                    className="flex-1 py-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
-                  >
-                    ○ Não (Apenas Entrada)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmAporte}
-                    className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-xs font-black uppercase tracking-widest hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg shadow-indigo-500/25 active:scale-95"
-                  >
-                    ○ Sim (Confirmar Aporte)
-                  </button>
+                <div className="flex items-center space-x-2 pt-2">
+                  <button type="button" onClick={handleSkipAporte} className="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase">○ Apenas Entrada</button>
+                  <button type="button" onClick={handleConfirmAporte} className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase shadow-lg">○ Confirmar Aporte</button>
                 </div>
               </div>
             ) : (
-              /* CADASTRO INLINE DE OBJETIVO */
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-black uppercase text-indigo-500">Cadastrar Novo Objetivo</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingGoalInline(false)}
-                    className="text-xs font-bold text-slate-400 hover:text-slate-600"
-                  >
-                    Voltar
-                  </button>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                    Nome do Objetivo
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex.: PC Gamer"
-                    value={inlineGoalName}
-                    onChange={(e) => setInlineGoalName(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                      Meta (R$)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="4500"
-                      value={inlineGoalTarget}
-                      onChange={(e) => setInlineGoalTarget(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                      Prazo
-                    </label>
-                    <input
-                      type="date"
-                      value={inlineGoalDeadline}
-                      onChange={(e) => setInlineGoalDeadline(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 dark:text-white"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCreateInlineGoal}
-                  className="w-full py-3.5 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md mt-2"
-                >
-                  Salvar e Selecionar Objetivo
-                </button>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center"><span className="text-xs font-black text-indigo-500 uppercase">Novo Objetivo</span><button type="button" onClick={() => setIsCreatingGoalInline(false)} className="text-xs font-bold text-slate-400">Voltar</button></div>
+                <input type="text" placeholder="Ex.: Reserva Emergência" value={inlineGoalName} onChange={(e) => setInlineGoalName(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold" />
+                <input type="text" placeholder="Meta R$" value={inlineGoalTarget} onChange={(e) => setInlineGoalTarget(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold" />
+                <button type="button" onClick={handleCreateInlineGoal} className="w-full py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase">Salvar Objetivo</button>
               </div>
             )}
           </div>
