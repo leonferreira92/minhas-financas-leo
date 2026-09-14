@@ -8,6 +8,7 @@ import { AccountBalanceModal } from './AccountBalanceModal';
 import { FinancialOverviewSection } from './FinancialOverviewSection';
 import { HowMuchCanISpendCard } from './HowMuchCanISpendCard';
 import { CostOfLivingSection } from './CostOfLivingSection';
+import { ShowTargetSection } from './ShowTargetSection';
 import { SpendingAveragesSection } from './SpendingAveragesSection';
 import { FinancialInsightsSection } from './FinancialInsightsSection';
 import { FinancialProjectionSection } from './FinancialProjectionSection';
