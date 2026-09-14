@@ -14,7 +14,7 @@ export interface Category {
   type: TransactionType;
   color: string;
   icon: string;
-  classification?: 'essential' | 'personal' | 'future';
+  classification?: 'essential' | 'personal' | 'future' | 'professional';
 }
 
 export interface Budget {
@@ -51,6 +51,8 @@ export interface Debt {
   startDate: string;
   installmentCount: number;
   description?: string;
+  installmentAmount?: number;
+  interestRate?: number;
 }
 
 export interface Transaction {

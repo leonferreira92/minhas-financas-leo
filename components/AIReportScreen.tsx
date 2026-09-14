@@ -4,13 +4,15 @@ import {
   generateFinancialReportForAI, 
   ReportPeriodType, 
   getPeriodDateRange, 
-  formatBRL 
+  formatBRL,
+  formatMonthYearBR
 } from '../services/aiReportService';
 import { 
   Bot, Copy, Check, Download, ExternalLink, Calendar, 
   Sparkles, ShieldCheck, AlertTriangle, ArrowRight, 
   RefreshCw, Wallet, PiggyBank, ArrowDownRight, FileText,
-  ChevronLeft, Info, HelpCircle
+  ChevronLeft, Info, HelpCircle, TrendingUp, CalendarClock,
+  CheckCircle2, AlertOctagon, Scale
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -26,19 +28,24 @@ export const AIReportScreen = () => {
     isBlurred
   } = useFinance();
 
-  const [periodType, setPeriodType] = useState<ReportPeriodType>('current');
+  // PADRÃO SOLICITADO: 'current_plus_6m' (Situação Atual + Próximos 6 Meses)
+  const [periodType, setPeriodType] = useState<ReportPeriodType>('current_plus_6m');
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
     d.setDate(1);
     return d.toISOString().slice(0, 10);
   });
-  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    return d.toISOString().slice(0, 10);
+  });
 
   const [copied, setCopied] = useState(false);
   const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
   const [reportText, setReportText] = useState<string>('');
 
-  // Re-generate report when period or financial data changes
+  // Regenerar relatório
   const handleGenerate = () => {
     const text = generateFinancialReportForAI({
       periodType,
@@ -55,12 +62,12 @@ export const AIReportScreen = () => {
     setReportText(text);
   };
 
-  // Initial generation
+  // Geração inicial e ao mudar dados
   useEffect(() => {
     handleGenerate();
   }, [periodType, customStart, customEnd, transactions, accounts, categories, goals, debts, shows]);
 
-  // Copy to clipboard
+  // Copiar para área de transferência
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(reportText);
@@ -71,7 +78,7 @@ export const AIReportScreen = () => {
     }
   };
 
-  // Export as .TXT file
+  // Exportar como arquivo .TXT
   const handleExportTxt = () => {
     const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -85,19 +92,19 @@ export const AIReportScreen = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Quick action: Copy and open external AI platform
+  // Ação rápida: Copiar e abrir IA externa
   const handleOpenAI = async (url: string) => {
     await handleCopy();
     window.open(url, '_blank');
   };
 
-  // Copy single prompt suggestion
+  // Perguntas sugeridas otimizadas para decisão financeira
   const promptSuggestions = [
-    'Com base neste relatório, posso fazer uma compra de [R$ valor] agora sem comprometer minhas contas?',
-    'Qual é o valor exato que realmente posso gastar livremente nos próximos dias?',
-    'Quais são meus maiores gargalos financeiros e onde posso economizar?',
-    'Como está a lucratividade dos meus shows? Qual é a margem mínima de cachê que devo negociar?',
-    'Quanto preciso faturar no próximo mês para cobrir compromissos e ainda guardar dinheiro no cofrinho?'
+    'Com base neste relatório, posso comprar [R$ valor do item] à vista agora sem me apertar nos próximos meses?',
+    'Qual é o valor exato que realmente posso gastar livremente hoje sem comprometer nenhuma conta futura?',
+    'Quantos shows por mês preciso fazer e qual a margem mínima para manter minhas contas pagas e sem dívidas?',
+    'Quais meses apresentam maior risco de caixa e onde devo concentrar cortes de despesas?',
+    'Faça uma análise crítica da minha capacidade de sobrevivência financeira e me mostre o melhor plano de ação.'
   ];
 
   const handleCopyPrompt = async (prompt: string, idx: number) => {
@@ -110,33 +117,43 @@ export const AIReportScreen = () => {
     }
   };
 
-  // Quick financial snapshot for header pills
+  // Resumo Executivo para os Cards Superiores
   const snapshot = useMemo(() => {
     const operationalAccounts = accounts.filter(
-      a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('cofrinho'))
+      a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
     );
     const available = operationalAccounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
     const reserved = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
-    const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const currentMonthPrefix = todayStr.slice(0, 7);
+
     const pendingMonthExpenses = transactions
-      .filter(t => t.type === 'expense' && t.status === 'pending' && t.date.startsWith(currentMonthPrefix))
+      .filter(t => t.type === 'expense' && t.status === 'pending' && (t.date <= todayStr || t.date.startsWith(currentMonthPrefix)))
       .reduce((s, t) => s + Number(t.amount), 0);
+
     const free = available - pendingMonthExpenses;
-    const netWorth = available + reserved;
+
+    // Dívidas restantes
+    const remainingDebts = debts.reduce((s, d) => {
+      const debtTxs = transactions.filter(t => t.debtId === d.id);
+      const paid = debtTxs.filter(t => t.status === 'paid').reduce((sub, t) => sub + Number(t.amount), 0);
+      return s + Math.max(0, (Number(d.totalAmount) || 0) - paid);
+    }, 0);
 
     return {
       available,
       reserved,
       pending: pendingMonthExpenses,
       free,
-      netWorth
+      remainingDebts
     };
-  }, [accounts, goals, transactions, getAccountBalance]);
+  }, [accounts, goals, transactions, debts, getAccountBalance]);
 
   const activeRange = getPeriodDateRange(periodType, customStart, customEnd);
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-4xl mx-auto">
+    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-4xl mx-auto px-2 sm:px-4">
       
       {/* Top Bar / Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -158,7 +175,7 @@ export const AIReportScreen = () => {
               </h1>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Exportação estruturada em texto puro para análise no ChatGPT, Claude ou Gemini
+              Estrutura rigorosa para análise de decisões no ChatGPT, Claude ou Gemini
             </p>
           </div>
         </div>
@@ -171,7 +188,7 @@ export const AIReportScreen = () => {
             title="Recalcular relatório"
           >
             <RefreshCw size={14} />
-            <span>Atualizar</span>
+            <span className="hidden sm:inline">Atualizar</span>
           </button>
           
           <button
@@ -180,7 +197,7 @@ export const AIReportScreen = () => {
             title="Baixar arquivo TXT"
           >
             <Download size={14} />
-            <span>Exportar .TXT</span>
+            <span className="hidden sm:inline">Exportar .TXT</span>
           </button>
 
           <button
@@ -200,16 +217,16 @@ export const AIReportScreen = () => {
 
       {/* Snapshot Cards Bar: 4 Core Pillars */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {/* 1. Disponível */}
+        {/* 1. Dinheiro Hoje */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Disponível Imediato</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">Dinheiro Hoje</span>
             <Wallet size={14} className="text-indigo-500" />
           </div>
           <span className="text-base font-black text-slate-800 dark:text-white tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.available) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Em contas operacionais</span>
+          <span className="text-[10px] text-slate-400">Em caixa operacional</span>
         </div>
 
         {/* 2. Reservado */}
@@ -221,44 +238,44 @@ export const AIReportScreen = () => {
           <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.reserved) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Em metas e cofrinhos</span>
+          <span className="text-[10px] text-slate-400">Metas & cofrinhos (intocável)</span>
         </div>
 
-        {/* 3. Comprometido */}
+        {/* 3. Compromissos Imediatos */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Comprometido</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">Compromissos</span>
             <ArrowDownRight size={14} className="text-rose-500" />
           </div>
           <span className="text-base font-black text-rose-600 dark:text-rose-400 tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.pending) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Contas do mês a pagar</span>
+          <span className="text-[10px] text-slate-400">A vencer no mês</span>
         </div>
 
-        {/* 4. Saldo Livre */}
+        {/* 4. Caixa Livre Real */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Saldo Livre Real</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">Caixa Livre Real</span>
             <ShieldCheck size={14} className="text-emerald-500" />
           </div>
           <span className={`text-base font-black tabular-nums block ${snapshot.free >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
             {!isBlurred ? formatBRL(snapshot.free) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Após contas do mês</span>
+          <span className="text-[10px] text-slate-400">Após contas imediatas</span>
         </div>
       </div>
 
       {/* Period Selector Panel */}
       <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 mb-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
             <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Escolher Período do Relatório
+              Horizonte de Análise do Relatório
             </h2>
           </div>
-          <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900">
+          <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900 self-start sm:self-auto">
             {activeRange.label}
           </span>
         </div>
@@ -266,12 +283,12 @@ export const AIReportScreen = () => {
         {/* Period Chips */}
         <div className="flex flex-wrap gap-2">
           {[
+            { id: 'current_plus_6m', label: '⭐ Situação Atual + Próximos 6 Meses (Padrão IA)' },
             { id: 'current', label: 'Situação Atual' },
             { id: 'this_month', label: 'Este Mês' },
-            { id: 'last_month', label: 'Mês Anterior' },
-            { id: 'last_30_days', label: 'Últimos 30 dias' },
-            { id: 'last_3_months', label: 'Últimos 3 meses' },
-            { id: 'last_6_months', label: 'Últimos 6 meses' },
+            { id: 'next_month', label: 'Próximo Mês' },
+            { id: 'next_3_months', label: 'Próximos 3 Meses' },
+            { id: 'next_6_months', label: 'Próximos 6 Meses' },
             { id: 'this_year', label: 'Este Ano' },
             { id: 'custom', label: 'Personalizado' },
           ].map(p => {
@@ -324,11 +341,11 @@ export const AIReportScreen = () => {
             <div className="flex items-center space-x-2">
               <Sparkles size={16} className="text-amber-400 animate-pulse" />
               <span className="text-xs font-black uppercase tracking-wider text-indigo-200">
-                Copiar e Abrir Direto na sua IA Favorita
+                Copiar e Abrir Direto na sua IA
               </span>
             </div>
             <p className="text-xs text-slate-300">
-              Copia o relatório financeiro automaticamente para a área de transferência e abre o chat
+              Copia todo o relatório estruturado e abre diretamente o chat da inteligência artificial
             </p>
           </div>
 
@@ -364,11 +381,11 @@ export const AIReportScreen = () => {
           <div className="flex items-center space-x-2">
             <HelpCircle size={16} className="text-purple-600 dark:text-purple-400" />
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Perguntas Prontas para Fazer à IA (Copiar com 1 Clique)
+              Perguntas Prontas para Decisão da IA (Copiar com 1 Clique)
             </h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400">
-            Copia a pergunta já com o relatório colado
+            Copia a pergunta com o relatório já anexado
           </span>
         </div>
 
@@ -408,7 +425,7 @@ export const AIReportScreen = () => {
           <div className="flex items-center space-x-2">
             <FileText size={16} className="text-indigo-400" />
             <span className="text-xs font-black uppercase tracking-wider text-slate-300">
-              Visualização do Texto Puro (Exportação)
+              Visualização do Texto Puro (Exportação Completa)
             </span>
           </div>
 
@@ -424,7 +441,7 @@ export const AIReportScreen = () => {
           <textarea
             readOnly
             value={reportText}
-            rows={18}
+            rows={20}
             className="w-full bg-slate-900/90 text-emerald-300 font-mono text-xs p-4 rounded-xl border border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed select-all selection:bg-indigo-600 selection:text-white"
           />
         </div>
@@ -433,7 +450,7 @@ export const AIReportScreen = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
           <div className="flex items-center space-x-2 text-xs text-slate-400">
             <Info size={14} className="text-indigo-400" />
-            <span>Dica: clique dentro da caixa para selecionar tudo com Ctrl+A (ou use os botões abaixo).</span>
+            <span>Dica: clique dentro da caixa para selecionar tudo com Ctrl+A.</span>
           </div>
 
           <div className="flex items-center space-x-3 w-full sm:w-auto">
