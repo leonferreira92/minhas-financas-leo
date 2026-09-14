@@ -10,10 +10,11 @@ import {
   ChevronRight, Eye, EyeOff, ShieldCheck, AlertTriangle, ShieldAlert, 
   Info, Plus, Music, PiggyBank, Receipt, Sliders, X, 
   CheckCircle2, Clock, ArrowRightLeft, Target, PieChart, Bell, 
-  Sparkles, CalendarDays, Check
+  Sparkles, CalendarDays, Check, Landmark, CreditCard, Pencil
 } from 'lucide-react';
 import { DEFAULT_CATEGORIES } from '../constants';
 import * as Icons from 'lucide-react';
+import { Account, AccountType } from '../types';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +28,9 @@ export const Dashboard: React.FC = () => {
     toggleBlur,
     getBalanceSummary,
     updateTransaction,
-    getSystemAlerts
+    getSystemAlerts,
+    getAccountBalance,
+    addAccount
   } = useFinance();
 
   // Local state for month selection & projection
@@ -44,9 +47,16 @@ export const Dashboard: React.FC = () => {
   
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [selectedGoalDetailId, setSelectedGoalDetailId] = useState<string | null>(null);
-  const [selectedAccountForBalanceEdit, setSelectedAccountForBalanceEdit] = useState<any>(null);
+  const [selectedAccountForBalanceEdit, setSelectedAccountForBalanceEdit] = useState<Account | null>(null);
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [showShortcutConfig, setShowShortcutConfig] = useState(false);
+
+  // New Account Modal State
+  const [isNewAccountModalOpen, setIsNewAccountModalOpen] = useState(false);
+  const [newAccName, setNewAccName] = useState('');
+  const [newAccType, setNewAccType] = useState<AccountType>('bank');
+  const [newAccBalance, setNewAccBalance] = useState('');
+  const [newAccColor, setNewAccColor] = useState('#6366f1');
 
   // Explanatory Modals
   const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
@@ -167,6 +177,50 @@ export const Dashboard: React.FC = () => {
   // Helper for formatting currency
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  };
+
+  // Helper for account icon
+  const getAccountIcon = (accType: AccountType) => {
+    switch (accType) {
+      case 'wallet': return Wallet;
+      case 'bank': return Landmark;
+      case 'savings': return PiggyBank;
+      case 'investment': return CreditCard;
+      default: return Landmark;
+    }
+  };
+
+  const getAccountTypeLabel = (accType: AccountType) => {
+    switch (accType) {
+      case 'bank': return 'Conta Corrente';
+      case 'wallet': return 'Carteira / Dinheiro';
+      case 'savings': return 'Poupança / Reserva';
+      case 'investment': return 'Investimentos';
+      default: return 'Outros';
+    }
+  };
+
+  const accountColors = [
+    '#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', 
+    '#10b981', '#f59e0b', '#ef4444', '#3b82f6'
+  ];
+
+  const handleCreateAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAccName.trim()) return;
+    const initialBal = parseFloat(newAccBalance.replace(',', '.')) || 0;
+    addAccount({
+      name: newAccName.trim(),
+      type: newAccType,
+      color: newAccColor,
+      initialBalance: initialBal,
+      enabled: true
+    });
+    setNewAccName('');
+    setNewAccType('bank');
+    setNewAccBalance('');
+    setNewAccColor('#6366f1');
+    setIsNewAccountModalOpen(false);
   };
 
   // Mark pending expense as paid directly
@@ -375,6 +429,111 @@ export const Dashboard: React.FC = () => {
           </span>
         </div>
 
+      </div>
+
+      {/* SEÇÃO: CONTAS BANCÁRIAS E CARTEIRAS (MINHAS CONTAS) */}
+      <div id="contas-section" className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <Landmark size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Contas & Carteiras</h3>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  {accounts.length} {accounts.length === 1 ? 'conta' : 'contas'}
+                </span>
+              </div>
+              <p className="text-base font-black text-slate-800 dark:text-white">Saldos por Conta</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsNewAccountModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-[10px] font-black uppercase tracking-wider transition active:scale-95 border border-indigo-100 dark:border-indigo-900/50 flex items-center space-x-1"
+            >
+              <Plus size={12} strokeWidth={3} />
+              <span>Nova Conta</span>
+            </button>
+          </div>
+        </div>
+
+        {accounts.length === 0 ? (
+          <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-2 border border-dashed border-slate-200 dark:border-slate-800">
+            <Landmark size={28} className="mx-auto text-slate-400 mb-1" />
+            <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Nenhuma conta cadastrada</p>
+            <p className="text-[11px] text-slate-400 font-medium">Cadastre suas contas bancárias ou carteiras para acompanhar seus saldos reais e fazer conciliação.</p>
+            <button
+              onClick={() => setIsNewAccountModalOpen(true)}
+              className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-wider inline-flex items-center space-x-1 transition"
+            >
+              <Plus size={14} />
+              <span>Adicionar Primeira Conta</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {accounts.map(acc => {
+              const balance = getAccountBalance(acc.id);
+              const AccIcon = getAccountIcon(acc.type);
+              const typeLabel = getAccountTypeLabel(acc.type);
+
+              return (
+                <div
+                  key={acc.id}
+                  onClick={() => setSelectedAccountForBalanceEdit(acc)}
+                  className="group relative p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700/60 transition cursor-pointer space-y-3 shadow-sm hover:shadow active:scale-[0.99]"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                        style={{ backgroundColor: acc.color || '#6366f1' }}
+                      >
+                        <AccIcon size={18} strokeWidth={2.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                          {acc.name}
+                        </h4>
+                        <span className="text-[10px] text-slate-400 font-medium block">
+                          {typeLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedAccountForBalanceEdit(acc);
+                      }}
+                      className="p-1.5 rounded-lg bg-white dark:bg-slate-700 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition shadow-xs"
+                      title="Editar saldo e detalhes"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                      Saldo Atual
+                    </span>
+                    <span className={`text-sm font-black tabular-nums ${balance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {!isBlurred ? formatCurrency(balance) : '••••'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[9px] font-bold text-indigo-600 dark:text-indigo-400 opacity-75 group-hover:opacity-100 transition-opacity">
+                    <span>Clique para editar ou ajustar saldo</span>
+                    <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* SEÇÃO 2: PRÓXIMOS COMPROMISSOS (FLUXO FUTURO) */}
@@ -1013,6 +1172,110 @@ export const Dashboard: React.FC = () => {
           account={selectedAccountForBalanceEdit}
           onClose={() => setSelectedAccountForBalanceEdit(null)}
         />
+      )}
+
+      {/* MODAL: NOVA CONTA */}
+      {isNewAccountModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <Landmark size={20} className="text-indigo-600 dark:text-indigo-400" />
+                <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                  Nova Conta ou Carteira
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsNewAccountModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAccount} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                  Nome da Conta / Banco
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Nubank, Itaú, Carteira..."
+                  value={newAccName}
+                  onChange={e => setNewAccName(e.target.value)}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                    Tipo de Conta
+                  </label>
+                  <select
+                    value={newAccType}
+                    onChange={e => setNewAccType(e.target.value as AccountType)}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="bank">Conta Corrente</option>
+                    <option value="wallet">Carteira (Dinheiro)</option>
+                    <option value="savings">Poupança / Reserva</option>
+                    <option value="investment">Investimentos</option>
+                    <option value="other">Outros</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                    Saldo Inicial (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0,00"
+                    value={newAccBalance}
+                    onChange={e => setNewAccBalance(e.target.value)}
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Cor da Conta
+                </label>
+                <div className="flex items-center space-x-2">
+                  {accountColors.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setNewAccColor(c)}
+                      className={`w-7 h-7 rounded-full transition-transform ${newAccColor === c ? 'scale-125 ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900' : 'hover:scale-110'}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewAccountModalOpen(false)}
+                  className="w-1/2 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-wider hover:bg-slate-200 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 p-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wider hover:bg-indigo-700 active:scale-95 transition shadow-md"
+                >
+                  Salvar Conta
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </div>
