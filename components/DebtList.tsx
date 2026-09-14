@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { DebtForm } from './DebtForm';
 import { DebtDetail } from './DebtDetail';
+import { ActiveDebtsPanel } from './ActiveDebtsPanel';
 
 export const DebtList = () => {
   const { debts, getDebtProgress } = useFinance();
@@ -49,7 +50,7 @@ export const DebtList = () => {
   const displayList = activeTab === 'active' ? stats.active : stats.paid;
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-md mx-auto px-1">
+    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-4xl mx-auto px-2">
       
       {/* Header Superior */}
       <div className="flex justify-between items-end pt-6 mb-8 px-2">
@@ -119,82 +120,84 @@ export const DebtList = () => {
       </div>
 
       {/* Debt List Rendering */}
-      <div className="space-y-5">
-        {displayList.length === 0 ? (
-           <div className="text-center py-24 opacity-30 flex flex-col items-center">
+      {activeTab === 'active' ? (
+        <ActiveDebtsPanel onSelectDebt={(id) => setSelectedDebtId(id)} />
+      ) : (
+        <div className="space-y-5">
+          {stats.paid.length === 0 ? (
+            <div className="text-center py-24 opacity-30 flex flex-col items-center">
               <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                 <CreditCard size={40} className="text-slate-400" />
+                <CreditCard size={40} className="text-slate-400" />
               </div>
-              <p className="text-sm font-black uppercase tracking-widest text-slate-500">Nenhum compromisso {activeTab === 'active' ? 'pendente' : 'quitado'}</p>
-           </div>
-        ) : (
-          displayList.map(debt => {
-            const Icon = getIcon(debt.type);
-            const { remaining, progress, status } = getDebtProgress(debt.id);
-            const isPaid = status === 'paid';
+              <p className="text-sm font-black uppercase tracking-widest text-slate-500">Nenhum compromisso quitado</p>
+            </div>
+          ) : (
+            stats.paid.map(debt => {
+              const Icon = getIcon(debt.type);
+              const { remaining, progress, status } = getDebtProgress(debt.id);
+              const isPaid = true;
 
-            return (
-              <div 
-                key={debt.id} 
-                onClick={() => setSelectedDebtId(debt.id)}
-                className="group bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col active:scale-[0.97] transition-all cursor-pointer relative overflow-hidden"
-              >
-                 {/* Visual Indicator Line */}
-                 <div className={`absolute top-0 left-0 w-2 h-full transition-opacity ${isPaid ? 'bg-emerald-500' : 'bg-indigo-500 opacity-30 group-hover:opacity-100'}`}></div>
+              return (
+                <div 
+                  key={debt.id} 
+                  onClick={() => setSelectedDebtId(debt.id)}
+                  className="group bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col active:scale-[0.97] transition-all cursor-pointer relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500"></div>
 
-                 <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-4">
-                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-sm ${isPaid ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white'}`}>
-                          <Icon size={26} strokeWidth={1.5} />
-                       </div>
-                       <div className="min-w-0">
-                          <h3 className="font-black text-slate-800 dark:text-white text-lg leading-tight truncate">{debt.name}</h3>
-                          <div className="flex items-center space-x-2 mt-1">
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-                                {debt.installmentCount} Parcela(s)
-                             </span>
-                             <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
-                                {debt.type === 'card_installment' ? 'Crédito' : debt.type === 'bank' ? 'Bancário' : 'Outros'}
-                             </span>
-                          </div>
-                       </div>
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-sm bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500">
+                        <Icon size={26} strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-black text-slate-800 dark:text-white text-lg leading-tight truncate">{debt.name}</h3>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                            {debt.installmentCount} Parcela(s)
+                          </span>
+                          <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                            {debt.type === 'card_installment' ? 'Crédito' : debt.type === 'bank' ? 'Bancário' : 'Outros'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
-                       <p className={`text-lg font-black tracking-tight tabular-nums ${isPaid ? 'text-emerald-500' : 'text-slate-800 dark:text-white'}`}>
-                          {isPaid ? 'Quitado' : formatCurrency(remaining)}
-                       </p>
-                       {!isPaid && <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">A pagar</p>}
+                      <p className="text-lg font-black tracking-tight tabular-nums text-emerald-500">
+                        Quitado
+                      </p>
                     </div>
-                 </div>
-                 
-                 <div className="space-y-2">
-                    <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">
-                       <span>Status da Quitação</span>
-                       <span className={isPaid ? 'text-emerald-500' : ''}>{progress.toFixed(0)}%</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[9px] font-black text-emerald-500 uppercase tracking-[0.1em]">
+                      <span>Status da Quitação</span>
+                      <span>100%</span>
                     </div>
                     <div className="w-full bg-slate-50 dark:bg-slate-800 rounded-full h-2 overflow-hidden p-0.5 border border-slate-100 dark:border-slate-800/50">
-                       <div 
-                         className={`h-full rounded-full transition-all duration-700 ${isPaid ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-indigo-500/60'}`} 
-                         style={{ width: `${progress}%` }}
-                       ></div>
+                      <div 
+                        className="h-full rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" 
+                        style={{ width: '100%' }}
+                      ></div>
                     </div>
-                 </div>
+                  </div>
 
-                 <div className="mt-6 pt-5 border-t border-slate-50 dark:border-slate-800/50 flex justify-between items-center">
+                  <div className="mt-6 pt-5 border-t border-slate-50 dark:border-slate-800/50 flex justify-between items-center">
                     <div className="flex items-center space-x-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                       <Calendar size={12} className="text-indigo-400" />
-                       <span>Desde {new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' }).format(new Date(debt.startDate))}</span>
+                      <Calendar size={12} className="text-indigo-400" />
+                      <span>Desde {new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' }).format(new Date(debt.startDate))}</span>
                     </div>
                     <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
-                       <ChevronRight size={18} />
+                      <ChevronRight size={18} />
                     </div>
-                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {isFormOpen && <DebtForm onClose={() => setIsFormOpen(false)} />}
       

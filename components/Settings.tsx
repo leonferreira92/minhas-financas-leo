@@ -8,7 +8,7 @@ import {
   ShieldCheck, Landmark, History, User, Bell, Clock,
   ChevronLeft, LayoutGrid, Database, AppWindow,
   GripVertical, Eye, EyeOff, ArrowUp, ArrowDown, AlertTriangle,
-  LogOut, Zap, PiggyBank
+  LogOut, Zap, PiggyBank, Sliders
 } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { useFinance } from '../context/FinanceContext';
@@ -296,6 +296,20 @@ export const Settings = () => {
                  </div>
                  <span className="text-sm font-bold dark:text-white">{settings.notificationInterval ? `${settings.notificationInterval}h` : 'Desligado'}</span>
               </button>
+
+              {/* Configurações Financeiras */}
+              <Link to="/financial-settings" className="bg-gradient-to-r from-amber-50 to-amber-100/60 dark:from-amber-950/40 dark:to-amber-900/20 p-4 rounded-2xl flex flex-col items-start border border-amber-200/80 dark:border-amber-800/50 transition active:scale-95 col-span-2 flex-row items-center justify-between shadow-xs">
+                 <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs">
+                       <Sliders size={18} />
+                    </div>
+                    <div className="text-left">
+                       <span className="text-sm font-black text-slate-800 dark:text-white block">Configurações Financeiras</span>
+                       <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">Reserva mínima, meses de proteção e categorias</span>
+                    </div>
+                 </div>
+                 <ChevronRight size={18} className="text-amber-500" />
+              </Link>
 
               {/* Categories */}
               <Link to="/categories" className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex flex-col items-start border border-slate-100 dark:border-slate-700 transition active:scale-95 col-span-2 flex-row items-center justify-between">

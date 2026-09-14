@@ -5,6 +5,12 @@ import { TransactionForm } from './TransactionForm';
 import { CalendarModal } from './CalendarModal';
 import { GoalDetail } from './GoalDetail';
 import { AccountBalanceModal } from './AccountBalanceModal';
+import { FinancialOverviewSection } from './FinancialOverviewSection';
+import { HowMuchCanISpendCard } from './HowMuchCanISpendCard';
+import { CostOfLivingSection } from './CostOfLivingSection';
+import { SpendingAveragesSection } from './SpendingAveragesSection';
+import { FinancialInsightsSection } from './FinancialInsightsSection';
+import { FinancialProjectionSection } from './FinancialProjectionSection';
 import { 
   Wallet, TrendingUp, ArrowUpRight, ArrowDownRight, Calendar, 
   ChevronRight, Eye, EyeOff, ShieldCheck, AlertTriangle, ShieldAlert, 
@@ -431,6 +437,24 @@ export const Dashboard: React.FC = () => {
         </div>
 
       </div>
+
+      {/* CARTÃO: POSSO GASTAR QUANTO? */}
+      <HowMuchCanISpendCard />
+
+      {/* SEÇÃO: INSIGHTS FINANCEIROS */}
+      <FinancialInsightsSection />
+
+      {/* SEÇÃO: QUANTO CUSTA MINHA VIDA? */}
+      <CostOfLivingSection />
+
+      {/* SEÇÃO: MÉDIAS DE GASTOS */}
+      <SpendingAveragesSection />
+
+      {/* SEÇÃO: PROJEÇÃO FINANCEIRA */}
+      <FinancialProjectionSection />
+
+      {/* SEÇÃO VISÃO FINANCEIRA */}
+      <FinancialOverviewSection />
 
       {/* SEÇÃO: CONTAS BANCÁRIAS E CARTEIRAS (MINHAS CONTAS) */}
       <div id="contas-section" className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">

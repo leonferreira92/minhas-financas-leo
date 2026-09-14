@@ -5,7 +5,7 @@ import {
   ArrowUpRight, ArrowDownRight, ArrowRightLeft, PiggyBank, 
   Music, CreditCard, TrendingUp, Calendar, Sparkles, 
   Bell, FolderTree, Settings, ChevronRight, PieChart, 
-  Activity, Wallet, ShieldAlert, Layers, Bot
+  Activity, Wallet, ShieldAlert, Layers, Bot, Sliders
 } from 'lucide-react';
 
 interface Props {
@@ -371,6 +371,13 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                     title="Planejamento Mensal"
                     subtitle="Fluxo de caixa e previsões"
                     onClick={() => handleNavigateMore('/flow')}
+                  />
+                  <DrawerMenuItem
+                    icon={Sliders}
+                    iconBg="bg-amber-500/10 text-amber-600"
+                    title="Configurações Financeiras"
+                    subtitle="Reserva mínima e categorias"
+                    onClick={() => handleNavigateMore('/financial-settings')}
                   />
                 </div>
               </div>

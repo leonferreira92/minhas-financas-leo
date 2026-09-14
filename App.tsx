@@ -18,6 +18,7 @@ import { GoalsScreen } from './components/GoalsScreen';
 import { MusicianShowScreen } from './components/MusicianShowScreen';
 import { PlanningScreen } from './components/PlanningScreen';
 import { AIReportScreen } from './components/AIReportScreen';
+import { FinancialSettingsScreen } from './components/FinancialSettingsScreen';
 
 const AppContent = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -43,6 +44,7 @@ const AppContent = () => {
         <Route path="/shows" element={<MusicianShowScreen />} />
         <Route path="/insights" element={<FinancialInsights />} />
         <Route path="/ai-report" element={<AIReportScreen />} />
+        <Route path="/financial-settings" element={<FinancialSettingsScreen />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/categories" element={<CategoryList />} />
         <Route path="*" element={<Navigate to="/" replace />} />
