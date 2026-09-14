@@ -10,7 +10,7 @@ import {
   ChevronRight, Eye, EyeOff, ShieldCheck, AlertTriangle, ShieldAlert, 
   Info, Plus, Music, PiggyBank, Receipt, Sliders, X, 
   CheckCircle2, Clock, ArrowRightLeft, Target, PieChart, Bell, 
-  Sparkles, CalendarDays, Check, Landmark, CreditCard, Pencil
+  Sparkles, CalendarDays, Check, Landmark, CreditCard, Pencil, Bot
 } from 'lucide-react';
 import { DEFAULT_CATEGORIES } from '../constants';
 import * as Icons from 'lucide-react';
@@ -245,6 +245,7 @@ export const Dashboard: React.FC = () => {
     { id: 'transfer', label: 'Transferência', icon: ArrowRightLeft, color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', action: () => handleOpenModal('transfer') },
     { id: 'goal_deposit', label: 'Aporte Cofrinho', icon: PiggyBank, color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', action: () => handleOpenModal('goal_deposit') },
     { id: 'extrato', label: 'Ver Extrato', icon: Receipt, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', action: () => navigate('/transactions') },
+    { id: 'ai_report', label: 'Relatório IA', icon: Bot, color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400', action: () => navigate('/ai-report') },
     { id: 'planning', label: 'Planejamento', icon: Target, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400', action: () => navigate('/planning') },
     { id: 'alerts', label: 'Central Alertas', icon: Bell, color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400', action: () => navigate('/alerts') }
   ];

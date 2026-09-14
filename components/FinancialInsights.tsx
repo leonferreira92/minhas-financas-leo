@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { GeminiService } from '../services/geminiService';
 import { 
@@ -382,6 +383,36 @@ export const FinancialInsights = () => {
   return (
     <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 px-1">
       
+      {/* Banner / Card para o Relatório Financeiro para IA */}
+      <Link
+        to="/ai-report"
+        className="mb-5 p-4 rounded-3xl bg-gradient-to-r from-purple-900/90 via-indigo-900 to-slate-900 text-white flex items-center justify-between shadow-xl border border-indigo-500/30 hover:border-indigo-400 transition-all active:scale-[0.99] group"
+      >
+        <div className="flex items-center space-x-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-purple-300 group-hover:scale-105 transition-transform">
+            <Bot size={22} />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-black uppercase tracking-wider text-purple-200">
+                Novo: Relatório para IA
+              </span>
+              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-black uppercase">
+                Texto Puro
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Exporte seus dados completos estruturados para colar no ChatGPT, Claude ou Gemini
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-1 text-xs font-bold text-indigo-200 group-hover:text-white transition-colors pl-2">
+          <span className="hidden sm:inline">Gerar</span>
+          <ChevronRight size={18} />
+        </div>
+      </Link>
+
       {/* Dynamic Navigation Tabs */}
       <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl mb-6 shadow-xs">
         <button

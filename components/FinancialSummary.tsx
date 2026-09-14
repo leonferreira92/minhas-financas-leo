@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { ChevronLeft, Calendar, TrendingUp, TrendingDown, DollarSign, Wallet, Clock, ArrowRight, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, Calendar, TrendingUp, TrendingDown, DollarSign, Wallet, Clock, ArrowRight, ChevronRight, Download, Bot } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CalendarModal } from './CalendarModal';
 import * as XLSX from 'xlsx';
@@ -75,14 +75,24 @@ export const FinancialSummary = () => {
           </Link>
           <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Resumo Financeiro</h1>
         </div>
-        <button 
-          onClick={exportToExcel}
-          className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-indigo-700 flex items-center space-x-2"
-          title="Exportar Excel"
-        >
-          <Download size={20} />
-          <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Exportar</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <Link 
+            to="/ai-report"
+            className="p-3 bg-purple-600 text-white rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-purple-700 flex items-center space-x-2"
+            title="Relatório para IA"
+          >
+            <Bot size={20} />
+            <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Relatório IA</span>
+          </Link>
+          <button 
+            onClick={exportToExcel}
+            className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg active:scale-95 transition-all hover:bg-indigo-700 flex items-center space-x-2"
+            title="Exportar Excel"
+          >
+            <Download size={20} />
+            <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Exportar</span>
+          </button>
+        </div>
       </div>
 
       {/* --- Section 1: Monthly Flow --- */}

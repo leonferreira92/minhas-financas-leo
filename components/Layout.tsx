@@ -5,7 +5,7 @@ import {
   ArrowUpRight, ArrowDownRight, ArrowRightLeft, PiggyBank, 
   Music, CreditCard, TrendingUp, Calendar, Sparkles, 
   Bell, FolderTree, Settings, ChevronRight, PieChart, 
-  Activity, Wallet, ShieldAlert, Layers
+  Activity, Wallet, ShieldAlert, Layers, Bot
 } from 'lucide-react';
 
 interface Props {
@@ -406,6 +406,13 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 </span>
 
                 <div className="grid grid-cols-1 gap-1.5">
+                  <DrawerMenuItem
+                    icon={Bot}
+                    iconBg="bg-gradient-to-tr from-purple-600 to-indigo-600 text-white"
+                    title="📊 Relatório Financeiro para IA"
+                    subtitle="Exportar texto para análise de IA"
+                    onClick={() => handleNavigateMore('/ai-report')}
+                  />
                   <DrawerMenuItem
                     icon={Sparkles}
                     iconBg="bg-purple-500/10 text-purple-600"
