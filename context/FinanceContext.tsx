@@ -1,9 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, Goal, DashboardWidgetConfig, Show } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, Goal, DashboardWidgetConfig, Show, FinancialSettings } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
-import { APP_THEMES, DEFAULT_CATEGORIES } from '../constants';
+import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -61,6 +61,7 @@ interface FinanceContextType {
 
   getSystemAlerts: () => SystemAlert[];
   updateSettings: (s: Partial<AppSettings>) => void;
+  updateFinancialSettings: (fs: Partial<FinancialSettings>) => void;
   getBalanceSummary: (month: string, projectionDate: string) => ExtendedSummary;
   refreshData: () => void;
   restoreAutoBackup: () => boolean;
@@ -91,7 +92,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     theme: 'light', 
     primaryColor: 'lime', 
     notificationInterval: 12,
-    dashboardLayout: DEFAULT_DASHBOARD_LAYOUT
+    dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
+    financialSettings: DEFAULT_FINANCIAL_SETTINGS
   } as AppSettings);
   const [isBlurred, setIsBlurred] = useState(() => {
     return localStorage.getItem('isBlurred') === 'true';
@@ -347,9 +349,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       StorageService.saveGoals(storedGoals);
     }
     
+    const finalFinancialSettings: FinancialSettings = storedSettings.financialSettings ? {
+      ...DEFAULT_FINANCIAL_SETTINGS,
+      ...storedSettings.financialSettings
+    } : {
+      ...DEFAULT_FINANCIAL_SETTINGS,
+      essentialCategoryIds: finalCategories.filter(c => c.classification === 'essential').map(c => c.id).length > 0 
+        ? finalCategories.filter(c => c.classification === 'essential').map(c => c.id)
+        : DEFAULT_FINANCIAL_SETTINGS.essentialCategoryIds,
+      lifestyleCategoryIds: finalCategories.filter(c => c.classification === 'personal' || c.classification === 'discretionary').map(c => c.id).length > 0
+        ? finalCategories.filter(c => c.classification === 'personal' || c.classification === 'discretionary').map(c => c.id)
+        : DEFAULT_FINANCIAL_SETTINGS.lifestyleCategoryIds,
+      professionalCategoryIds: finalCategories.filter(c => c.classification === 'professional').map(c => c.id).length > 0
+        ? finalCategories.filter(c => c.classification === 'professional').map(c => c.id)
+        : DEFAULT_FINANCIAL_SETTINGS.professionalCategoryIds
+    };
+
     const mergedSettings = {
       ...storedSettings,
-      dashboardLayout: storedSettings.dashboardLayout || DEFAULT_DASHBOARD_LAYOUT
+      dashboardLayout: storedSettings.dashboardLayout || DEFAULT_DASHBOARD_LAYOUT,
+      financialSettings: finalFinancialSettings
     };
     setSettings(mergedSettings);
   };
@@ -365,6 +384,35 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
     StorageService.saveSettings(updated);
+  };
+
+  const updateFinancialSettings = (fs: Partial<FinancialSettings>) => {
+    const currentFs = settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
+    const updatedFs: FinancialSettings = {
+      ...currentFs,
+      ...fs
+    };
+    const updatedSettings: AppSettings = {
+      ...settings,
+      financialSettings: updatedFs
+    };
+    setSettings(updatedSettings);
+    StorageService.saveSettings(updatedSettings);
+
+    if (fs.essentialCategoryIds || fs.lifestyleCategoryIds || fs.professionalCategoryIds) {
+      const ess = new Set(updatedFs.essentialCategoryIds);
+      const life = new Set(updatedFs.lifestyleCategoryIds);
+      const prof = new Set(updatedFs.professionalCategoryIds);
+
+      const updatedCategories = categories.map(cat => {
+        if (ess.has(cat.id)) return { ...cat, classification: 'essential' as const };
+        if (life.has(cat.id)) return { ...cat, classification: 'personal' as const };
+        if (prof.has(cat.id)) return { ...cat, classification: 'professional' as const };
+        return cat;
+      });
+      setCategories(updatedCategories);
+      StorageService.saveCategories(updatedCategories);
+    }
   };
 
   const addAccount = (a: Omit<Account, 'id'>) => saveAccounts([...accounts, { ...a, id: crypto.randomUUID() }]);
@@ -794,7 +842,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addDebt, updateDebt, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget, addGoal, updateGoal, deleteGoal,
       addShow, updateShow, deleteShow,
-      getSystemAlerts, updateSettings, getBalanceSummary, refreshData,
+      getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission
     }}>
       {children}

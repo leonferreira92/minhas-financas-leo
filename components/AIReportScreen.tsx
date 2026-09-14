@@ -12,7 +12,7 @@ import {
   Sparkles, ShieldCheck, AlertTriangle, ArrowRight, 
   RefreshCw, Wallet, PiggyBank, ArrowDownRight, FileText,
   ChevronLeft, Info, HelpCircle, TrendingUp, CalendarClock,
-  CheckCircle2, AlertOctagon, Scale
+  CheckCircle2, AlertOctagon, Scale, Sliders
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,6 +24,7 @@ export const AIReportScreen = () => {
     goals, 
     debts, 
     shows, 
+    settings,
     getAccountBalance,
     isBlurred
   } = useFinance();
@@ -57,6 +58,7 @@ export const AIReportScreen = () => {
       goals,
       debts,
       shows,
+      financialSettings: settings.financialSettings,
       getAccountBalance
     });
     setReportText(text);
@@ -65,7 +67,7 @@ export const AIReportScreen = () => {
   // Geração inicial e ao mudar dados
   useEffect(() => {
     handleGenerate();
-  }, [periodType, customStart, customEnd, transactions, accounts, categories, goals, debts, shows]);
+  }, [periodType, customStart, customEnd, transactions, accounts, categories, goals, debts, shows, settings.financialSettings]);
 
   // Copiar para área de transferência
   const handleCopy = async () => {
@@ -182,6 +184,15 @@ export const AIReportScreen = () => {
 
         {/* Quick Action Badges */}
         <div className="flex items-center space-x-2">
+          <Link
+            to="/financial-settings"
+            className="px-3 py-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
+            title="Configurar reserva mínima e classificação de categorias"
+          >
+            <Sliders size={14} />
+            <span className="hidden sm:inline">Config. Reserva</span>
+          </Link>
+
           <button
             onClick={handleGenerate}
             className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5"

@@ -107,12 +107,21 @@ export interface DashboardWidgetConfig {
   label: string;
 }
 
+export interface FinancialSettings {
+  minReserveAmount: number;           // Reserva mínima desejada em R$
+  targetReserveMonths: number;        // Quantidade de meses de reserva desejada (ex: 3, 6, 12)
+  essentialCategoryIds: string[];     // IDs das categorias consideradas essenciais
+  lifestyleCategoryIds: string[];     // IDs das categorias consideradas estilo de vida / pessoal
+  professionalCategoryIds: string[];  // IDs das categorias consideradas investimentos profissionais
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark';
   primaryColor?: string;
   userName?: string;
   notificationInterval?: number;
   dashboardLayout: DashboardWidgetConfig[];
+  financialSettings?: FinancialSettings;
 }
 
 export interface ShowExpenses {

@@ -1,5 +1,5 @@
 
-import { Category, Account } from './types';
+import { Category, Account, FinancialSettings } from './types';
 import { 
   ShoppingBag, Utensils, Home, Car, HeartPulse, 
   Zap, Smartphone, Briefcase, DollarSign, Coffee,
@@ -97,4 +97,16 @@ export const parseCurrencyInput = (val: string | number | undefined | null): num
   const cleanStr = val.toString().replace(/,/g, '.').replace(/[^\d.-]/g, '');
   const parsed = parseFloat(cleanStr);
   return isNaN(parsed) ? 0 : parsed;
+};
+
+export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
+  minReserveAmount: 5000,
+  targetReserveMonths: 6,
+  essentialCategoryIds: [
+    'cat_1', 'cat_2', 'cat_3', 'cat_21', 'cat_4', 'cat_11', 'cat_12', 'cat_13', 'cat_14', 'cat_26', 'cat_27'
+  ],
+  lifestyleCategoryIds: [
+    'cat_5', 'cat_22', 'cat_9', 'cat_15', 'cat_16', 'cat_17', 'cat_18', 'cat_19', 'cat_23', 'cat_20', 'cat_28', 'cat_29'
+  ],
+  professionalCategoryIds: []
 };

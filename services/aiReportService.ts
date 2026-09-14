@@ -1,4 +1,4 @@
-import { Transaction, Account, Category, Goal, Debt, Show } from '../types';
+import { Transaction, Account, Category, Goal, Debt, Show, FinancialSettings } from '../types';
 
 export type ReportPeriodType = 
   | 'current_plus_6m'  // PADRÃO: Situação Atual + Próximos 6 Meses (Recomendado para Decisão)
@@ -27,6 +27,7 @@ export interface GenerateReportParams {
   goals: Goal[];
   debts: Debt[];
   shows: Show[];
+  financialSettings?: FinancialSettings;
   getAccountBalance: (accountId: string) => number;
 }
 
@@ -335,9 +336,15 @@ export const isDebtExpense = (t: Transaction, debts: Debt[], categories: Categor
 /**
  * 8. INVESTIMENTOS PROFISSIONAIS (Equipamentos de trabalho, ferramentas musicais, instrumentos)
  */
-export const isProfessionalInvestmentExpense = (t: Transaction, categories: Category[]): boolean => {
+export const isProfessionalInvestmentExpense = (
+  t: Transaction, 
+  categories: Category[], 
+  financialSettings?: FinancialSettings
+): boolean => {
   if (t.type !== 'expense') return false;
   if (isTransferMovement(t) || isGoalMovement(t)) return false;
+  
+  if (financialSettings?.professionalCategoryIds?.includes(t.categoryId)) return true;
   if (t.classification === 'professional') return true;
 
   const cat = categories.find(c => c.id === t.categoryId);
@@ -359,15 +366,26 @@ export const isProfessionalInvestmentExpense = (t: Transaction, categories: Cate
  * 9. DESPESAS ESSENCIAIS (Custo básico de vida e subsistência)
  * Aluguel, condomínio, alimentação, água, luz, gás, internet, transporte, saúde, farmácia.
  */
-export const isEssentialExpense = (t: Transaction, categories: Category[], debts: Debt[]): boolean => {
+export const isEssentialExpense = (
+  t: Transaction, 
+  categories: Category[], 
+  debts: Debt[],
+  financialSettings?: FinancialSettings
+): boolean => {
   if (t.type !== 'expense') return false;
   if (isTransferMovement(t) || isGoalMovement(t)) return false;
   if (isDebtExpense(t, debts, categories)) return false;
-  if (isProfessionalInvestmentExpense(t, categories)) return false;
+  if (isProfessionalInvestmentExpense(t, categories, financialSettings)) return false;
 
+  if (financialSettings?.essentialCategoryIds?.includes(t.categoryId)) return true;
   if (t.classification === 'essential') return true;
   const cat = categories.find(c => c.id === t.categoryId);
   if (cat?.classification === 'essential') return true;
+
+  // Se o usuário explicitamente colocou a categoria em Estilo de Vida ou Investimento Profissional, não é essencial
+  if (financialSettings?.lifestyleCategoryIds?.includes(t.categoryId)) return false;
+  if (financialSettings?.professionalCategoryIds?.includes(t.categoryId)) return false;
+  if (cat?.classification === 'personal' || cat?.classification === 'discretionary') return false;
 
   const catName = (cat?.name || '').toLowerCase();
   const essentialKeywords = [
@@ -384,12 +402,17 @@ export const isEssentialExpense = (t: Transaction, categories: Category[], debts
 /**
  * 10. DESPESAS DISCRICIONÁRIAS (Lazer, compras pessoais, restaurantes, supérfluos)
  */
-export const isDiscretionaryExpense = (t: Transaction, categories: Category[], debts: Debt[]): boolean => {
+export const isDiscretionaryExpense = (
+  t: Transaction, 
+  categories: Category[], 
+  debts: Debt[],
+  financialSettings?: FinancialSettings
+): boolean => {
   if (t.type !== 'expense') return false;
   if (isTransferMovement(t) || isGoalMovement(t)) return false;
   if (isDebtExpense(t, debts, categories)) return false;
-  if (isProfessionalInvestmentExpense(t, categories)) return false;
-  if (isEssentialExpense(t, categories, debts)) return false;
+  if (isProfessionalInvestmentExpense(t, categories, financialSettings)) return false;
+  if (isEssentialExpense(t, categories, debts, financialSettings)) return false;
   return true;
 };
 
@@ -408,6 +431,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     goals,
     debts,
     shows,
+    financialSettings,
     getAccountBalance
   } = params;
 
@@ -540,11 +564,11 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   );
   const totalKnownFutureExpenses = futureExpenseTxs.reduce((s, t) => s + Number(t.amount), 0);
 
-  const futureEssentialTotal = futureExpenseTxs.filter(t => isEssentialExpense(t, categories, debts)).reduce((s, t) => s + Number(t.amount), 0);
+  const futureEssentialTotal = futureExpenseTxs.filter(t => isEssentialExpense(t, categories, debts, financialSettings)).reduce((s, t) => s + Number(t.amount), 0);
   const futureDebtTotal = futureExpenseTxs.filter(t => isDebtExpense(t, debts, categories)).reduce((s, t) => s + Number(t.amount), 0);
-  const futureRecurringTotal = futureExpenseTxs.filter(t => (t.isFixed || Boolean(t.fixedGroupId)) && !isEssentialExpense(t, categories, debts) && !isDebtExpense(t, debts, categories)).reduce((s, t) => s + Number(t.amount), 0);
-  const futureProfTotal = futureExpenseTxs.filter(t => isProfessionalInvestmentExpense(t, categories)).reduce((s, t) => s + Number(t.amount), 0);
-  const futureDiscretionaryTotal = futureExpenseTxs.filter(t => isDiscretionaryExpense(t, categories, debts)).reduce((s, t) => s + Number(t.amount), 0);
+  const futureRecurringTotal = futureExpenseTxs.filter(t => (t.isFixed || Boolean(t.fixedGroupId)) && !isEssentialExpense(t, categories, debts, financialSettings) && !isDebtExpense(t, debts, categories)).reduce((s, t) => s + Number(t.amount), 0);
+  const futureProfTotal = futureExpenseTxs.filter(t => isProfessionalInvestmentExpense(t, categories, financialSettings)).reduce((s, t) => s + Number(t.amount), 0);
+  const futureDiscretionaryTotal = futureExpenseTxs.filter(t => isDiscretionaryExpense(t, categories, debts, financialSettings)).reduce((s, t) => s + Number(t.amount), 0);
 
   // -------------------------------------------------------------------------
   // 5. DETALHAMENTO DE DÍVIDAS
@@ -656,7 +680,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   }
 
   const pastEssentialExpenses = transactions.filter(t => 
-    isEssentialExpense(t, categories, debts) && 
+    isEssentialExpense(t, categories, debts, financialSettings) && 
     past3MonthsList.some(m => t.date.startsWith(m)) &&
     t.status === 'paid'
   );
@@ -666,7 +690,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     : 0;
 
   const thisMonthEssentialTotal = transactions
-    .filter(t => isEssentialExpense(t, categories, debts) && t.date.startsWith(currentMonthPrefix))
+    .filter(t => isEssentialExpense(t, categories, debts, financialSettings) && t.date.startsWith(currentMonthPrefix))
     .reduce((s, t) => s + Number(t.amount), 0);
 
   const referenceMonthlyEssentialCost = thisMonthEssentialTotal > 0 
@@ -674,7 +698,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     : (monthlyEssentialLifeCostAvg > 0 ? monthlyEssentialLifeCostAvg : 0);
 
   const thisMonthRecurringOther = transactions
-    .filter(t => t.type === 'expense' && (t.isFixed || Boolean(t.fixedGroupId)) && !isEssentialExpense(t, categories, debts) && !isDebtExpense(t, debts, categories) && t.date.startsWith(currentMonthPrefix))
+    .filter(t => t.type === 'expense' && (t.isFixed || Boolean(t.fixedGroupId)) && !isEssentialExpense(t, categories, debts, financialSettings) && !isDebtExpense(t, debts, categories) && t.date.startsWith(currentMonthPrefix))
     .reduce((s, t) => s + Number(t.amount), 0);
 
   // Custo Mensal Total Obrigatório
@@ -795,7 +819,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
     // 2. DESPESAS ESSENCIAIS
     const monthEssentialTxs = transactions.filter(t => 
-      isEssentialExpense(t, categories, debts) && 
+      isEssentialExpense(t, categories, debts, financialSettings) && 
       t.date.startsWith(monthStr) &&
       (isCurrent ? t.status === 'pending' && t.date >= todayStr : true)
     );
@@ -825,7 +849,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
       t.type === 'expense' && 
       t.date.startsWith(monthStr) &&
       (isCurrent ? t.status === 'pending' && t.date >= todayStr : true) &&
-      !isEssentialExpense(t, categories, debts) &&
+      !isEssentialExpense(t, categories, debts, financialSettings) &&
       !isDebtExpense(t, debts, categories) &&
       !isTransferMovement(t) &&
       !isGoalMovement(t)
@@ -858,7 +882,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   const finalProjectedBalanceAtHorizon = monthlyFlowRows[monthlyFlowRows.length - 1]?.projectedEndBalance ?? runningProjectedBalance;
 
   // -------------------------------------------------------------------------
-  // 8. CAPACIDADE DE COMPRA (BASEADA NO FLUXO CORRIGIDO)
+  // 8. CAPACIDADE DE COMPRA (BASEADA NO FLUXO E RESERVA CONFIGURADA)
   // -------------------------------------------------------------------------
   const minProjectedBalance = Math.min(...monthlyFlowRows.map(r => r.projectedEndBalance));
 
@@ -866,17 +890,32 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     ? Number((totalAvailableOperationalToday / totalMandatoryMonthlyCost).toFixed(1)) 
     : 'não informado';
 
+  // Parâmetros de reserva configurados pelo usuário
+  const userConfiguredMinReserve = financialSettings?.minReserveAmount !== undefined
+    ? Number(financialSettings.minReserveAmount)
+    : 5000;
+  const targetReserveMonths = financialSettings?.targetReserveMonths !== undefined
+    ? Number(financialSettings.targetReserveMonths)
+    : 6;
+
+  const targetReserveFromMonths = referenceMonthlyEssentialCost > 0 
+    ? targetReserveMonths * referenceMonthlyEssentialCost 
+    : 0;
+  const targetSafetyReserveTotal = Math.max(userConfiguredMinReserve, targetReserveFromMonths);
+  const reserveDeficit = Math.max(0, targetSafetyReserveTotal - totalMoneyReserved);
+
   let safePurchaseMargin = 0;
   // O usuário só pode comprar à vista se houver caixa livre imediato E o menor saldo projetado for positivo
   const maxSafeCash = Math.min(immediateFreeCash, minProjectedBalance);
 
   if (maxSafeCash > 0) {
-    if (totalMoneyReserved >= referenceMonthlyEssentialCost) {
-      // Já tem reserva dedicada em cofrinhos/poupança cobrindo pelo menos 1 mês de vida
+    if (reserveDeficit === 0) {
+      // Reserva mínima 100% atingida nos cofrinhos/poupança!
       safePurchaseMargin = Math.max(0, Math.round(maxSafeCash * 0.7));
     } else {
-      // Não possui reserva em cofrinho: protege 1 mês de custo essencial no caixa operacional
-      safePurchaseMargin = Math.max(0, Math.round(maxSafeCash - referenceMonthlyEssentialCost));
+      // O excedente de caixa operacional precisa cobrir o déficit da reserva antes de liberar compras discricionárias
+      const cashAfterReserveGap = Math.max(0, maxSafeCash - reserveDeficit);
+      safePurchaseMargin = Math.max(0, Math.round(cashAfterReserveGap * 0.7));
     }
   }
 
@@ -924,6 +963,10 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push('============================================================');
   lines.push(`• Dinheiro disponível hoje (em contas operacionais): ${formatBRL(totalAvailableOperationalToday)}`);
   lines.push(`• Dinheiro reservado (cofrinhos / metas / poupança - intocável): ${formatBRL(totalMoneyReserved)}`);
+  lines.push(`  - Reserva mínima desejada configurada: ${formatBRL(userConfiguredMinReserve)}`);
+  lines.push(`  - Meta por meses essenciais (${targetReserveMonths} meses): ${formatBRL(targetReserveFromMonths)}`);
+  lines.push(`  - Meta total adotada para reserva: ${formatBRL(targetSafetyReserveTotal)}`);
+  lines.push(`  - Status da reserva: ${reserveDeficit === 0 ? 'Meta atingida (100% segura)' : `Déficit de ${formatBRL(reserveDeficit)} para atingir a meta`}`);
   lines.push(`• Compromissos imediatos (contas a vencer no mês atual): ${formatBRL(totalImmediateCommitments)}`);
   lines.push(`• Caixa livre imediato (disponível - compromissos imediatos): ${formatBRL(immediateFreeCash)}`);
   lines.push(`• Patrimônio líquido total (disponível + reservado): ${formatBRL(totalNetWorth)}`);
@@ -1081,17 +1124,22 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push(`• Saldo final projetado ao fim dos 6 meses: ${formatBRL(finalProjectedBalanceAtHorizon)}`);
   lines.push(`• Menor saldo operacional projetado no período: ${formatBRL(minProjectedBalance)}`);
   lines.push(`• Meses de sobrevivência com o caixa atual: ${typeof monthsOfSurvivalCurrentCash === 'number' ? `${monthsOfSurvivalCurrentCash} meses` : monthsOfSurvivalCurrentCash}`);
+  lines.push(`• Reserva de Segurança Configurada:`);
+  lines.push(`  - Reserva mínima desejada: ${formatBRL(userConfiguredMinReserve)}`);
+  lines.push(`  - Quantidade de meses de reserva desejada: ${targetReserveMonths} meses (${formatBRL(targetReserveFromMonths)} em custos essenciais)`);
+  lines.push(`  - Meta total de proteção: ${formatBRL(targetSafetyReserveTotal)}`);
+  lines.push(`  - Saldo já reservado hoje: ${formatBRL(totalMoneyReserved)} (${targetSafetyReserveTotal > 0 ? ((totalMoneyReserved / targetSafetyReserveTotal) * 100).toFixed(0) : 100}% coberto)`);
   lines.push(`• MARGEM SEGURA PARA NOVAS COMPRAS À VISTA: ${formatBRL(safePurchaseMargin)}`);
-  lines.push(`  (Teto máximo que pode ser gasto à vista hoje sem comprometer contas imediatas, sem negativar o caixa em nenhum dos próximos 6 meses e preservando a reserva)`);
+  lines.push(`  (Teto máximo que pode ser gasto à vista hoje sem comprometer contas imediatas, sem negativar o caixa em nenhum dos próximos 6 meses e preservando a reserva configurada)`);
   lines.push(`• MARGEM PARA NOVA PARCELA MENSAL: ${formatBRL(safeMonthlyInstallmentMargin)}/mês`);
   lines.push(`  (Valor máximo de prestação mensal adicional que o fluxo suporta sem gerar déficit)`);
 
   lines.push('');
   lines.push('ORIENTAÇÃO DIRETA PARA A IA:');
   if (safePurchaseMargin > 0) {
-    lines.push(`O usuário PODE realizar novas compras à vista de até ${formatBRL(safePurchaseMargin)}. Esse valor não compromete nenhuma conta imediata nem futura e mantém a reserva intacta.`);
+    lines.push(`O usuário PODE realizar novas compras à vista de até ${formatBRL(safePurchaseMargin)}. Esse valor respeita o fluxo de caixa, não compromete nenhuma conta imediata nem futura e mantém a reserva mínima configurada intacta.`);
   } else {
-    lines.push(`O usuário NÃO DEVE fazer compras supérfluas no momento. O caixa disponível está comprometido com contas imediatas ou há meses com fluxo deficitário.`);
+    lines.push(`O usuário NÃO DEVE fazer compras supérfluas no momento. O caixa disponível está comprometido com contas imediatas, a reserva mínima configurada (${formatBRL(targetSafetyReserveTotal)}) ainda não está plenamente guarnecida ou há meses com fluxo deficitário.`);
   }
   lines.push('============================================================');
   lines.push('FIM DO RELATÓRIO');
