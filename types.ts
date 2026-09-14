@@ -14,7 +14,7 @@ export interface Category {
   type: TransactionType;
   color: string;
   icon: string;
-  classification?: 'essential' | 'personal' | 'future' | 'professional';
+  classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
 }
 
 export interface Budget {
@@ -75,6 +75,7 @@ export interface Transaction {
   fixedGroupId?: string;
   interest?: number; // Valor excedente pago considerado como juros
   goalId?: string; // ID da meta/cofrinho para aportes ou resgates
+  classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
 }
 
 export interface SystemAlert {
