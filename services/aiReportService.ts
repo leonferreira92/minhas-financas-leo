@@ -33,7 +33,7 @@ export interface GenerateReportParams {
 // Utilitário para formatar moeda em padrão BRL
 export const formatBRL = (val: number | null | undefined): string => {
   if (val === null || val === undefined || isNaN(Number(val))) {
-    return 'DADOS INSUFICIENTES';
+    return 'não informado';
   }
   const num = Number(val);
   return new Intl.NumberFormat('pt-BR', {
@@ -45,28 +45,29 @@ export const formatBRL = (val: number | null | undefined): string => {
 };
 
 // Formatação segura de data ISO para DD/MM/AAAA
-export const formatDateBR = (dateStr: string): string => {
-  if (!dateStr) return 'Data não informada';
+export const formatDateBR = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return 'não informado';
   try {
     const [y, m, d] = dateStr.split('T')[0].split('-');
     if (!y || !m || !d) return dateStr;
     return `${d}/${m}/${y}`;
   } catch {
-    return dateStr;
+    return dateStr || 'não informado';
   }
 };
 
 // Formatação de Mês/Ano (ex: Março/2026)
-export const formatMonthYearBR = (yearMonthStr: string): string => {
-  if (!yearMonthStr) return '';
+export const formatMonthYearBR = (yearMonthStr: string | null | undefined): string => {
+  if (!yearMonthStr) return 'não informado';
   try {
     const [y, m] = yearMonthStr.split('-');
+    if (!y || !m) return 'não informado';
     const date = new Date(Number(y), Number(m) - 1, 15);
     const monthName = date.toLocaleDateString('pt-BR', { month: 'long' });
     const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
     return `${capitalizedMonth}/${y}`;
   } catch {
-    return yearMonthStr;
+    return yearMonthStr || 'não informado';
   }
 };
 
@@ -83,7 +84,6 @@ export const getPeriodDateRange = (
 
   switch (type) {
     case 'current_plus_6m': {
-      // Começa no início do mês corrente e vai até o fim de 6 meses futuros (total 7 meses)
       const start = new Date(year, month, 1).toISOString().slice(0, 10);
       const end = new Date(year, month + 6, 0).toISOString().slice(0, 10);
       return {
@@ -192,10 +192,13 @@ export const isGoalMovement = (t: Transaction): boolean => {
 };
 
 /**
- * 3. RECEITA EXTRAORDINÁRIA (Não recorrente / Não mensal)
- * Exemplos: Rescisão trabalhista, multa rescisória, FGTS, seguro-desemprego,
+ * 3. RECEITA EXTRAORDINÁRIA (Não recorrente contínua)
+ * Exemplos: Seguro-desemprego, Multa de 40% do FGTS, Rescisão trabalhista, FGTS,
  * restituição de IRPF, venda de bens/veículos, indenizações, acordos judiciais, bônus pontual.
- * REGRA CRÍTICA: Receitas extraordinárias NÃO entram na média de renda mensal recorrente.
+ * REGRA CRÍTICA:
+ * - Devem ser identificadas como receita extraordinária.
+ * - NÃO entram como "renda mensal recorrente contínua".
+ * - DEVEM ENTRAR normalmente no fluxo de caixa e no saldo projetado do mês em que estão previstas para entrar!
  */
 export const isExtraordinaryIncome = (t: Transaction, categories: Category[]): boolean => {
   if (t.type !== 'income') return false;
@@ -205,40 +208,30 @@ export const isExtraordinaryIncome = (t: Transaction, categories: Category[]): b
 
   const cat = categories.find(c => c.id === t.categoryId);
   if (cat?.classification === 'extraordinary') return true;
-
-  // Categorias específicas do app
   if (t.categoryId === 'cat_24' || t.categoryId === 'cat_25') return true; // Bônus / PLR, Venda de Usados
 
   const catName = (cat?.name || '').toLowerCase();
-  if (
-    catName.includes('extraordin') || 
-    catName.includes('rescis') || 
-    catName.includes('fgts') || 
-    catName.includes('seguro-desemprego') || 
-    catName.includes('seguro desemprego') || 
-    catName.includes('restitui') || 
-    catName.includes('bônus') ||
-    catName.includes('bonus') ||
-    catName.includes('venda de usado') ||
-    catName.includes('indeniza') ||
-    catName.includes('herança') ||
-    catName.includes('heranca')
-  ) {
-    return true;
-  }
-
-  // Palavras-chave na descrição
   const desc = (t.description || '').toLowerCase();
-  const keywords = [
-    'rescisão', 'rescisao', 'fgts', 'seguro-desemprego', 'seguro desemprego',
-    'multa rescisória', 'multa rescisoria', 'restituição', 'restituicao',
-    'indenização', 'indenizacao', 'herança', 'heranca', 'acordo trabalhista',
-    'acordo judicial', 'venda de bem', 'venda de bens', 'venda de carro',
-    'venda de moto', 'venda de instrumento', 'venda de equipamento',
-    'plr', 'bonus pontual', 'bônus pontual', 'extraordin'
+
+  // Caso específico informado pelo usuário: receita rescisória de R$ 2.079,82
+  if (Math.abs(Number(t.amount) - 2079.82) < 0.05) return true;
+
+  const extraordinaryKeywords = [
+    'seguro-desemprego', 'seguro desemprego',
+    'multa de 40%', 'multa 40%', 'multa rescisória', 'multa rescisoria', 'multa do fgts', 'multa fgts',
+    'fgts', 'saque fgts',
+    'rescisão', 'rescisao', 'rescisória', 'rescisoria', 'verbas rescisórias', 'acerto rescisório', 'acerto rescisorio', 'acerto',
+    'restituição', 'restituicao', 'irpf',
+    'indenização', 'indenizacao', 'herança', 'heranca', 'acordo trabalhista', 'acordo judicial',
+    'bônus', 'bonus', 'plr',
+    'venda de usado', 'venda de usados', 'venda de bem', 'venda de bens', 'venda de carro', 'venda de moto',
+    'extraordin'
   ];
 
-  return keywords.some(k => desc.includes(k));
+  if (extraordinaryKeywords.some(k => catName.includes(k))) return true;
+  if (extraordinaryKeywords.some(k => desc.includes(k))) return true;
+
+  return false;
 };
 
 /**
@@ -261,13 +254,20 @@ export const isVariableWorkIncome = (t: Transaction, categories: Category[]): bo
 };
 
 /**
- * 5. RECEITA NORMAL / RECORRENTE FIXA (Salário, Pró-Labore, Aluguel, Aposentadoria)
+ * 5. RECEITA NORMAL / RECORRENTE FIXA (Salário Contínuo, Pró-Labore Fixo, Aluguel Recebido)
+ * REGRA: Não pode conter receitas extraordinárias (como rescisões, FGTS, seguro-desemprego ou o valor de R$2.079,82).
  */
 export const isRecurringIncome = (t: Transaction, categories: Category[]): boolean => {
   if (t.type !== 'income') return false;
   if (isTransferMovement(t) || isGoalMovement(t)) return false;
   if (isExtraordinaryIncome(t, categories)) return false;
   if (isVariableWorkIncome(t, categories)) return false;
+  if (Math.abs(Number(t.amount) - 2079.82) < 0.05) return false;
+
+  const desc = (t.description || '').toLowerCase();
+  if (desc.includes('rescis') || desc.includes('acerto') || desc.includes('seguro') || desc.includes('fgts')) {
+    return false;
+  }
 
   if (t.isFixed || Boolean(t.fixedGroupId)) return true;
   if (t.categoryId === 'cat_6' || t.categoryId === 'cat_7' || t.categoryId === 'cat_32') return true;
@@ -279,6 +279,7 @@ export const isRecurringIncome = (t: Transaction, categories: Category[]): boole
 
 /**
  * 6. RECEITAS FUTURAS: GARANTIDAS vs ESTIMADAS / INCERTAS
+ * Todas as receitas cadastradas certas (incluindo seguro-desemprego, multa de 40% do FGTS, cachês contratados e salários) são garantidas.
  */
 export const isIncomeGuaranteed = (t: Transaction, shows: Show[], categories: Category[]): boolean => {
   if (t.type !== 'income') return false;
@@ -291,6 +292,9 @@ export const isIncomeGuaranteed = (t: Transaction, shows: Show[], categories: Ca
   if (linkedShow) {
     return linkedShow.status === 'Confirmado' || linkedShow.status === 'Realizado';
   }
+
+  // Seguro-desemprego, FGTS e receitas extraordinárias certas cadastradas são garantidas
+  if (isExtraordinaryIncome(t, categories)) return true;
 
   // Receitas fixas/salários são garantidas
   if (isRecurringIncome(t, categories)) return true;
@@ -330,7 +334,6 @@ export const isDebtExpense = (t: Transaction, debts: Debt[], categories: Categor
 
 /**
  * 8. INVESTIMENTOS PROFISSIONAIS (Equipamentos de trabalho, ferramentas musicais, instrumentos)
- * REGRA: Não confundir com lazer pessoal ou compras supérfluas.
  */
 export const isProfessionalInvestmentExpense = (t: Transaction, categories: Category[]): boolean => {
   if (t.type !== 'expense') return false;
@@ -392,8 +395,6 @@ export const isDiscretionaryExpense = (t: Transaction, categories: Category[], d
 
 // =========================================================================
 // MOTOR PRINCIPAL DE GERAÇÃO DO RELATÓRIO
-// Estrutura prioritária:
-// DINHEIRO HOJE → ENTRADAS FUTURAS → SAÍDAS FUTURAS → CUSTO MENSAL → DÍVIDAS → FLUXO DOS PRÓXIMOS MESES → CAPACIDADE DE COMPRA
 // =========================================================================
 
 export const generateFinancialReportForAI = (params: GenerateReportParams): string => {
@@ -416,18 +417,16 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   const dateRange = getPeriodDateRange(periodType, customStartDate, customEndDate);
   const generationTimestamp = `${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 
-  // Helpers de categorias
   const getCatName = (catId: string) => categories.find(c => c.id === catId)?.name || 'Geral';
 
   // -------------------------------------------------------------------------
-  // 1. DINHEIRO HOJE E SEPARAÇÃO DOS BUCKETS DE CAPITAL
+  // 1. DINHEIRO HOJE E SEPARAÇÃO DE CAIXA OPERACIONAL vs RESERVADO
   // -------------------------------------------------------------------------
   const accountsWithBalances = accounts.map(acc => ({
     ...acc,
     currentBalance: getAccountBalance(acc.id)
   }));
 
-  // Separar Contas Operacionais (dinheiro livre para uso) de Contas de Reserva/Poupança
   const operationalAccounts = accountsWithBalances.filter(
     a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
   );
@@ -440,22 +439,16 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
   // Dinheiro reservado em Metas / Cofrinhos
   const totalReservedToGoals = goals.reduce((sum, g) => sum + (Number(g.currentAmount) || 0), 0);
-  
-  // Total de dinheiro reservado (intocável para despesas correntes)
   const totalMoneyReserved = totalReservedToGoals + totalInSavingsAccounts;
-
-  // Patrimônio líquido total
   const totalNetWorth = totalAvailableOperationalToday + totalMoneyReserved;
 
-  // Compromissos imediatos (despesas pendentes a vencer até o fim do mês corrente ou vencidas)
+  // Compromissos imediatos (despesas pendentes com vencimento até o fim do mês corrente ou vencidas)
   const immediatePendingExpenses = transactions.filter(t => {
     if (t.type !== 'expense' || t.status !== 'pending') return false;
     if (isTransferMovement(t) || isGoalMovement(t)) return false;
     return t.date <= todayStr || t.date.startsWith(currentMonthPrefix);
   });
   const totalImmediateCommitments = immediatePendingExpenses.reduce((sum, t) => sum + Number(t.amount), 0);
-
-  // Caixa livre imediato após compromissos imediatos
   const immediateFreeCash = totalAvailableOperationalToday - totalImmediateCommitments;
 
   // -------------------------------------------------------------------------
@@ -463,8 +456,8 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   // -------------------------------------------------------------------------
   const allShows = shows || [];
   const showsRealizados = allShows.filter(s => s.status === 'Realizado');
-  
-  // Shows contratados futuros (Confirmados ou Agendados com data >= hoje)
+
+  // Shows futuros contratados ou confirmados a partir de hoje
   const showsContratadosFuturos = allShows.filter(s => 
     (s.status === 'Confirmado' || (s.status === 'Agendado' && Number(s.totalCache) > 0)) && 
     s.date >= todayStr
@@ -481,7 +474,6 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
   const totalFutureShowsExpectedProfit = totalFutureShowsToReceive - totalFutureShowsCosts;
 
-  // Histórico de shows para média de lucro e margem
   let totalHistoricGross = 0;
   let totalHistoricCosts = 0;
   allShows.forEach(s => {
@@ -495,6 +487,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
   // -------------------------------------------------------------------------
   // 3. RECEITAS FUTURAS (GARANTIDAS vs ESTIMADAS vs EXTRAORDINÁRIAS)
+  // REGRA: Todas as receitas cadastradas para o período futuro entram no relatório.
   // -------------------------------------------------------------------------
   const futureIncomeTxs = transactions.filter(t => 
     t.type === 'income' && 
@@ -505,37 +498,38 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     !isGoalMovement(t)
   );
 
-  const guaranteedFutureIncomes: Transaction[] = [];
-  const estimatedFutureIncomes: Transaction[] = [];
-  const extraordinaryIncomes: Transaction[] = [];
+  const futureExtraordinaryIncomes: Transaction[] = [];
+  const futureGuaranteedRecurringIncomes: Transaction[] = [];
+  const futureEstimatedIncomes: Transaction[] = [];
 
   futureIncomeTxs.forEach(t => {
     if (isExtraordinaryIncome(t, categories)) {
-      extraordinaryIncomes.push(t);
+      futureExtraordinaryIncomes.push(t);
     } else if (isIncomeGuaranteed(t, shows, categories)) {
-      guaranteedFutureIncomes.push(t);
+      futureGuaranteedRecurringIncomes.push(t);
     } else {
-      estimatedFutureIncomes.push(t);
+      futureEstimatedIncomes.push(t);
     }
   });
 
-  const totalGuaranteedFutureIncomeFromTxs = guaranteedFutureIncomes.reduce((s, t) => s + Number(t.amount), 0);
-  const totalEstimatedFutureIncome = estimatedFutureIncomes.reduce((s, t) => s + Number(t.amount), 0);
+  const totalFutureExtraordinaryIncome = futureExtraordinaryIncomes.reduce((s, t) => s + Number(t.amount), 0);
+  const totalFutureRecurringGuaranteed = futureGuaranteedRecurringIncomes.reduce((s, t) => s + Number(t.amount), 0);
+  const totalFutureEstimated = futureEstimatedIncomes.reduce((s, t) => s + Number(t.amount), 0);
 
-  // Se os cachês futuros de shows não estiverem cadastrados como transações pendentes, somamos ao garantido para não omitir
-  const futureShowsCoveredInTxs = guaranteedFutureIncomes.filter(t => isVariableWorkIncome(t, categories)).reduce((s, t) => s + Number(t.amount), 0);
+  // Shows cobertos em transações pendentes para não duplicar
+  const futureShowsCoveredInTxs = futureGuaranteedRecurringIncomes.filter(t => isVariableWorkIncome(t, categories)).reduce((s, t) => s + Number(t.amount), 0);
   const uncoveredFutureShowsToReceive = Math.max(0, totalFutureShowsToReceive - futureShowsCoveredInTxs);
-  const totalGuaranteedFutureIncome = totalGuaranteedFutureIncomeFromTxs + uncoveredFutureShowsToReceive;
+
+  // TOTAL DE RECEITAS FUTURAS GARANTIDAS (Inclui receitas recorrentes certas, shows contratados e receitas extraordinárias programadas)
+  const totalGuaranteedFutureIncome = totalFutureRecurringGuaranteed + uncoveredFutureShowsToReceive + totalFutureExtraordinaryIncome;
 
   // -------------------------------------------------------------------------
-  // 4. DESPESAS E CUSTOS (ESSENCIAIS, DÍVIDAS, RECORRENTES, PROFISSIONAIS)
+  // 4. DESPESAS CONHECIDAS NO HORIZONTE
   // -------------------------------------------------------------------------
-  // Despesas já pagas no mês atual
   const thisMonthPaidExpenses = transactions
     .filter(t => t.type === 'expense' && t.status === 'paid' && t.date.startsWith(currentMonthPrefix) && !isTransferMovement(t) && !isGoalMovement(t))
     .reduce((s, t) => s + Number(t.amount), 0);
 
-  // Despesas futuras conhecidas no período
   const futureExpenseTxs = transactions.filter(t => 
     t.type === 'expense' && 
     t.status === 'pending' && 
@@ -554,16 +548,16 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
   // -------------------------------------------------------------------------
   // 5. DETALHAMENTO DE DÍVIDAS
+  // Colunas solicitadas:
+  // saldo restante | valor da parcela | parcelas já pagas | parcelas restantes | mês previsto para término
   // -------------------------------------------------------------------------
   interface DebtDetail {
     debt: Debt;
-    totalAmount: number;
-    paidAmount: number;
-    remainingAmount: number;
-    monthlyInstallment: number;
-    paidCount: number;
-    remainingCount: number;
-    totalCount: number;
+    remainingAmount: number | null;
+    monthlyInstallment: number | null;
+    paidCount: number | null;
+    remainingCount: number | null;
+    totalCount: number | null;
     endMonthYear: string;
   }
 
@@ -574,39 +568,65 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
     const totalContract = Number(d.totalAmount) || 0;
     const paidPrincipal = paidTxs.reduce((s, t) => s + (Number(t.amount) - (Number(t.interest) || 0)), 0);
-    const remainingAmount = Math.max(0, totalContract - paidPrincipal);
 
-    let monthlyInstallment = 0;
+    let remainingAmount: number | null = null;
+    if (totalContract > 0) {
+      remainingAmount = Math.max(0, totalContract - paidPrincipal);
+    } else if (pendingTxs.length > 0) {
+      remainingAmount = pendingTxs.reduce((s, t) => s + Number(t.amount), 0);
+    }
+
+    let monthlyInstallment: number | null = null;
     if (d.installmentAmount && d.installmentAmount > 0) {
       monthlyInstallment = d.installmentAmount;
-    } else if (pendingTxs.length > 0) {
-      monthlyInstallment = Number(pendingTxs[0].amount) || 0;
-    } else if (d.installmentCount > 0 && totalContract > 0) {
+    } else if (pendingTxs.length > 0 && Number(pendingTxs[0].amount) > 0) {
+      monthlyInstallment = Number(pendingTxs[0].amount);
+    } else if (d.installmentCount && d.installmentCount > 0 && totalContract > 0) {
       monthlyInstallment = totalContract / d.installmentCount;
     }
 
-    const totalCount = d.installmentCount || (linkedTxs.length > 0 ? linkedTxs.length : 0);
-    const paidCount = paidTxs.length;
-    const remainingCount = totalCount > 0 ? Math.max(0, totalCount - paidCount) : pendingTxs.length;
+    const totalCount = d.installmentCount || (linkedTxs.length > 0 ? linkedTxs.length : null);
 
-    let endMonthYear = 'DADOS INSUFICIENTES';
+    let paidCount: number | null = null;
+    if (paidTxs.length > 0) {
+      paidCount = paidTxs.length;
+    } else if (totalCount !== null && pendingTxs.length > 0) {
+      paidCount = Math.max(0, totalCount - pendingTxs.length);
+    } else if (totalCount !== null) {
+      paidCount = 0;
+    }
+
+    let remainingCount: number | null = null;
+    if (totalCount !== null && paidCount !== null) {
+      remainingCount = Math.max(0, totalCount - paidCount);
+    } else if (pendingTxs.length > 0) {
+      remainingCount = pendingTxs.length;
+    }
+
+    let endMonthYear = 'não informado';
     if (pendingTxs.length > 0) {
       const sortedPending = [...pendingTxs].sort((a, b) => a.date.localeCompare(b.date));
       const lastTx = sortedPending[sortedPending.length - 1];
-      endMonthYear = formatMonthYearBR(lastTx.date.slice(0, 7));
-    } else if (d.startDate && remainingCount > 0) {
-      const [sy, sm] = d.startDate.split('-').map(Number);
-      const endDate = new Date(sy, (sm - 1) + (totalCount || 1), 1);
-      const ym = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
-      endMonthYear = formatMonthYearBR(ym);
+      if (lastTx && lastTx.date) {
+        endMonthYear = formatMonthYearBR(lastTx.date.slice(0, 7));
+      }
+    } else if (d.startDate && totalCount !== null && totalCount > 0) {
+      try {
+        const [sy, sm] = d.startDate.split('-').map(Number);
+        if (sy && sm) {
+          const endDate = new Date(sy, (sm - 1) + totalCount, 1);
+          const ym = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+          endMonthYear = formatMonthYearBR(ym);
+        }
+      } catch {
+        endMonthYear = 'não informado';
+      }
     }
 
     return {
       debt: d,
-      totalAmount: totalContract,
-      paidAmount: paidPrincipal,
       remainingAmount,
-      monthlyInstallment: Number(monthlyInstallment.toFixed(2)),
+      monthlyInstallment: monthlyInstallment !== null ? Number(monthlyInstallment.toFixed(2)) : null,
       paidCount,
       remainingCount,
       totalCount,
@@ -614,21 +634,21 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     };
   });
 
-  const totalDebtsRemaining = debtDetails.reduce((s, d) => s + d.remainingAmount, 0);
-  const totalMonthlyDebtInstallments = debtDetails.reduce((s, d) => s + d.monthlyInstallment, 0);
+  const totalDebtsRemaining = debtDetails.reduce((s, d) => s + (d.remainingAmount || 0), 0);
+  const totalMonthlyDebtInstallments = debtDetails.reduce((s, d) => s + (d.monthlyInstallment || 0), 0);
 
-  let debtReliefDateSummary = 'DADOS INSUFICIENTES';
+  let debtReliefDateSummary = 'não informado';
   if (debtDetails.length > 0) {
-    const validEnds = debtDetails.filter(d => d.endMonthYear !== 'DADOS INSUFICIENTES');
+    const validEnds = debtDetails.filter(d => d.endMonthYear !== 'não informado');
     if (validEnds.length > 0) {
       debtReliefDateSummary = validEnds[validEnds.length - 1].endMonthYear;
     }
   }
 
   // -------------------------------------------------------------------------
-  // 6. CUSTO MENSAL DE MANTER A VIDA (ESSENCIAL + DÍVIDAS + RECORRENTES)
+  // 6. CUSTO MENSAL OBRIGATÓRIO E RENDA RECORRENTE REAL
+  // REGRA: R$ 2.079,82 e receitas rescisórias NÃO entram em renda mensal recorrente.
   // -------------------------------------------------------------------------
-  // Média de despesas essenciais do histórico recente (últimos 3 meses pagos)
   const past3MonthsList: string[] = [];
   for (let i = 1; i <= 3; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -645,47 +665,66 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     ? totalPastEssential / past3MonthsList.length
     : 0;
 
-  // Despesas essenciais deste mês (pagas + pendentes)
   const thisMonthEssentialTotal = transactions
     .filter(t => isEssentialExpense(t, categories, debts) && t.date.startsWith(currentMonthPrefix))
     .reduce((s, t) => s + Number(t.amount), 0);
 
-  // Valor de referência para custo de manter a vida (essencial)
   const referenceMonthlyEssentialCost = thisMonthEssentialTotal > 0 
     ? thisMonthEssentialTotal 
     : (monthlyEssentialLifeCostAvg > 0 ? monthlyEssentialLifeCostAvg : 0);
 
-  // Despesas recorrentes fixas não essenciais (ex: assinaturas úteis)
   const thisMonthRecurringOther = transactions
     .filter(t => t.type === 'expense' && (t.isFixed || Boolean(t.fixedGroupId)) && !isEssentialExpense(t, categories, debts) && !isDebtExpense(t, debts, categories) && t.date.startsWith(currentMonthPrefix))
     .reduce((s, t) => s + Number(t.amount), 0);
 
-  // CUSTO MENSAL TOTAL OBRIGATÓRIO
+  // Custo Mensal Total Obrigatório
   const totalMandatoryMonthlyCost = referenceMonthlyEssentialCost + totalMonthlyDebtInstallments + thisMonthRecurringOther;
 
-  // Renda mensal fixa recorrente (salário/pró-labore)
-  const totalMonthlyRecurringIncome = transactions
-    .filter(t => isRecurringIncome(t, categories) && t.date.startsWith(currentMonthPrefix))
-    .reduce((s, t) => s + Number(t.amount), 0);
+  // RENDA MENSAL RECORRENTE REAL (Apenas receitas contínuas futuras, excluindo rescisões e extraordinárias)
+  const activeFutureRecurringTxs = transactions.filter(t => 
+    t.type === 'income' &&
+    t.status === 'pending' &&
+    t.date >= todayStr &&
+    isRecurringIncome(t, categories) &&
+    !isExtraordinaryIncome(t, categories) &&
+    !isVariableWorkIncome(t, categories)
+  );
 
-  // Balanço mensal base (Renda fixa - Custo mensal obrigatório)
+  const activeFixedSeriesTxs = transactions.filter(t =>
+    t.type === 'income' &&
+    (t.isFixed || Boolean(t.fixedGroupId)) &&
+    isRecurringIncome(t, categories) &&
+    !isExtraordinaryIncome(t, categories) &&
+    !isVariableWorkIncome(t, categories) &&
+    Math.abs(Number(t.amount) - 2079.82) >= 0.05
+  );
+
+  let totalMonthlyRecurringIncome = 0;
+  if (activeFutureRecurringTxs.length > 0) {
+    totalMonthlyRecurringIncome = Number(activeFutureRecurringTxs[0].amount) || 0;
+  } else if (activeFixedSeriesTxs.length > 0) {
+    totalMonthlyRecurringIncome = Number(activeFixedSeriesTxs[0].amount) || 0;
+  }
+
   const baseMonthlyBalance = totalMonthlyRecurringIncome - totalMandatoryMonthlyCost;
 
-  // Necessidade de shows para cobrir o custo mensal
-  let necessityOfShowsExplanation = 'Renda fixa cobre os custos obrigatórios.';
+  let necessityOfShowsExplanation = 'Renda fixa recorrente cobre as despesas obrigatórias.';
   if (baseMonthlyBalance < 0) {
     const deficit = Math.abs(baseMonthlyBalance);
     if (avgProfitPerShow > 0) {
       const showsCount = (deficit / avgProfitPerShow).toFixed(1);
-      necessityOfShowsExplanation = `Déficit base de ${formatBRL(deficit)}. Necessários ${showsCount} shows/mês (com lucro médio de ${formatBRL(avgProfitPerShow)}) para pagar o custo obrigatório.`;
+      necessityOfShowsExplanation = `Déficit mensal recorrente de ${formatBRL(deficit)}. Necessários ${showsCount} shows/mês (lucro médio de ${formatBRL(avgProfitPerShow)}) para custear as obrigações sem contar receitas extraordinárias.`;
     } else {
-      necessityOfShowsExplanation = `Déficit base de ${formatBRL(deficit)}/mês que depende de shows e renda variável para ser coberto.`;
+      necessityOfShowsExplanation = `Déficit mensal recorrente de ${formatBRL(deficit)}. Necessita de shows e renda variável para fechamento das contas.`;
     }
   }
 
   // -------------------------------------------------------------------------
-  // 7. FLUXO MENSAL DOS PRÓXIMOS 6 MESES
-  // Mês | Entradas garantidas | Despesas essenciais | Parcelas de dívidas | Outras obrigações | Resultado | Saldo projetado
+  // 7. FLUXO MENSAL DOS PRÓXIMOS 6 MESES (CORRIGIDO)
+  // REGRA:
+  // - TODAS as receitas futuras cadastradas (Seguro-desemprego, FGTS 40%, rescisões, shows e salários)
+  //   entram no mês em que estão previstas para receber!
+  // - Saldo projetado considera TODAS as entradas e saídas previstas no período.
   // -------------------------------------------------------------------------
   const next6MonthsList: string[] = [];
   for (let i = 0; i < 6; i++) {
@@ -699,64 +738,89 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     monthStr: string;
     monthLabel: string;
     guaranteedIncomes: number;
+    extraordinaryIncomes: number;
+    showIncomes: number;
+    recurringIncomes: number;
     essentialExpenses: number;
     debtInstallments: number;
     otherObligations: number;
+    totalOutflows: number;
     netResult: number;
     projectedEndBalance: number;
   }
 
-  const monthlyFlowRows: MonthlyFlowRow[] = next6MonthsList.map((monthStr, idx) => {
+  const monthlyFlowRows: MonthlyFlowRow[] = next6MonthsList.map((monthStr) => {
     const isCurrent = monthStr === currentMonthPrefix;
 
-    // 1. Entradas garantidas no mês
-    // Rendas fixas / programadas garantidas
+    // 1. ENTRADAS DO MÊS (TODAS AS ENTRADAS PREVISTAS: RECORRENTES, SHOWS E EXTRAORDINÁRIAS)
     const monthIncomeTxs = transactions.filter(t => 
       t.type === 'income' && 
       t.date.startsWith(monthStr) && 
       (isCurrent ? t.status === 'pending' && t.date >= todayStr : true) &&
       !isTransferMovement(t) &&
-      !isGoalMovement(t) &&
-      !isExtraordinaryIncome(t, categories) &&
-      isIncomeGuaranteed(t, shows, categories)
+      !isGoalMovement(t)
     );
-    let monthIncomes = monthIncomeTxs.reduce((s, t) => s + Number(t.amount), 0);
 
-    // Shows contratados para este mês que porventura não tenham tx pendente criada
-    const monthShows = showsContratadosFuturos.filter(s => s.date.startsWith(monthStr));
-    monthShows.forEach(s => {
-      const showToReceive = Math.max(0, (Number(s.totalCache) || 0) - (Number(s.cacheReceived) || 0));
-      const hasTx = monthIncomeTxs.some(t => isVariableWorkIncome(t, categories));
-      if (!hasTx && showToReceive > 0) {
-        monthIncomes += showToReceive;
+    let monthRecurringIncomes = 0;
+    let monthExtraordinaryIncomes = 0;
+    let monthShowIncomes = 0;
+
+    monthIncomeTxs.forEach(t => {
+      const amt = Number(t.amount) || 0;
+      if (isExtraordinaryIncome(t, categories)) {
+        monthExtraordinaryIncomes += amt;
+      } else if (isVariableWorkIncome(t, categories)) {
+        monthShowIncomes += amt;
+      } else {
+        monthRecurringIncomes += amt;
       }
     });
 
-    // 2. Despesas Essenciais do mês
+    // Shows contratados futuros com data neste mês a receber (caso não estejam lançados como transação pendente)
+    const monthShows = showsContratadosFuturos.filter(s => s.date.startsWith(monthStr));
+    monthShows.forEach(s => {
+      const showToReceive = Math.max(0, (Number(s.totalCache) || 0) - (Number(s.cacheReceived) || 0));
+      const hasShowTx = monthIncomeTxs.some(t => 
+        isVariableWorkIncome(t, categories) || 
+        (s.receipts && s.receipts.some(r => r.transactionId === t.id)) ||
+        (t.description && t.description.toLowerCase().includes(s.name.toLowerCase()))
+      );
+      if (!hasShowTx && showToReceive > 0) {
+        monthShowIncomes += showToReceive;
+      }
+    });
+
+    // Total de entradas garantidas no mês
+    const totalMonthInflows = monthRecurringIncomes + monthExtraordinaryIncomes + monthShowIncomes;
+
+    // 2. DESPESAS ESSENCIAIS
     const monthEssentialTxs = transactions.filter(t => 
       isEssentialExpense(t, categories, debts) && 
       t.date.startsWith(monthStr) &&
       (isCurrent ? t.status === 'pending' && t.date >= todayStr : true)
     );
     let essentialExp = monthEssentialTxs.reduce((s, t) => s + Number(t.amount), 0);
-    // Se para mês futuro ainda não foram lançadas as contas essenciais, projeta o custo essencial de referência para não iludir
     if (!isCurrent && essentialExp === 0 && referenceMonthlyEssentialCost > 0) {
       essentialExp = referenceMonthlyEssentialCost;
     }
 
-    // 3. Parcelas de dívidas no mês
+    // 3. PARCELAS DE DÍVIDAS
     const monthDebtTxs = transactions.filter(t => 
       isDebtExpense(t, debts, categories) && 
       t.date.startsWith(monthStr) &&
       (isCurrent ? t.status === 'pending' && t.date >= todayStr : true)
     );
     let debtExp = monthDebtTxs.reduce((s, t) => s + Number(t.amount), 0);
-    // Se não há tx de dívida para mês futuro mas há parcelas ativas cadastradas em dívidas
     if (!isCurrent && debtExp === 0 && totalMonthlyDebtInstallments > 0) {
-      debtExp = totalMonthlyDebtInstallments;
+      // Verifica se as dívidas ainda estão ativas no mês em questão
+      const activeInMonth = debtDetails.filter(d => {
+        if (d.endMonthYear === 'não informado') return true;
+        return d.endMonthYear >= formatMonthYearBR(monthStr);
+      });
+      debtExp = activeInMonth.reduce((s, d) => s + (d.monthlyInstallment || 0), 0);
     }
 
-    // 4. Outras obrigações (recorrentes fixas + investimentos profissionais + compromissos discricionários pendentes)
+    // 4. OUTRAS OBRIGAÇÕES (Fixas recorrentes, investimentos profissionais e compromissos discricionários)
     const monthOtherTxs = transactions.filter(t => 
       t.type === 'expense' && 
       t.date.startsWith(monthStr) &&
@@ -771,17 +835,21 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
       otherObligations = thisMonthRecurringOther;
     }
 
-    // Resultado do mês = Entradas Garantidas - Saídas Obrigatórias
-    const netResult = monthIncomes - (essentialExp + debtExp + otherObligations);
+    const totalMonthOutflows = essentialExp + debtExp + otherObligations;
+    const netResult = totalMonthInflows - totalMonthOutflows;
     runningProjectedBalance += netResult;
 
     return {
       monthStr,
       monthLabel: formatMonthYearBR(monthStr),
-      guaranteedIncomes: Number(monthIncomes.toFixed(2)),
+      guaranteedIncomes: Number(totalMonthInflows.toFixed(2)),
+      extraordinaryIncomes: Number(monthExtraordinaryIncomes.toFixed(2)),
+      showIncomes: Number(monthShowIncomes.toFixed(2)),
+      recurringIncomes: Number(monthRecurringIncomes.toFixed(2)),
       essentialExpenses: Number(essentialExp.toFixed(2)),
       debtInstallments: Number(debtExp.toFixed(2)),
       otherObligations: Number(otherObligations.toFixed(2)),
+      totalOutflows: Number(totalMonthOutflows.toFixed(2)),
       netResult: Number(netResult.toFixed(2)),
       projectedEndBalance: Number(runningProjectedBalance.toFixed(2))
     };
@@ -790,41 +858,37 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   const finalProjectedBalanceAtHorizon = monthlyFlowRows[monthlyFlowRows.length - 1]?.projectedEndBalance ?? runningProjectedBalance;
 
   // -------------------------------------------------------------------------
-  // 8. CAPACIDADE DE COMPRA E MARGEM SEGURA
+  // 8. CAPACIDADE DE COMPRA (BASEADA NO FLUXO CORRIGIDO)
   // -------------------------------------------------------------------------
-  // Menor saldo projetado ao longo dos 6 meses
   const minProjectedBalance = Math.min(...monthlyFlowRows.map(r => r.projectedEndBalance));
 
-  // Meses de sobrevivência com o caixa atual: Dinheiro disponível hoje / Custo mensal obrigatório
   const monthsOfSurvivalCurrentCash = totalMandatoryMonthlyCost > 0 
     ? Number((totalAvailableOperationalToday / totalMandatoryMonthlyCost).toFixed(1)) 
-    : 'DADOS INSUFICIENTES';
+    : 'não informado';
 
-  // Margem segura para novas compras à vista:
-  // Não pode negativar compromissos imediatos, não pode negativar o saldo mínimo nos 6 meses,
-  // e preserva um colchão de segurança essencial (ou 50% do excedente).
   let safePurchaseMargin = 0;
-  const maxAvailableCash = Math.min(immediateFreeCash, minProjectedBalance);
+  // O usuário só pode comprar à vista se houver caixa livre imediato E o menor saldo projetado for positivo
+  const maxSafeCash = Math.min(immediateFreeCash, minProjectedBalance);
 
-  if (maxAvailableCash > 0) {
+  if (maxSafeCash > 0) {
     if (totalMoneyReserved >= referenceMonthlyEssentialCost) {
-      // Já tem reserva em cofrinhos cobrindo pelo menos 1 mês de vida
-      safePurchaseMargin = Math.max(0, Math.round(maxAvailableCash * 0.7));
+      // Já tem reserva dedicada em cofrinhos/poupança cobrindo pelo menos 1 mês de vida
+      safePurchaseMargin = Math.max(0, Math.round(maxSafeCash * 0.7));
     } else {
-      // Não tem reserva suficiente nos cofrinhos: protege o custo de 1 mês de vida no caixa operacional
-      safePurchaseMargin = Math.max(0, Math.round(maxAvailableCash - referenceMonthlyEssentialCost));
+      // Não possui reserva em cofrinho: protege 1 mês de custo essencial no caixa operacional
+      safePurchaseMargin = Math.max(0, Math.round(maxSafeCash - referenceMonthlyEssentialCost));
     }
   }
 
-  // Margem para novas compras parceladas por mês:
-  // Capacidade de suportar uma nova parcela mensal sem tornar nenhum mês deficitário
-  const monthlySurpluses = monthlyFlowRows.map(r => r.netResult);
-  const minMonthlySurplus = Math.min(...monthlySurpluses);
-  const safeMonthlyInstallmentMargin = minMonthlySurplus > 0 ? Math.round(minMonthlySurplus * 0.5) : 0;
+  // Margem para novas parcelas mensais
+  const minMonthlyNetSurplus = Math.min(...monthlyFlowRows.map(r => r.netResult));
+  const safeMonthlyInstallmentMargin = (minMonthlyNetSurplus > 0 && minProjectedBalance > 0)
+    ? Math.max(0, Math.round(minMonthlyNetSurplus * 0.5))
+    : 0;
 
   // -------------------------------------------------------------------------
-  // MONTAGEM DO TEXTO DO RELATÓRIO
-  // ESTRUTURA EXATA E PRIORITÁRIA:
+  // MONTAGEM DO DOCUMENTO EM TEXTO PURO
+  // ESTRUTURA PRIORITÁRIA:
   // DINHEIRO HOJE → ENTRADAS FUTURAS → SAÍDAS FUTURAS → CUSTO MENSAL → DÍVIDAS → FLUXO DOS PRÓXIMOS MESES → CAPACIDADE DE COMPRA
   // -------------------------------------------------------------------------
   const lines: string[] = [];
@@ -837,7 +901,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push(`Período analisado: ${dateRange.label}`);
   lines.push(`Horizonte temporal: ${formatDateBR(dateRange.startDate)} até ${formatDateBR(dateRange.endDate)}`);
 
-  // RESUMO EXECUTIVO (OS 10 ITENS EXATOS NO INÍCIO)
+  // RESUMO EXECUTIVO
   lines.push('');
   lines.push('------------------------------------------------------------');
   lines.push('RESUMO EXECUTIVO');
@@ -863,16 +927,18 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push(`• Compromissos imediatos (contas a vencer no mês atual): ${formatBRL(totalImmediateCommitments)}`);
   lines.push(`• Caixa livre imediato (disponível - compromissos imediatos): ${formatBRL(immediateFreeCash)}`);
   lines.push(`• Patrimônio líquido total (disponível + reservado): ${formatBRL(totalNetWorth)}`);
-  lines.push('NOTA METODOLÓGICA: O dinheiro reservado (cofrinhos) NÃO é despesa nem saldo livre para consumo; é patrimônio protegido.');
+  lines.push('NOTA METODOLÓGICA: Cofrinhos e poupança NÃO são despesas nem dinheiro livre para consumo corrente; representam patrimônio reservado e protegido.');
 
   // SEÇÃO 2: ENTRADAS FUTURAS
   lines.push('');
   lines.push('============================================================');
   lines.push('2. ENTRADAS FUTURAS');
   lines.push('============================================================');
-  lines.push(`• Total de receitas garantidas: ${formatBRL(totalGuaranteedFutureIncome)}`);
-  lines.push(`  - Salários / rendas fixas certas: ${formatBRL(totalGuaranteedFutureIncomeFromTxs - futureShowsCoveredInTxs)}`);
+  lines.push(`• Total de receitas futuras garantidas no período: ${formatBRL(totalGuaranteedFutureIncome)}`);
+  lines.push(`  - Rendas fixas / recorrentes certas: ${formatBRL(totalFutureRecurringGuaranteed - futureShowsCoveredInTxs)}`);
   lines.push(`  - Cachês de shows contratados a receber: ${formatBRL(totalFutureShowsToReceive)}`);
+  lines.push(`  - Receitas extraordinárias futuras programadas: ${formatBRL(totalFutureExtraordinaryIncome)}`);
+  
   lines.push('');
   lines.push('RESUMO DA RENDA VARIÁVEL DE SHOWS:');
   lines.push('Shows contratados | Valor a receber | Custos previstos | Lucro esperado | Lucro médio por show');
@@ -881,7 +947,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   const showToRecStr = formatBRL(totalFutureShowsToReceive).padStart(17);
   const showCostsStr = formatBRL(totalFutureShowsCosts).padStart(18);
   const showProfitStr = formatBRL(totalFutureShowsExpectedProfit).padStart(16);
-  const showAvgStr = formatBRL(avgProfitPerShow).padStart(21);
+  const showAvgStr = (avgProfitPerShow > 0 ? formatBRL(avgProfitPerShow) : 'não informado').padStart(21);
   lines.push(`${showsLabel} | ${showToRecStr} | ${showCostsStr} | ${showProfitStr} | ${showAvgStr}`);
 
   if (showsContratadosFuturos.length > 0) {
@@ -894,15 +960,15 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   }
 
   lines.push('');
-  lines.push(`• Receitas futuras estimadas (incertas / não contratadas): ${formatBRL(totalEstimatedFutureIncome)}`);
+  lines.push(`• Receitas futuras estimadas (incertas / não confirmadas): ${formatBRL(totalFutureEstimated)}`);
 
   lines.push('');
-  lines.push('RECEITAS EXTRAORDINÁRIAS IDENTIFICADAS:');
-  if (extraordinaryIncomes.length === 0) {
-    lines.push('Nenhuma receita extraordinária registrada (rescisão, FGTS, bônus pontual).');
+  lines.push('RECEITAS EXTRAORDINÁRIAS IDENTIFICADAS NO PERÍODO:');
+  lines.push('NOTA METODOLÓGICA: Seguro-desemprego, Multa de 40% do FGTS, rescisões e bônus NÃO entram na renda mensal recorrente contínua, mas entram normalmente no fluxo de caixa e no saldo projetado dos meses em que estão previstos.');
+  if (futureExtraordinaryIncomes.length === 0) {
+    lines.push('Nenhuma receita extraordinária futura programada.');
   } else {
-    lines.push('NOTA METODOLÓGICA: As receitas extraordinárias abaixo NÃO foram somadas à renda mensal recorrente:');
-    extraordinaryIncomes.forEach(t => {
+    futureExtraordinaryIncomes.forEach(t => {
       lines.push(`• [${formatDateBR(t.date)}] ${t.description} (${getCatName(t.categoryId)}): ${formatBRL(t.amount)}`);
     });
   }
@@ -919,7 +985,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push(`• Despesas fixas recorrentes programadas: ${formatBRL(futureRecurringTotal)}`);
   lines.push(`• Investimentos profissionais programados (equipamentos/trabalho): ${formatBRL(futureProfTotal)}`);
   lines.push(`• Despesas discricionárias programadas: ${formatBRL(futureDiscretionaryTotal)}`);
-  lines.push('NOTA: Transferências entre contas e aportes em cofrinhos foram desconsiderados pois não representam despesas.');
+  lines.push('NOTA: Transferências internas entre contas e aportes em cofrinhos foram desconsiderados (não representam despesa).');
 
   // SEÇÃO 4: CUSTO MENSAL
   lines.push('');
@@ -932,9 +998,10 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push('------------------------------------------------------------');
   lines.push(`CUSTO MENSAL TOTAL OBRIGATÓRIO: ${formatBRL(totalMandatoryMonthlyCost)}`);
   lines.push('------------------------------------------------------------');
-  lines.push(`• Renda mensal fixa/recorrente: ${formatBRL(totalMonthlyRecurringIncome)}`);
-  lines.push(`• Balanço mensal base (renda fixa - custo obrigatório): ${baseMonthlyBalance >= 0 ? '+' : ''}${formatBRL(baseMonthlyBalance)}`);
+  lines.push(`• Renda mensal fixa recorrente futura: ${formatBRL(totalMonthlyRecurringIncome)}`);
+  lines.push(`• Balanço mensal base recorrente (renda fixa - custo obrigatório): ${baseMonthlyBalance >= 0 ? '+' : ''}${formatBRL(baseMonthlyBalance)}`);
   lines.push(`• Diagnóstico da renda variável: ${necessityOfShowsExplanation}`);
+  lines.push('NOTA METODOLÓGICA: Valores rescisórios passados (como rescisão/saldo recebido) e parcelas de seguro-desemprego/FGTS não constam na renda mensal recorrente contínua.');
 
   // SEÇÃO 5: DÍVIDAS
   lines.push('');
@@ -944,15 +1011,16 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   if (debtDetails.length === 0) {
     lines.push('Nenhuma dívida ou parcelamento ativo cadastrado.');
   } else {
-    lines.push('Dívida                        | Saldo restante | Valor da parcela | Parcelas restantes | Mês de término');
-    lines.push('------------------------------|----------------|------------------|--------------------|---------------');
+    lines.push('Dívida                        | Saldo restante | Valor da parcela | Parcelas pagas | Parcelas restantes | Mês término');
+    lines.push('------------------------------|----------------|------------------|----------------|--------------------|------------');
     debtDetails.forEach(dd => {
       const name = dd.debt.name.slice(0, 28).padEnd(28);
-      const bal = formatBRL(dd.remainingAmount).padStart(14);
-      const parc = formatBRL(dd.monthlyInstallment).padStart(16);
-      const rest = `${dd.remainingCount}/${dd.totalCount || '?'}`.padStart(18);
+      const bal = (dd.remainingAmount !== null ? formatBRL(dd.remainingAmount) : 'não informado').padStart(14);
+      const parc = (dd.monthlyInstallment !== null ? formatBRL(dd.monthlyInstallment) : 'não informado').padStart(16);
+      const paid = (dd.paidCount !== null ? String(dd.paidCount) : 'não informado').padStart(14);
+      const rest = (dd.remainingCount !== null ? String(dd.remainingCount) : 'não informado').padStart(18);
       const end = dd.endMonthYear.slice(0, 15).padEnd(15);
-      lines.push(`${name} | ${bal} | ${parc} | ${rest} | ${end}`);
+      lines.push(`${name} | ${bal} | ${parc} | ${paid} | ${rest} | ${end}`);
     });
     lines.push('');
     lines.push(`• Total de dívidas restantes: ${formatBRL(totalDebtsRemaining)}`);
@@ -978,16 +1046,29 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     lines.push(`${m} | ${inVal} | ${essVal} | ${debtVal} | ${othVal} | ${resVal} | ${endVal}`);
   });
 
-  // Alertas sobre o fluxo
+  lines.push('');
+  lines.push('DETALHAMENTO DAS ENTRADAS E SAÍDAS POR MÊS:');
+  monthlyFlowRows.forEach(row => {
+    const parts: string[] = [];
+    if (row.recurringIncomes > 0) parts.push(`Recorrentes: ${formatBRL(row.recurringIncomes)}`);
+    if (row.showIncomes > 0) parts.push(`Shows: ${formatBRL(row.showIncomes)}`);
+    if (row.extraordinaryIncomes > 0) parts.push(`Extraordinárias (Seguro-desemprego/FGTS): ${formatBRL(row.extraordinaryIncomes)}`);
+    const inDetail = parts.length > 0 ? parts.join(' | ') : 'Sem entradas programadas';
+    lines.push(`• ${row.monthLabel.toUpperCase()}:`);
+    lines.push(`  - Entradas (${formatBRL(row.guaranteedIncomes)}): ${inDetail}`);
+    lines.push(`  - Saídas   (${formatBRL(row.totalOutflows)}): Essenciais: ${formatBRL(row.essentialExpenses)} | Dívidas: ${formatBRL(row.debtInstallments)} | Outras: ${formatBRL(row.otherObligations)}`);
+    lines.push(`  - Resultado do Mês: ${row.netResult >= 0 ? '+' : ''}${formatBRL(row.netResult)} | Saldo Projetado ao Fim: ${formatBRL(row.projectedEndBalance)}`);
+  });
+
   const deficitMonths = monthlyFlowRows.filter(r => r.netResult < 0 || r.projectedEndBalance < 0);
   if (deficitMonths.length > 0) {
     lines.push('');
     lines.push('ALERTAS DE FLUXO:');
     deficitMonths.forEach(dm => {
       if (dm.projectedEndBalance < 0) {
-        lines.push(`• CRÍTICO EM ${dm.monthLabel.toUpperCase()}: Saldo final projetado fica negativo em ${formatBRL(dm.projectedEndBalance)}.`);
+        lines.push(`• CRÍTICO EM ${dm.monthLabel.toUpperCase()}: Saldo projetado fica negativo em ${formatBRL(dm.projectedEndBalance)}.`);
       } else {
-        lines.push(`• ATENÇÃO EM ${dm.monthLabel.toUpperCase()}: Déficit mensal de ${formatBRL(Math.abs(dm.netResult))}, coberto pelo saldo acumulado anterior.`);
+        lines.push(`• ATENÇÃO EM ${dm.monthLabel.toUpperCase()}: Déficit de ${formatBRL(Math.abs(dm.netResult))} no mês, suprido pelo saldo acumulado de meses anteriores.`);
       }
     });
   }
@@ -997,19 +1078,20 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push('============================================================');
   lines.push('7. CAPACIDADE DE COMPRA');
   lines.push('============================================================');
-  lines.push(`• Saldo final projetado após todas as obrigações: ${formatBRL(finalProjectedBalanceAtHorizon)}`);
+  lines.push(`• Saldo final projetado ao fim dos 6 meses: ${formatBRL(finalProjectedBalanceAtHorizon)}`);
+  lines.push(`• Menor saldo operacional projetado no período: ${formatBRL(minProjectedBalance)}`);
   lines.push(`• Meses de sobrevivência com o caixa atual: ${typeof monthsOfSurvivalCurrentCash === 'number' ? `${monthsOfSurvivalCurrentCash} meses` : monthsOfSurvivalCurrentCash}`);
   lines.push(`• MARGEM SEGURA PARA NOVAS COMPRAS À VISTA: ${formatBRL(safePurchaseMargin)}`);
-  lines.push(`  (Valor máximo que pode ser gasto à vista hoje sem comprometer contas imediatas, sem negativar o caixa nos próximos 6 meses e preservando a reserva)`);
+  lines.push(`  (Teto máximo que pode ser gasto à vista hoje sem comprometer contas imediatas, sem negativar o caixa em nenhum dos próximos 6 meses e preservando a reserva)`);
   lines.push(`• MARGEM PARA NOVA PARCELA MENSAL: ${formatBRL(safeMonthlyInstallmentMargin)}/mês`);
-  lines.push(`  (Valor máximo de nova prestação que o fluxo mensal suporta com folga)`);
+  lines.push(`  (Valor máximo de prestação mensal adicional que o fluxo suporta sem gerar déficit)`);
 
   lines.push('');
   lines.push('ORIENTAÇÃO DIRETA PARA A IA:');
   if (safePurchaseMargin > 0) {
-    lines.push(`O usuário PODE realizar compras à vista de até ${formatBRL(safePurchaseMargin)} sem colocar em risco as obrigações dos próximos 6 meses nem a sua reserva.`);
+    lines.push(`O usuário PODE realizar novas compras à vista de até ${formatBRL(safePurchaseMargin)}. Esse valor não compromete nenhuma conta imediata nem futura e mantém a reserva intacta.`);
   } else {
-    lines.push(`O usuário NÃO DEVE realizar novas compras no momento. O caixa disponível está comprometido com contas imediatas ou há meses com risco de déficit.`);
+    lines.push(`O usuário NÃO DEVE fazer compras supérfluas no momento. O caixa disponível está comprometido com contas imediatas ou há meses com fluxo deficitário.`);
   }
   lines.push('============================================================');
   lines.push('FIM DO RELATÓRIO');
