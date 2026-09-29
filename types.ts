@@ -145,22 +145,28 @@ export interface Receipt {
   isImported?: boolean; // Indica se foi gerado por importação automática
 }
 
+export type ShowStatus = 'Orçamento' | 'Aguardando confirmação' | 'Confirmado' | 'Realizado' | 'Cancelado' | 'Agendado';
+
 export interface Show {
   id: string;
   name: string;           // Nome do evento / Show
   contractorName: string; // Nome do contratante
-  location: string;       // Local da apresentação
-  date: string;           // Data da apresentação
-  time: string;           // Horário
+  eventType?: string;     // Tipo de evento (Casamento, Corporativo, Bar, etc.)
+  location: string;       // Local da apresentação / Endereço
+  city?: string;          // Cidade
+  date: string;           // Data da apresentação (YYYY-MM-DD)
+  time: string;           // Horário de início
+  endTime?: string;       // Horário de término
+  duration?: string;      // Duração estimada (ex: 3h)
   totalCache: number;     // Valor total do cachê
-  cacheCombined: number;  // Cachê combinado (para compatibilidade anterior)
-  cacheReceived: number;  // Cachê recebido totalizado (para compatibilidade anterior)
-  paymentMethod: string;  // Forma de pagamento do show
-  notes: string;          // Observações
-  status: 'Agendado' | 'Confirmado' | 'Realizado' | 'Cancelado'; // Status do show
-  receipts: Receipt[];    // Lista de recebimentos vinculados
-  expensesLaunched: boolean; // Se já lançou despesas
-  expenses: ShowExpenses;
+  cacheCombined?: number; // Cachê combinado (para compatibilidade anterior)
+  cacheReceived?: number; // Cachê recebido totalizado (para compatibilidade anterior)
+  paymentMethod?: string; // Forma de pagamento do show
+  notes?: string;         // Observações
+  status: ShowStatus;     // Status do show
+  receipts?: Receipt[];   // Lista de recebimentos vinculados
+  expensesLaunched?: boolean; // Se já lançou despesas
+  expenses?: ShowExpenses;
   expenseTransactionIds?: {
     fuel?: string;
     food?: string;

@@ -1,24 +1,13 @@
-
 import React, { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FinanceProvider } from './context/FinanceContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
-import { TransactionList } from './components/TransactionList';
-import { FinancialInsights } from './components/FinancialInsights';
-import { TransactionForm } from './components/TransactionForm';
-import { Settings } from './components/Settings';
-import { CategoryList } from './components/CategoryList';
-import { FinancialSummary } from './components/FinancialSummary';
-import { MonthlyFlow } from './components/MonthlyFlow';
-import { DebtList } from './components/DebtList';
-import { AlertsScreen } from './components/AlertsScreen';
-import { CalendarScreen } from './components/CalendarScreen';
-import { GoalsScreen } from './components/GoalsScreen';
+import { FinancialHubScreen } from './components/FinancialHubScreen';
 import { MusicianShowScreen } from './components/MusicianShowScreen';
-import { PlanningScreen } from './components/PlanningScreen';
-import { AIReportScreen } from './components/AIReportScreen';
-import { FinancialSettingsScreen } from './components/FinancialSettingsScreen';
+import { ReportsHubScreen } from './components/ReportsHubScreen';
+import { MoreHubScreen } from './components/MoreHubScreen';
+import { TransactionForm } from './components/TransactionForm';
 
 const AppContent = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -32,21 +21,37 @@ const AppContent = () => {
   return (
     <Layout onOpenAdd={handleOpenAddWithType}>
       <Routes>
+        {/* AS 5 ÁREAS PRINCIPAIS */}
+        {/* 1. Home */}
         <Route path="/" element={<Dashboard />} />
-        <Route path="/summary" element={<FinancialSummary />} />
-        <Route path="/flow" element={<MonthlyFlow />} />
-        <Route path="/planning" element={<PlanningScreen />} />
-        <Route path="/transactions" element={<TransactionList />} />
-        <Route path="/calendar" element={<CalendarScreen />} />
-        <Route path="/debts" element={<DebtList />} />
-        <Route path="/alerts" element={<AlertsScreen />} />
-        <Route path="/metas" element={<GoalsScreen />} />
+        
+        {/* 2. Financeiro */}
+        <Route path="/financeiro" element={<FinancialHubScreen />} />
+        
+        {/* 3. Shows */}
         <Route path="/shows" element={<MusicianShowScreen />} />
-        <Route path="/insights" element={<FinancialInsights />} />
-        <Route path="/ai-report" element={<AIReportScreen />} />
-        <Route path="/financial-settings" element={<FinancialSettingsScreen />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/categories" element={<CategoryList />} />
+        
+        {/* 4. Relatórios */}
+        <Route path="/relatorios" element={<ReportsHubScreen />} />
+        
+        {/* 5. Mais */}
+        <Route path="/mais" element={<MoreHubScreen />} />
+
+        {/* ROTAS LEGADAS / ACESSOS DIRETOS PRESERVADOS (REDIRECIONAMENTO OU ACESSO TRANSPARENTE) */}
+        <Route path="/transactions" element={<FinancialHubScreen initialTab="movimentacoes" />} />
+        <Route path="/debts" element={<FinancialHubScreen initialTab="dividas" />} />
+        <Route path="/metas" element={<FinancialHubScreen initialTab="metas" />} />
+        <Route path="/planning" element={<FinancialHubScreen initialTab="projecoes" />} />
+        <Route path="/flow" element={<ReportsHubScreen initialTab="flow" />} />
+        <Route path="/insights" element={<FinancialHubScreen initialTab="insights" />} />
+        <Route path="/summary" element={<ReportsHubScreen initialTab="summary" />} />
+        <Route path="/ai-report" element={<ReportsHubScreen initialTab="ai" />} />
+        <Route path="/calendar" element={<ReportsHubScreen initialTab="calendar" />} />
+        <Route path="/financial-settings" element={<MoreHubScreen initialTab="financial" />} />
+        <Route path="/settings" element={<MoreHubScreen initialTab="settings" />} />
+        <Route path="/categories" element={<MoreHubScreen initialTab="categories" />} />
+        <Route path="/alerts" element={<MoreHubScreen initialTab="alerts" />} />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       
