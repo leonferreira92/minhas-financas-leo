@@ -6,7 +6,8 @@ import {
   Sparkles, Loader2, TrendingUp, ArrowRightLeft, 
   AlertTriangle, Calendar as CalendarIcon,
   ChevronDown, Wallet, Target, Plus, Search, CheckCircle2,
-  SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight
+  SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight,
+  Music, ChevronRight
 } from 'lucide-react';
 import { getIcon, parseCurrencyInput } from '../constants';
 import { GeminiService } from '../services/geminiService';
@@ -527,6 +528,22 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pb-36">
             
+            {transaction?.showId && (
+              <div className="mx-6 mt-3 p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-purple-700 dark:text-purple-300">
+                  <Music size={16} />
+                  <span className="text-xs font-bold">Vinculado a um Show / Evento</span>
+                </div>
+                <a
+                  href={`#/shows?showId=${transaction.showId}`}
+                  onClick={onClose}
+                  className="text-[11px] font-black uppercase text-purple-600 dark:text-purple-400 hover:underline flex items-center"
+                >
+                  Ver Show <ChevronRight size={12} className="ml-0.5" />
+                </a>
+              </div>
+            )}
+
             {/* ========================================== */}
             {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA)   */}
             {/* ========================================== */}

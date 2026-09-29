@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { getIcon } from '../constants';
 import { 
@@ -6,7 +7,7 @@ import {
   Repeat, Calendar, XCircle, ChevronDown, TrendingUp, 
   TrendingDown, Check, Circle, Wallet, ArrowRightLeft, 
   Layers, ChevronLeft, ChevronRight, PiggyBank, Plus,
-  ListFilter, X, Receipt
+  ListFilter, X, Receipt, Music
 } from 'lucide-react';
 import { Transaction } from '../types';
 import { TransactionForm } from './TransactionForm';
@@ -16,6 +17,7 @@ import { CategoryBreakdown } from './extrato/CategoryBreakdown';
 import { UpcomingCommitments } from './extrato/UpcomingCommitments';
 
 export const TransactionList = () => {
+  const navigate = useNavigate();
   const { transactions, categories, updateTransaction, accounts, getBalanceSummary, isBlurred, toggleBlur } = useFinance();
   
   // Modal State for Editing Transaction
@@ -443,6 +445,20 @@ export const TransactionList = () => {
                                 <span className="inline-flex items-center px-1 py-0.2 rounded text-[8px] font-medium text-slate-400 bg-slate-200/60 dark:bg-slate-700/60">
                                   <Wallet size={8} className="mr-0.5" /> {account.name}
                                 </span>
+                              )}
+
+                              {t.showId && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/shows?showId=${t.showId}`);
+                                  }}
+                                  className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-black bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 uppercase transition"
+                                  title="Acessar Detalhes do Show Vinculado"
+                                >
+                                  <Music size={8} className="mr-0.5" /> Show
+                                </button>
                               )}
                             </div>
                           </div>

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { Show, ShowStatus } from '../types';
 import { 
@@ -16,6 +17,7 @@ import { checkScheduleConflict } from './shows/conflictHelper';
 export type ShowScreenTab = 'agenda' | 'upcoming' | 'quotes' | 'history';
 
 export const MusicianShowScreen: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const { shows, addShow, updateShow, deleteShow } = useFinance();
 
   const [activeTab, setActiveTab] = useState<ShowScreenTab>('agenda');
@@ -25,6 +27,17 @@ export const MusicianShowScreen: React.FC = () => {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
   const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
+
+  // Deep-link from Financeiro/Extrato via ?showId=...
+  useEffect(() => {
+    const showId = searchParams.get('showId');
+    if (showId) {
+      const found = shows.find(s => s.id === showId);
+      if (found) {
+        setSelectedShowForDetail(found);
+      }
+    }
+  }, [searchParams, shows]);
 
   // Count pending quotes for tab badge
   const pendingQuotesCount = shows.filter(
@@ -184,7 +197,7 @@ export const MusicianShowScreen: React.FC = () => {
         show={selectedShowForDetail}
         onClose={() => setSelectedShowForDetail(null)}
         onEdit={show => handleOpenEditModal(show)}
-        onDelete={showId => deleteShow(showId)}
+        onDelete={showId => deleteShow(showId, true)}
         onUpdateStatus={handleQuickUpdateStatus}
       />
 

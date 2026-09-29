@@ -4,6 +4,7 @@ import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, S
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
+import { normalizeShowFinancials, syncShowWithTransactions, cancelShowFutureTransactions } from '../services/showFinanceSyncService';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -57,7 +58,8 @@ interface FinanceContextType {
 
   addShow: (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => void;
   updateShow: (s: Show) => void;
-  deleteShow: (id: string) => void;
+  deleteShow: (id: string, deleteTransactions?: boolean) => void;
+  cancelShowFutureFinancials: (showId: string) => void;
 
   getSystemAlerts: () => SystemAlert[];
   updateSettings: (s: Partial<AppSettings>) => void;
@@ -723,26 +725,67 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addShow = (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => {
+    const id = s.id || crypto.randomUUID();
+    const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+    const showWithId: Show = { ...s, id, createdAt: Date.now() };
+    const normalized = normalizeShowFinancials(showWithId, defaultAccId);
+
+    // Sincronizar automaticamente com as movimentações financeiras
+    const { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, transactions, categories);
+
     setShows(prev => {
-      const id = s.id || crypto.randomUUID();
-      const updated = [...prev, { ...s, id, createdAt: Date.now() }];
+      const updated = [...prev, updatedShow];
       StorageService.saveShows(updated);
       return updated;
     });
+
+    setTransactions(updatedTransactions);
+    StorageService.saveTransactions(updatedTransactions);
   };
 
   const updateShow = (s: Show) => {
+    const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+    const normalized = normalizeShowFinancials(s, defaultAccId);
+
+    // Se o show foi cancelado, remove/ajusta as receitas futuras agendadas
+    let currentTxs = transactions;
+    if (s.status === 'Cancelado') {
+      currentTxs = cancelShowFutureTransactions(s.id, currentTxs);
+    }
+
+    // Sincronizar movimentações
+    const { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, currentTxs, categories);
+
     setShows(prev => {
-      const updated = prev.map(show => show.id === s.id ? s : show);
+      const updated = prev.map(show => show.id === s.id ? updatedShow : show);
       StorageService.saveShows(updated);
       return updated;
     });
+
+    setTransactions(updatedTransactions);
+    StorageService.saveTransactions(updatedTransactions);
   };
 
-  const deleteShow = (id: string) => {
+  const deleteShow = (id: string, deleteTransactions: boolean = false) => {
     setShows(prev => {
       const updated = prev.filter(show => show.id !== id);
       StorageService.saveShows(updated);
+      return updated;
+    });
+
+    if (deleteTransactions) {
+      setTransactions(prev => {
+        const updated = prev.filter(t => t.showId !== id);
+        StorageService.saveTransactions(updated);
+        return updated;
+      });
+    }
+  };
+
+  const cancelShowFutureFinancials = (showId: string) => {
+    setTransactions(prev => {
+      const updated = cancelShowFutureTransactions(showId, prev);
+      StorageService.saveTransactions(updated);
       return updated;
     });
   };
@@ -841,7 +884,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget, addGoal, updateGoal, deleteGoal,
-      addShow, updateShow, deleteShow,
+      addShow, updateShow, deleteShow, cancelShowFutureFinancials,
       getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission
     }}>

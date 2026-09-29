@@ -76,6 +76,9 @@ export interface Transaction {
   interest?: number; // Valor excedente pago considerado como juros
   goalId?: string; // ID da meta/cofrinho para aportes ou resgates
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
+  showId?: string; // ID do Show vinculado
+  showPaymentId?: string; // ID do pagamento vinculado do show
+  showExpenseId?: string; // ID da despesa vinculada do show
 }
 
 export interface SystemAlert {
@@ -132,6 +135,33 @@ export interface ShowExpenses {
   others: number;       // Outros
 }
 
+export type ShowPaymentType = 'Sinal' | 'Parcela' | 'Restante' | 'Pagamento final' | 'Bônus' | 'Extra' | 'Outro';
+export type ShowPaymentStatus = 'Agendado' | 'Recebido' | 'Previsto' | 'Cancelado';
+
+export interface ShowPayment {
+  id: string;
+  type: ShowPaymentType;
+  amount: number;
+  expectedDate: string; // Data prevista (YYYY-MM-DD)
+  effectiveDate?: string; // Data efetiva de recebimento
+  accountId: string; // Conta bancária/carteira
+  status: ShowPaymentStatus;
+  notes?: string;
+  transactionId?: string; // ID da movimentação no Financeiro
+}
+
+export type ShowExpenseCategory = 'Combustível' | 'Alimentação' | 'Pedágio' | 'Estacionamento' | 'Comissão' | 'Hospedagem' | 'Outros';
+
+export interface ShowExpenseItem {
+  id: string;
+  category: ShowExpenseCategory | string;
+  amount: number;
+  date: string; // Data da despesa (YYYY-MM-DD)
+  accountId: string; // Conta bancária/carteira de onde saiu o valor
+  notes?: string;
+  transactionId?: string; // ID da movimentação no Financeiro
+}
+
 export interface Receipt {
   id: string;
   amount: number;
@@ -164,7 +194,9 @@ export interface Show {
   paymentMethod?: string; // Forma de pagamento do show
   notes?: string;         // Observações
   status: ShowStatus;     // Status do show
-  receipts?: Receipt[];   // Lista de recebimentos vinculados
+  payments?: ShowPayment[]; // Lista de pagamentos/parcelas vinculados
+  expenseItems?: ShowExpenseItem[]; // Lista detalhada de despesas vinculadas
+  receipts?: Receipt[];   // Lista de recebimentos vinculados (compatibilidade com dados legados)
   expensesLaunched?: boolean; // Se já lançou despesas
   expenses?: ShowExpenses;
   expenseTransactionIds?: {
