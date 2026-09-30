@@ -1,9 +1,8 @@
-
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Category, TransactionType } from '../types';
+import { Category, TransactionType, ScopeType } from '../types';
 import { getIcon, ICON_MAP } from '../constants';
-import { Trash2, Edit2, Plus, X, ChevronLeft, Lock, CheckCircle2, Search, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Trash2, Plus, X, ChevronLeft, Lock, CheckCircle2, Search, ArrowDownCircle, ArrowUpCircle, ChevronRight, User, Music, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const COLORS = [
@@ -13,10 +12,11 @@ const COLORS = [
 ];
 
 export const CategoryList = () => {
-  const { categories, transactions, addCategory, updateCategory, deleteCategory } = useFinance();
+  const { categories, transactions, addCategory, updateCategory, deleteCategory, activeScope } = useFinance();
   
   // UI State
   const [activeTab, setActiveTab] = useState<TransactionType>('expense');
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'PERSONAL' | 'BUSINESS'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -26,6 +26,7 @@ export const CategoryList = () => {
   // Form State
   const [name, setName] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
+  const [scope, setScope] = useState<ScopeType>('PERSONAL');
   const [color, setColor] = useState(COLORS[0]);
   const [icon, setIcon] = useState('DollarSign');
 
@@ -42,6 +43,7 @@ export const CategoryList = () => {
     setEditingId(null);
     setName('');
     setType(activeTab); // Default to current tab
+    setScope(activeScope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL');
     setColor(COLORS[Math.floor(Math.random() * COLORS.length)]);
     setIcon('ShoppingBag');
     setIsModalOpen(true);
@@ -51,6 +53,7 @@ export const CategoryList = () => {
     setEditingId(cat.id);
     setName(cat.name);
     setType(cat.type);
+    setScope(cat.scope || 'PERSONAL');
     setColor(cat.color);
     setIcon(cat.icon);
     setIsModalOpen(true);
@@ -60,9 +63,9 @@ export const CategoryList = () => {
     if (!name.trim()) return;
     
     if (editingId) {
-      updateCategory({ id: editingId, name, type, color, icon });
+      updateCategory({ id: editingId, name, type, color, icon, scope });
     } else {
-      addCategory({ name, type, color, icon });
+      addCategory({ name, type, color, icon, scope });
     }
     setIsModalOpen(false);
   };
@@ -84,74 +87,129 @@ export const CategoryList = () => {
     }
   };
 
-  const filteredCategories = categories.filter(c => c.type === activeTab);
+  const filteredCategories = categories.filter(c => {
+    if (c.type !== activeTab) return false;
+    if (scopeFilter === 'ALL') return true;
+    const catScope = c.scope || 'PERSONAL';
+    return catScope === scopeFilter;
+  });
   
   // Helper to get usage count safely inside render
   const getUsageCount = (id: string) => categoryStats[id] || 0;
 
   return (
-    <div className="pb-24 animate-fade-in text-slate-900 dark:text-slate-100 min-h-screen relative">
+    <div className="pb-24 animate-fade-in text-slate-900 dark:text-slate-100 min-h-screen relative max-w-full overflow-x-hidden">
       
       {/* --- Header --- */}
       <div className="sticky top-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md z-20 px-1 pt-2 pb-2">
-        <div className="flex items-center space-x-2 mb-4">
+        <div className="flex items-center space-x-2 mb-3">
           <Link to="/settings" className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-full transition text-slate-500 dark:text-slate-400">
              <ChevronLeft size={24} />
           </Link>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Categorias</h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">Categorias</h1>
+            <p className="text-[11px] text-slate-400 font-medium">Organização exclusiva por módulo (Pessoal vs Músico)</p>
+          </div>
         </div>
 
-        {/* --- Tabs --- */}
-        <div className="bg-slate-200 dark:bg-slate-800/50 p-1 rounded-xl flex space-x-1 mb-2">
+        {/* --- Filtro de Módulo (Pessoal vs Músico) --- */}
+        <div className="bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-2xl grid grid-cols-3 gap-1 mb-2">
+          <button
+            onClick={() => setScopeFilter('ALL')}
+            className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
+              scopeFilter === 'ALL'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <span>Todas</span>
+          </button>
+          <button
+            onClick={() => setScopeFilter('PERSONAL')}
+            className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
+              scopeFilter === 'PERSONAL'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <User size={12} />
+            <span>Pessoal</span>
+          </button>
+          <button
+            onClick={() => setScopeFilter('BUSINESS')}
+            className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
+              scopeFilter === 'BUSINESS'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
+          >
+            <Music size={12} />
+            <span>Músico</span>
+          </button>
+        </div>
+
+        {/* --- Tabs Despesas vs Receitas --- */}
+        <div className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl flex space-x-1 border border-slate-200 dark:border-slate-800">
            <button 
              onClick={() => setActiveTab('expense')}
-             className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition-all active:scale-95 ${activeTab === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+             className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all active:scale-95 ${activeTab === 'expense' ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
            >
-             <ArrowDownCircle size={16} className="mr-2" /> Despesas
+             <ArrowDownCircle size={15} className="mr-1.5" /> Despesas
            </button>
            <button 
              onClick={() => setActiveTab('income')}
-             className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center transition-all active:scale-95 ${activeTab === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
+             className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all active:scale-95 ${activeTab === 'income' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}
            >
-             <ArrowUpCircle size={16} className="mr-2" /> Receitas
+             <ArrowUpCircle size={15} className="mr-1.5" /> Receitas
            </button>
         </div>
       </div>
 
       {/* --- List --- */}
-      <div className="px-1 space-y-3 mt-2">
+      <div className="px-1 space-y-2.5 mt-2">
          {filteredCategories.map((cat) => {
            const Icon = getIcon(cat.icon);
            const usageCount = getUsageCount(cat.id);
            const isInUse = usageCount > 0;
+           const isMusician = cat.scope === 'BUSINESS';
            
            return (
              <div 
                key={cat.id} 
                onClick={() => openEditCategory(cat)}
-               className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between group active:scale-[0.98] transition-transform cursor-pointer"
+               className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between group active:scale-[0.98] transition-transform cursor-pointer"
              >
-                <div className="flex items-center space-x-4">
-                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105" style={{ backgroundColor: cat.color }}>
-                      <Icon size={22} />
+                <div className="flex items-center space-x-3.5 min-w-0">
+                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105 shrink-0" style={{ backgroundColor: cat.color }}>
+                      <Icon size={20} />
                    </div>
-                   <div>
-                      <h3 className="font-bold text-slate-800 dark:text-white text-base">{cat.name}</h3>
-                      <div className="flex items-center mt-1">
-                         <span className={`text-xs ${isInUse ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-400'}`}>
+                   <div className="min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-bold text-slate-800 dark:text-white text-sm truncate">{cat.name}</h3>
+                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center space-x-1 shrink-0 ${
+                          isMusician 
+                            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' 
+                            : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                        }`}>
+                          {isMusician ? <Music size={10} className="mr-1 inline" /> : <User size={10} className="mr-1 inline" />}
+                          {isMusician ? 'Músico' : 'Pessoal'}
+                        </span>
+                      </div>
+                      <div className="flex items-center mt-0.5">
+                         <span className={`text-[11px] ${isInUse ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-400'}`}>
                             {usageCount} {usageCount === 1 ? 'lançamento' : 'lançamentos'}
                          </span>
                       </div>
                    </div>
                 </div>
                 
-                <div className="flex items-center">
+                <div className="flex items-center space-x-2 shrink-0">
                    {isInUse ? (
                      <div className="flex items-center bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                        <Lock size={10} className="mr-1.5" /> Em uso
+                        <Lock size={10} className="mr-1" /> Em uso
                      </div>
                    ) : (
-                     <ChevronRight size={20} className="text-slate-300 dark:text-slate-600" />
+                     <ChevronRight size={18} className="text-slate-300 dark:text-slate-600" />
                    )}
                 </div>
              </div>
@@ -165,7 +223,7 @@ export const CategoryList = () => {
                   <Search size={24} className="text-slate-400" />
                </div>
                <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Nenhuma categoria encontrada</p>
-               <p className="text-xs text-slate-400">Toque no botão + para criar a primeira.</p>
+               <p className="text-xs text-slate-400">Toque no botão + para criar a primeira para este módulo.</p>
             </div>
          )}
       </div>
@@ -185,49 +243,81 @@ export const CategoryList = () => {
         <div className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center backdrop-blur-sm animate-fade-in p-0 sm:p-4">
            <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar border border-slate-100 dark:border-slate-800">
               
-              <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+              <div className="flex justify-between items-center mb-5">
+                 <h2 className="text-lg font-black text-slate-800 dark:text-white">
                     {editingId ? 'Editar Categoria' : 'Nova Categoria'}
                  </h2>
                  <button onClick={() => setIsModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-95">
-                    <X size={20} className="text-slate-500 dark:text-slate-400" />
+                    <X size={18} className="text-slate-500 dark:text-slate-400" />
                  </button>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                  {/* Name Input */}
                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nome</label>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">Nome da Categoria</label>
                     <input 
                        value={name} onChange={e => setName(e.target.value)} 
-                       className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl text-lg font-bold outline-none dark:text-white transition placeholder:font-normal"
-                       placeholder="Ex: Supermercado"
+                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl text-base font-bold outline-none dark:text-white transition placeholder:font-normal"
+                       placeholder="Ex: Equipamentos de Palco"
                        autoFocus
                     />
                  </div>
 
+                 {/* Module Selector: Pessoal vs Músico */}
+                 <div>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">Módulo Exclusivo</label>
+                    <div className="grid grid-cols-2 gap-2">
+                       <button
+                         type="button"
+                         onClick={() => setScope('PERSONAL')}
+                         className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
+                           scope === 'PERSONAL'
+                             ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                             : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400'
+                         }`}
+                       >
+                         <User size={14} />
+                         <span>Pessoal</span>
+                       </button>
+
+                       <button
+                         type="button"
+                         onClick={() => setScope('BUSINESS')}
+                         className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
+                           scope === 'BUSINESS'
+                             ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 shadow-xs'
+                             : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400'
+                         }`}
+                       >
+                         <Music size={14} />
+                         <span>Músico / Empresa</span>
+                       </button>
+                    </div>
+                 </div>
+
                  {/* Type Selector (Locked if used) */}
                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                       <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo</label>
+                    <div className="flex justify-between items-center mb-1.5 px-1">
+                       <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tipo de Fluxo</label>
                        {editingId && getUsageCount(editingId) > 0 && (
                           <span className="flex items-center text-[10px] text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-md font-bold">
                              <Lock size={10} className="mr-1" /> Tipo bloqueado (em uso)
                           </span>
                        )}
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex space-x-2">
                        <button 
                          onClick={() => setType('expense')}
                          disabled={editingId ? getUsageCount(editingId) > 0 : false}
-                         className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${type === 'expense' ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-400'} disabled:opacity-50`}
+                         className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${type === 'expense' ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-400'} disabled:opacity-50`}
                        >
                          Despesa
                        </button>
                        <button 
                          onClick={() => setType('income')}
                          disabled={editingId ? getUsageCount(editingId) > 0 : false}
-                         className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${type === 'income' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-400'} disabled:opacity-50`}
+                         className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${type === 'income' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-400'} disabled:opacity-50`}
                        >
                          Receita
                        </button>
@@ -236,16 +326,16 @@ export const CategoryList = () => {
 
                  {/* Color Picker */}
                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Cor</label>
-                    <div className="flex flex-wrap gap-3">
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">Cor</label>
+                    <div className="flex flex-wrap gap-2.5">
                        {COLORS.map(c => (
                           <button
                             key={c}
                             onClick={() => setColor(c)}
-                            className={`w-10 h-10 rounded-full transition-all flex items-center justify-center ${color === c ? 'scale-110 ring-2 ring-offset-2 ring-indigo-500 shadow-md' : 'hover:scale-105 opacity-80 hover:opacity-100'}`}
+                            className={`w-8 h-8 rounded-full transition-all flex items-center justify-center ${color === c ? 'scale-110 ring-2 ring-offset-2 ring-indigo-500 shadow-md' : 'hover:scale-105 opacity-80 hover:opacity-100'}`}
                             style={{ backgroundColor: c }}
                           >
-                             {color === c && <CheckCircle2 size={16} className="text-white drop-shadow-md" />}
+                             {color === c && <CheckCircle2 size={14} className="text-white drop-shadow-md" />}
                           </button>
                        ))}
                     </div>
@@ -253,8 +343,8 @@ export const CategoryList = () => {
 
                  {/* Icon Picker */}
                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Ícone</label>
-                    <div className="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto no-scrollbar p-1">
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">Ícone</label>
+                    <div className="grid grid-cols-6 gap-2 max-h-36 overflow-y-auto no-scrollbar p-1">
                        {Object.keys(ICON_MAP).map(iconName => {
                           const IconComp = ICON_MAP[iconName];
                           const isSelected = icon === iconName;
@@ -264,7 +354,7 @@ export const CategoryList = () => {
                                onClick={() => setIcon(iconName)}
                                className={`aspect-square rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                              >
-                                <IconComp size={20} />
+                                <IconComp size={18} />
                              </button>
                           )
                        })}
@@ -272,7 +362,7 @@ export const CategoryList = () => {
                  </div>
 
                  {/* Actions */}
-                 <div className="pt-4 flex space-x-3">
+                 <div className="pt-2 flex space-x-3">
                     {editingId && (
                        getUsageCount(editingId) > 0 ? (
                          <div className="flex-none p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center text-[10px] font-bold text-center leading-tight max-w-[100px]">
@@ -284,15 +374,15 @@ export const CategoryList = () => {
                        ) : (
                          <button 
                            onClick={() => handleDeleteClick(editingId)}
-                           className="flex-none w-14 h-14 flex items-center justify-center rounded-2xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 transition"
+                           className="flex-none w-12 h-12 flex items-center justify-center rounded-2xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 transition"
                          >
-                            <Trash2 size={24} />
+                            <Trash2 size={20} />
                          </button>
                        )
                     )}
                     <button 
                       onClick={handleSave}
-                      className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 text-lg transition-transform active:scale-95 flex items-center justify-center"
+                      className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 transition-transform active:scale-95 flex items-center justify-center"
                     >
                        {editingId ? 'Salvar Alterações' : 'Criar Categoria'}
                     </button>

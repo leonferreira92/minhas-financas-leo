@@ -15,41 +15,41 @@ import {
 } from 'lucide-react';
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  // --- DESPESAS ESSENCIAIS (50%) ---
-  { id: 'cat_1', name: 'Mercado', type: 'expense', color: '#ef4444', icon: 'ShoppingCart', classification: 'essential' },
-  { id: 'cat_2', name: 'Aluguel / Condomínio', type: 'expense', color: '#f97316', icon: 'Home', classification: 'essential' },
-  { id: 'cat_3', name: 'Transporte Público', type: 'expense', color: '#eab308', icon: 'Bus', classification: 'essential' },
-  { id: 'cat_21', name: 'Combustível', type: 'expense', color: '#f59e0b', icon: 'Fuel', classification: 'essential' },
-  { id: 'cat_4', name: 'Plano de Saúde', type: 'expense', color: '#10b981', icon: 'Stethoscope', classification: 'essential' },
-  { id: 'cat_11', name: 'Farmácia', type: 'expense', color: '#059669', icon: 'HeartPulse', classification: 'essential' },
-  { id: 'cat_12', name: 'Escola / Curso', type: 'expense', color: '#3b82f6', icon: 'GraduationCap', classification: 'essential' },
-  { id: 'cat_13', name: 'Luz / Água / Gás', type: 'expense', color: '#06b6d4', icon: 'Zap', classification: 'essential' },
-  { id: 'cat_14', name: 'Internet / Celular', type: 'expense', color: '#0ea5e9', icon: 'Wifi', classification: 'essential' },
-  { id: 'cat_26', name: 'Seguros', type: 'expense', color: '#64748b', icon: 'Umbrella', classification: 'essential' },
-  { id: 'cat_27', name: 'Impostos / Taxas', type: 'expense', color: '#94a3b8', icon: 'Receipt', classification: 'essential' },
+  // --- DESPESAS ESSENCIAIS PESSOAIS (50%) ---
+  { id: 'cat_1', name: 'Mercado', type: 'expense', color: '#ef4444', icon: 'ShoppingCart', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_2', name: 'Aluguel / Condomínio', type: 'expense', color: '#f97316', icon: 'Home', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_3', name: 'Transporte Público', type: 'expense', color: '#eab308', icon: 'Bus', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_21', name: 'Combustível', type: 'expense', color: '#f59e0b', icon: 'Fuel', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_4', name: 'Plano de Saúde', type: 'expense', color: '#10b981', icon: 'Stethoscope', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_11', name: 'Farmácia', type: 'expense', color: '#059669', icon: 'HeartPulse', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_12', name: 'Escola / Curso', type: 'expense', color: '#3b82f6', icon: 'GraduationCap', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_13', name: 'Luz / Água / Gás', type: 'expense', color: '#06b6d4', icon: 'Zap', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_14', name: 'Internet / Celular', type: 'expense', color: '#0ea5e9', icon: 'Wifi', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_26', name: 'Seguros', type: 'expense', color: '#64748b', icon: 'Umbrella', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_27', name: 'Impostos / Taxas', type: 'expense', color: '#94a3b8', icon: 'Receipt', classification: 'essential', scope: 'PERSONAL' },
 
   // --- ESTILO DE VIDA / PESSOAL (30%) ---
-  { id: 'cat_5', name: 'Restaurantes', type: 'expense', color: '#8b5cf6', icon: 'Utensils', classification: 'personal' },
-  { id: 'cat_22', name: 'Delivery / Fast Food', type: 'expense', color: '#a855f7', icon: 'Pizza', classification: 'personal' },
-  { id: 'cat_9', name: 'Roupas / Calçados', type: 'expense', color: '#ec4899', icon: 'ShoppingBag', classification: 'personal' },
-  { id: 'cat_15', name: 'Assinaturas / Streaming', type: 'expense', color: '#f43f5e', icon: 'Tv', classification: 'personal' },
-  { id: 'cat_16', name: 'Cinema / Teatro', type: 'expense', color: '#fb7185', icon: 'Theater', classification: 'personal' },
-  { id: 'cat_17', name: 'Pet Shop', type: 'expense', color: '#6366f1', icon: 'PawPrint', classification: 'personal' },
-  { id: 'cat_18', name: 'Barbeiro / Salão', type: 'expense', color: '#d946ef', icon: 'Scissors', classification: 'personal' },
-  { id: 'cat_19', name: 'Jogos / Games', type: 'expense', color: '#4f46e5', icon: 'Gamepad2', classification: 'personal' },
-  { id: 'cat_23', name: 'Academia / Esporte', type: 'expense', color: '#22c55e', icon: 'Dumbbell', classification: 'personal' },
-  { id: 'cat_20', name: 'Presentes / Doações', type: 'expense', color: '#fb923c', icon: 'Gift', classification: 'personal' },
-  { id: 'cat_28', name: 'Hobby / Diversão', type: 'expense', color: '#8b5cf6', icon: 'Gem', classification: 'personal' },
-  { id: 'cat_29', name: 'Viagem / Férias', type: 'expense', color: '#06b6d4', icon: 'Globe', classification: 'personal' },
+  { id: 'cat_5', name: 'Restaurantes', type: 'expense', color: '#8b5cf6', icon: 'Utensils', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_22', name: 'Delivery / Fast Food', type: 'expense', color: '#a855f7', icon: 'Pizza', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_9', name: 'Roupas / Calçados', type: 'expense', color: '#ec4899', icon: 'ShoppingBag', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_15', name: 'Assinaturas / Streaming', type: 'expense', color: '#f43f5e', icon: 'Tv', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_16', name: 'Cinema / Teatro', type: 'expense', color: '#fb7185', icon: 'Theater', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_17', name: 'Pet Shop', type: 'expense', color: '#6366f1', icon: 'PawPrint', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_18', name: 'Barbeiro / Salão', type: 'expense', color: '#d946ef', icon: 'Scissors', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_19', name: 'Jogos / Games', type: 'expense', color: '#4f46e5', icon: 'Gamepad2', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_23', name: 'Academia / Esporte', type: 'expense', color: '#22c55e', icon: 'Dumbbell', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_20', name: 'Presentes / Doações', type: 'expense', color: '#fb923c', icon: 'Gift', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_28', name: 'Hobby / Diversão', type: 'expense', color: '#8b5cf6', icon: 'Gem', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_29', name: 'Viagem / Férias', type: 'expense', color: '#06b6d4', icon: 'Globe', classification: 'personal', scope: 'PERSONAL' },
 
   // --- FUTURO / INVESTIMENTOS (20%) ---
-  { id: 'cat_8', name: 'Ações / FIIs', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future' },
-  { id: 'cat_30', name: 'Reserva de Emergência', type: 'expense', color: '#059669', icon: 'ShieldCheck', classification: 'future' },
-  { id: 'cat_31', name: 'Previdência', type: 'expense', color: '#065f46', icon: 'PiggyBank', classification: 'future' },
+  { id: 'cat_8', name: 'Ações / FIIs', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_30', name: 'Reserva de Emergência', type: 'expense', color: '#059669', icon: 'ShieldCheck', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_31', name: 'Previdência', type: 'expense', color: '#065f46', icon: 'PiggyBank', classification: 'future', scope: 'PERSONAL' },
 
   // --- RECEITAS ---
   { id: 'cat_6', name: 'Salário', type: 'income', color: '#3b82f6', icon: 'Briefcase', classification: 'future', scope: 'PERSONAL' },
-  { id: 'cat_33', name: 'Shows / Cachês', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_33', name: 'Cachês / Shows', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'professional', scope: 'BUSINESS' },
   { id: 'cat_7', name: 'Pró-Labore', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future', scope: 'PERSONAL' },
@@ -57,9 +57,11 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_transfer', name: 'Transferência entre Contas', type: 'transfer', color: '#64748b', icon: 'ArrowRightLeft', classification: 'future' },
   { id: 'cat_adjustment', name: 'Ajuste de Saldo', type: 'adjustment', color: '#64748b', icon: 'Calculator', classification: 'personal' },
 
-  // --- DESPESAS DA MÚSICA / EMPRESA ---
-  { id: 'cat_equipamentos', name: 'Equipamentos', type: 'expense', color: '#8b5cf6', icon: 'Hammer', classification: 'professional', scope: 'BUSINESS' },
-  { id: 'cat_producao_shows', name: 'Produção / Músicos', type: 'expense', color: '#a855f7', icon: 'Users', classification: 'professional', scope: 'BUSINESS' },
+  // --- DESPESAS DA MÚSICA / EMPRESA (EXCLUSIVAS MÚSICO) ---
+  { id: 'cat_equipamentos', name: 'Equipamentos & Instrumentos', type: 'expense', color: '#8b5cf6', icon: 'Hammer', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_producao_shows', name: 'Produção / Músicos / Equipe', type: 'expense', color: '#a855f7', icon: 'Users', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_marketing', name: 'Mídia / Marketing & Divulgação', type: 'expense', color: '#ec4899', icon: 'Sparkles', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_prolabore_out', name: 'Retirada de Pró-Labore', type: 'expense', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'professional', scope: 'BUSINESS' },
 ];
 
 export const DEFAULT_ACCOUNTS: Account[] = [

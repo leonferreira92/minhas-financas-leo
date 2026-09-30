@@ -55,7 +55,56 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  // Filtragem da lista para exibição (Hook posicionado no topo absoluto)
+  const filteredStagingList = useMemo(() => {
+    return stagingList.filter(item => {
+      // Filtro de aba
+      if (stagingFilter === 'selected' && !item.selected) return false;
+      if (stagingFilter === 'duplicates' && !item.isDuplicate) return false;
+      if (stagingFilter === 'income' && item.type !== 'income') return false;
+      if (stagingFilter === 'expense' && item.type !== 'expense') return false;
+
+      // Filtro de busca textual
+      if (stagingSearch.trim()) {
+        const q = stagingSearch.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const desc = item.description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const orig = item.originalDescription.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const amtStr = item.amount.toFixed(2);
+        return desc.includes(q) || orig.includes(q) || amtStr.includes(q) || item.date.includes(q);
+      }
+
+      return true;
+    });
+  }, [stagingList, stagingFilter, stagingSearch]);
+
+  // Totais e estatísticas dos itens selecionados (Hooks no topo absoluto)
+  const selectedItems = useMemo(() => stagingList.filter(i => i.selected), [stagingList]);
+  const duplicateCount = useMemo(() => stagingList.filter(i => i.isDuplicate).length, [stagingList]);
+  
+  const stats = useMemo(() => {
+    let incomeTotal = 0;
+    let incomeCount = 0;
+    let expenseTotal = 0;
+    let expenseCount = 0;
+
+    selectedItems.forEach(item => {
+      if (item.type === 'income') {
+        incomeTotal += item.amount;
+        incomeCount++;
+      } else {
+        expenseTotal += item.amount;
+        expenseCount++;
+      }
+    });
+
+    return {
+      incomeTotal,
+      incomeCount,
+      expenseTotal,
+      expenseCount,
+      netTotal: incomeTotal - expenseTotal
+    };
+  }, [selectedItems]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -126,7 +175,9 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      handleFileProcess(e.target.files[0]);
+      const file = e.target.files[0];
+      e.target.value = '';
+      handleFileProcess(file);
     }
   };
 
@@ -173,57 +224,6 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     setBatchCategoryId(catId);
   };
 
-  // Filtragem da lista para exibição
-  const filteredStagingList = useMemo(() => {
-    return stagingList.filter(item => {
-      // Filtro de aba
-      if (stagingFilter === 'selected' && !item.selected) return false;
-      if (stagingFilter === 'duplicates' && !item.isDuplicate) return false;
-      if (stagingFilter === 'income' && item.type !== 'income') return false;
-      if (stagingFilter === 'expense' && item.type !== 'expense') return false;
-
-      // Filtro de busca textual
-      if (stagingSearch.trim()) {
-        const q = stagingSearch.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const desc = item.description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const orig = item.originalDescription.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const amtStr = item.amount.toFixed(2);
-        return desc.includes(q) || orig.includes(q) || amtStr.includes(q) || item.date.includes(q);
-      }
-
-      return true;
-    });
-  }, [stagingList, stagingFilter, stagingSearch]);
-
-  // Totais e estatísticas dos itens selecionados
-  const selectedItems = useMemo(() => stagingList.filter(i => i.selected), [stagingList]);
-  const duplicateCount = useMemo(() => stagingList.filter(i => i.isDuplicate).length, [stagingList]);
-  
-  const stats = useMemo(() => {
-    let incomeTotal = 0;
-    let incomeCount = 0;
-    let expenseTotal = 0;
-    let expenseCount = 0;
-
-    selectedItems.forEach(item => {
-      if (item.type === 'income') {
-        incomeTotal += item.amount;
-        incomeCount++;
-      } else {
-        expenseTotal += item.amount;
-        expenseCount++;
-      }
-    });
-
-    return {
-      incomeTotal,
-      incomeCount,
-      expenseTotal,
-      expenseCount,
-      netTotal: incomeTotal - expenseTotal
-    };
-  }, [selectedItems]);
-
   // Confirmação final da importação
   const handleConfirmImport = () => {
     if (selectedItems.length === 0) {
@@ -258,6 +258,9 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     setErrorMessage('');
     setStep('upload');
   };
+
+  // Verificação condicional de exibição feita APENAS NO FINAL, após a execução de todos os Hooks
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fade-in">
@@ -343,6 +346,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                   type="file"
                   accept=".ofx,.csv,.txt"
                   onChange={handleInputChange}
+                  onClick={(e) => e.stopPropagation()}
                   className="hidden"
                 />
 
