@@ -6,13 +6,14 @@ import {
   Music, AlertTriangle, ShieldCheck, ChevronRight, 
   Calendar, MapPin, Pencil, CheckCircle2, Clock, 
   ArrowUpRight, ArrowDownRight, CreditCard, Sparkles,
-  ArrowRight
+  ArrowRight, UploadCloud
 } from 'lucide-react';
 import { Account, AccountType, Show, ScopeType, matchesScope } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
 import { ScopeSelector } from './ScopeSelector';
 import { CareerDRECard } from './CareerDRECard';
+import { BankImportModal } from './BankImportModal';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -115,6 +116,9 @@ export const Dashboard: React.FC = () => {
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txType, setTxType] = useState<'income' | 'expense' | 'transfer'>('expense');
 
+  // Bank Statement Import modal
+  const [isBankImportOpen, setIsBankImportOpen] = useState(false);
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
@@ -173,6 +177,17 @@ export const Dashboard: React.FC = () => {
         <div className="flex items-center space-x-2">
           {/* Seletor Global de Escopo: [ 🔄 Todos | 👤 Pessoal | 🎤 Shows ] */}
           <ScopeSelector size="sm" />
+
+          {/* Botão Importar Extrato Bancário */}
+          <button
+            onClick={() => setIsBankImportOpen(true)}
+            className="px-3 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-xs flex items-center space-x-1.5"
+            title="Importar extrato bancário .OFX ou .CSV"
+          >
+            <UploadCloud size={14} strokeWidth={2.5} />
+            <span className="hidden sm:inline">Importar Extrato</span>
+            <span className="sm:hidden">Importar</span>
+          </button>
 
           <button
             onClick={() => {
@@ -397,6 +412,13 @@ export const Dashboard: React.FC = () => {
 
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => setIsBankImportOpen(true)}
+              className="text-[10px] font-black text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 uppercase tracking-wider hover:underline flex items-center"
+            >
+              <UploadCloud size={12} className="mr-1" /> Importar Extrato
+            </button>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <button
               onClick={() => setIsNewAccountModalOpen(true)}
               className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider hover:underline flex items-center"
             >
@@ -604,6 +626,12 @@ export const Dashboard: React.FC = () => {
           initialType={txType}
         />
       )}
+
+      {/* BANK IMPORT MODAL */}
+      <BankImportModal
+        isOpen={isBankImportOpen}
+        onClose={() => setIsBankImportOpen(false)}
+      />
     </div>
   );
 };

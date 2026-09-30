@@ -8,10 +8,12 @@ import {
   TrendingDown, Check, Circle, Wallet, ArrowRightLeft, 
   ChevronLeft, ChevronRight, PiggyBank, Plus,
   ListFilter, X, Receipt, Music, Eye, EyeOff, Sparkles,
-  ArrowUpRight, ArrowDownRight, MoreVertical, Edit3, Trash2, User
+  ArrowUpRight, ArrowDownRight, MoreVertical, Edit3, Trash2, User,
+  UploadCloud
 } from 'lucide-react';
 import { Transaction, matchesScope } from '../types';
 import { TransactionForm } from './TransactionForm';
+import { BankImportModal } from './BankImportModal';
 
 export type PeriodPreset = 'this_month' | 'prev_month' | 'next_month' | 'this_year' | 'custom';
 export type TypeFilter = 'all' | 'income' | 'expense';
@@ -34,6 +36,7 @@ export const TransactionList: React.FC = () => {
   // Modal State for Editing / Creating Transaction
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
+  const [isBankImportOpen, setIsBankImportOpen] = useState(false);
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
 
   // Deep linking highlight
@@ -548,13 +551,25 @@ export const TransactionList: React.FC = () => {
             )}
           </div>
 
-          <button
-            onClick={() => setIsNewTransactionModalOpen(true)}
-            className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md flex items-center justify-center space-x-1.5 shrink-0"
-          >
-            <Plus size={15} strokeWidth={3} />
-            <span>Nova Movimentação</span>
-          </button>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              onClick={() => setIsBankImportOpen(true)}
+              className="px-3.5 py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-xs flex items-center justify-center space-x-1.5"
+              title="Importar lançamentos via arquivo .OFX ou .CSV"
+            >
+              <UploadCloud size={15} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Importar Extrato Bancário</span>
+              <span className="sm:hidden">Importar</span>
+            </button>
+
+            <button
+              onClick={() => setIsNewTransactionModalOpen(true)}
+              className="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md flex items-center justify-center space-x-1.5 shrink-0"
+            >
+              <Plus size={15} strokeWidth={3} />
+              <span>Nova Movimentação</span>
+            </button>
+          </div>
         </div>
 
         {/* Linha 2: Filtros de Tipo e Filtros de Status */}
@@ -939,6 +954,11 @@ export const TransactionList: React.FC = () => {
         />
       )}
 
+      {/* MODAL IMPORTAÇÃO DE EXTRATO BANCÁRIO */}
+      <BankImportModal
+        isOpen={isBankImportOpen}
+        onClose={() => setIsBankImportOpen(false)}
+      />
     </div>
   );
 };

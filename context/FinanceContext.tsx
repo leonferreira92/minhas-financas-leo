@@ -30,6 +30,7 @@ interface FinanceContextType {
   
   // Methods
   addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => void;
+  importTransactions: (newTxs: Array<Omit<Transaction, 'id' | 'createdAt'> & { id?: string }>) => void;
   updateTransaction: (t: Transaction) => void;
   updateTransactionSeries: (t: Transaction, updateFuture: boolean) => void;
   updateDebtTransaction: (t: Transaction, redistribute: boolean) => void;
@@ -618,6 +619,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
+  const importTransactions = (newTxs: Array<Omit<Transaction, 'id' | 'createdAt'> & { id?: string }>) => {
+    setTransactions(prev => {
+      const txs = [...prev];
+      newTxs.forEach(t => {
+        const tid = t.id || generateUUID();
+        const cleanAmount = Number(t.amount) || 0;
+        const cleanScope: ScopeType = (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
+        txs.push({
+          ...t,
+          id: tid,
+          amount: cleanAmount,
+          scope: cleanScope,
+          status: t.status || 'paid',
+          createdAt: Date.now()
+        });
+      });
+      StorageService.saveTransactions(txs);
+      return txs;
+    });
+  };
+
   const updateTransaction = (updatedT: Transaction) => {
     const cleanAmount = Number(updatedT.amount) || 0;
     const cleanScope = (updatedT.scope === 'BUSINESS' || updatedT.categoryId === 'cat_33' || updatedT.categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
@@ -1079,7 +1101,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     <FinanceContext.Provider value={{
       transactions, categories, debts, accounts, budgets, shows, settings, isBlurred, toggleBlur,
       activeScope, setActiveScope,
-      addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
+      addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, deleteDebt, getDebtProgress,

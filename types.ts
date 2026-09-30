@@ -72,6 +72,9 @@ export interface Transaction {
   showPaymentId?: string; // ID do pagamento vinculado do show
   showExpenseId?: string; // ID da despesa vinculada do show
   scope?: ScopeType;
+  importedFromBank?: boolean;
+  originalBankDescription?: string;
+  bankFitId?: string;
 }
 
 export interface SystemAlert {
