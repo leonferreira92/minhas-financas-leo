@@ -99,7 +99,7 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
   const totalBalance = accounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
 
   return (
-    <div className="space-y-6 pb-20 animate-fade-in">
+    <div className="w-full max-w-full overflow-x-hidden space-y-5 pb-20 animate-fade-in">
       {/* HEADER DA ÁREA FINANCEIRO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
@@ -148,7 +148,7 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
       </div>
 
       {/* SUB-MENU DE ABAS ROLÁVEL (HORIZONTAL) */}
-      <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="overflow-x-auto no-scrollbar w-full">
         <div className="flex space-x-2 border-b border-slate-200/80 dark:border-slate-800 pb-2 min-w-max">
           {tabs.map(tab => {
             const Icon = tab.icon;

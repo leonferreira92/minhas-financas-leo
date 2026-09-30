@@ -181,48 +181,48 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
 
   return (
     <>
-      <div className={`bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white rounded-[2.2rem] p-5 sm:p-6 shadow-xl border border-indigo-900/50 relative overflow-hidden ${className}`}>
+      <div className={`w-full max-w-full overflow-x-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-purple-800/30 relative space-y-4 ${className}`}>
         {/* Glow de fundo */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-52 h-52 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-52 h-52 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-44 h-44 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-44 h-44 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* 1. Header do DRE & Botão de Retirar Pró-Labore */}
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 shadow-inner">
-              <Layers size={20} />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 shadow-inner shrink-0">
+              <Layers size={18} />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">
-                  DRE Operacional • {careerName}
+            <div className="min-w-0">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-300 truncate">
+                  DRE • {careerName}
                 </span>
-                <span className="text-[9px] bg-purple-900/80 text-purple-200 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-[9px] bg-purple-900/80 text-purple-200 px-2 py-0.5 rounded-full font-bold shrink-0">
                   {periodLabel}
                 </span>
               </div>
-              <h4 className="text-sm sm:text-base font-black text-white">
+              <h4 className="text-xs sm:text-sm font-black text-white truncate">
                 Faturamento & Custos do Projeto
               </h4>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 self-start sm:self-auto">
+          <div className="flex items-center space-x-2 self-start sm:self-auto shrink-0">
             {/* Botão de Ação Direta: Retirar Pró-Labore */}
             <button
               onClick={() => setIsProLaboreModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black uppercase tracking-wider shadow-md shadow-purple-950/40 active:scale-95 transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[11px] font-black uppercase tracking-wider shadow-md shadow-purple-950/40 active:scale-95 transition flex items-center space-x-1.5"
               title="Transferir saldo de shows para a conta pessoal"
             >
-              <ArrowRightLeft size={14} strokeWidth={2.5} />
+              <ArrowRightLeft size={13} strokeWidth={2.5} />
               <span>Retirar Pró-Labore</span>
             </button>
           </div>
         </div>
 
         {/* 2. Seletor de Período Estilo Bancário */}
-        <div className="relative z-10 pt-3 pb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center bg-white/5 border border-white/10 p-1 rounded-2xl">
+        <div className="relative z-10 pt-1 pb-1 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center bg-white/5 border border-white/10 p-1 rounded-2xl max-w-full overflow-x-auto no-scrollbar">
             <button
               onClick={() => setPeriodPreset('current_month')}
               className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${

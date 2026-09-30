@@ -45,8 +45,8 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-100 selection:text-indigo-700 transition-colors duration-200">
       
       {/* Container Principal */}
-      <main className="max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-slate-950 sm:border-x sm:border-slate-200/80 dark:sm:border-slate-800/80 shadow-2xl relative transition-colors duration-200 pb-28">
-        <div className="p-4 sm:p-5">
+      <main className="w-full max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-slate-950 sm:border-x sm:border-slate-200/80 dark:sm:border-slate-800/80 shadow-2xl relative transition-colors duration-200 pb-28 overflow-x-hidden">
+        <div className="p-3.5 sm:p-5 w-full max-w-full overflow-x-hidden">
           {children}
         </div>
       </main>

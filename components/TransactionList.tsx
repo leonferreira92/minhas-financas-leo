@@ -303,7 +303,7 @@ export const TransactionList: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-28 animate-fade-in text-slate-900 dark:text-slate-100 max-w-5xl mx-auto px-1 sm:px-2">
+    <div className="w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6 pb-28 animate-fade-in text-slate-900 dark:text-slate-100">
       
       {/* 1. SELETOR DE PERÍODO & NAVEGAÇÃO TEMPORAL MODERNA */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
