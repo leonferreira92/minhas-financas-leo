@@ -436,7 +436,8 @@ export function syncShowWithTransactions(
         createdAt: Date.now(),
         accountId: p.accountId,
         showId: show.id,
-        showPaymentId: p.id
+        showPaymentId: p.id,
+        scope: 'BUSINESS'
       };
       txs.push(newTx);
       p.transactionId = newTx.id;
@@ -474,7 +475,8 @@ export function syncShowWithTransactions(
         categoryId: existingTx.categoryId || expCatId,
         description: txDescription,
         showId: show.id,
-        showExpenseId: e.id
+        showExpenseId: e.id,
+        scope: 'BUSINESS'
       };
       txs[existingTxIndex] = updatedTx;
       e.transactionId = updatedTx.id;
@@ -492,7 +494,8 @@ export function syncShowWithTransactions(
         createdAt: Date.now(),
         accountId: e.accountId,
         showId: show.id,
-        showExpenseId: e.id
+        showExpenseId: e.id,
+        scope: 'BUSINESS'
       };
       txs.push(newTx);
       e.transactionId = newTx.id;

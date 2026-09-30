@@ -1,4 +1,4 @@
-import { Transaction, Account, Category, Goal, Debt, Show, FinancialSettings } from '../types';
+import { Transaction, Account, Category, Debt, Show, FinancialSettings } from '../types';
 
 export type ReportPeriodType = 
   | 'current_plus_6m'  // PADRÃO: Situação Atual + Próximos 6 Meses (Recomendado para Decisão)
@@ -24,7 +24,6 @@ export interface GenerateReportParams {
   transactions: Transaction[];
   accounts: Account[];
   categories: Category[];
-  goals: Goal[];
   debts: Debt[];
   shows: Show[];
   financialSettings?: FinancialSettings;
@@ -189,7 +188,7 @@ export const isTransferMovement = (t: Transaction): boolean => {
  * REGRA: Cofrinhos não são despesas. Representam dinheiro reservado e protegido.
  */
 export const isGoalMovement = (t: Transaction): boolean => {
-  return t.type === 'goal_deposit' || t.type === 'goal_withdraw' || t.categoryId === 'cat_savings' || Boolean(t.goalId);
+  return t.categoryId === 'cat_savings';
 };
 
 /**
@@ -428,7 +427,6 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     transactions,
     accounts,
     categories,
-    goals,
     debts,
     shows,
     financialSettings,
@@ -461,9 +459,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   const totalAvailableOperationalToday = operationalAccounts.reduce((sum, a) => sum + a.currentBalance, 0);
   const totalInSavingsAccounts = savingsAccounts.reduce((sum, a) => sum + a.currentBalance, 0);
 
-  // Dinheiro reservado em Metas / Cofrinhos
-  const totalReservedToGoals = goals.reduce((sum, g) => sum + (Number(g.currentAmount) || 0), 0);
-  const totalMoneyReserved = totalReservedToGoals + totalInSavingsAccounts;
+  const totalMoneyReserved = totalInSavingsAccounts;
   const totalNetWorth = totalAvailableOperationalToday + totalMoneyReserved;
 
   // Compromissos imediatos (despesas pendentes com vencimento até o fim do mês corrente ou vencidas)

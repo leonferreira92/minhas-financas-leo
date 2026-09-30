@@ -1,4 +1,7 @@
 
+export type ScopeType = 'PERSONAL' | 'BUSINESS' | 'BOTH';
+export type ActiveScopeFilter = 'ALL' | 'PERSONAL' | 'BUSINESS';
+
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'adjustment' | 'goal_deposit' | 'goal_withdraw';
 export type TransactionStatus = 'paid' | 'pending';
 export type AccountType = 'wallet' | 'bank' | 'savings' | 'investment' | 'other';
@@ -15,23 +18,12 @@ export interface Category {
   color: string;
   icon: string;
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
+  scope?: ScopeType;
 }
 
 export interface Budget {
   categoryId: string;
   limit: number;
-}
-
-export interface Goal {
-  id: string;
-  name: string;
-  description?: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline?: string;
-  color: string;
-  icon: string;
-  createdAt: string; // ISO String
 }
 
 export interface Account {
@@ -41,6 +33,7 @@ export interface Account {
   color: string;
   initialBalance: number;
   enabled: boolean;
+  scope?: ScopeType;
 }
 
 export interface Debt {
@@ -74,11 +67,11 @@ export interface Transaction {
   isFixed?: boolean;
   fixedGroupId?: string;
   interest?: number; // Valor excedente pago considerado como juros
-  goalId?: string; // ID da meta/cofrinho para aportes ou resgates
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   showId?: string; // ID do Show vinculado
   showPaymentId?: string; // ID do pagamento vinculado do show
   showExpenseId?: string; // ID da despesa vinculada do show
+  scope?: ScopeType;
 }
 
 export interface SystemAlert {
@@ -99,10 +92,9 @@ export interface BalanceSummary {
   pendingIncome: number;
   pendingExpense: number;
   accountsTotal?: number;
-  goalsTotal?: number;
 }
 
-export type DashboardWidgetId = 'balance' | 'shortcuts' | 'goals' | 'status' | 'recent' | 'debts' | 'radar';
+export type DashboardWidgetId = 'balance' | 'shortcuts' | 'status' | 'recent' | 'debts' | 'radar';
 
 export interface DashboardWidgetConfig {
   id: DashboardWidgetId;
@@ -210,5 +202,17 @@ export interface Show {
   expenseAccountId?: string; // ID da conta bancária de onde saíram as despesas
   createdAt: number;
   isImported?: boolean; // Indica se foi gerado por importação automática
+  scope?: ScopeType;
+}
+
+/**
+ * Função utilitária de compatibilidade retroativa para escopo:
+ * Se um dado não possuir o campo scope, é tratado como 'BOTH' (Consolidado).
+ */
+export function matchesScope(itemScope?: ScopeType | null, activeScope: ActiveScopeFilter = 'ALL'): boolean {
+  if (activeScope === 'ALL') return true;
+  const scope = itemScope || 'BOTH';
+  if (scope === 'BOTH') return true;
+  return scope === activeScope;
 }
 

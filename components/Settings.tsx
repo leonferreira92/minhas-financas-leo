@@ -18,7 +18,7 @@ import { parseCurrencyInput } from '../constants';
 export const Settings = () => {
   const { 
     refreshData, settings, updateSettings, transactions, categories, 
-    debts, accounts, budgets, goals, 
+    debts, accounts, budgets, 
     addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance, 
     restoreAutoBackup, getBackupInfo 
   } = useFinance();
@@ -160,7 +160,7 @@ export const Settings = () => {
       const data = { 
         version: '1.1', 
         timestamp: new Date().toISOString(), 
-        transactions, categories, settings, debts, accounts, budgets, goals 
+        transactions, categories, settings, debts, accounts, budgets 
       };
       
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -204,7 +204,6 @@ export const Settings = () => {
                   StorageService.saveDebts(data.debts || []); 
                   StorageService.saveAccounts(data.accounts || []);
                   StorageService.saveBudgets(data.budgets || []);
-                  StorageService.saveGoals(data.goals || []);
                   
                   const txCount = (data.transactions || []).length;
                   setConfirmation({ 

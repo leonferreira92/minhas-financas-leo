@@ -35,7 +35,6 @@ export const FinancialInsightsSection: React.FC = () => {
     transactions, 
     categories, 
     debts, 
-    goals, 
     shows, 
     accounts, 
     settings, 
@@ -346,8 +345,7 @@ export const FinancialInsightsSection: React.FC = () => {
 
     const savingsAccounts = accounts.filter(a => a.type === 'savings');
     const totalInSavings = savingsAccounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
-    const totalInGoals = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
-    const actualReserved = Math.max(totalInSavings, totalInGoals);
+    const actualReserved = totalInSavings;
 
     const reserveDeficit = targetReserveTotal - actualReserved;
     if (reserveDeficit > 500 && targetReserveTotal > 0) {
@@ -357,7 +355,7 @@ export const FinancialInsightsSection: React.FC = () => {
         type: 'warning',
         badge: 'Blindagem Patrimonial',
         title: `Reserva em ${coverage}% da meta recomendada`,
-        fact: `Você possui ${formatBRL(actualReserved)} guardados em cofrinhos/poupança frente a uma meta de ${formatBRL(targetReserveTotal)} (déficit de ${formatBRL(reserveDeficit)}).`,
+        fact: `Você possui ${formatBRL(actualReserved)} guardados na poupança frente a uma meta de ${formatBRL(targetReserveTotal)} (déficit de ${formatBRL(reserveDeficit)}).`,
         action: 'Decisão prática: Destine os saldos livres e qualquer receita extraordinária (FGTS, rescisões ou bônus) para acelerar essa cobertura.',
         linkText: 'Configurar Reserva',
         linkTo: '/financial-settings',
@@ -372,7 +370,6 @@ export const FinancialInsightsSection: React.FC = () => {
     transactions, 
     categories, 
     debts, 
-    goals, 
     shows, 
     accounts, 
     financialSettings, 

@@ -1,5 +1,5 @@
 
-import { Transaction, Category, AppSettings, Debt, Account, Budget, Goal, Show } from '../types';
+import { Transaction, Category, AppSettings, Debt, Account, Budget, Show } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 
 const KEYS = {
@@ -9,7 +9,6 @@ const KEYS = {
   DEBTS: 'fin_app_debts',
   ACCOUNTS: 'fin_app_accounts',
   BUDGETS: 'fin_app_budgets',
-  GOALS: 'fin_app_goals',
   SHOWS: 'fin_app_shows',
   AUTO_BACKUP: 'fin_app_auto_backup',
   LAST_BACKUP_TIME: 'fin_app_last_backup_time'
@@ -51,7 +50,6 @@ export const StorageService = {
           { id: 'balance', visible: true, label: 'Patrimônio' },
           { id: 'shortcuts', visible: true, label: 'Ações Rápidas' },
           { id: 'status', visible: true, label: 'Fluxo Mensal' },
-          { id: 'goals', visible: true, label: 'Metas' },
           { id: 'debts', visible: true, label: 'Dívidas' },
           { id: 'recent', visible: true, label: 'Recentes' }
         ]
@@ -135,44 +133,6 @@ export const StorageService = {
     localStorage.setItem(KEYS.BUDGETS, JSON.stringify(budgets));
   },
 
-  // Storage methods for goals
-  getGoals: (): Goal[] => {
-    try {
-      const data = localStorage.getItem(KEYS.GOALS);
-      if (data) return JSON.parse(data);
-      return [
-        {
-          id: 'goal_pc',
-          name: 'PC Gamer',
-          description: 'Setup dos sonhos para jogos e produção',
-          targetAmount: 4500,
-          currentAmount: 1500,
-          deadline: '2026-11-27',
-          color: '#3b82f6',
-          icon: 'Laptop',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'goal_reserva',
-          name: 'Reserva de Emergência',
-          description: 'Segurança financeira e tranquilidade',
-          targetAmount: 10000,
-          currentAmount: 1500,
-          deadline: '2027-06-30',
-          color: '#10b981',
-          icon: 'ShieldCheck',
-          createdAt: new Date().toISOString()
-        }
-      ];
-    } catch (e) {
-      return [];
-    }
-  },
-
-  saveGoals: (goals: Goal[]) => {
-    localStorage.setItem(KEYS.GOALS, JSON.stringify(goals));
-  },
-
   // Storage methods for shows (musician life)
   getShows: (): Show[] => {
     try {
@@ -199,7 +159,6 @@ export const StorageService = {
       debts: StorageService.getDebts(),
       accounts: StorageService.getAccounts(),
       budgets: StorageService.getBudgets(),
-      goals: StorageService.getGoals(),
       shows: StorageService.getShows(),
       timestamp: Date.now()
     };
@@ -233,7 +192,6 @@ export const StorageService = {
       if (data.debts) StorageService.saveDebts(data.debts);
       if (data.accounts) StorageService.saveAccounts(data.accounts);
       if (data.budgets) StorageService.saveBudgets(data.budgets);
-      if (data.goals) StorageService.saveGoals(data.goals);
       if (data.shows) StorageService.saveShows(data.shows);
       return true;
     } catch (e) {

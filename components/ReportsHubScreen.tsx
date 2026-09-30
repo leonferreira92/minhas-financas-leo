@@ -4,10 +4,13 @@ import {
   FileText, Bot, FileSpreadsheet, Activity, 
   Calendar as CalendarIcon, Download, Sparkles 
 } from 'lucide-react';
+import { useFinance } from '../context/FinanceContext';
 import { AIReportScreen } from './AIReportScreen';
 import { FinancialSummary } from './FinancialSummary';
 import { MonthlyFlow } from './MonthlyFlow';
 import { CalendarScreen } from './CalendarScreen';
+import { ScopeSelector } from './ScopeSelector';
+import { CareerDRECard } from './CareerDRECard';
 
 export type ReportTab = 'ai' | 'summary' | 'flow' | 'calendar';
 
@@ -16,6 +19,7 @@ interface Props {
 }
 
 export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
+  const { activeScope } = useFinance();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = (searchParams.get('tab') as ReportTab) || initialTab;
   const [activeTab, setActiveTab] = useState<ReportTab>(tabParam);
@@ -41,7 +45,7 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
       {/* HEADER */}
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-full border border-purple-100 dark:border-purple-900/50">
             Relatórios & Exportações
@@ -50,7 +54,15 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
             Relatórios
           </h1>
         </div>
+
+        {/* Seletor Global de Escopo */}
+        <ScopeSelector size="sm" />
       </div>
+
+      {/* DRE Simplificado no Módulo de Relatórios (Quando BUSINESS ou ALL ativo) */}
+      {(activeScope === 'BUSINESS' || activeScope === 'ALL') && (
+        <CareerDRECard />
+      )}
 
       {/* SUB-MENU DE ABAS ROLÁVEL */}
       <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">

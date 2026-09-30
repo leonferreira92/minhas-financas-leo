@@ -14,7 +14,6 @@ export const FinancialSettingsScreen: React.FC = () => {
   const { 
     categories, 
     accounts, 
-    goals, 
     transactions, 
     debts, 
     settings, 
@@ -53,12 +52,11 @@ export const FinancialSettingsScreen: React.FC = () => {
     return categories.filter(c => c.type === 'expense');
   }, [categories]);
 
-  // Saldo reservado atual (poupança + cofrinhos)
+  // Saldo reservado atual (poupança)
   const totalReservedToday = useMemo(() => {
     const savings = accounts.filter(a => a.type === 'savings').reduce((s, a) => s + getAccountBalance(a.id), 0);
-    const inGoals = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
-    return Math.max(savings, inGoals);
-  }, [accounts, goals, getAccountBalance]);
+    return savings;
+  }, [accounts, getAccountBalance]);
 
   // Custo essencial mensal calculado com as categorias marcadas
   const monthlyEssentialEstimate = useMemo(() => {

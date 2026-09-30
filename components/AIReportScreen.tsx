@@ -21,7 +21,6 @@ export const AIReportScreen = () => {
     transactions, 
     accounts, 
     categories, 
-    goals, 
     debts, 
     shows, 
     settings,
@@ -55,7 +54,6 @@ export const AIReportScreen = () => {
       transactions,
       accounts,
       categories,
-      goals,
       debts,
       shows,
       financialSettings: settings.financialSettings,
@@ -67,7 +65,7 @@ export const AIReportScreen = () => {
   // Geração inicial e ao mudar dados
   useEffect(() => {
     handleGenerate();
-  }, [periodType, customStart, customEnd, transactions, accounts, categories, goals, debts, shows, settings.financialSettings]);
+  }, [periodType, customStart, customEnd, transactions, accounts, categories, debts, shows, settings.financialSettings]);
 
   // Copiar para área de transferência
   const handleCopy = async () => {
@@ -125,7 +123,7 @@ export const AIReportScreen = () => {
       a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
     );
     const available = operationalAccounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
-    const reserved = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
+    const reserved = 0;
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const currentMonthPrefix = todayStr.slice(0, 7);
@@ -150,7 +148,7 @@ export const AIReportScreen = () => {
       free,
       remainingDebts
     };
-  }, [accounts, goals, transactions, debts, getAccountBalance]);
+  }, [accounts, transactions, debts, getAccountBalance]);
 
   const activeRange = getPeriodDateRange(periodType, customStart, customEnd);
 

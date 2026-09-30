@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { Transaction, Category, Goal } from "../types";
+import { Transaction, Category } from "../types";
 
 // Robust JSON Extraction: Finds the first { and last } to isolate the JSON object
 const extractJSON = (text: string) => {
@@ -77,34 +77,7 @@ export const GeminiService = {
     }
   },
 
-  analyzeGoalStrategy: async (goal: Goal, transactions: Transaction[], categories: Category[]) => {
-    // Fixed: Always create a new GoogleGenAI instance right before the call as per guidelines.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    const topExpenses = transactions
-      .filter(t => t.type === 'expense')
-      .slice(0, 15)
-      .map(t => `${t.description} (${t.amount})`);
-
-    const prompt = `
-      Meta: ${goal.name} (Falta R$ ${(goal.targetAmount - goal.currentAmount).toFixed(2)}).
-      Gastos do usuário: ${JSON.stringify(topExpenses)}.
-      
-      Dê UMA estratégia única e ousada para atingir essa meta mais rápido cortando algo específico.
-      JSON: { "strategy": "Frase curta e impactante", "estimatedDaysReduction": 10 }
-    `;
-
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: { responseMimeType: 'application/json' }
-      });
-      return extractJSON(response.text || '');
-    } catch (error) {
-      return null;
-    }
-  },
 
   predictTransaction: async (description: string, history: Transaction[], categories: Category[]) => {
     // Fixed: Always create a new GoogleGenAI instance right before the call as per guidelines.

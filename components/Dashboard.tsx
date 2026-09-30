@@ -8,19 +8,21 @@ import {
   ArrowUpRight, ArrowDownRight, CreditCard, Sparkles,
   ArrowRight
 } from 'lucide-react';
-import { Account, AccountType, Show } from '../types';
+import { Account, AccountType, Show, ScopeType, matchesScope } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
+import { ScopeSelector } from './ScopeSelector';
+import { CareerDRECard } from './CareerDRECard';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { 
     accounts, 
-    goals, 
     shows, 
     transactions,
     isBlurred, 
     toggleBlur, 
+    activeScope,
     getBalanceSummary, 
     getSystemAlerts,
     getAccountBalance,
@@ -35,30 +37,30 @@ export const Dashboard: React.FC = () => {
     const endOfMonth = new Date();
     endOfMonth.setMonth(endOfMonth.getMonth() + 1, 0);
     return getBalanceSummary(currentMonth, endOfMonth.toISOString().slice(0, 10));
-  }, [getBalanceSummary, currentMonth, accounts, transactions, goals]);
+  }, [getBalanceSummary, currentMonth, accounts, transactions, activeScope]);
 
-  // Total Patrimony: sum of all account balances + goals/reserves
-  const totalInAccounts = useMemo(() => {
-    return accounts.reduce((acc, a) => acc + getAccountBalance(a.id), 0);
-  }, [accounts, getAccountBalance]);
+  // Contas filtradas pelo escopo
+  const filteredAccounts = useMemo(() => {
+    return accounts.filter(a => matchesScope(a.scope, activeScope));
+  }, [accounts, activeScope]);
 
-  const totalInGoals = useMemo(() => {
-    return goals.reduce((acc, g) => acc + (Number(g.currentAmount) || 0), 0);
-  }, [goals]);
-
-  const totalPatrimony = totalInAccounts + totalInGoals;
+  // Total Patrimony: sum of filtered account balances
+  const totalPatrimony = useMemo(() => {
+    return filteredAccounts.reduce((acc, a) => acc + getAccountBalance(a.id), 0);
+  }, [filteredAccounts, getAccountBalance]);
 
   // Dinheiro Disponível (em contas ativas operacionais)
   const availableMoney = summary.realBalance;
 
   // Próximo Show (se houver)
   const nextShow = useMemo<Show | null>(() => {
+    if (activeScope === 'PERSONAL') return null;
     const upcoming = shows
-      .filter(s => s.status !== 'Cancelado' && s.date >= todayStr)
+      .filter(s => s.status !== 'Cancelado' && s.date >= todayStr && matchesScope(s.scope, activeScope))
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     
     return upcoming.length > 0 ? upcoming[0] : null;
-  }, [shows, todayStr]);
+  }, [shows, todayStr, activeScope]);
 
   // Alertas Importantes (no máximo 2 ou 3)
   const priorityAlerts = useMemo(() => {
@@ -73,6 +75,7 @@ export const Dashboard: React.FC = () => {
   const [newAccType, setNewAccType] = useState<AccountType>('bank');
   const [newAccBalance, setNewAccBalance] = useState('');
   const [newAccColor, setNewAccColor] = useState('#6366f1');
+  const [newAccScope, setNewAccScope] = useState<ScopeType>('BOTH');
 
   // Quick transaction modal
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -101,12 +104,14 @@ export const Dashboard: React.FC = () => {
       type: newAccType,
       color: newAccColor,
       initialBalance: initialBal,
-      enabled: true
+      enabled: true,
+      scope: newAccScope
     });
     setNewAccName('');
     setNewAccType('bank');
     setNewAccBalance('');
     setNewAccColor('#6366f1');
+    setNewAccScope('BOTH');
     setIsNewAccountModalOpen(false);
   };
 
@@ -120,8 +125,8 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-16 animate-fade-in">
-      {/* 1. HEADER SUPERIOR SIMPLES */}
-      <div className="flex items-center justify-between pt-1">
+      {/* 1. HEADER SUPERIOR COM SELETOR DE ESCOPO GLOBAL */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/50">
             Visão Rápida
@@ -132,6 +137,9 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Seletor Global de Escopo: [ 🔄 Todos | 👤 Pessoal | 🎤 Shows ] */}
+          <ScopeSelector size="sm" />
+
           <button
             onClick={() => {
               setTxType('expense');
@@ -152,6 +160,11 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* DRE SIMPLIFICADO DE SHOWS (Quando 'BUSINESS' ou 'ALL' ativo) */}
+      {(activeScope === 'BUSINESS' || activeScope === 'ALL') && (
+        <CareerDRECard />
+      )}
 
       {/* 2. CARD PRINCIPAL: PATRIMÔNIO TOTAL & DINHEIRO DISPONÍVEL */}
       <div className="relative overflow-hidden bg-slate-900 dark:bg-slate-900 text-white rounded-[2.2rem] p-6 shadow-xl border border-slate-800/80 space-y-5">
@@ -488,6 +501,48 @@ export const Dashboard: React.FC = () => {
                     onChange={e => setNewAccBalance(e.target.value)}
                     className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white"
                   />
+                </div>
+              </div>
+
+              {/* Escopo da Conta */}
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
+                  Escopo da Conta
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewAccScope('PERSONAL')}
+                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all ${
+                      newAccScope === 'PERSONAL'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    👤 Pessoal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewAccScope('BUSINESS')}
+                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all ${
+                      newAccScope === 'BUSINESS'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    🎤 Shows
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewAccScope('BOTH')}
+                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all ${
+                      newAccScope === 'BOTH'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    🔄 Ambos
+                  </button>
                 </div>
               </div>
 

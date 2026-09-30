@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, Goal, DashboardWidgetConfig, Show, FinancialSettings } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, DashboardWidgetConfig, Show, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
@@ -21,11 +21,12 @@ interface FinanceContextType {
   debts: Debt[];
   accounts: Account[];
   budgets: Budget[];
-  goals: Goal[];
   shows: Show[];
   settings: AppSettings;
   isBlurred: boolean;
   toggleBlur: () => void;
+  activeScope: ActiveScopeFilter;
+  setActiveScope: (scope: ActiveScopeFilter) => void;
   
   // Methods
   addTransaction: (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => void;
@@ -53,9 +54,6 @@ interface FinanceContextType {
 
   saveBudget: (b: Budget) => void;
   deleteBudget: (categoryId: string) => void;
-  addGoal: (g: Omit<Goal, 'id'> & { id?: string }) => void;
-  updateGoal: (g: Goal) => void;
-  deleteGoal: (id: string) => void;
 
   addShow: (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => void;
   updateShow: (s: Show) => void;
@@ -89,7 +87,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [debts, setDebts] = useState<Debt[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [settings, setSettings] = useState<AppSettings>({ 
     theme: 'light', 
@@ -101,6 +98,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isBlurred, setIsBlurred] = useState(() => {
     return localStorage.getItem('isBlurred') === 'true';
   });
+
+  const [activeScope, setActiveScopeState] = useState<ActiveScopeFilter>(() => {
+    const saved = localStorage.getItem('fin_app_scope');
+    return (saved === 'PERSONAL' || saved === 'BUSINESS') ? saved : 'ALL';
+  });
+
+  const setActiveScope = (scope: ActiveScopeFilter) => {
+    setActiveScopeState(scope);
+    localStorage.setItem('fin_app_scope', scope);
+  };
 
   const toggleBlur = () => {
     setIsBlurred(prev => {
@@ -295,7 +302,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const storedDebts = StorageService.getDebts();
     const storedAccounts = StorageService.getAccounts();
     const storedBudgets = StorageService.getBudgets();
-    const storedGoals = StorageService.getGoals();
     const storedSettings = StorageService.getSettings();
 
     const existingNames = new Set(storedCategories.map(c => c.name.toLowerCase()));
@@ -318,7 +324,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setDebts(storedDebts);
     setAccounts(storedAccounts);
     setBudgets(storedBudgets);
-    setGoals(storedGoals);
     const storedShows = StorageService.getShows();
 
     // Self-healing: ensure all show receipts (including future/pending ones) have synced transactions
@@ -367,9 +372,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setTransactions(finalTransactions);
     setShows(finalShows);
-    if (storedGoals.length > 0 && !localStorage.getItem('fin_app_goals')) {
-      StorageService.saveGoals(storedGoals);
-    }
     
     const finalFinancialSettings: FinancialSettings = storedSettings.financialSettings ? {
       ...DEFAULT_FINANCIAL_SETTINGS,
@@ -400,7 +402,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const saveDebts = (ds: Debt[]) => { setDebts(ds); StorageService.saveDebts(ds); };
   const saveAccounts = (as: Account[]) => { setAccounts(as); StorageService.saveAccounts(as); };
   const saveBudgetsInternal = (bs: Budget[]) => { setBudgets(bs); StorageService.saveBudgets(bs); };
-  const saveGoalsInternal = (gs: Goal[]) => { setGoals(gs); StorageService.saveGoals(gs); };
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
@@ -785,28 +786,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     saveBudgetsInternal(newBudgets);
   };
   const deleteBudget = (categoryId: string) => saveBudgetsInternal(budgets.filter(b => b.categoryId !== categoryId));
-  const addGoal = (g: Omit<Goal, 'id'> & { id?: string }) => {
-    setGoals(prev => {
-      const goalId = g.id || generateUUID();
-      const updated = [...prev, { ...g, id: goalId }];
-      StorageService.saveGoals(updated);
-      return updated;
-    });
-  };
-  const updateGoal = (g: Goal) => {
-    setGoals(prev => {
-      const updated = prev.map(goal => goal.id === g.id ? g : goal);
-      StorageService.saveGoals(updated);
-      return updated;
-    });
-  };
-  const deleteGoal = (id: string) => {
-    setGoals(prev => {
-      const updated = prev.filter(g => g.id !== id);
-      StorageService.saveGoals(updated);
-      return updated;
-    });
-  };
 
   const addShow = (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => {
     const id = s.id || generateUUID();
@@ -874,23 +853,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
-  const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string): ExtendedSummary => {
+  const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string, scopeOverride?: ActiveScopeFilter): ExtendedSummary => {
     const projLimit = new Date(projectionDateStr + 'T23:59:59').getTime();
     const today = new Date();
     const dayOfMonth = today.getDate() || 1;
-    
-    const accountsTotal = accounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
-    const goalsTotal = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
+    const currentScope = scopeOverride || activeScope;
+
+    const filteredAccounts = accounts.filter(acc => matchesScope(acc.scope, currentScope));
+    const accountsTotal = filteredAccounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
     const realBalance = Number(accountsTotal.toFixed(2));
 
-    const operatingAccountsTotal = accounts
+    const operatingAccountsTotal = filteredAccounts
       .filter(acc => !(acc.type === 'savings' || acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva')))
       .reduce((s, acc) => s + getAccountBalance(acc.id), 0);
     let projectedBalance = Number(operatingAccountsTotal.toFixed(2));
 
     let monthlyIncome = 0, monthlyExpense = 0, pendingIncome = 0, pendingExpense = 0;
 
-    transactions.forEach(t => {
+    const filteredTransactions = transactions.filter(t => matchesScope(t.scope, currentScope));
+
+    filteredTransactions.forEach(t => {
       const amount = Number(t.amount) || 0;
       const isPaid = t.status === 'paid';
       const tTime = new Date(t.date + 'T12:00:00').getTime();
@@ -935,8 +917,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       savingsRate,
       comparisonToLastMonth: 0,
       freeToSpend,
-      accountsTotal: Number(accountsTotal.toFixed(2)),
-      goalsTotal: Number(goalsTotal.toFixed(2))
+      accountsTotal: Number(accountsTotal.toFixed(2))
     };
   };
 
@@ -954,7 +935,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     });
     return alerts;
-  }, [transactions, accounts]);
+  }, [transactions, accounts, activeScope]);
 
   const restoreAutoBackup = () => { if (StorageService.restoreAutoBackup()) { refreshData(); return true; } return false; };
   const getBackupInfo = () => StorageService.getAutoBackupInfo();
@@ -962,12 +943,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   return (
     <FinanceContext.Provider value={{
-      transactions, categories, debts, accounts, budgets, goals, shows, settings, isBlurred, toggleBlur,
+      transactions, categories, debts, accounts, budgets, shows, settings, isBlurred, toggleBlur,
+      activeScope, setActiveScope,
       addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, deleteDebt, getDebtProgress,
-      saveBudget, deleteBudget, addGoal, updateGoal, deleteGoal,
+      saveBudget, deleteBudget,
       addShow, updateShow, deleteShow, cancelShowFutureFinancials,
       getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission

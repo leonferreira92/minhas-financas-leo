@@ -9,7 +9,6 @@ import {
   AlertTriangle, Lock, HelpCircle, Edit3, Layers, RefreshCw
 } from 'lucide-react';
 import { getIcon, parseCurrencyInput } from '../constants';
-import { GoalDetail } from './GoalDetail';
 import { CalendarModal } from './CalendarModal';
 import { Category, Transaction } from '../types';
 
@@ -18,20 +17,16 @@ export const PlanningScreen = () => {
     categories, 
     budgets, 
     transactions, 
-    goals, 
     accounts,
     debts,
-    addGoal, 
     saveBudget, 
     deleteBudget, 
-    updateGoal, 
-    deleteGoal,
     updateTransaction,
     updateCategory
   } = useFinance();
 
   // Active Tab View in Planning
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'budgets' | 'goals' | 'rule'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'budgets' | 'rule'>('overview');
   
   // Selected Month (YYYY-MM)
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
@@ -104,15 +99,13 @@ export const PlanningScreen = () => {
     return monthPendingExpenses.reduce((sum, t) => sum + Number(t.amount), 0);
   }, [monthPendingExpenses]);
 
-  // C) METAS (Dinheiro reservado nos cofrinhos)
-  const goalsTotal = useMemo(() => {
-    return goals.reduce((sum, g) => sum + (Number(g.currentAmount) || 0), 0);
-  }, [goals]);
+  // C) METAS (Removido - 0)
+  const goalsTotal = 0;
 
-  // D) LIVRE PARA GASTAR = Dinheiro Disponível - Dinheiro Comprometido - Metas
+  // D) LIVRE PARA GASTAR = Dinheiro Disponível - Dinheiro Comprometido
   const freeToSpend = useMemo(() => {
-    return availableCash - committedAmount - goalsTotal;
-  }, [availableCash, committedAmount, goalsTotal]);
+    return availableCash - committedAmount;
+  }, [availableCash, committedAmount]);
 
   // ==========================================
   // 2. RECEITAS FUTURAS & DESPESAS PAGO DO MÊS
@@ -200,7 +193,7 @@ export const PlanningScreen = () => {
         dividas += Number(t.amount);
       } else if (cat?.classification === 'essential' || nameLower.includes('moradia') || nameLower.includes('aluguel') || nameLower.includes('mercado') || nameLower.includes('alimentação') || nameLower.includes('luz') || nameLower.includes('água') || nameLower.includes('saúde') || nameLower.includes('transporte')) {
         essencial += Number(t.amount);
-      } else if (cat?.classification === 'future' || t.goalId || nameLower.includes('cofrinho') || nameLower.includes('meta') || nameLower.includes('reserva') || nameLower.includes('investimento')) {
+      } else if (cat?.classification === 'future' || nameLower.includes('cofrinho') || nameLower.includes('reserva') || nameLower.includes('investimento')) {
         metasGroup += Number(t.amount);
       } else {
         livreGroup += Number(t.amount);
@@ -283,7 +276,7 @@ export const PlanningScreen = () => {
 
           <button 
             onClick={() => { 
-              setModalType(activeTab === 'goals' ? 'goal' : 'budget'); 
+              setModalType('budget'); 
               setIsModalOpen(true); 
             }}
             className="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center"
@@ -796,40 +789,6 @@ export const PlanningScreen = () => {
       )}
 
       {/* ======================================================== */}
-      {/* ABA 4: METAS & COFRINHOS                                 */}
-      {/* ======================================================== */}
-      {activeTab === 'goals' && (
-        <div className="space-y-6 animate-fade-in px-1">
-          <div className="bg-amber-500 rounded-[2.2rem] p-6 text-white shadow-xl relative overflow-hidden flex justify-between items-center">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-90 mb-1">Objetivos Financeiros</p>
-              <h2 className="text-2xl font-black">Seus Cofrinhos</h2>
-              <p className="text-xs text-amber-50 opacity-90 leading-relaxed">
-                Dinheiro destinado aos cofrinhos é reserva patrimonial.
-              </p>
-            </div>
-
-            <button 
-              onClick={() => { setModalType('goal'); setIsModalOpen(true); }}
-              className="p-3 bg-white text-amber-600 rounded-2xl shadow-md font-bold active:scale-95 transition"
-            >
-              <Plus size={20} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {goals.length === 0 ? (
-              <EmptyState icon={PiggyBank} title="Nenhum cofrinho criado" desc="Comece definindo seu primeiro objetivo financeiro." />
-            ) : (
-              goals.map(goal => (
-                <GoalCard key={goal.id} goal={goal} onClick={() => setSelectedGoalId(goal.id)} formatCurrency={formatCurrency} />
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ======================================================== */}
       {/* ABA 5: MATRIZ 50/30/20 (REFERENCIAL SECUNDÁRIO)          */}
       {/* ======================================================== */}
       {activeTab === 'rule' && (
@@ -848,36 +807,55 @@ export const PlanningScreen = () => {
         </div>
       )}
 
-      {/* MODAL CRIAÇÃO DE TETO OU META */}
+      {/* MODAL CRIAÇÃO DE TETO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/60 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-6 shadow-2xl animate-slide-up border border-slate-200 dark:border-slate-800">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-black tracking-tight dark:text-white">
-                {modalType === 'budget' ? 'Novo Teto de Gasto' : 'Novo Cofrinho / Meta'}
+                Novo Teto de Gasto
               </h2>
               <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition">
                 <X size={20}/>
               </button>
             </div>
 
-            {modalType === 'budget' ? (
-              <BudgetForm categories={categories} onSave={(b: any) => { saveBudget(b); setIsModalOpen(false); }} />
-            ) : (
-              <GoalForm onSave={(g: any) => { addGoal({ ...g, createdAt: new Date().toISOString() }); setIsModalOpen(false); }} />
-            )}
+            <BudgetForm categories={categories} onSave={(b: any) => { saveBudget(b); setIsModalOpen(false); }} />
           </div>
         </div>
-      )}
-
-      {/* MODAL DETALHE DA META */}
-      {selectedGoalId && (
-        <GoalDetail goalId={selectedGoalId} onClose={() => setSelectedGoalId(null)} />
       )}
 
     </div>
   );
 };
+
+const EmptyState = ({ icon: Icon, title, desc }: any) => (
+  <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+    {Icon && <Icon className="mx-auto text-slate-400 mb-2" size={32} />}
+    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">{title}</p>
+    <p className="text-xs text-slate-400 mt-1">{desc}</p>
+  </div>
+);
+
+const RuleCard = ({ label, ideal, actual, value, color, icon: Icon, desc, formatCurrency }: any) => (
+  <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-3">
+    <div className="flex justify-between items-center">
+      <div className="flex items-center space-x-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${color}`}>
+          <Icon size={20} />
+        </div>
+        <div>
+          <h4 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight">{label}</h4>
+          <p className="text-[10px] text-slate-400 font-medium">{desc}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <span className="text-sm font-black text-slate-800 dark:text-white block">{formatCurrency(value)}</span>
+        <span className="text-[10px] font-bold text-slate-400">Ideal: {ideal}% | Real: {actual.toFixed(0)}%</span>
+      </div>
+    </div>
+  </div>
+);
 
 // ==========================================
 // SUBCOMPONENTS COM ALERTAS PROGRESSIVOS
@@ -966,92 +944,6 @@ const AdaptiveBudgetCard = ({ budget, usage, categories, onDelete, formatCurrenc
   );
 };
 
-const GoalCard = ({ goal, onClick, formatCurrency }: any) => {
-  const pct = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
-  const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
-  const GoalIcon = getIcon(goal.icon);
-
-  return (
-    <div 
-      onClick={onClick} 
-      className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-4 hover:scale-[1.01] transition-all cursor-pointer group"
-    >
-      <div className="flex justify-between items-start">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-md" style={{ backgroundColor: goal.color }}>
-            <GoalIcon size={22} />
-          </div>
-          <div>
-            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block">Cofrinho</span>
-            <h3 className="text-base font-black text-slate-800 dark:text-white tracking-tight">{goal.name}</h3>
-          </div>
-        </div>
-
-        <span className="text-[10px] font-black text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-xl">
-          {goal.deadline ? new Date(goal.deadline + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase() : 'S/ Prazo'}
-        </span>
-      </div>
-
-      <div className="space-y-1.5">
-        <div className="flex justify-between items-end text-xs font-black">
-          <span className="text-slate-400">Acumulado: {formatCurrency(goal.currentAmount)}</span>
-          <span className="text-slate-800 dark:text-white font-extrabold">{pct.toFixed(0)}%</span>
-        </div>
-
-        <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%`, backgroundColor: goal.color }} />
-        </div>
-      </div>
-
-      <div className="flex justify-between text-[10px] font-bold text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
-        <span>Objetivo: {formatCurrency(goal.targetAmount)}</span>
-        <span>Falta: {formatCurrency(remaining)}</span>
-      </div>
-    </div>
-  );
-};
-
-const EmptyState = ({ icon: Icon, title, desc }: any) => (
-  <div className="text-center py-12 opacity-60 flex flex-col items-center">
-    <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-      <Icon size={28} className="text-slate-400" />
-    </div>
-    <h3 className="font-bold text-slate-700 dark:text-white mb-1 text-sm">{title}</h3>
-    <p className="text-xs text-slate-500 max-w-[220px]">{desc}</p>
-  </div>
-);
-
-const RuleCard = ({ label, ideal, actual, value, color, icon: Icon, desc, formatCurrency }: any) => {
-  const isExceeded = actual > ideal;
-
-  return (
-    <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-      <div className="flex items-center space-x-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${color}`}>
-          <Icon size={20} />
-        </div>
-        <div>
-          <h4 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight">{label}</h4>
-          <p className="text-[10px] text-slate-400">{desc}</p>
-        </div>
-      </div>
-
-      <div className="relative h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-        <div className={`h-full transition-all ${color}`} style={{ width: `${Math.min(100, actual)}%` }} />
-        <div className="absolute top-0 bottom-0 border-l-2 border-white/80" style={{ left: `${ideal}%` }} />
-      </div>
-
-      <div className="flex justify-between font-black text-xs">
-        <span className="text-slate-400">{formatCurrency(value)}</span>
-        <div className="flex space-x-2">
-          <span>{actual.toFixed(1)}%</span>
-          <span className={isExceeded ? 'text-rose-500' : 'text-emerald-500'}>{isExceeded ? 'Ajustar' : 'Ideal'}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const BudgetForm = ({ categories, onSave }: any) => {
   const [catId, setCatId] = useState('');
   const [limit, setLimit] = useState('');
@@ -1075,56 +967,6 @@ const BudgetForm = ({ categories, onSave }: any) => {
       <button onClick={() => onSave({ categoryId: catId, limit: parseCurrencyInput(limit) })} disabled={!catId || !limit} className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 disabled:opacity-30 transition-all">
         Salvar Teto
       </button>
-    </div>
-  );
-};
-
-const GoalForm = ({ onSave }: any) => {
-  const [name, setName] = useState('');
-  const [target, setTarget] = useState('');
-  const [current, setCurrent] = useState('0');
-  const [deadline, setDeadline] = useState('');
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">O que você quer conquistar?</label>
-        <input value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="Ex: Equipamento Novo" />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Valor Alvo</label>
-          <input type="number" step="any" value={target} onChange={e => setTarget(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="R$ 0" />
-        </div>
-        <div>
-          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Já tenho</label>
-          <input type="number" step="any" value={current} onChange={e => setCurrent(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition" placeholder="R$ 0" />
-        </div>
-      </div>
-      <div>
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Prazo (Opcional)</label>
-        <div 
-          onClick={() => setIsCalendarOpen(true)}
-          className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-2xl flex items-center justify-between cursor-pointer transition"
-        >
-          <span className={`font-bold text-xs ${deadline ? 'text-slate-800 dark:text-white' : 'text-slate-400'}`}>
-            {deadline ? new Date(deadline + 'T12:00:00').toLocaleDateString('pt-BR') : 'Sem prazo'}
-          </span>
-          <Calendar size={18} className="text-slate-400" />
-        </div>
-      </div>
-      <button onClick={() => onSave({ name, targetAmount: parseCurrencyInput(target), currentAmount: parseCurrencyInput(current), deadline, color: '#f59e0b', icon: 'PiggyBank' })} disabled={!name || !target} className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 disabled:opacity-30 transition-all">
-        Criar Cofrinho
-      </button>
-      
-      <CalendarModal 
-        isOpen={isCalendarOpen} 
-        onClose={() => setIsCalendarOpen(false)} 
-        selectedDate={deadline || new Date().toISOString().slice(0, 10)} 
-        onSelect={(d) => setDeadline(d)} 
-        title="Prazo da Meta"
-      />
     </div>
   );
 };

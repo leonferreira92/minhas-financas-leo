@@ -20,7 +20,6 @@ export const CostOfLivingSection: React.FC = () => {
     transactions, 
     categories, 
     debts, 
-    goals, 
     settings, 
     isBlurred 
   } = useFinance();
@@ -100,33 +99,10 @@ export const CostOfLivingSection: React.FC = () => {
       : (currentMonthTotal > 0 ? currentMonthTotal : survivalCost);
 
     // -------------------------------------------------------------------------
-    // CUSTO MENSAL PARA ATINGIR METAS FINANCEIRAS
+    // CUSTO MENSAL PARA ATINGIR METAS FINANCEIRAS (Removido)
     // -------------------------------------------------------------------------
-    const now = new Date();
-    let monthlyGoalsPace = 0;
-    let activeGoalsCount = 0;
-
-    goals.forEach(g => {
-      const target = Number(g.targetAmount) || 0;
-      const current = Number(g.currentAmount) || 0;
-      const remaining = Math.max(0, target - current);
-
-      if (remaining > 0) {
-        activeGoalsCount++;
-        let monthsRemaining = 12; // Padrão se não houver deadline definida
-
-        if (g.deadline) {
-          const deadlineDate = new Date(g.deadline + 'T12:00:00');
-          if (!isNaN(deadlineDate.getTime())) {
-            const diffMonths = (deadlineDate.getFullYear() - now.getFullYear()) * 12 + 
-              (deadlineDate.getMonth() - now.getMonth());
-            monthsRemaining = Math.max(1, diffMonths);
-          }
-        }
-
-        monthlyGoalsPace += remaining / monthsRemaining;
-      }
-    });
+    const monthlyGoalsPace = 0;
+    const activeGoalsCount = 0;
 
     const livingAndGoalsCost = currentLivingCost + monthlyGoalsPace;
 
@@ -139,7 +115,7 @@ export const CostOfLivingSection: React.FC = () => {
       monthsAnalyzed: monthsCount,
       lifestylePortion: Math.max(0, currentLivingCost - survivalCost)
     };
-  }, [transactions, categories, debts, goals, financialSettings, currentMonthPrefix]);
+  }, [transactions, categories, debts, financialSettings, currentMonthPrefix]);
 
   const formatBRL = (val: number) => {
     if (isBlurred) return 'R$ •••••••';

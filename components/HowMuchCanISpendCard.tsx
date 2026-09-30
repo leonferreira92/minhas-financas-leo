@@ -25,7 +25,6 @@ export const HowMuchCanISpendCard: React.FC = () => {
     accounts, 
     categories, 
     debts, 
-    goals, 
     shows, 
     settings, 
     isBlurred,
@@ -49,13 +48,12 @@ export const HowMuchCanISpendCard: React.FC = () => {
     return operational.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // Saldo real guardado em poupança e cofrinhos
+  // Saldo real guardado em poupança
   const actualReservedInGoals = useMemo(() => {
     const savingsAccounts = accounts.filter(a => a.type === 'savings');
     const totalInSavings = savingsAccounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
-    const totalInGoals = goals.reduce((s, g) => s + (Number(g.currentAmount) || 0), 0);
-    return Math.max(totalInSavings, totalInGoals);
-  }, [accounts, goals, getAccountBalance]);
+    return totalInSavings;
+  }, [accounts, getAccountBalance]);
 
   // 2. CUSTO ESSENCIAL MENSAL DE REFERÊNCIA
   const monthlyEssentialCost = useMemo(() => {

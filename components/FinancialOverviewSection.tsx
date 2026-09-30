@@ -22,7 +22,6 @@ export const FinancialOverviewSection: React.FC = () => {
     accounts, 
     categories, 
     debts, 
-    goals, 
     settings, 
     isBlurred,
     getAccountBalance,
@@ -37,19 +36,17 @@ export const FinancialOverviewSection: React.FC = () => {
     return settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
   }, [settings.financialSettings]);
 
-  // 1. DINHEIRO DISPONÍVEL HOJE (Contas operacionais: conta corrente, carteira, investimentos não-cofrinho)
+  // 1. DINHEIRO DISPONÍVEL HOJE (Contas operacionais: conta corrente, carteira, investimentos)
   const cashAvailableToday = useMemo(() => {
     const operationalAccounts = accounts.filter(a => a.type !== 'savings');
     return operationalAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // Total guardado em cofrinhos e contas de poupança (Reserva Real Existente)
+  // Total guardado em contas de poupança (Reserva Real Existente)
   const actualReservedMoney = useMemo(() => {
     const savingsAccounts = accounts.filter(a => a.type === 'savings');
-    const totalInSavings = savingsAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
-    const totalInGoals = goals.reduce((sum, g) => sum + (Number(g.currentAmount) || 0), 0);
-    return Math.max(totalInSavings, totalInGoals);
-  }, [accounts, goals, getAccountBalance]);
+    return savingsAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
+  }, [accounts, getAccountBalance]);
 
   // 2. COMPROMISSOS FUTUROS JÁ CONHECIDOS (Despesas pendentes registradas a partir de hoje + mês atual)
   const futureCommitments = useMemo(() => {

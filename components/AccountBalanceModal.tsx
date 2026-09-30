@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Account, AccountType } from '../types';
-import { X, Wallet, CreditCard, PiggyBank, Landmark, HelpCircle, Save, Trash2, CheckCircle2 } from 'lucide-react';
+import { Account, AccountType, ScopeType } from '../types';
+import { X, Wallet, CreditCard, PiggyBank, Landmark, HelpCircle, Save, Trash2, CheckCircle2, User, Music, RefreshCw } from 'lucide-react';
 
 interface AccountBalanceModalProps {
   account: Account | null;
@@ -20,12 +20,14 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('bank');
   const [color, setColor] = useState('#6366f1');
+  const [scope, setScope] = useState<ScopeType>('BOTH');
 
   useEffect(() => {
     if (account) {
       setName(account.name);
       setType(account.type);
       setColor(account.color);
+      setScope(account.scope || 'BOTH');
       const currentVal = getAccountBalance(account.id);
       setNewBalanceInput(currentVal.toString());
       setActiveTab('balance');
@@ -56,7 +58,8 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
       ...account,
       name,
       type,
-      color
+      color,
+      scope: scope || 'BOTH'
     });
     onClose();
   };
@@ -266,6 +269,49 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                  Escopo da Conta
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScope('PERSONAL')}
+                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                      scope === 'PERSONAL'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <User size={13} />
+                    <span>Pessoal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScope('BUSINESS')}
+                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                      scope === 'BUSINESS'
+                        ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <Music size={13} />
+                    <span>Shows</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScope('BOTH')}
+                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                      scope === 'BOTH'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <span>Ambos</span>
+                  </button>
+                </div>
               </div>
 
               <div>

@@ -108,7 +108,8 @@ export const ShowFormModal: React.FC<Props> = ({
       cacheCombined: cacheVal,
       extraAmount: existingShow?.extraAmount || 0,
       status,
-      notes: notes.trim()
+      notes: notes.trim(),
+      scope: existingShow?.scope || 'BUSINESS'
     };
 
     onSave(showPayload);

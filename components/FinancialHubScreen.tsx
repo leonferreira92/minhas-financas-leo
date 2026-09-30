@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { 
-  Receipt, Landmark, ShieldAlert, PiggyBank, 
+  Receipt, Landmark, ShieldAlert, 
   BarChart3, TrendingUp, Sparkles, Plus, Wallet, 
   ArrowRightLeft, Eye, EyeOff, CheckCircle2, ChevronRight, Pencil
 } from 'lucide-react';
 import { TransactionList } from './TransactionList';
 import { DebtList } from './DebtList';
-import { GoalsScreen } from './GoalsScreen';
 import { CostOfLivingSection } from './CostOfLivingSection';
 import { SpendingAveragesSection } from './SpendingAveragesSection';
 import { ShowTargetSection } from './ShowTargetSection';
@@ -16,13 +15,16 @@ import { HowMuchCanISpendCard } from './HowMuchCanISpendCard';
 import { FinancialOverviewSection } from './FinancialOverviewSection';
 import { FinancialProjectionSection } from './FinancialProjectionSection';
 import { PlanningScreen } from './PlanningScreen';
-import { FinancialInsightsSection } from './FinancialInsightsSection';
-import { FinancialInsights } from './FinancialInsights';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
+import { ScopeSelector } from './ScopeSelector';
+import { TopExpensesCard } from './extrato/TopExpensesCard';
+import { CacheEvolutionChart } from './extrato/CacheEvolutionChart';
+import { CashFlowSimulator } from './extrato/CashFlowSimulator';
+import { CareerLifeDiagnostic } from './extrato/CareerLifeDiagnostic';
 import { Account, AccountType } from '../types';
 
-export type FinanceTab = 'movimentacoes' | 'contas' | 'dividas' | 'metas' | 'analises' | 'projecoes' | 'insights';
+export type FinanceTab = 'movimentacoes' | 'contas' | 'dividas' | 'analises' | 'projecoes' | 'insights';
 
 interface Props {
   initialTab?: FinanceTab;
@@ -31,7 +33,7 @@ interface Props {
 export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoes' }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { accounts, getAccountBalance, isBlurred, toggleBlur, addAccount } = useFinance();
+  const { accounts, getAccountBalance, isBlurred, toggleBlur, addAccount, activeScope } = useFinance();
 
   const tabParam = (searchParams.get('tab') as FinanceTab) || initialTab;
   const [activeTab, setActiveTab] = useState<FinanceTab>(tabParam);
@@ -84,7 +86,6 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
     { id: 'movimentacoes', label: 'Movimentações', icon: Receipt },
     { id: 'contas', label: 'Contas', icon: Landmark },
     { id: 'dividas', label: 'Dívidas', icon: ShieldAlert },
-    { id: 'metas', label: 'Metas / Cofrinhos', icon: PiggyBank },
     { id: 'analises', label: 'Análises', icon: BarChart3 },
     { id: 'projecoes', label: 'Projeções', icon: TrendingUp },
     { id: 'insights', label: 'Insights', icon: Sparkles }
@@ -95,7 +96,7 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
   return (
     <div className="space-y-6 pb-20 animate-fade-in">
       {/* HEADER DA ÁREA FINANCEIRO */}
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/50">
             Gestão Financeira
@@ -106,6 +107,9 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Seletor Global de Escopo */}
+          <ScopeSelector size="sm" />
+
           <button
             onClick={() => {
               setTxType('expense');
@@ -228,25 +232,26 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
         </div>
       )}
 
-      {/* 4. METAS / COFRINHOS */}
-      {activeTab === 'metas' && (
-        <div className="space-y-4">
-          <GoalsScreen />
-        </div>
-      )}
-
-      {/* 5. ANÁLISES */}
+      {/* 4. ANÁLISES */}
       {activeTab === 'analises' && (
         <div className="space-y-6">
           <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
             <h3 className="text-xs font-black text-indigo-900 dark:text-indigo-200 uppercase tracking-wider flex items-center">
               <BarChart3 size={15} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
-              Painel de Análises Financeiras
+              Painel de Análises Financeiras & Carreira
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Indicadores consolidados sobre custo de sobrevivência, médias por categoria e capacidade de gasto.
+              Indicadores dinâmicos filtrados pelo escopo selecionado, top despesas e evolução de cachês.
             </p>
           </div>
+
+          {/* Top 5 Maiores Despesas do Mês */}
+          <TopExpensesCard />
+
+          {/* Gráfico de Evolução do Cachê x Custos (Se escopo BUSINESS ou ALL) */}
+          {(activeScope === 'BUSINESS' || activeScope === 'ALL') && (
+            <CacheEvolutionChart />
+          )}
 
           <CostOfLivingSection />
           <SpendingAveragesSection />
@@ -256,29 +261,32 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
         </div>
       )}
 
-      {/* 6. PROJEÇÕES */}
+      {/* 5. PROJEÇÕES */}
       {activeTab === 'projecoes' && (
         <div className="space-y-6">
           <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50">
             <h3 className="text-xs font-black text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center">
               <TrendingUp size={15} className="mr-1.5 text-blue-600 dark:text-blue-400" />
-              Projeções & Planejamento de Fluxo
+              Projeções & Simulador de Fluxo Futuro
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Previsão de 3, 6 e 12 meses, teto orçamentário e divisão 50/30/20.
+              Simule cenários conservadores, moderados ou otimistas para a sua agenda de shows e saúde financeira.
             </p>
           </div>
+
+          {/* Simulador de Fluxo de Caixa Futuro */}
+          <CashFlowSimulator />
 
           <FinancialProjectionSection />
           <PlanningScreen />
         </div>
       )}
 
-      {/* 7. INSIGHTS */}
+      {/* 6. INSIGHTS */}
       {activeTab === 'insights' && (
         <div className="space-y-6">
-          <FinancialInsightsSection />
-          <FinancialInsights />
+          {/* Diagnóstico Operacional da Carreira & Vida Pessoal */}
+          <CareerLifeDiagnostic />
         </div>
       )}
 

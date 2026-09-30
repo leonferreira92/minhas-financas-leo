@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Transaction, TransactionType, TransactionStatus } from '../types';
+import { Transaction, TransactionType, TransactionStatus, ScopeType } from '../types';
 import { 
   X, Check, Trash2, Bell, BellRing, Repeat, Copy, Layers, 
   Sparkles, Loader2, TrendingUp, ArrowRightLeft, 
   AlertTriangle, Calendar as CalendarIcon,
   ChevronDown, Wallet, Target, Plus, Search, CheckCircle2,
   SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight,
-  Music, ChevronRight
+  Music, ChevronRight, User
 } from 'lucide-react';
 import { getIcon, parseCurrencyInput } from '../constants';
 import { GeminiService } from '../services/geminiService';
@@ -24,8 +24,7 @@ interface Props {
 export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
   const { 
     addTransaction, updateTransactionSeries, updateDebtTransaction, 
-    deleteTransaction, categories, transactions, accounts, checkTransactionImpact,
-    goals, addGoal, updateGoal
+    deleteTransaction, categories, transactions, accounts, checkTransactionImpact
   } = useFinance();
 
   // Primary Form State
@@ -40,6 +39,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [hasReminder, setHasReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [isFixed, setIsFixed] = useState(false);
+  const [scope, setScope] = useState<ScopeType>(() => {
+    if (transaction?.scope) return transaction.scope;
+    if (initialCategoryId === 'cat_33' || transaction?.showId) return 'BUSINESS';
+    return 'BOTH';
+  });
 
   // Progressive Disclosure UI States
   const [showMoreOptions, setShowMoreOptions] = useState(!!transaction);
@@ -98,6 +102,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (transaction.isFixed) {
         setIsFixed(true);
       }
+      setScope(transaction.scope || 'BOTH');
       setShowMoreOptions(true);
     }
   }, [transaction]);
@@ -362,7 +367,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
-      interest: (transaction?.debtId && diffAmount > 0.01) ? diffAmount : 0
+      interest: (transaction?.debtId && diffAmount > 0.01) ? diffAmount : 0,
+      scope: scope || 'BOTH'
     };
 
     if (transaction) {
@@ -376,84 +382,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
         onClose();
       }
     } else {
-      if (type === 'income' && status === 'paid' && val > 0) {
-        setPendingIncomeData(data);
-        const defaultAccount = data.accountId || accounts[0]?.id || '';
-        setRemainderAccountId(defaultAccount);
-        const defaultGoal = goals[0]?.id || '';
-        setSelectedAporteGoalId(defaultGoal);
-        setAporteAmountStr('');
-        setShowSmartAporteModal(true);
-      } else {
-        addTransaction(data);
-        onClose();
-      }
+      addTransaction(data);
+      onClose();
     }
-  };
-
-  // Smart Aporte Handlers
-  const handleSkipAporte = () => {
-    if (pendingIncomeData) {
-      addTransaction(pendingIncomeData);
-    }
-    setShowSmartAporteModal(false);
-    onClose();
-  };
-
-  const handleConfirmAporte = () => {
-    if (!pendingIncomeData) return;
-    const valAporte = parseCurrencyInput(aporteAmountStr);
-    const totalIncome = Number(pendingIncomeData.amount || 0);
-    const destAcc = remainderAccountId || pendingIncomeData.accountId || accounts[0]?.id || '';
-
-    addTransaction({
-      ...pendingIncomeData,
-      accountId: destAcc
-    });
-
-    const chosenGoal = goals.find(g => g.id === selectedAporteGoalId);
-    if (chosenGoal && valAporte > 0) {
-      const actualAporte = Math.min(valAporte, totalIncome);
-      addTransaction({
-        description: `Aporte em Objetivo: ${chosenGoal.name} (${pendingIncomeData.description})`,
-        amount: actualAporte,
-        type: 'goal_deposit',
-        status: 'paid',
-        date: pendingIncomeData.date || new Date().toISOString().slice(0, 10),
-        categoryId: categories[0]?.id || 'goal-transfer',
-        accountId: destAcc,
-        goalId: chosenGoal.id
-      });
-      updateGoal({
-        ...chosenGoal,
-        currentAmount: Number(chosenGoal.currentAmount || 0) + actualAporte
-      });
-    }
-
-    setShowSmartAporteModal(false);
-    onClose();
-  };
-
-  const handleCreateInlineGoal = () => {
-    const target = parseCurrencyInput(inlineGoalTarget);
-    if (!inlineGoalName.trim() || target <= 0) {
-      alert("Preencha o nome e valor da meta.");
-      return;
-    }
-    const newId = generateUUID();
-    addGoal({
-      id: newId,
-      name: inlineGoalName.trim(),
-      description: 'Objetivo Cadastrado via Receita',
-      targetAmount: target,
-      currentAmount: 0,
-      deadline: inlineGoalDeadline || '2026-12-31',
-      color: '#3b82f6',
-      icon: inlineGoalIcon,
-      createdAt: new Date().toISOString()
-    });
-    setSelectedAporteGoalId(newId);
-    setIsCreatingGoalInline(false);
   };
 
   const handleConfirmRecurringUpdate = (updateFuture: boolean) => {
@@ -841,6 +772,50 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                       </div>
                     )}
 
+                    {/* Escopo da Transação */}
+                    <div className="pt-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
+                        Escopo do Lançamento
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setScope('PERSONAL')}
+                          className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                            scope === 'PERSONAL'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          <User size={13} />
+                          <span>Pessoal</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScope('BUSINESS')}
+                          className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                            scope === 'BUSINESS'
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          <Music size={13} />
+                          <span>Shows</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScope('BOTH')}
+                          className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                            scope === 'BOTH'
+                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          <span>Ambos</span>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Data/Hora do Lembrete */}
                     {hasReminder && (
                       <div className="animate-fade-in pt-1">
@@ -995,65 +970,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               <button onClick={() => handleConfirmRecurringUpdate(true)} className="w-full py-3 px-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"><Layers size={18} className="text-indigo-600" /><div><span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100">Esta e futuras</span><span className="block text-[9px] text-indigo-400 font-bold uppercase">Daqui para frente</span></div></button>
               <button onClick={() => setShowRecurringEditModal(false)} className="w-full py-3 text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest mt-1">Cancelar</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Objetivos Inteligentes (Aporte na Receita) */}
-      {showSmartAporteModal && pendingIncomeData && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[130] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 p-6 animate-scale-in">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg">
-                  <Target size={20} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase text-indigo-500">Objetivos Inteligentes</span>
-                  <h3 className="text-lg font-black text-slate-800 dark:text-white">Quer fazer um aporte?</h3>
-                </div>
-              </div>
-              <button type="button" onClick={handleSkipAporte} className="p-2 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400"><X size={18} /></button>
-            </div>
-
-            <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mb-5 bg-indigo-50/70 dark:bg-indigo-950/40 p-3.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
-              Você registrou uma receita de <strong className="text-slate-900 dark:text-white">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pendingIncomeData.amount)}</strong>. Deseja direcionar parte desse valor para um objetivo?
-            </p>
-
-            {!isCreatingGoalInline ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-[10px] font-black uppercase text-slate-400">Qual Objetivo?</label>
-                    <button type="button" onClick={() => setIsCreatingGoalInline(true)} className="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"><Plus size={12} /><span>+ Nova Meta</span></button>
-                  </div>
-                  <select value={selectedAporteGoalId} onChange={(e) => setSelectedAporteGoalId(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white">
-                    {goals.map(g => (
-                      <option key={g.id} value={g.id}>
-                        {g.name} — Meta: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(g.targetAmount)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">Quanto Aportar? (R$)</label>
-                  <input type="text" placeholder="0,00" value={aporteAmountStr} onChange={(e) => setAporteAmountStr(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-base font-black text-slate-800 dark:text-white" />
-                </div>
-
-                <div className="flex items-center space-x-2 pt-2">
-                  <button type="button" onClick={handleSkipAporte} className="flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase">○ Apenas Entrada</button>
-                  <button type="button" onClick={handleConfirmAporte} className="flex-1 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase shadow-lg">○ Confirmar Aporte</button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center"><span className="text-xs font-black text-indigo-500 uppercase">Novo Objetivo</span><button type="button" onClick={() => setIsCreatingGoalInline(false)} className="text-xs font-bold text-slate-400">Voltar</button></div>
-                <input type="text" placeholder="Ex.: Reserva Emergência" value={inlineGoalName} onChange={(e) => setInlineGoalName(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold" />
-                <input type="text" placeholder="Meta R$" value={inlineGoalTarget} onChange={(e) => setInlineGoalTarget(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold" />
-                <button type="button" onClick={handleCreateInlineGoal} className="w-full py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase">Salvar Objetivo</button>
-              </div>
-            )}
           </div>
         </div>
       )}

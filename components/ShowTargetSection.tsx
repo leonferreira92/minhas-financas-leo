@@ -21,7 +21,6 @@ export const ShowTargetSection: React.FC = () => {
     transactions, 
     categories, 
     debts, 
-    goals, 
     settings, 
     isBlurred,
     getDebtProgress 
@@ -140,27 +139,7 @@ export const ShowTargetSection: React.FC = () => {
     // -------------------------------------------------------------------------
     // 3. META MENSAL DE ECONOMIA
     // -------------------------------------------------------------------------
-    const now = new Date();
-    let calculatedGoalsMonthlyPace = 0;
-
-    goals.forEach(g => {
-      const target = Number(g.targetAmount) || 0;
-      const current = Number(g.currentAmount) || 0;
-      const remaining = Math.max(0, target - current);
-
-      if (remaining > 0) {
-        let monthsRemaining = 12;
-        if (g.deadline) {
-          const deadlineDate = new Date(g.deadline + 'T12:00:00');
-          if (!isNaN(deadlineDate.getTime())) {
-            const diffMonths = (deadlineDate.getFullYear() - now.getFullYear()) * 12 + 
-              (deadlineDate.getMonth() - now.getMonth());
-            monthsRemaining = Math.max(1, diffMonths);
-          }
-        }
-        calculatedGoalsMonthlyPace += remaining / monthsRemaining;
-      }
-    });
+    const calculatedGoalsMonthlyPace = 0;
 
     const activeMonthlySavingsTarget = customSavingsGoal !== null 
       ? customSavingsGoal 
@@ -206,7 +185,7 @@ export const ShowTargetSection: React.FC = () => {
       showsForLivingAndSavings,
       showsJustForSavings
     };
-  }, [shows, transactions, categories, debts, goals, financialSettings, customSavingsGoal, getDebtProgress]);
+  }, [shows, transactions, categories, debts, financialSettings, customSavingsGoal, getDebtProgress]);
 
   return (
     <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
