@@ -3,9 +3,10 @@ import { Show } from '../../types';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   Clock, MapPin, Plus, CheckCircle2, AlertTriangle, 
-  Sparkles, Check, ChevronDown 
+  Sparkles, Check, ChevronDown, Music, DollarSign, ArrowRight
 } from 'lucide-react';
 import { getStatusConfig } from './types';
+import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 
 interface Props {
   shows: Show[];
@@ -66,19 +67,21 @@ export const ShowCalendarView: React.FC<Props> = ({
     return days;
   }, [year, month]);
 
-  // Shows mapped by date (excluding Realizado/Cancelado from primary alert clutter)
+  // Shows mapped by date
   const showsByDate = useMemo(() => {
     const map: Record<string, Show[]> = {};
     shows.forEach(s => {
+      if (!s.date) return;
       if (!map[s.date]) map[s.date] = [];
       map[s.date].push(s);
     });
     return map;
   }, [shows]);
 
-  // Shows for the selected day
+  // Shows for the selected day - sorted chronologically by time
   const showsOnSelectedDate = useMemo(() => {
-    return showsByDate[selectedDateStr] || [];
+    const list = showsByDate[selectedDateStr] || [];
+    return [...list].sort((a, b) => (a.time || '20:00').localeCompare(b.time || '20:00'));
   }, [showsByDate, selectedDateStr]);
 
   const confirmedShowsOnSelectedDate = useMemo(() => {
@@ -86,7 +89,7 @@ export const ShowCalendarView: React.FC<Props> = ({
   }, [showsOnSelectedDate]);
 
   const hasQuotesOnSelectedDate = useMemo(() => {
-    return showsOnSelectedDate.some(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação');
+    return showsOnSelectedDate.some(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado');
   }, [showsOnSelectedDate]);
 
   // Format currency helper
@@ -114,16 +117,38 @@ export const ShowCalendarView: React.FC<Props> = ({
     return String(dateStr);
   };
 
+  const formatShortDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}`;
+    }
+    return dateStr;
+  };
+
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  // Month statistics summary
+  const monthStats = useMemo(() => {
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const thisMonthShows = shows.filter(s => s.date && s.date.startsWith(monthPrefix));
+    const confirmed = thisMonthShows.filter(s => s.status === 'Confirmado');
+    const totalRevenue = confirmed.reduce((acc, s) => acc + (s.totalCache ?? s.cacheCombined ?? 0), 0);
+    return {
+      totalShows: confirmed.length,
+      totalRevenue,
+      quotesCount: thisMonthShows.filter(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação').length
+    };
+  }, [shows, year, month]);
 
   return (
     <div className="space-y-4">
-      {/* HEADER DO CALENDÁRIO: NAVEGAÇÃO ENTRE MESES & BOTÃO HOJE */}
+      {/* HEADER DO CALENDÁRIO COM NAVEGAÇÃO E RESUMO DO MÊS */}
       <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <h2 className="text-base font-black text-slate-900 dark:text-white capitalize tracking-tight">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white capitalize tracking-tight">
               {monthYearLabel}
             </h2>
             <button
@@ -152,19 +177,43 @@ export const ShowCalendarView: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* RESUMO RÁPIDO DO MÊS */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase">Shows Confirmados</span>
+            <span className="text-sm font-black text-slate-900 dark:text-white">
+              {monthStats.totalShows} {monthStats.totalShows === 1 ? 'apresentação' : 'apresentações'}
+            </span>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase">Faturamento Mês</span>
+            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(monthStats.totalRevenue)}
+            </span>
+          </div>
+          {monthStats.quotesCount > 0 && (
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 col-span-2 sm:col-span-1">
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block uppercase">Em Negociação</span>
+              <span className="text-sm font-black text-amber-800 dark:text-amber-300">
+                {monthStats.quotesCount} {monthStats.quotesCount === 1 ? 'orçamento' : 'orçamentos'}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* LEGENDA RÁPIDA DE DISPONIBILIDADE */}
-        <div className="flex items-center space-x-4 text-[10px] font-bold text-slate-400 px-1">
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 px-1 pt-1">
           <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span>Confirmado</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            <span>Aguardando / Orçamento</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            <span>Orçamento / Em Negociação</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-            <span>Realizado / Histórico</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+            <span>Múltiplos Shows no Dia</span>
           </div>
         </div>
 
@@ -179,46 +228,68 @@ export const ShowCalendarView: React.FC<Props> = ({
           <div>Sáb</div>
         </div>
 
-        {/* GRADE DO CALENDÁRIO */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* GRADE DO CALENDÁRIO MENSAL */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
           {calendarDays.map((item, idx) => {
             if (!item) {
-              return <div key={`empty-${idx}`} className="h-10 sm:h-12" />;
+              return <div key={`empty-${idx}`} className="h-12 sm:h-14" />;
             }
 
             const isSelected = item.dateStr === selectedDateStr;
             const isToday = item.dateStr === todayStr;
             const dayShows = showsByDate[item.dateStr] || [];
 
-            const hasConfirmed = dayShows.some(s => s.status === 'Confirmado');
-            const hasPendingOrQuote = dayShows.some(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado');
-            const hasPast = dayShows.some(s => s.status === 'Realizado');
+            const confirmedShows = dayShows.filter(s => s.status === 'Confirmado');
+            const pendingShows = dayShows.filter(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado');
+            const pastShows = dayShows.filter(s => s.status === 'Realizado');
+
+            const hasMultiple = dayShows.length > 1;
+            const hasMultipleConfirmed = confirmedShows.length > 1;
 
             return (
               <button
                 key={item.dateStr}
                 onClick={() => setSelectedDateStr(item.dateStr)}
-                className={`h-11 sm:h-13 rounded-2xl flex flex-col items-center justify-between p-1.5 transition-all relative active:scale-95 ${
+                className={`h-12 sm:h-14 rounded-2xl flex flex-col items-center justify-between p-1 sm:p-1.5 transition-all relative active:scale-95 ${
                   isSelected
-                    ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400 dark:ring-indigo-500 font-black'
+                    ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400 dark:ring-indigo-500 font-black z-10'
                     : isToday
-                    ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-900/60'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-300 dark:border-indigo-800'
+                    : confirmedShows.length > 0
+                    ? 'bg-emerald-50/70 dark:bg-emerald-950/20 text-slate-800 dark:text-slate-200 border border-emerald-200/70 dark:border-emerald-900/50 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30'
+                    : pendingShows.length > 0
+                    ? 'bg-amber-50/70 dark:bg-amber-950/20 text-slate-800 dark:text-slate-200 border border-amber-200/70 dark:border-amber-900/50 hover:bg-amber-100/50'
                     : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <span className="text-xs leading-none">
-                  {item.day}
-                </span>
+                <div className="flex items-center justify-between w-full px-0.5">
+                  <span className="text-xs leading-none font-bold">
+                    {item.day}
+                  </span>
 
-                {/* Dots de Shows na Data */}
+                  {/* BADGE DE MÚLTIPLOS SHOWS NO MESMO DIA */}
+                  {hasMultiple && (
+                    <span className={`text-[9px] font-black px-1 rounded-md leading-tight ${
+                      isSelected 
+                        ? 'bg-white text-indigo-900' 
+                        : hasMultipleConfirmed 
+                        ? 'bg-purple-600 text-white shadow-xs' 
+                        : 'bg-amber-500 text-white shadow-xs'
+                    }`}>
+                      {dayShows.length}x
+                    </span>
+                  )}
+                </div>
+
+                {/* INDICADORES VISUAIS DE COMPROMISSO */}
                 <div className="flex items-center space-x-1 h-2">
-                  {hasConfirmed && (
+                  {confirmedShows.length > 0 && (
                     <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500 shadow-xs'}`} />
                   )}
-                  {hasPendingOrQuote && !hasConfirmed && (
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-200' : 'bg-amber-500'}`} />
+                  {pendingShows.length > 0 && (
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-200' : 'bg-amber-500 shadow-xs'}`} />
                   )}
-                  {hasPast && !hasConfirmed && !hasPendingOrQuote && (
+                  {pastShows.length > 0 && confirmedShows.length === 0 && pendingShows.length === 0 && (
                     <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-slate-300' : 'bg-slate-400'}`} />
                   )}
                 </div>
@@ -229,26 +300,33 @@ export const ShowCalendarView: React.FC<Props> = ({
 
       </div>
 
-      {/* PAINEL DO DIA SELECIONADO: VERIFICAÇÃO INSTANTÂNEA DE DISPONIBILIDADE */}
+      {/* 3. VISÃO DO DIA: CONSULTA INSTANTÂNEA DE DISPONIBILIDADE E COMPROMISSOS */}
       <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         
         {/* Cabeçalho do dia selecionado */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">
-              Consulta de Disponibilidade
-            </span>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white capitalize">
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
+                Visão do Dia • {formatShortDate(selectedDateStr)}
+              </span>
+            </div>
+            <h3 className="text-base font-black text-slate-900 dark:text-white capitalize mt-0.5">
               {formatSelectedDateHeader(selectedDateStr)}
             </h3>
           </div>
 
-          {/* Badge de Status da Data */}
+          {/* Badge de Status e Disponibilidade da Data */}
           <div>
-            {confirmedShowsOnSelectedDate.length > 0 ? (
+            {confirmedShowsOnSelectedDate.length > 1 ? (
+              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/30">
+                <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                <span>{confirmedShowsOnSelectedDate.length} Shows Confirmados</span>
+              </span>
+            ) : confirmedShowsOnSelectedDate.length === 1 ? (
               <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                <span>Data Ocupada ({confirmedShowsOnSelectedDate.length} confirmado)</span>
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span>Data Ocupada (1 Show Confirmado)</span>
               </span>
             ) : hasQuotesOnSelectedDate ? (
               <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
@@ -264,64 +342,95 @@ export const ShowCalendarView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Shows na data selecionada */}
+        {/* LISTAGEM DOS COMPROMISSOS DO DIA ORDENADOS POR HORÁRIO */}
         {showsOnSelectedDate.length === 0 ? (
           <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
             <CheckCircle2 size={24} className="mx-auto text-emerald-500" />
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Nenhum compromisso marcado nesta data</p>
-            <p className="text-[11px] text-slate-400 font-medium">Sua agenda está 100% livre neste dia.</p>
+            <p className="text-[11px] text-slate-400 font-medium">Sua agenda está totalmente disponível neste dia.</p>
             
-            <button
-              onClick={() => onOpenCreateModal(selectedDateStr)}
-              className="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider inline-flex items-center space-x-1 transition active:scale-95 shadow-sm"
-            >
-              <Plus size={14} strokeWidth={3} />
-              <span>Agendar Show Neste Dia</span>
-            </button>
+            <div className="pt-2 flex items-center justify-center space-x-2">
+              <button
+                onClick={() => onOpenCreateModal(selectedDateStr)}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider inline-flex items-center space-x-1 transition active:scale-95 shadow-sm"
+              >
+                <Plus size={14} strokeWidth={3} />
+                <span>Agendar Show</span>
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {showsOnSelectedDate.map(show => {
+          <div className="space-y-3">
+            {showsOnSelectedDate.map((show, idx) => {
               const statusCfg = getStatusConfig(show.status);
+              const fin = getShowFinancialSummary(show);
+
               return (
                 <div
                   key={show.id}
                   onClick={() => onSelectShow(show)}
-                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition cursor-pointer space-y-2 shadow-xs active:scale-[0.99]"
+                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
                 >
+                  {/* Linha Principal no formato claro e direto: Horário — Nome / Evento */}
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
+                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50 flex items-center space-x-1">
+                          <Clock size={12} />
+                          <span>{show.time || '20:00'}{show.endTime ? ` — ${show.endTime}` : ''}</span>
+                        </span>
+
                         <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}>
                           {show.status}
                         </span>
+
                         {show.eventType && (
-                          <span className="text-[10px] text-slate-400 font-bold">
-                            {show.eventType}
+                          <span className="text-[10px] text-slate-400 font-bold hidden sm:inline-block">
+                            • {show.eventType}
                           </span>
                         )}
                       </div>
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white mt-1">
+
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white mt-1.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {show.contractorName || show.name}
                       </h4>
                     </div>
 
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                      {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 block tabular-nums">
+                        {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
+                      </span>
+                      {fin.totalPending > 0 && show.status === 'Confirmado' && (
+                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block">
+                          Falta: {formatCurrency(fin.totalPending)}
+                        </span>
+                      )}
+                      {fin.totalPending === 0 && fin.totalContracted > 0 && (
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">
+                          100% Recebido
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 font-medium">
-                    <span className="flex items-center">
-                      <Clock size={12} className="mr-1 text-indigo-600" />
-                      {show.time || '20:00'} {show.endTime ? `às ${show.endTime}` : ''}
-                    </span>
-                    {(show.city || show.location) && (
-                      <span className="flex items-center truncate max-w-[160px]">
-                        <MapPin size={12} className="mr-1 text-slate-400 shrink-0" />
-                        <span className="truncate">{show.city || show.location}</span>
+                  {/* Linha de Cidade e Local */}
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 font-medium">
+                    <div className="flex items-center space-x-1.5">
+                      <MapPin size={13} className="text-slate-400 shrink-0" />
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">
+                        {show.city ? show.city : 'Cidade não definida'}
                       </span>
-                    )}
+                      {show.location && (
+                        <span className="text-slate-400 truncate max-w-[180px]">
+                          • {show.location}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center space-x-0.5 group-hover:translate-x-1 transition-transform">
+                      <span>Ver ficha</span>
+                      <ArrowRight size={12} />
+                    </span>
                   </div>
                 </div>
               );

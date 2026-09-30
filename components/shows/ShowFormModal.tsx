@@ -14,6 +14,7 @@ interface Props {
   existingShow?: Show | null;
   existingShows: Show[];
   prefilledDate?: string;
+  initialStatus?: ShowStatus;
 }
 
 export const ShowFormModal: React.FC<Props> = ({
@@ -22,7 +23,8 @@ export const ShowFormModal: React.FC<Props> = ({
   onSave,
   existingShow,
   existingShows,
-  prefilledDate
+  prefilledDate,
+  initialStatus
 }) => {
   const [contractorName, setContractorName] = useState('');
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
@@ -32,7 +34,7 @@ export const ShowFormModal: React.FC<Props> = ({
   const [city, setCity] = useState('');
   const [location, setLocation] = useState('');
   const [totalCache, setTotalCache] = useState('');
-  const [status, setStatus] = useState<ShowStatus>('Confirmado');
+  const [status, setStatus] = useState<ShowStatus>(() => initialStatus || 'Confirmado');
   const [notes, setNotes] = useState('');
 
   // Conflict warning state
@@ -60,11 +62,11 @@ export const ShowFormModal: React.FC<Props> = ({
       setCity('');
       setLocation('');
       setTotalCache('');
-      setStatus('Confirmado');
+      setStatus(initialStatus || 'Confirmado');
       setNotes('');
     }
     setConflictPrompt(null);
-  }, [existingShow, prefilledDate, isOpen]);
+  }, [existingShow, prefilledDate, initialStatus, isOpen]);
 
   if (!isOpen) return null;
 
