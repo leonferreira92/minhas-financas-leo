@@ -117,26 +117,43 @@ export const MusicianShowScreen: React.FC = () => {
     // 1. Apresentações Realizadas: Conta todos os shows do mês onde status == 'realizado' OU 'concluido'
     const completedCount = completedShows.length;
 
-    // 2. Faturamento do Mês: Soma o valor TOTAL do cachê acordado de todos os shows marcados como realizados no mês
-    // INDEPENDENTE de o pagamento ter sido feito adiantado, no dia ou em datas posteriores
+    // 2. Faturamento do Mês (Regime de Caixa / Entradas Reais no Mês)
+    const monthIncomeTxs = transactions.filter(t => {
+      if (!t.date || !t.date.startsWith(selectedMonthPrefix)) return false;
+      if (t.type !== 'income' || t.status !== 'paid') return false;
+      const desc = (t.description || '').toLowerCase();
+      if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
+
+      return (
+        t.scope === 'BUSINESS' ||
+        t.categoryId === 'cat_33' ||
+        !!t.showId ||
+        desc.includes('cachê') ||
+        desc.includes('cache') ||
+        desc.includes('show')
+      );
+    });
+    const cashInflowsMonth = monthIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // 3. Faturamento Bruto Contratado dos Shows Realizados no mês
     const monthlyGrossRevenue = completedShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
       return sum + fin.totalPredicted;
     }, 0);
 
-    // 3. A Receber (Shows Realizados): Soma o saldo restante dos shows já realizados no mês que ainda não foram 100% quitados
+    // 4. A Receber (Shows Realizados): Soma o saldo restante dos shows já realizados no mês que ainda não foram 100% quitados
     const pendingToReceiveRealizados = completedShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
       return sum + fin.totalPending;
     }, 0);
 
-    // 4. Recebido Efetivo dos Shows Realizados
+    // 5. Recebido Efetivo dos Shows Realizados
     const totalReceivedRealizados = completedShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
       return sum + fin.totalReceived;
     }, 0);
 
-    // 5. Shows Confirmados / Projetado no mês
+    // 6. Shows Confirmados / Projetado no mês
     const confirmedRevenue = confirmedShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
       return sum + fin.totalPredicted;
@@ -144,6 +161,7 @@ export const MusicianShowScreen: React.FC = () => {
 
     return {
       completedCount,
+      cashInflowsMonth: Math.round(cashInflowsMonth * 100) / 100,
       monthlyGrossRevenue: Math.round(monthlyGrossRevenue * 100) / 100,
       pendingToReceiveRealizados: Math.round(pendingToReceiveRealizados * 100) / 100,
       totalReceivedRealizados: Math.round(totalReceivedRealizados * 100) / 100,
@@ -324,7 +342,7 @@ export const MusicianShowScreen: React.FC = () => {
             </p>
           </div>
 
-          {/* KPI 2: Faturamento do Mês */}
+          {/* KPI 2: Faturamento do Mês (Entradas Reais / Regime de Caixa) */}
           <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
@@ -336,11 +354,11 @@ export const MusicianShowScreen: React.FC = () => {
             </div>
             <div className="flex items-baseline space-x-1.5">
               <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                {formatCurrency(monthlyMetrics.monthlyGrossRevenue)}
+                {formatCurrency(monthlyMetrics.cashInflowsMonth)}
               </span>
             </div>
             <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70 font-medium">
-              Cachê total acordado dos shows realizados
+              Entradas reais de Pix/Cachês em {monthLabel}
             </p>
           </div>
 

@@ -5,8 +5,11 @@ export interface ShowFinancialSummary {
   totalContracted: number;     // Valor contratado (cachê base)
   extraAmount: number;         // Valor de extras adicionados
   totalPredicted: number;      // Valor total previsto = Valor contratado + Extras
-  totalReceived: number;       // Total recebido = soma dos pagamentos efetivamente recebidos
-  totalPending: number;        // Total a receber = Valor total previsto - Total recebido
+  baseCacheReceived: number;   // Total recebido do cachê base (Sinais + Quitações)
+  extraReceived: number;       // Total recebido de Horas Extras, Gorjetas e Adicionais
+  totalReceived: number;       // Total geral recebido = baseCacheReceived + extraReceived
+  totalPending: number;        // Saldo restante do cachê base = Math.max(0, totalContracted - baseCacheReceived)
+  percentReceived: number;     // % quitada do cachê base (0 a 100%)
   totalScheduled: number;      // Total agendado em parcelas pendentes
   totalExpenses: number;       // Total de despesas registradas
   netProfit: number;           // Lucro líquido = Total recebido - Total de despesas
@@ -94,39 +97,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
   normalized.eventType = normalized.eventType || 'Show / Apresentação';
   normalized.createdAt = normalized.createdAt || Date.now();
 
-  // 5. Normalizar Pagamentos (payments)
-  // REGRA FUNDAMENTAL: Se não houver pagamentos, manter array vazio []!
-  // NUNCA criar parcelas automáticas fictícias.
-  if (Array.isArray(normalized.payments) && normalized.payments.length > 0) {
-    normalized.payments = normalized.payments.map((p, idx) => ({
-      id: p.id || generateUUID(),
-      type: p.type || (idx === 0 && normalized.payments!.length > 1 ? 'Sinal' : 'Parcela'),
-      amount: Number(p.amount) || 0,
-      expectedDate: p.expectedDate || normalized.date,
-      effectiveDate: p.effectiveDate,
-      accountId: p.accountId || fallbackAccountId,
-      status: p.status === 'Recebido' ? 'Recebido' : (p.status === 'Cancelado' ? 'Cancelado' : 'Agendado'),
-      notes: p.notes || '',
-      transactionId: p.transactionId
-    }));
-  } else if (Array.isArray(normalized.receipts) && normalized.receipts.length > 0) {
-    // Migrar receipts legados existentes
-    normalized.payments = normalized.receipts.map(r => ({
-      id: r.id || generateUUID(),
-      type: r.type === 'Sinal' ? 'Sinal' : (r.type === 'Bônus' ? 'Bônus' : (r.type === 'Pagamento final' ? 'Pagamento final' : 'Parcela')),
-      amount: Number(r.amount) || 0,
-      expectedDate: r.expectedDate || normalized.date,
-      effectiveDate: r.effectiveDate,
-      accountId: r.accountId || fallbackAccountId,
-      status: r.status === 'Recebido' ? 'Recebido' : 'Agendado',
-      transactionId: r.transactionId
-    }));
-  } else {
-    // Sem pagamentos cadastrados = lista vazia
-    normalized.payments = [];
-  }
-
-  // 6. Normalizar Despesas (expenseItems)
+  // 5. Normalizar Despesas (expenseItems)
   if (Array.isArray(normalized.expenseItems) && normalized.expenseItems.length > 0) {
     normalized.expenseItems = normalized.expenseItems.map(e => ({
       id: e.id || generateUUID(),
@@ -137,66 +108,6 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
       notes: e.notes || '',
       transactionId: e.transactionId
     }));
-  } else if (normalized.expenses) {
-    // Migrar expenses legadas se existirem
-    const items: ShowExpenseItem[] = [];
-    const exp = normalized.expenses;
-    const expAcc = normalized.expenseAccountId || fallbackAccountId;
-
-    if (Number(exp.fuel) > 0) {
-      items.push({
-        id: generateUUID(),
-        category: 'Combustível',
-        amount: Number(exp.fuel),
-        date: normalized.date,
-        accountId: expAcc,
-        transactionId: normalized.expenseTransactionIds?.fuel
-      });
-    }
-    if (Number(exp.food) > 0) {
-      items.push({
-        id: generateUUID(),
-        category: 'Alimentação',
-        amount: Number(exp.food),
-        date: normalized.date,
-        accountId: expAcc,
-        transactionId: normalized.expenseTransactionIds?.food
-      });
-    }
-    if (Number(exp.toll) > 0) {
-      items.push({
-        id: generateUUID(),
-        category: 'Pedágio',
-        amount: Number(exp.toll),
-        date: normalized.date,
-        accountId: expAcc,
-        transactionId: normalized.expenseTransactionIds?.toll
-      });
-    }
-    if (Number(exp.commission) > 0) {
-      items.push({
-        id: generateUUID(),
-        category: 'Comissão',
-        amount: Number(exp.commission),
-        date: normalized.date,
-        accountId: expAcc,
-        transactionId: normalized.expenseTransactionIds?.commission
-      });
-    }
-    if (Number(exp.others) > 0) {
-      items.push({
-        id: generateUUID(),
-        category: 'Outros',
-        amount: Number(exp.others),
-        date: normalized.date,
-        accountId: expAcc,
-        transactionId: normalized.expenseTransactionIds?.others
-      });
-    }
-
-    normalized.expenseItems = items;
-  } else {
-    normalized.expenseItems = [];
   }
 
   return normalized;
@@ -204,10 +115,12 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
 
 /**
  * Calcula o resumo financeiro de um Show conforme as regras de negócio:
- * - Valor total previsto = Valor contratado + Extras
- * - Total recebido = soma dinâmica das transações vinculadas ao show (ou pagamentos recebidos)
- * - Total a receber = Valor total previsto - Total recebido
- * - Lucro líquido = Total recebido - Total de despesas
+ * - Cachê Base Contratado: totalContracted
+ * - Recebido do Cachê Base: baseCacheReceived (Sinais + Quitações/Parcelas)
+ * - Receita Extra Vinculada: extraReceived (Horas Extras, Gorjetas)
+ * - Total Geral Arrecadado: baseCacheReceived + extraReceived
+ * - Saldo restante do cachê base: Math.max(0, totalContracted - baseCacheReceived)
+ * - Adicionais NÃO estouram a porcentagem do cachê principal!
  */
 export function getShowFinancialSummary(show: Show | null | undefined, transactions?: Transaction[]): ShowFinancialSummary {
   if (!show) {
@@ -215,8 +128,11 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       totalContracted: 0,
       extraAmount: 0,
       totalPredicted: 0,
+      baseCacheReceived: 0,
+      extraReceived: 0,
       totalReceived: 0,
       totalPending: 0,
+      percentReceived: 0,
       totalScheduled: 0,
       totalExpenses: 0,
       netProfit: 0,
@@ -234,16 +150,8 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       : 0
   ) || 0;
 
-  const extraFromPayments = Array.isArray(show.payments)
-    ? show.payments
-        .filter(p => p && (p.type === 'Extra' || p.type === 'Bônus') && p.status !== 'Cancelado')
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-    : 0;
-
-  const extraAmount = Math.max(Number(show.extraAmount) || 0, extraFromPayments);
-  const totalPredicted = Math.round((totalContracted + extraAmount) * 100) / 100;
-  
-  let totalReceived = 0;
+  let baseCacheReceived = 0;
+  let extraReceived = 0;
   let totalScheduled = 0;
 
   // 1. Apuração dinâmica de receitas das transações do Financeiro vinculadas ao show
@@ -254,37 +162,57 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       t.status === 'paid'
     );
     
-    const txReceivedSum = linkedIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    linkedIncomeTxs.forEach(t => {
+      const amt = Number(t.amount) || 0;
+      const desc = (t.description || '').toLowerCase();
+      const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || 
+                      desc.includes('hora extra') || desc.includes('gorjeta') || desc.includes('adicional');
+      
+      if (isExtra) {
+        extraReceived += amt;
+      } else {
+        baseCacheReceived += amt;
+      }
+    });
+
     const linkedTxIds = new Set(linkedIncomeTxs.map(t => t.id));
 
-    // Pagamentos cadastrados no show que ainda não estão cobertos por transação vinculada (para não duplicar)
-    let manualPaymentsReceived = 0;
+    // Pagamentos cadastrados no show que ainda não têm transação no extrato
     if (Array.isArray(show.payments)) {
       show.payments.forEach(p => {
         if (!p) return;
+        const amt = Number(p.amount) || 0;
+        const isExtra = p.type === 'Extra' || p.type === 'Bônus';
+
         if (p.status === 'Recebido') {
           if (!p.transactionId || !linkedTxIds.has(p.transactionId)) {
-            // Se o show tiver pagamentos manuais não sincronizados
-            // Apenas conta se não houver já transação com esse ID
             if (!p.transactionId) {
-              manualPaymentsReceived += Number(p.amount) || 0;
+              if (isExtra) {
+                extraReceived += amt;
+              } else {
+                baseCacheReceived += amt;
+              }
             }
           }
         } else if (p.status === 'Agendado' || p.status === 'Previsto') {
-          totalScheduled += Number(p.amount) || 0;
+          totalScheduled += amt;
         }
       });
     }
-
-    totalReceived = txReceivedSum + manualPaymentsReceived;
   } else {
     // Fallback se transactions não for passado
     if (Array.isArray(show.payments) && show.payments.length > 0) {
       show.payments.forEach(p => {
         if (!p) return;
         const amt = Number(p.amount) || 0;
+        const isExtra = p.type === 'Extra' || p.type === 'Bônus';
+
         if (p.status === 'Recebido') {
-          totalReceived += amt;
+          if (isExtra) {
+            extraReceived += amt;
+          } else {
+            baseCacheReceived += amt;
+          }
         } else if (p.status === 'Agendado' || p.status === 'Previsto') {
           totalScheduled += amt;
         }
@@ -293,8 +221,14 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       show.receipts.forEach(r => {
         if (!r) return;
         const amt = Number(r.amount) || 0;
+        const isExtra = r.type === 'Bônus';
+
         if (r.status === 'Recebido') {
-          totalReceived += amt;
+          if (isExtra) {
+            extraReceived += amt;
+          } else {
+            baseCacheReceived += amt;
+          }
         } else {
           totalScheduled += amt;
         }
@@ -302,8 +236,17 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
     }
   }
 
-  // Total a receber = Valor total previsto - Total recebido
-  const totalPending = Math.max(0, Math.round((totalPredicted - totalReceived) * 100) / 100);
+  const extraAmount = Math.max(Number(show.extraAmount) || 0, extraReceived);
+  const totalPredicted = Math.round((totalContracted + extraAmount) * 100) / 100;
+  const totalReceived = Math.round((baseCacheReceived + extraReceived) * 100) / 100;
+
+  // Saldo restante do cachê base: Math.max(0, totalContracted - baseCacheReceived)
+  const totalPending = Math.max(0, Math.round((totalContracted - baseCacheReceived) * 100) / 100);
+
+  // Porcentagem quitada do cachê base (NÃO estoura 100%)
+  const percentReceived = totalContracted > 0 
+    ? Math.min(100, Math.round((baseCacheReceived / totalContracted) * 100))
+    : 100;
 
   // Despesas dinâmicas
   let totalExpenses = 0;
@@ -346,20 +289,21 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
   // Lucro líquido = Total recebido - Total de despesas
   const netProfit = Math.round((totalReceived - totalExpenses) * 100) / 100;
 
-  // Soma de todos os pagamentos cadastrados (recebidos + agendados)
   const totalPaymentsSum = totalReceived + totalScheduled;
   const rawRemaining = totalPredicted - totalPaymentsSum;
   const remainingToSchedule = rawRemaining > 0 ? Math.round(rawRemaining * 100) / 100 : 0;
-  const isOverTotal = totalPaymentsSum > (totalPredicted + 0.01);
-  const rawExcess = totalPaymentsSum - totalPredicted;
-  const excessAmount = rawExcess > 0 ? Math.round(rawExcess * 100) / 100 : 0;
+  const isOverTotal = baseCacheReceived > (totalContracted + 0.01);
+  const excessAmount = Math.max(0, Math.round((baseCacheReceived - totalContracted) * 100) / 100);
 
   return {
     totalContracted: Math.round(totalContracted * 100) / 100,
     extraAmount: Math.round(extraAmount * 100) / 100,
     totalPredicted: Math.round(totalPredicted * 100) / 100,
+    baseCacheReceived: Math.round(baseCacheReceived * 100) / 100,
+    extraReceived: Math.round(extraReceived * 100) / 100,
     totalReceived: Math.round(totalReceived * 100) / 100,
     totalPending: Math.round(totalPending * 100) / 100,
+    percentReceived,
     totalScheduled: Math.round(totalScheduled * 100) / 100,
     totalExpenses: Math.round(totalExpenses * 100) / 100,
     netProfit: Math.round(netProfit * 100) / 100,
@@ -387,39 +331,8 @@ function resolveIncomeCategoryId(categories: Category[]): string {
   return anyIncome ? anyIncome.id : 'cat_33';
 }
 
-function resolveExpenseCategoryId(categoryName: string, categories: Category[]): string {
-  if (!categories || categories.length === 0) return 'cat_1';
-  const lower = (categoryName || '').toLowerCase();
-  
-  if (lower.includes('combust')) {
-    const found = categories.find(c => c.type === 'expense' && c.name.toLowerCase().includes('combust'));
-    if (found) return found.id;
-  }
-  if (lower.includes('aliment') || lower.includes('lanche')) {
-    const found = categories.find(c => c.type === 'expense' && (
-      c.name.toLowerCase().includes('restauran') || 
-      c.name.toLowerCase().includes('aliment') || 
-      c.name.toLowerCase().includes('delivery')
-    ));
-    if (found) return found.id;
-  }
-  if (lower.includes('pedág') || lower.includes('estacion') || lower.includes('transp')) {
-    const found = categories.find(c => c.type === 'expense' && (
-      c.name.toLowerCase().includes('transp') || 
-      c.name.toLowerCase().includes('taxa') || 
-      c.name.toLowerCase().includes('imposto')
-    ));
-    if (found) return found.id;
-  }
-
-  // fallback para qualquer categoria de despesa compatível
-  const anyExp = categories.find(c => c.type === 'expense');
-  return anyExp ? anyExp.id : 'cat_1';
-}
-
 /**
  * Sincroniza um Show com a lista de movimentações financeiras sem criar duplicações.
- * Atualiza pagamentos e despesas mantendo vínculo bidirecional por ID estável (showId, showPaymentId, showExpenseId).
  */
 export function syncShowWithTransactions(
   show: Show,
@@ -437,67 +350,30 @@ export function syncShowWithTransactions(
 
   // 1. SINCRONIZAR PAGAMENTOS (RECEITAS)
   const currentPayments = Array.isArray(updatedShow.payments) ? updatedShow.payments : [];
-  const validPaymentIds = new Set(currentPayments.map(p => p.id));
 
   const updatedPayments = currentPayments.map(payment => {
     const p = { ...payment };
     const isReceived = p.status === 'Recebido';
-    const isCancelled = p.status === 'Cancelado';
     const txDate = (isReceived && p.effectiveDate) ? p.effectiveDate : (p.expectedDate || show.date);
     const txStatus = isReceived ? 'paid' : 'pending';
     const txDescription = `Show: ${showTitle} (${p.type || 'Parcela'})`;
 
-    // Encontrar movimentação existente vinculada pelo ID estável
-    let existingTxIndex = txs.findIndex(t => 
-      (p.transactionId && t.id === p.transactionId) ||
-      (t.showPaymentId === p.id) ||
-      (t.showId === show.id && t.showPaymentId === p.id)
-    );
-
-    if (isCancelled) {
-      // Se cancelado, remove transação se ela estiver pendente
-      if (existingTxIndex >= 0 && txs[existingTxIndex].status === 'pending') {
-        txs = txs.filter((_, idx) => idx !== existingTxIndex);
-        p.transactionId = undefined;
+    if (p.transactionId) {
+      const txIndex = txs.findIndex(t => t.id === p.transactionId);
+      if (txIndex >= 0) {
+        txs[txIndex] = {
+          ...txs[txIndex],
+          amount: p.amount,
+          date: txDate,
+          accountId: p.accountId,
+          status: txStatus,
+          description: txDescription,
+          showId: show.id,
+          showPaymentType: p.type,
+          scope: 'BUSINESS',
+          categoryId: incomeCatId
+        };
       }
-      return p;
-    }
-
-    if (existingTxIndex >= 0) {
-      // Atualizar transação existente
-      const existingTx = txs[existingTxIndex];
-      const updatedTx: Transaction = {
-        ...existingTx,
-        amount: Number(p.amount) || 0,
-        date: txDate,
-        status: txStatus as any,
-        accountId: p.accountId,
-        categoryId: existingTx.categoryId || incomeCatId,
-        description: txDescription,
-        showId: show.id,
-        showPaymentId: p.id
-      };
-      txs[existingTxIndex] = updatedTx;
-      p.transactionId = updatedTx.id;
-    } else {
-      // Criar nova movimentação vinculada
-      const newTxId = p.transactionId || generateUUID();
-      const newTx: Transaction = {
-        id: newTxId,
-        date: txDate,
-        amount: Number(p.amount) || 0,
-        type: 'income',
-        categoryId: incomeCatId,
-        description: txDescription,
-        status: txStatus as any,
-        createdAt: Date.now(),
-        accountId: p.accountId,
-        showId: show.id,
-        showPaymentId: p.id,
-        scope: 'BUSINESS'
-      };
-      txs.push(newTx);
-      p.transactionId = newTx.id;
     }
 
     return p;
@@ -505,91 +381,20 @@ export function syncShowWithTransactions(
 
   updatedShow.payments = updatedPayments;
 
-  // 2. SINCRONIZAR DESPESAS
-  const currentExpenses = Array.isArray(updatedShow.expenseItems) ? updatedShow.expenseItems : [];
-  const validExpenseIds = new Set(currentExpenses.map(e => e.id));
-
-  const updatedExpenses = currentExpenses.map(expense => {
-    const e = { ...expense };
-    const expCatId = resolveExpenseCategoryId(e.category, categories);
-    const txDescription = `Show: ${showTitle} - ${e.category}${e.notes ? ` (${e.notes})` : ''}`;
-
-    let existingTxIndex = txs.findIndex(t => 
-      (e.transactionId && t.id === e.transactionId) ||
-      (t.showExpenseId === e.id) ||
-      (t.showId === show.id && t.showExpenseId === e.id)
-    );
-
-    if (existingTxIndex >= 0) {
-      // Atualizar transação existente
-      const existingTx = txs[existingTxIndex];
-      const updatedTx: Transaction = {
-        ...existingTx,
-        amount: Number(e.amount) || 0,
-        date: e.date || show.date,
-        status: 'paid',
-        accountId: e.accountId,
-        categoryId: existingTx.categoryId || expCatId,
-        description: txDescription,
-        showId: show.id,
-        showExpenseId: e.id,
-        scope: 'BUSINESS'
-      };
-      txs[existingTxIndex] = updatedTx;
-      e.transactionId = updatedTx.id;
-    } else {
-      // Criar nova movimentação de despesa vinculada
-      const newTxId = e.transactionId || generateUUID();
-      const newTx: Transaction = {
-        id: newTxId,
-        date: e.date || show.date,
-        amount: Number(e.amount) || 0,
-        type: 'expense',
-        categoryId: expCatId,
-        description: txDescription,
-        status: 'paid',
-        createdAt: Date.now(),
-        accountId: e.accountId,
-        showId: show.id,
-        showExpenseId: e.id,
-        scope: 'BUSINESS'
-      };
-      txs.push(newTx);
-      e.transactionId = newTx.id;
-    }
-
-    return e;
-  });
-
-  updatedShow.expenseItems = updatedExpenses;
-
-  // 3. LIMPEZA DE TRANSAÇÕES ÓRFÃS DESTE SHOW
-  // Se um pagamento ou despesa foi removido do show, remove a transação correspondente
-  txs = txs.filter(t => {
-    if (t.showId !== show.id) return true;
-    if (t.showPaymentId && !validPaymentIds.has(t.showPaymentId)) return false;
-    if (t.showExpenseId && !validExpenseIds.has(t.showExpenseId)) return false;
-    return true;
-  });
-
   return {
     updatedShow,
     updatedTransactions: txs
   };
 }
 
-/**
- * Cancela/remove apenas receitas futuras agendadas de um show cancelado, preservando o que já foi recebido.
- */
-export function cancelShowFutureTransactions(
-  showId: string,
-  transactions: Transaction[]
-): Transaction[] {
-  if (!transactions) return [];
-  return transactions.filter(t => {
+export function cancelShowFutureTransactions(showId: string, transactions: Transaction[]): Transaction[] {
+  return transactions.map(t => {
     if (t.showId === showId && t.status === 'pending') {
-      return false;
+      return {
+        ...t,
+        description: `[CANCELADO] ${t.description}`
+      };
     }
-    return true;
+    return t;
   });
 }

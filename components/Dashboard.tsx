@@ -109,10 +109,10 @@ export const Dashboard: React.FC = () => {
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const monthEnd = `${currentMonthStr}-${String(lastDay).padStart(2, '0')}`;
 
-    // 1. Faturamento do Mês (Entradas do Projeto)
+    // 1. Faturamento do Mês (Entradas Efetivas do Projeto / Regime de Caixa)
     const incomeTxs = transactions.filter(t => {
       if (!t.date || t.date < monthStart || t.date > monthEnd) return false;
-      if (t.type !== 'income') return false;
+      if (t.type !== 'income' || t.status !== 'paid') return false;
       const desc = (t.description || '').toLowerCase();
       if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
 
@@ -127,10 +127,10 @@ export const Dashboard: React.FC = () => {
     });
     const faturamentoMes = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    // 2. Custos / Equipamentos do Mês
+    // 2. Custos / Equipamentos do Mês (Despesas Efetivadas / Regime de Caixa)
     const expenseTxs = transactions.filter(t => {
       if (!t.date || t.date < monthStart || t.date > monthEnd) return false;
-      if (t.type !== 'expense') return false;
+      if (t.type !== 'expense' || t.status !== 'paid') return false;
       const desc = (t.description || '').toLowerCase();
       if (desc.includes('retirada de pró-labore') || desc.includes('retirada de pro-labore')) return false;
 

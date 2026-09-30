@@ -1,4 +1,3 @@
-
 import { Category, Account, FinancialSettings } from './types';
 import { 
   ShoppingBag, Utensils, Home, Car, HeartPulse, 
@@ -49,7 +48,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
 
   // --- RECEITAS ---
   { id: 'cat_6', name: 'Salário', type: 'income', color: '#3b82f6', icon: 'Briefcase', classification: 'future', scope: 'PERSONAL' },
-  { id: 'cat_33', name: 'Cachês / Shows', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_33', name: 'Shows / Cachês', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'professional', scope: 'BUSINESS' },
   { id: 'cat_7', name: 'Pró-Labore', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future', scope: 'PERSONAL' },
@@ -108,11 +107,7 @@ export const parseCurrencyInput = (val: string | number | undefined | null): num
 export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   minReserveAmount: 5000,
   targetReserveMonths: 6,
-  essentialCategoryIds: [
-    'cat_1', 'cat_2', 'cat_3', 'cat_21', 'cat_4', 'cat_11', 'cat_12', 'cat_13', 'cat_14', 'cat_26', 'cat_27'
-  ],
-  lifestyleCategoryIds: [
-    'cat_5', 'cat_22', 'cat_9', 'cat_15', 'cat_16', 'cat_17', 'cat_18', 'cat_19', 'cat_23', 'cat_20', 'cat_28', 'cat_29'
-  ],
-  professionalCategoryIds: []
+  essentialCategoryIds: ['cat_1', 'cat_2', 'cat_3', 'cat_21', 'cat_4', 'cat_11', 'cat_12', 'cat_13', 'cat_14', 'cat_26', 'cat_27'],
+  lifestyleCategoryIds: ['cat_5', 'cat_22', 'cat_9', 'cat_15', 'cat_16', 'cat_17', 'cat_18', 'cat_19', 'cat_23', 'cat_20', 'cat_28', 'cat_29'],
+  professionalCategoryIds: ['cat_equipamentos', 'cat_producao_shows', 'cat_marketing', 'cat_33']
 };

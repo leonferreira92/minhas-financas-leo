@@ -122,92 +122,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const syncShowsWithTransactions = useCallback((currentTransactions: Transaction[], currentShows: Show[]) => {
     let showsChanged = false;
-    let updatedShows = [...currentShows];
 
-    // 1. Check for any transaction of category "cat_33" that is NOT linked to any show
-    const cacheTransactions = currentTransactions.filter(t => t.categoryId === 'cat_33');
-    
-    cacheTransactions.forEach(t => {
-      // Is this transaction linked to any receipt or payment in any show?
-      const isLinked = updatedShows.some(show => 
-        (show.receipts && show.receipts.some(r => r.transactionId === t.id)) ||
-        (show.payments && show.payments.some(p => p.transactionId === t.id)) ||
-        (t.showId && show.id === t.showId) ||
-        (t.showPaymentId && show.payments && show.payments.some(p => p.id === t.showPaymentId))
-      );
-
-      if (!isLinked) {
-        // Not linked! Let's auto-create a Show for it
-        const showId = generateUUID();
-        const newShow: Show = {
-          id: showId,
-          name: t.description || 'Show / Evento',
-          contractorName: t.description || 'Contratante Geral',
-          location: 'Geral',
-          date: t.date,
-          time: '20:00',
-          totalCache: t.amount,
-          cacheCombined: t.amount,
-          cacheReceived: t.status === 'paid' ? t.amount : 0,
-          paymentMethod: 'Pix',
-          notes: `Importado automaticamente a partir do lançamento de receita em "${t.description}"`,
-          status: t.status === 'paid' ? 'Realizado' : 'Confirmado',
-          payments: [{
-            id: generateUUID(),
-            amount: t.amount,
-            expectedDate: t.date,
-            effectiveDate: t.status === 'paid' ? t.date : undefined,
-            accountId: t.accountId,
-            status: t.status === 'paid' ? 'Recebido' : 'Agendado',
-            type: 'Pagamento final',
-            transactionId: t.id
-          }],
-          receipts: [{
-            id: generateUUID(),
-            amount: t.amount,
-            expectedDate: t.date,
-            effectiveDate: t.status === 'paid' ? t.date : undefined,
-            accountId: t.accountId,
-            paymentMethod: 'Pix',
-            status: t.status === 'paid' ? 'Recebido' : 'Previsto',
-            type: 'Pagamento final',
-            transactionId: t.id,
-            isImported: true
-          }],
-          expensesLaunched: false,
-          expenses: {
-            fuel: 0,
-            food: 0,
-            toll: 0,
-            commission: 0,
-            others: 0
-          },
-          createdAt: t.createdAt || Date.now(),
-          isImported: true
-        };
-        updatedShows.push(newShow);
-        showsChanged = true;
-      }
-    });
-
-    // 2. Check for any show that is linked to a transaction of category "cat_33"
-    // we want to make sure the values, dates, accounts, status are in perfect sync!
-    updatedShows = updatedShows.map(show => {
+    // Sincroniza pagamentos vinculados com transações existentes sem NUNCA criar shows automáticos
+    const updatedShows = currentShows.map(show => {
       let showReceiptsChanged = false;
-      const updatedReceipts = show.receipts ? show.receipts.map(r => {
-        if (r.transactionId) {
-          const correspondingTx = currentTransactions.find(tx => tx.id === r.transactionId);
+      const updatedPayments = show.payments ? show.payments.map(p => {
+        if (p.transactionId) {
+          const correspondingTx = currentTransactions.find(tx => tx.id === p.transactionId);
           if (correspondingTx) {
-            const txStatusMapped = correspondingTx.status === 'paid' ? 'Recebido' : 'Previsto';
+            const txStatusMapped = correspondingTx.status === 'paid' ? 'Recebido' : 'Agendado';
             if (
-              r.amount !== correspondingTx.amount ||
-              r.expectedDate !== correspondingTx.date ||
-              r.accountId !== correspondingTx.accountId ||
-              r.status !== txStatusMapped
+              p.amount !== correspondingTx.amount ||
+              p.expectedDate !== correspondingTx.date ||
+              p.accountId !== correspondingTx.accountId ||
+              p.status !== txStatusMapped
             ) {
               showReceiptsChanged = true;
               return {
-                ...r,
+                ...p,
                 amount: correspondingTx.amount,
                 expectedDate: correspondingTx.date,
                 effectiveDate: correspondingTx.status === 'paid' ? correspondingTx.date : undefined,
@@ -215,63 +147,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
                 status: txStatusMapped as any
               };
             }
-          } else {
-            showReceiptsChanged = true;
-            return {
-              ...r,
-              transactionId: undefined
-            };
           }
         }
-        return r;
+        return p;
       }) : [];
 
       if (showReceiptsChanged) {
         showsChanged = true;
-        const totalReceivedSum = updatedReceipts
-          .filter(r => r.status === 'Recebido')
-          .reduce((sum, r) => sum + r.amount, 0);
-
-        let totalCacheVal = show.totalCache;
-        if (show.isImported && updatedReceipts.length === 1) {
-          totalCacheVal = updatedReceipts[0].amount;
-        }
-
         return {
           ...show,
-          receipts: updatedReceipts,
-          totalCache: totalCacheVal,
-          cacheCombined: totalCacheVal,
-          cacheReceived: totalReceivedSum
+          payments: updatedPayments
         };
       }
       return show;
     });
 
-    // 3. Remove imported shows whose transaction was deleted or moved to a different category
-    const finalShowsList: Show[] = [];
-    updatedShows.forEach(show => {
-      if (show.isImported) {
-        const hasActiveTx = 
-          (show.receipts && show.receipts.some(r => 
-            r.transactionId && currentTransactions.some(tx => tx.id === r.transactionId && tx.categoryId === 'cat_33')
-          )) ||
-          (show.payments && show.payments.some(p => 
-            p.transactionId && currentTransactions.some(tx => tx.id === p.transactionId && tx.categoryId === 'cat_33')
-          )) ||
-          currentTransactions.some(tx => tx.showId === show.id && tx.categoryId === 'cat_33');
-
-        if (!hasActiveTx) {
-          showsChanged = true;
-          return;
-        }
-      }
-      finalShowsList.push(show);
-    });
-
     if (showsChanged) {
-      setShows(finalShowsList);
-      StorageService.saveShows(finalShowsList);
+      setShows(updatedShows);
+      StorageService.saveShows(updatedShows);
     }
   }, []);
 
@@ -308,17 +201,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const storedSettings = StorageService.getSettings();
 
     // =========================================================================
-    // DIRETRIZ 3: UNIFICAÇÃO AUTOMÁTICA DE CATEGORIAS DUPLICADAS (MIGRATION)
-    // Fusão de "Cachês Música Ao Vivo" e "Shows / Cachês" em uma única: "Shows / Cachês"
+    // DIRETRIZ: UNIFICAÇÃO AUTOMÁTICA DE CATEGORIAS DUPLICADAS (MIGRATION)
+    // Fusão de "Cachê / Shows", "Cachês / Shows" e "Cachês Música Ao Vivo" em uma única: "Shows / Cachês" (cat_33)
     // =========================================================================
-    const isLiveMusicCacheCat = (name: string) => {
+    const isDuplicateCacheCat = (name: string, id: string) => {
+      if (id === 'cat_33') return false;
       const n = (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return n.includes('cache') && (n.includes('ao vivo') || n.includes('musica ao vivo'));
+      return n.includes('cache') || n === 'shows' || n.includes('show /') || n.includes('shows /') || n.includes('/ show') || n.includes('/ cache');
     };
 
     const duplicateCatIds = new Set(
       storedCategories
-        .filter(c => isLiveMusicCacheCat(c.name) && c.id !== 'cat_33')
+        .filter(c => isDuplicateCacheCat(c.name, c.id))
         .map(c => c.id)
     );
 
@@ -361,12 +255,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       catEquip.type = 'expense';
     }
 
-    // Remover categorias duplicadas "Cachês Música Ao Vivo"
+    // Remover categorias duplicadas
     let finalCategories = storedCategories.filter(c => !duplicateCatIds.has(c.id));
 
     // Garantir defaults que faltem
     const existingNames = new Set(finalCategories.map(c => c.name.toLowerCase()));
-    const missingDefaults = DEFAULT_CATEGORIES.filter(d => !existingNames.has(d.name.toLowerCase()) && !isLiveMusicCacheCat(d.name));
+    const missingDefaults = DEFAULT_CATEGORIES.filter(d => !existingNames.has(d.name.toLowerCase()) && !isDuplicateCacheCat(d.name, d.id));
     if (missingDefaults.length > 0) {
       const toAdd = missingDefaults.map(cat => ({
         ...cat,
@@ -446,52 +340,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setBudgets(storedBudgets);
     const storedShows = StorageService.getShows();
 
-    // Self-healing: ensure all show receipts (including future/pending ones) have synced transactions
-    let txModified = false;
-    let showsModified = false;
-    let finalTransactions = [...storedTransactions];
-    let finalShows = [...storedShows];
-
-    finalShows = finalShows.map(show => {
-      let currentShowChanged = false;
-      const updatedReceipts = (show.receipts || []).map(r => {
-        const txExists = r.transactionId && finalTransactions.some(tx => tx.id === r.transactionId);
-        if (!txExists && r.amount > 0) {
-          const newTxId = r.transactionId || generateUUID();
-          finalTransactions.push({
-            id: newTxId,
-            date: r.expectedDate || show.date,
-            amount: r.amount,
-            type: 'income',
-            categoryId: 'cat_33',
-            description: `Recebimento [${r.type || 'Parcela'}] - Show: ${show.name}`,
-            status: r.status === 'Recebido' ? 'paid' : 'pending',
-            accountId: r.accountId || 'acc_bank',
-            createdAt: show.createdAt || Date.now()
-          });
-          txModified = true;
-          currentShowChanged = true;
-          return { ...r, transactionId: newTxId };
-        }
-        return r;
-      });
-
-      if (currentShowChanged) {
-        showsModified = true;
-        return { ...show, receipts: updatedReceipts };
-      }
-      return show;
-    });
-
-    if (txModified) {
-      StorageService.saveTransactions(finalTransactions);
-    }
-    if (showsModified) {
-      StorageService.saveShows(finalShows);
-    }
-
-    setTransactions(finalTransactions);
-    setShows(finalShows);
+    setTransactions(storedTransactions);
+    setShows(storedShows);
     
     const finalFinancialSettings: FinancialSettings = storedSettings.financialSettings ? {
       ...DEFAULT_FINANCIAL_SETTINGS,

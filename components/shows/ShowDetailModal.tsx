@@ -6,7 +6,8 @@ import {
   CheckCircle2, AlertCircle, Edit3, Trash2, 
   Wallet, ArrowDownRight, ArrowUpRight,
   Check, Plus, AlertTriangle, Link2, Unlink,
-  ChevronRight, ExternalLink, Sparkles, Tag, Info, Music
+  ChevronRight, ExternalLink, Sparkles, Tag, Info, Music,
+  ArrowRight
 } from 'lucide-react';
 import { getStatusConfig } from './types';
 import { 
@@ -15,6 +16,7 @@ import {
 } from '../../services/showFinanceSyncService';
 import { generateUUID } from '../../services/uuidHelper';
 import { useNavigate } from 'react-router-dom';
+import { TransactionForm } from '../TransactionForm';
 
 interface Props {
   show: Show | null;
@@ -48,6 +50,9 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [activeSection, setActiveSection] = useState<'finance' | 'expenses' | 'details'>('finance');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showLinkPixModal, setShowLinkPixModal] = useState(false);
+  
+  // Selected transaction to edit in-place without losing drawer context
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Default Account
   const defaultAccountId = accounts && accounts.length > 0 ? accounts[0].id : 'acc_bank';
@@ -109,6 +114,7 @@ export const ShowDetailModal: React.FC<Props> = ({
     setIsAddExpenseOpen(false);
     setShowLinkPixModal(false);
     setShowDeleteConfirm(false);
+    setEditingTransaction(null);
     if (initialShow?.date) {
       setPayDate(initialShow.date);
       setExpDate(initialShow.date);
@@ -120,12 +126,7 @@ export const ShowDetailModal: React.FC<Props> = ({
   const statusCfg = getStatusConfig(show.status);
   const finSummary = getShowFinancialSummary(show, transactions);
 
-  // Porcentagem de recebimento
-  const percentReceived = finSummary.totalPredicted > 0 
-    ? Math.min(100, Math.round((finSummary.totalReceived / finSummary.totalPredicted) * 100))
-    : 0;
-
-  const isFullyPaid = finSummary.totalPending === 0 && finSummary.totalPredicted > 0;
+  const isFullyPaid = finSummary.totalPending === 0 && finSummary.totalContracted > 0;
 
   const formatCurrency = (val?: number | string | null) => {
     const num = typeof val === 'number' ? val : parseFloat(String(val || 0).replace(',', '.')) || 0;
@@ -151,22 +152,32 @@ export const ShowDetailModal: React.FC<Props> = ({
     return String(dStr || '');
   };
 
-  // Handler para vincular transação de Pix existente ao show
-  const handleLinkTransaction = (tx: Transaction) => {
+  // Handler para vincular transação de Pix existente ao show com natureza selecionada
+  const handleLinkTransaction = (tx: Transaction, selectedType: ShowPaymentType = 'Parcela') => {
     updateTransaction({
       ...tx,
       showId: show.id,
+      showPaymentType: selectedType,
       scope: 'BUSINESS',
-      categoryId: tx.categoryId === 'cat_1' ? 'cat_33' : tx.categoryId
+      categoryId: 'cat_33'
     });
     setShowLinkPixModal(false);
+  };
+
+  // Handler para alterar a natureza de uma transação vinculada (Sinal / Quitação / Extra)
+  const handleChangePaymentType = (tx: Transaction, newType: ShowPaymentType) => {
+    updateTransaction({
+      ...tx,
+      showPaymentType: newType
+    });
   };
 
   // Handler para desvincular transação do show
   const handleUnlinkTransaction = (tx: Transaction) => {
     updateTransaction({
       ...tx,
-      showId: undefined
+      showId: undefined,
+      showPaymentType: undefined
     });
   };
 
@@ -186,7 +197,8 @@ export const ShowDetailModal: React.FC<Props> = ({
       date: payDate,
       status: 'paid',
       scope: 'BUSINESS',
-      showId: show.id
+      showId: show.id,
+      showPaymentType: payType
     };
 
     addTransaction(newTx);
@@ -253,7 +265,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                 {isFullyPaid && (
                   <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-emerald-500 text-white flex items-center space-x-1">
                     <Check size={10} strokeWidth={3} />
-                    <span>Quitado</span>
+                    <span>Cachê Quitado</span>
                   </span>
                 )}
               </div>
@@ -292,7 +304,7 @@ export const ShowDetailModal: React.FC<Props> = ({
         </div>
 
         {/* ========================================================================= */}
-        {/* BARRA DE STATUS RÁPIDO & PROGRESSO VISUAL DO PAGAMENTO */}
+        {/* BARRA DE STATUS RÁPIDO & PROGRESSO VISUAL DO CACHÊ (COM EXTRAS SEPARADOS) */}
         {/* ========================================================================= */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900 space-y-3.5 shrink-0">
           
@@ -327,48 +339,62 @@ export const ShowDetailModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Card com Barra de Progresso Financeiro */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5">
-            <div className="flex items-center justify-between">
+          {/* Card Detalhado de Cachê: Base Contratado vs Extras vs Total Arrecadado */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+            
+            {/* Grid com Linhas Claras dos Valores */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-left">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                  Status de Recebimento do Cachê
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                  Cachê Contratado
                 </span>
-                <span className="text-xs font-black text-slate-900 dark:text-white">
-                  {formatCurrency(finSummary.totalReceived)} de {formatCurrency(finSummary.totalPredicted)}
+                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tabular-nums">
+                  {formatCurrency(finSummary.totalContracted)}
                 </span>
               </div>
 
-              <div className="text-right">
-                <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                  isFullyPaid 
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                    : percentReceived > 0 
-                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                }`}>
-                  {percentReceived}% Recebido
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                  Recebido Cachê
                 </span>
-                {finSummary.totalPending > 0 && (
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block mt-0.5">
-                    Falta: {formatCurrency(finSummary.totalPending)}
-                  </span>
-                )}
+                <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatCurrency(finSummary.baseCacheReceived)} ({finSummary.percentReceived}%)
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                  Horas Extras / Gorjetas
+                </span>
+                <span className="text-xs sm:text-sm font-black text-purple-600 dark:text-purple-400 tabular-nums">
+                  + {formatCurrency(finSummary.extraReceived)}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                  Total Geral Evento
+                </span>
+                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tabular-nums">
+                  {formatCurrency(finSummary.totalReceived)}
+                </span>
               </div>
             </div>
 
-            {/* Barra Visual de Progresso */}
-            <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative">
-              <div 
-                className={`h-full transition-all duration-500 rounded-full ${
-                  isFullyPaid 
-                    ? 'bg-emerald-500' 
-                    : percentReceived > 0 
-                    ? 'bg-purple-600' 
-                    : 'bg-transparent'
-                }`}
-                style={{ width: `${percentReceived}%` }}
-              />
+            {/* Barra Visual de Progresso do Cachê Principal (NÃO estoura 100%) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                <span>Progresso do Cachê Contratado</span>
+                <span>{finSummary.totalPending === 0 ? '✓ 100% Quitado' : `Saldo a Receber: ${formatCurrency(finSummary.totalPending)}`}</span>
+              </div>
+              <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    isFullyPaid ? 'bg-emerald-500' : 'bg-purple-600'
+                  }`}
+                  style={{ width: `${finSummary.percentReceived}%` }}
+                />
+              </div>
             </div>
           </div>
 
@@ -423,9 +449,9 @@ export const ShowDetailModal: React.FC<Props> = ({
             <div className="space-y-4 animate-fade-in">
               
               {/* Botões de Ação para Recebimentos */}
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">
-                  Transações Vinculadas de Receita
+                  Entradas Vinculadas (Extrato / Pix)
                 </h4>
 
                 <div className="flex items-center space-x-1.5">
@@ -436,7 +462,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                       className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[11px] font-bold border border-purple-200 dark:border-purple-800 flex items-center space-x-1 transition"
                     >
                       <Link2 size={12} />
-                      <span>Vincular Pix do Extrato ({unlinkedIncomeTransactions.length})</span>
+                      <span>Vincular Pix ({unlinkedIncomeTransactions.length})</span>
                     </button>
                   )}
 
@@ -473,35 +499,92 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <div className="space-y-2">
                   {linkedIncomeTransactions.map(tx => {
                     const acc = accounts.find(a => a.id === tx.accountId);
+                    const pType = tx.showPaymentType || (tx.description.toLowerCase().includes('sinal') ? 'Sinal' : tx.description.toLowerCase().includes('extra') ? 'Extra' : 'Parcela');
+
                     return (
                       <div
                         key={tx.id}
-                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between shadow-xs group"
+                        className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs group"
                       >
-                        <div className="min-w-0 pr-3">
+                        <div 
+                          className="min-w-0 flex-1 cursor-pointer"
+                          onClick={() => setEditingTransaction(tx)}
+                          title="Clique para editar este lançamento"
+                        >
                           <div className="flex items-center space-x-2">
-                            <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                            <span className="text-xs font-black text-slate-900 dark:text-white hover:text-purple-600 transition truncate">
                               {tx.description}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-                              Recebido
-                            </span>
+
+                            {/* Seletor Rápido da Natureza da Parcela */}
+                            <select
+                              value={pType}
+                              onClick={e => e.stopPropagation()}
+                              onChange={e => handleChangePaymentType(tx, e.target.value as ShowPaymentType)}
+                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border outline-none cursor-pointer ${
+                                pType === 'Extra' || pType === 'Bônus'
+                                  ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300'
+                                  : pType === 'Sinal'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300'
+                                  : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              }`}
+                            >
+                              <option value="Sinal">Sinal (Adiantamento)</option>
+                              <option value="Parcela">Quitação / Parcela</option>
+                              <option value="Extra">Hora Extra / Gorjeta</option>
+                            </select>
                           </div>
-                          <div className="flex items-center space-x-2 text-[10px] text-slate-400 mt-0.5">
+
+                          <div className="flex items-center space-x-2 text-[10px] text-slate-400 mt-1">
                             <span>{formatDateBR(tx.date)}</span>
                             {acc && <span>• {acc.name}</span>}
-                            {tx.importedFromBank && <span className="text-purple-500 font-bold">• Extrato Bancário</span>}
+                            {tx.importedFromBank && <span className="text-purple-500 font-bold">• Extrato</span>}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/financeiro?tab=movimentacoes&txId=${tx.id}`);
+                              }}
+                              className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline inline-flex items-center"
+                              title="Abrir e gerenciar no Extrato Completo"
+                            >
+                              <span>Extrato</span>
+                              <ExternalLink size={10} className="ml-1" />
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 shrink-0">
-                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        <div className="flex items-center space-x-2 shrink-0 justify-between sm:justify-end">
+                          <span className={`text-sm font-black tabular-nums ${
+                            pType === 'Extra' ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400'
+                          }`}>
                             + {formatCurrency(tx.amount)}
                           </span>
+
+                          <button
+                            type="button"
+                            onClick={() => setEditingTransaction(tx)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                            title="Editar Transação"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigate(`/financeiro?tab=movimentacoes&txId=${tx.id}`);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition"
+                            title="Ver no Extrato Geral"
+                          >
+                            <ExternalLink size={14} />
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleUnlinkTransaction(tx)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition opacity-80 group-hover:opacity-100"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
                             title="Desvincular do Show"
                           >
                             <Unlink size={14} />
@@ -518,7 +601,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <form onSubmit={handleSaveManualPayment} className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-3 animate-slide-up">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-black text-purple-900 dark:text-purple-200 uppercase tracking-wider">
-                      Registrar Recebimento Manual
+                      Registrar Entrada / Parcela
                     </h5>
                     <button type="button" onClick={() => setIsAddPaymentOpen(false)} className="text-slate-400 hover:text-slate-600">
                       <X size={16} />
@@ -527,16 +610,15 @@ export const ShowDetailModal: React.FC<Props> = ({
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1">Tipo</label>
+                      <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1">Natureza da Parcela</label>
                       <select
                         value={payType}
                         onChange={e => setPayType(e.target.value as ShowPaymentType)}
                         className="w-full p-2 bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white"
                       >
-                        <option value="Sinal">Sinal (Entrada)</option>
-                        <option value="Parcela">Parcela</option>
-                        <option value="Restante">Pagamento Final</option>
-                        <option value="Extra">Cachê Extra</option>
+                        <option value="Sinal">Sinal / Adiantamento</option>
+                        <option value="Parcela">Quitação / Parcela Cachê</option>
+                        <option value="Extra">Hora Extra / Gorjeta (Adicional)</option>
                       </select>
                     </div>
 
@@ -630,7 +712,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                     Lucro Líquido Real do Show
                   </span>
                   <span className="text-[10px] text-slate-500">
-                    Recebido ({formatCurrency(finSummary.totalReceived)}) - Despesas ({formatCurrency(finSummary.totalExpenses)})
+                    Total Geral ({formatCurrency(finSummary.totalReceived)}) - Despesas ({formatCurrency(finSummary.totalExpenses)})
                   </span>
                 </div>
                 <span className={`text-base font-black tabular-nums ${
@@ -654,8 +736,11 @@ export const ShowDetailModal: React.FC<Props> = ({
                       key={tx.id}
                       className="p-3.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between shadow-xs"
                     >
-                      <div>
-                        <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                      <div 
+                        className="cursor-pointer flex-1"
+                        onClick={() => setEditingTransaction(tx)}
+                      >
+                        <span className="text-xs font-bold text-slate-900 dark:text-white block hover:text-purple-600 transition">
                           {tx.description}
                         </span>
                         <span className="text-[10px] text-slate-400">{formatDateBR(tx.date)}</span>
@@ -787,14 +872,14 @@ export const ShowDetailModal: React.FC<Props> = ({
 
       </div>
 
-      {/* MODAL PARA VINCULAR PIX DO EXTRATO NÃO ASSOCIADO */}
+      {/* MODAL PARA VINCULAR PIX DO EXTRATO COM SELEÇÃO DA NATUREZA */}
       {showLinkPixModal && (
         <div className="fixed inset-0 bg-slate-950/80 z-[125] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h4 className="text-sm font-black text-slate-900 dark:text-white">Vincular Pix do Extrato</h4>
-                <p className="text-[10px] text-slate-400">Selecione uma receita para amortizar o saldo deste show</p>
+                <p className="text-[10px] text-slate-400">Selecione uma receita para vincular a este show</p>
               </div>
               <button type="button" onClick={() => setShowLinkPixModal(false)} className="p-2 text-slate-400 hover:text-slate-600">
                 <X size={18} />
@@ -805,20 +890,41 @@ export const ShowDetailModal: React.FC<Props> = ({
               {unlinkedIncomeTransactions.map(tx => (
                 <div
                   key={tx.id}
-                  onClick={() => handleLinkTransaction(tx)}
-                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200/80 dark:border-slate-700 hover:border-purple-400 cursor-pointer transition flex items-center justify-between"
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-2"
                 >
-                  <div>
-                    <h5 className="text-xs font-black text-slate-800 dark:text-white">{tx.description}</h5>
-                    <span className="text-[10px] text-slate-400">{formatDateBR(tx.date)}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 block tabular-nums">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="text-xs font-black text-slate-800 dark:text-white">{tx.description}</h5>
+                      <span className="text-[10px] text-slate-400">{formatDateBR(tx.date)}</span>
+                    </div>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
                       + {formatCurrency(tx.amount)}
                     </span>
-                    <span className="text-[9px] font-black uppercase text-purple-600 dark:text-purple-400">
-                      Clique para Vincular
-                    </span>
+                  </div>
+
+                  {/* 3 Botões Rápidos de Natureza do Vínculo */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleLinkTransaction(tx, 'Sinal')}
+                      className="px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 text-[10px] font-black uppercase border border-amber-200 dark:border-amber-800 transition"
+                    >
+                      Sinal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLinkTransaction(tx, 'Parcela')}
+                      className="px-2 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 text-[10px] font-black uppercase border border-emerald-200 dark:border-emerald-800 transition"
+                    >
+                      Quitação
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLinkTransaction(tx, 'Extra')}
+                      className="px-2 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 hover:bg-purple-100 text-[10px] font-black uppercase border border-purple-200 dark:border-purple-800 transition"
+                    >
+                      Hora Extra
+                    </button>
                   </div>
                 </div>
               ))}
@@ -835,6 +941,14 @@ export const ShowDetailModal: React.FC<Props> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL DE EDIÇÃO DE TRANSAÇÃO (IN-PLACE) */}
+      {editingTransaction && (
+        <TransactionForm
+          transaction={editingTransaction}
+          onClose={() => setEditingTransaction(null)}
+        />
       )}
 
       {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}

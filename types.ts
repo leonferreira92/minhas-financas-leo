@@ -70,6 +70,7 @@ export interface Transaction {
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   showId?: string; // ID do Show vinculado
   showPaymentId?: string; // ID do pagamento vinculado do show
+  showPaymentType?: ShowPaymentType; // Natureza da parcela: Sinal | Parcela | Restante | Extra | Bônus
   showExpenseId?: string; // ID da despesa vinculada do show
   scope?: ScopeType;
   importedFromBank?: boolean;
