@@ -4,7 +4,7 @@ import { useFinance } from '../../context/FinanceContext';
 import { 
   Calendar, Clock, MapPin, DollarSign, ChevronRight, 
   Sparkles, CheckCircle2, Music, Plus, ArrowRight,
-  TrendingUp, AlertCircle, Award, Star
+  TrendingUp, AlertCircle, Award, Star, Check
 } from 'lucide-react';
 import { getStatusConfig } from './types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
@@ -96,7 +96,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
       if (diff === 0) return { label: 'É Hoje!', color: 'bg-rose-500 text-white font-black shadow-sm', isUrgent: true };
       if (diff === 1) return { label: 'É Amanhã!', color: 'bg-amber-500 text-white font-black shadow-sm', isUrgent: true };
       if (diff < 0) return { label: 'Hoje', color: 'bg-slate-100 text-slate-500 border-slate-200', isUrgent: false };
-      if (diff <= 7) return { label: `Em ${diff} dias`, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800', isUrgent: false };
+      if (diff <= 7) return { label: `Em ${diff} dias`, color: 'bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 border-purple-200 dark:border-purple-800', isUrgent: false };
       return { label: `Em ${diff} dias`, color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700', isUrgent: false };
     } catch {
       return { label: 'Agendado', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700', isUrgent: false };
@@ -128,14 +128,14 @@ export const UpcomingShowsList: React.FC<Props> = ({
     });
 
     return { totalContracted, totalPending, thisWeekCount };
-  }, [upcomingConfirmedShows]);
+  }, [upcomingConfirmedShows, transactions]);
 
   return (
     <div className="space-y-5">
       {/* HEADER DA VISÃO PRÓXIMOS SHOWS */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400">
             Cronograma de Apresentações
           </span>
           <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
@@ -145,7 +145,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
 
         <button
           onClick={onOpenCreateModal}
-          className="px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md flex items-center space-x-1"
+          className="px-3.5 py-2 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md shadow-purple-500/20 flex items-center space-x-1"
         >
           <Plus size={15} strokeWidth={3} />
           <span>Novo Show</span>
@@ -157,7 +157,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">Esta Semana</span>
-            <span className="text-base font-black text-indigo-600 dark:text-indigo-400">
+            <span className="text-base font-black text-purple-600 dark:text-purple-400">
               {upcomingTotals.thisWeekCount} {upcomingTotals.thisWeekCount === 1 ? 'show agendado' : 'shows agendados'}
             </span>
           </div>
@@ -181,7 +181,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
       {/* ESTADO VAZIO: NENHUM SHOW FUTURO */}
       {upcomingConfirmedShows.length === 0 ? (
         <div className="p-10 rounded-[2.5rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center space-y-4 shadow-sm">
-          <div className="w-14 h-14 rounded-3xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
+          <div className="w-14 h-14 rounded-3xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto shadow-inner">
             <Music size={28} />
           </div>
           <div className="space-y-1 max-w-sm mx-auto">
@@ -192,7 +192,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
           </div>
           <button
             onClick={onOpenCreateModal}
-            className="mt-2 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-wider inline-flex items-center space-x-1.5 transition active:scale-95 shadow-md"
+            className="mt-2 px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider inline-flex items-center space-x-1.5 transition active:scale-95 shadow-md"
           >
             <Plus size={15} strokeWidth={3} />
             <span>Cadastrar Novo Show</span>
@@ -205,14 +205,16 @@ export const UpcomingShowsList: React.FC<Props> = ({
           {nextShow && (() => {
             const countdown = getDaysCountdownTag(nextShow.date);
             const fin = getShowFinancialSummary(nextShow, transactions);
+            const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
+            const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
 
             return (
               <div
                 onClick={() => onSelectShow(nextShow)}
-                className="relative overflow-hidden p-5 sm:p-6 rounded-[2.2rem] bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 text-white border border-indigo-700/50 shadow-xl cursor-pointer active:scale-[0.99] transition-all group"
+                className="relative overflow-hidden p-5 sm:p-6 rounded-[2.2rem] bg-gradient-to-br from-purple-900 via-slate-900 to-slate-950 text-white border border-purple-700/50 shadow-xl cursor-pointer active:scale-[0.99] transition-all group"
               >
                 {/* Glow decorativo de fundo */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/15 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
 
                 <div className="relative z-10 space-y-4">
                   {/* Badge de Destaque Superior */}
@@ -220,7 +222,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
                     <div className="flex items-center space-x-2">
                       <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-950 shadow-sm">
                         <Star size={11} fill="currentColor" />
-                        <span>Próximo Show da Agenda</span>
+                        <span>Próximo Show</span>
                       </span>
 
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${countdown.color}`}>
@@ -228,26 +230,26 @@ export const UpcomingShowsList: React.FC<Props> = ({
                       </span>
                     </div>
 
-                    <span className="text-[11px] font-bold text-indigo-200 flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
-                      <span>Ver ficha completa</span>
+                    <span className="text-[11px] font-bold text-purple-200 flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
+                      <span>Ver ficha</span>
                       <ArrowRight size={13} />
                     </span>
                   </div>
 
                   {/* Nome do Contratante / Evento */}
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight group-hover:text-indigo-200 transition-colors">
+                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight group-hover:text-purple-200 transition-colors">
                       {nextShow.contractorName || nextShow.name}
                     </h3>
                     {nextShow.eventType && (
-                      <p className="text-xs text-indigo-300/90 font-bold uppercase tracking-wider mt-0.5">
+                      <p className="text-xs text-purple-300/90 font-bold uppercase tracking-wider mt-0.5">
                         {nextShow.eventType}
                       </p>
                     )}
                   </div>
 
                   {/* Grid de Informações: Data, Horário, Cidade */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-indigo-800/60 text-xs text-indigo-100 font-medium">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-800/60 text-xs text-purple-100 font-medium">
                     <div className="flex items-center space-x-2">
                       <Calendar size={16} className="text-amber-400 shrink-0" />
                       <span className="capitalize font-bold">
@@ -271,31 +273,43 @@ export const UpcomingShowsList: React.FC<Props> = ({
                     </div>
                   </div>
 
-                    {/* Resumo Financeiro no Destaque: Valor e Quanto Falta Receber */}
-                  <div className="pt-3 border-t border-indigo-800/60 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-indigo-300 block">
-                        {fin.extraAmount > 0 ? 'Total Previsto (Cachê + Extras)' : 'Cachê Contratado'}
-                      </span>
-                      <span className="text-lg font-black text-emerald-400 tabular-nums">
-                        {formatCurrency(fin.totalPredicted)}
-                      </span>
+                  {/* BARRA DE PROGRESSO DO PAGAMENTO NO DESTAQUE */}
+                  <div className="pt-3 border-t border-purple-800/60 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-purple-300 block">
+                          Cachê: {formatCurrency(fin.totalPredicted)}
+                        </span>
+                        <span className="text-sm font-black text-emerald-400 tabular-nums">
+                          {formatCurrency(fin.totalReceived)} recebido ({pct}%)
+                        </span>
+                      </div>
+
+                      <div className="text-right">
+                        {fin.totalPending > 0 ? (
+                          <span className="text-xs font-black text-amber-300 tabular-nums block">
+                            Falta: {formatCurrency(fin.totalPending)}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 text-xs font-black text-emerald-300 bg-emerald-950/60 border border-emerald-700/60 px-2 py-0.5 rounded-lg">
+                            <Check size={11} strokeWidth={3} />
+                            <span>100% Quitado</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-[10px] uppercase font-bold text-indigo-300 block">Quanto Falta Receber</span>
-                      {fin.totalPending > 0 ? (
-                        <span className="text-base font-black text-amber-300 tabular-nums">
-                          {formatCurrency(fin.totalPending)}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center space-x-1 text-xs font-black text-emerald-300 bg-emerald-950/60 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg">
-                          <CheckCircle2 size={12} />
-                          <span>100% Recebido</span>
-                        </span>
-                      )}
+                    {/* Barra de Progresso */}
+                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 rounded-full ${
+                          is100 ? 'bg-emerald-400' : 'bg-amber-400'
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                   </div>
+
                 </div>
               </div>
             );
@@ -311,23 +325,25 @@ export const UpcomingShowsList: React.FC<Props> = ({
               {remainingUpcomingShows.map(show => {
                 const countdown = getDaysCountdownTag(show.date);
                 const fin = getShowFinancialSummary(show, transactions);
+                const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
+                const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
 
                 return (
                   <div
                     key={show.id}
                     onClick={() => onSelectShow(show)}
-                    className="p-4 sm:p-5 rounded-[1.8rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-700 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
+                    className="p-4 sm:p-5 rounded-[1.8rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-700 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
                   >
                     {/* Linha Superior: Data + Countdown + Valor & Falta Receber */}
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-xl border border-indigo-100 dark:border-indigo-900/50 flex items-center space-x-1">
+                        <span className="text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-xl border border-purple-100 dark:border-purple-900/50 flex items-center space-x-1">
                           <Calendar size={13} />
                           <span className="capitalize">{formatDateShort(show.date)}</span>
                         </span>
 
                         <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center space-x-1">
-                          <Clock size={12} className="text-indigo-600" />
+                          <Clock size={12} className="text-purple-600" />
                           <span>{show.time || '20:00'}{show.endTime ? ` — ${show.endTime}` : ''}</span>
                         </span>
 
@@ -337,7 +353,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
                       </div>
 
                       <div className="text-right">
-                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums block">
+                        <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums block">
                           {formatCurrency(fin.totalPredicted)}
                         </span>
                         {fin.totalPending > 0 ? (
@@ -354,7 +370,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
 
                     {/* Contratante / Evento */}
                     <div>
-                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                         {show.contractorName || show.name}
                       </h4>
                       {show.eventType && (
@@ -362,6 +378,22 @@ export const UpcomingShowsList: React.FC<Props> = ({
                           {show.eventType}
                         </p>
                       )}
+                    </div>
+
+                    {/* BARRA DE PROGRESSO DO PAGAMENTO */}
+                    <div className="space-y-1.5 pt-1">
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
+                        <span>Recebido: {formatCurrency(fin.totalReceived)} ({pct}%)</span>
+                        <span>{is100 ? '✓ Quitado' : `Saldo: ${formatCurrency(fin.totalPending)}`}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            is100 ? 'bg-emerald-500' : pct > 0 ? 'bg-purple-600' : 'bg-slate-300'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
                     </div>
 
                     {/* Cidade e Local */}
@@ -378,7 +410,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
                         )}
                       </div>
 
-                      <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center space-x-0.5 group-hover:translate-x-1 transition-transform">
+                      <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center space-x-0.5 group-hover:translate-x-1 transition-transform">
                         <span>Ficha</span>
                         <ChevronRight size={14} />
                       </span>

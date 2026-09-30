@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Show } from '../../types';
+import { useFinance } from '../../context/FinanceContext';
 import { 
   Calendar, MapPin, DollarSign, Search, Filter, 
-  ChevronRight, Archive, CheckCircle2, XCircle 
+  ChevronRight, Archive, CheckCircle2, XCircle, Check
 } from 'lucide-react';
 import { getStatusConfig } from './types';
+import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 
 interface Props {
   shows: Show[];
@@ -15,6 +17,7 @@ export const ShowHistoryView: React.FC<Props> = ({
   shows,
   onSelectShow
 }) => {
+  const { transactions } = useFinance();
   const [filterType, setFilterType] = useState<'all' | 'realizado' | 'cancelado'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -90,7 +93,7 @@ export const ShowHistoryView: React.FC<Props> = ({
             placeholder="Buscar por contratante, cidade ou local..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full p-3 pl-10 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 shadow-xs"
+            className="w-full p-3 pl-10 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-purple-500 shadow-xs"
           />
           <Search size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
         </div>
@@ -138,39 +141,64 @@ export const ShowHistoryView: React.FC<Props> = ({
         <div className="space-y-2.5">
           {historyShows.map(show => {
             const statusCfg = getStatusConfig(show.status);
+            const fin = getShowFinancialSummary(show, transactions);
+            const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
+            const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
+
             return (
               <div
                 key={show.id}
                 onClick={() => onSelectShow(show)}
-                className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer flex items-center justify-between shadow-xs active:scale-[0.99] group"
+                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 transition cursor-pointer space-y-2.5 shadow-xs active:scale-[0.99] group"
               >
-                <div className="min-w-0 pr-3">
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-0.2 rounded text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}>
-                      {show.status}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {formatDateLabel(show.date)}
-                    </span>
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 pr-3">
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-0.2 rounded text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}>
+                        {show.status}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {formatDateLabel(show.date)}
+                      </span>
+                    </div>
+
+                    <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white truncate mt-1">
+                      {show.contractorName || show.name}
+                    </h4>
+
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {show.city || show.location || 'Local a definir'}
+                    </p>
                   </div>
 
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white truncate mt-1">
-                    {show.contractorName || show.name}
-                  </h4>
-
-                  <p className="text-[10px] text-slate-400 truncate">
-                    {show.city || show.location || 'Local a definir'}
-                  </p>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs sm:text-sm font-black tabular-nums text-slate-900 dark:text-white block">
+                      {formatCurrency(fin.totalPredicted)}
+                    </span>
+                    {is100 ? (
+                      <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 flex items-center justify-end space-x-0.5">
+                        <Check size={10} strokeWidth={3} />
+                        <span>100% Quitado</span>
+                      </span>
+                    ) : fin.totalPending > 0 ? (
+                      <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 block">
+                        Falta: {formatCurrency(fin.totalPending)}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-black tabular-nums text-slate-900 dark:text-white block">
-                    {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
-                  </span>
-                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    Ver ficha
-                  </span>
-                </div>
+                {/* Progress bar */}
+                {show.status !== 'Cancelado' && (
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        is100 ? 'bg-emerald-500' : pct > 0 ? 'bg-purple-600' : 'bg-slate-300'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
