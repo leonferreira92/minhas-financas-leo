@@ -20,6 +20,7 @@ export const Dashboard: React.FC = () => {
     accounts, 
     shows, 
     transactions,
+    settings,
     isBlurred, 
     toggleBlur, 
     activeScope,
@@ -222,7 +223,7 @@ export const Dashboard: React.FC = () => {
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
               {activeScope === 'BUSINESS' 
-                ? 'Operação oficial de shows a partir de 01/10/2026' 
+                ? (settings.careerProjectName ? `Operação oficial • ${settings.careerProjectName}` : 'Operação oficial do Projeto') 
                 : 'Contas bancárias + Caixa Livre Real'}
             </p>
           </div>
@@ -545,17 +546,17 @@ export const Dashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Escopo da Conta */}
+              {/* Módulo da Conta */}
               <div>
                 <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">
-                  Escopo da Conta
+                  Módulo / Conta Pertencente
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewAccScope('PERSONAL')}
                     className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all ${
-                      newAccScope === 'PERSONAL'
+                      newAccScope !== 'BUSINESS'
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                     }`}
@@ -571,18 +572,7 @@ export const Dashboard: React.FC = () => {
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    🎤 Shows
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewAccScope('BOTH')}
-                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all ${
-                      newAccScope === 'BOTH'
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    🔄 Ambos
+                    🎸 Músico / Empresa
                   </button>
                 </div>
               </div>

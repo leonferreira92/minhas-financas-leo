@@ -8,7 +8,7 @@ import {
   ShieldCheck, Landmark, History, User, Bell, Clock,
   ChevronLeft, LayoutGrid, Database, AppWindow,
   GripVertical, Eye, EyeOff, ArrowUp, ArrowDown, AlertTriangle,
-  LogOut, Zap, PiggyBank, Sliders
+  LogOut, Zap, PiggyBank, Sliders, Music
 } from 'lucide-react';
 import { StorageService } from '../services/storageService';
 import { useFinance } from '../context/FinanceContext';
@@ -252,7 +252,7 @@ export const Settings = () => {
            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
            
            {/* Profile Input */}
-           <div className="flex items-center space-x-4 relative z-10 mb-8">
+           <div className="flex items-center space-x-4 relative z-10 mb-6">
               <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
                  <User size={32} strokeWidth={1.5} />
               </div>
@@ -264,6 +264,25 @@ export const Settings = () => {
                    placeholder="Seu Nome"
                    className="w-full bg-transparent text-xl font-black text-slate-800 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 border-b border-transparent focus:border-indigo-200 transition-colors pb-1"
                  />
+              </div>
+           </div>
+
+           {/* Nome do Projeto / Carreira */}
+           <div className="flex items-center space-x-4 relative z-10 mb-8 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="w-16 h-16 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-purple-200 dark:shadow-none shrink-0">
+                 <Music size={30} strokeWidth={2} />
+              </div>
+              <div className="flex-1">
+                 <label className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest block mb-1">
+                   Nome do Projeto / Carreira
+                 </label>
+                 <input 
+                   value={settings.careerProjectName !== undefined ? settings.careerProjectName : 'Leo Ferreira'} 
+                   onChange={(e) => updateSettings({ careerProjectName: e.target.value })} 
+                   placeholder="Ex: Leo Ferreira"
+                   className="w-full bg-transparent text-xl font-black text-slate-800 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 border-b border-transparent focus:border-purple-300 transition-colors pb-1"
+                 />
+                 <span className="text-[10px] text-slate-400 block mt-1">Nome exibido na DRE e relatórios musicais</span>
               </div>
            </div>
 

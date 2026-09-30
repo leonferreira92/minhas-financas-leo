@@ -241,7 +241,7 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
               Painel de Análises Financeiras & Carreira
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Indicadores dinâmicos filtrados pelo escopo selecionado, top despesas e evolução de cachês.
+              Indicadores dinâmicos filtrados pelo módulo selecionado, divisão pessoal x empresa e evolução de cachês.
             </p>
           </div>
 

@@ -114,6 +114,7 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   primaryColor?: string;
   userName?: string;
+  careerProjectName?: string; // Nome do Projeto/Carreira (ex: "Leo Ferreira")
   notificationInterval?: number;
   dashboardLayout: DashboardWidgetConfig[];
   financialSettings?: FinancialSettings;
@@ -206,13 +207,13 @@ export interface Show {
 }
 
 /**
- * Função utilitária de compatibilidade retroativa para escopo:
- * Se um dado não possuir o campo scope, é tratado como 'BOTH' (Consolidado).
+ * Função utilitária de compatibilidade para Módulo:
+ * O app opera exclusivamente nos módulos PESSOAL e MÚSICA / EMPRESA.
  */
 export function matchesScope(itemScope?: ScopeType | null, activeScope: ActiveScopeFilter = 'ALL'): boolean {
   if (activeScope === 'ALL') return true;
-  const scope = itemScope || 'BOTH';
-  if (scope === 'BOTH') return true;
-  return scope === activeScope;
+  if (activeScope === 'BUSINESS') return itemScope === 'BUSINESS';
+  if (activeScope === 'PERSONAL') return itemScope !== 'BUSINESS';
+  return true;
 }
 

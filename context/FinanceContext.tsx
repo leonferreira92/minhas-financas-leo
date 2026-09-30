@@ -91,6 +91,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [settings, setSettings] = useState<AppSettings>({ 
     theme: 'light', 
     primaryColor: 'lime', 
+    userName: 'Leo Ferreira',
+    careerProjectName: 'Leo Ferreira',
     notificationInterval: 12,
     dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
     financialSettings: DEFAULT_FINANCIAL_SETTINGS
@@ -297,26 +299,143 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [settings.primaryColor]);
 
   const refreshData = () => {
-    const storedTransactions = StorageService.getTransactions();
-    const storedCategories = StorageService.getCategories();
+    let storedTransactions = StorageService.getTransactions();
+    let storedCategories = StorageService.getCategories();
     const storedDebts = StorageService.getDebts();
     const storedAccounts = StorageService.getAccounts();
     const storedBudgets = StorageService.getBudgets();
     const storedSettings = StorageService.getSettings();
 
-    const existingNames = new Set(storedCategories.map(c => c.name.toLowerCase()));
-    const missingDefaults = DEFAULT_CATEGORIES.filter(d => !existingNames.has(d.name.toLowerCase()));
-    
-    let finalCategories = storedCategories;
-    
-     if (missingDefaults.length > 0) {
-      const toAdd = missingDefaults.map(cat => ({
-         ...cat,
-         id: storedCategories.some(sc => sc.id === cat.id) ? generateUUID() : cat.id
-      }));
+    // =========================================================================
+    // DIRETRIZ 3: UNIFICAÇÃO AUTOMÁTICA DE CATEGORIAS DUPLICADAS (MIGRATION)
+    // Fusão de "Cachês Música Ao Vivo" e "Shows / Cachês" em uma única: "Shows / Cachês"
+    // =========================================================================
+    const isLiveMusicCacheCat = (name: string) => {
+      const n = (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return n.includes('cache') && (n.includes('ao vivo') || n.includes('musica ao vivo'));
+    };
 
-      finalCategories = [...storedCategories, ...toAdd];
-      StorageService.saveCategories(finalCategories);
+    const duplicateCatIds = new Set(
+      storedCategories
+        .filter(c => isLiveMusicCacheCat(c.name) && c.id !== 'cat_33')
+        .map(c => c.id)
+    );
+
+    // Garantir que a categoria principal cat_33 (Shows / Cachês) exista de forma limpa
+    let cat33 = storedCategories.find(c => c.id === 'cat_33');
+    if (!cat33) {
+      cat33 = {
+        id: 'cat_33',
+        name: 'Shows / Cachês',
+        type: 'income',
+        color: '#8b5cf6',
+        icon: 'Music',
+        classification: 'professional',
+        scope: 'BUSINESS'
+      };
+      storedCategories.push(cat33);
+    } else {
+      cat33.name = 'Shows / Cachês';
+      cat33.scope = 'BUSINESS';
+      cat33.type = 'income';
+    }
+
+    // Garantir categoria "Equipamentos" para saídas do módulo de Música
+    let catEquip = storedCategories.find(c => c.id === 'cat_equipamentos' || c.name.toLowerCase() === 'equipamentos');
+    if (!catEquip) {
+      catEquip = {
+        id: 'cat_equipamentos',
+        name: 'Equipamentos',
+        type: 'expense',
+        color: '#8b5cf6',
+        icon: 'Hammer',
+        classification: 'professional',
+        scope: 'BUSINESS'
+      };
+      storedCategories.push(catEquip);
+    } else {
+      catEquip.id = 'cat_equipamentos';
+      catEquip.name = 'Equipamentos';
+      catEquip.scope = 'BUSINESS';
+      catEquip.type = 'expense';
+    }
+
+    // Remover categorias duplicadas "Cachês Música Ao Vivo"
+    let finalCategories = storedCategories.filter(c => !duplicateCatIds.has(c.id));
+
+    // Garantir defaults que faltem
+    const existingNames = new Set(finalCategories.map(c => c.name.toLowerCase()));
+    const missingDefaults = DEFAULT_CATEGORIES.filter(d => !existingNames.has(d.name.toLowerCase()) && !isLiveMusicCacheCat(d.name));
+    if (missingDefaults.length > 0) {
+      const toAdd = missingDefaults.map(cat => ({
+        ...cat,
+        id: finalCategories.some(sc => sc.id === cat.id) ? generateUUID() : cat.id
+      }));
+      finalCategories = [...finalCategories, ...toAdd];
+    }
+    StorageService.saveCategories(finalCategories);
+
+    // Migração das transações (preservando rigorosamente datas, valores e vínculos)
+    let transactionsChanged = false;
+    const migratedTransactions = storedTransactions.map(t => {
+      let modified = false;
+      let newCatId = t.categoryId;
+      let newScope = t.scope;
+      const descLower = (t.description || '').toLowerCase();
+
+      // Transações com categoria duplicada ou cachê -> apontar para cat_33
+      if (duplicateCatIds.has(t.categoryId) || t.categoryId === 'cat_33' || (descLower.includes('cachê') || descLower.includes('cache'))) {
+        if (t.type === 'income') {
+          if (newCatId !== 'cat_33') {
+            newCatId = 'cat_33';
+            modified = true;
+          }
+          if (newScope !== 'BUSINESS') {
+            newScope = 'BUSINESS';
+            modified = true;
+          }
+        }
+      }
+
+      // Transações de Equipamentos -> registrar como Saída da Empresa (Módulo Música)
+      if (t.categoryId === 'cat_equipamentos' || descLower.includes('equipamento') || descLower.includes('pedal') || descLower.includes('amplificador') || descLower.includes('instrumento')) {
+        if (t.type === 'expense') {
+          if (newCatId !== 'cat_equipamentos' && !finalCategories.some(c => c.id === newCatId && c.scope === 'BUSINESS')) {
+            newCatId = 'cat_equipamentos';
+            modified = true;
+          }
+          if (newScope !== 'BUSINESS') {
+            newScope = 'BUSINESS';
+            modified = true;
+          }
+        }
+      }
+
+      // Remover 'BOTH' do escopo (obrigatoriamente PERSONAL ou BUSINESS)
+      if (!newScope || newScope === 'BOTH') {
+        const isBiz = newCatId === 'cat_33' || newCatId === 'cat_equipamentos' || !!t.showId || !!t.showExpenseId || descLower.includes('show') || descLower.includes('músico') || descLower.includes('musico');
+        newScope = isBiz ? 'BUSINESS' : 'PERSONAL';
+        modified = true;
+      }
+
+      if (modified) {
+        transactionsChanged = true;
+        return {
+          ...t,
+          categoryId: newCatId,
+          scope: newScope,
+          amount: Number(t.amount) || 0
+        };
+      }
+      return {
+        ...t,
+        amount: Number(t.amount) || 0
+      };
+    });
+
+    if (transactionsChanged) {
+      storedTransactions = migratedTransactions;
+      StorageService.saveTransactions(migratedTransactions);
     }
 
     setTransactions(storedTransactions);
@@ -500,75 +619,90 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const updateTransaction = (updatedT: Transaction) => {
+    const cleanAmount = Number(updatedT.amount) || 0;
+    const cleanScope = (updatedT.scope === 'BUSINESS' || updatedT.categoryId === 'cat_33' || updatedT.categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
+    
+    const cleanT: Transaction = {
+      ...updatedT,
+      amount: cleanAmount,
+      scope: cleanScope
+    };
+
     setTransactions(prev => {
-      const txs = prev.map(t => t.id === updatedT.id ? updatedT : t);
+      const txs = prev.map(t => t.id === cleanT.id ? cleanT : t);
       StorageService.saveTransactions(txs);
       return txs;
     });
 
     // Sincronização bidirecional automática com o módulo de Shows
-    if (updatedT.showId) {
-      const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
-      setShows(prevShows => {
-        let showsModified = false;
-        const updatedShows = prevShows.map(show => {
-          if (show.id !== updatedT.showId) return show;
-          let paymentChanged = false;
-          let expenseChanged = false;
+    const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+    setShows(prevShows => {
+      let showsModified = false;
+      const updatedShows = prevShows.map(show => {
+        const isDirectMatch = show.id === cleanT.showId;
+        const hasPaymentMatch = show.payments && show.payments.some(p => p.transactionId === cleanT.id || (cleanT.showPaymentId && p.id === cleanT.showPaymentId));
+        const hasReceiptMatch = show.receipts && show.receipts.some(r => r.transactionId === cleanT.id);
+        const hasExpenseMatch = show.expenseItems && show.expenseItems.some(e => e.transactionId === cleanT.id || (cleanT.showExpenseId && e.id === cleanT.showExpenseId));
 
-          let newPayments = Array.isArray(show.payments) ? [...show.payments] : [];
-          if (updatedT.showPaymentId || updatedT.type === 'income') {
-            newPayments = newPayments.map(p => {
-              if ((updatedT.showPaymentId && p.id === updatedT.showPaymentId) || p.transactionId === updatedT.id) {
-                paymentChanged = true;
-                return {
-                  ...p,
-                  amount: Number(updatedT.amount) || p.amount,
-                  status: updatedT.status === 'paid' ? 'Recebido' : 'Agendado',
-                  effectiveDate: updatedT.status === 'paid' ? (p.effectiveDate || updatedT.date) : undefined,
-                  expectedDate: updatedT.date || p.expectedDate,
-                  accountId: updatedT.accountId || p.accountId
-                };
-              }
-              return p;
-            });
-          }
-
-          let newExpenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
-          if (updatedT.showExpenseId || updatedT.type === 'expense') {
-            newExpenses = newExpenses.map(e => {
-              if ((updatedT.showExpenseId && e.id === updatedT.showExpenseId) || e.transactionId === updatedT.id) {
-                expenseChanged = true;
-                return {
-                  ...e,
-                  amount: Number(updatedT.amount) || e.amount,
-                  date: updatedT.date || e.date,
-                  accountId: updatedT.accountId || e.accountId
-                };
-              }
-              return e;
-            });
-          }
-
-          if (paymentChanged || expenseChanged) {
-            showsModified = true;
-            return normalizeShowFinancials({
-              ...show,
-              payments: newPayments,
-              expenseItems: newExpenses
-            }, defaultAccId);
-          }
-
+        if (!isDirectMatch && !hasPaymentMatch && !hasReceiptMatch && !hasExpenseMatch) {
           return show;
-        });
-
-        if (showsModified) {
-          StorageService.saveShows(updatedShows);
-          return updatedShows;
         }
-        return prevShows;
+
+        let paymentChanged = false;
+        let expenseChanged = false;
+
+        let newPayments = Array.isArray(show.payments) ? [...show.payments] : [];
+        if (cleanT.showPaymentId || cleanT.type === 'income') {
+          newPayments = newPayments.map(p => {
+            if ((cleanT.showPaymentId && p.id === cleanT.showPaymentId) || p.transactionId === cleanT.id) {
+              paymentChanged = true;
+              return {
+                ...p,
+                amount: cleanAmount,
+                status: cleanT.status === 'paid' ? 'Recebido' as const : 'Agendado' as const,
+                effectiveDate: cleanT.status === 'paid' ? (p.effectiveDate || cleanT.date) : undefined,
+                expectedDate: cleanT.date || p.expectedDate,
+                accountId: cleanT.accountId || p.accountId
+              };
+            }
+            return p;
+          });
+        }
+
+        let newExpenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
+        if (cleanT.showExpenseId || cleanT.type === 'expense') {
+          newExpenses = newExpenses.map(e => {
+            if ((cleanT.showExpenseId && e.id === cleanT.showExpenseId) || e.transactionId === cleanT.id) {
+              expenseChanged = true;
+              return {
+                ...e,
+                amount: cleanAmount,
+                date: cleanT.date || e.date,
+                accountId: cleanT.accountId || e.accountId
+              };
+            }
+            return e;
+          });
+        }
+
+        if (paymentChanged || expenseChanged || isDirectMatch) {
+          showsModified = true;
+          return normalizeShowFinancials({
+            ...show,
+            payments: newPayments,
+            expenseItems: newExpenses
+          }, defaultAccId);
+        }
+
+        return show;
       });
-    }
+
+      if (showsModified) {
+        StorageService.saveShows(updatedShows);
+        return updatedShows;
+      }
+      return prevShows;
+    });
   };
   
   const updateTransactionSeries = (updatedT: Transaction, updateFuture: boolean) => {

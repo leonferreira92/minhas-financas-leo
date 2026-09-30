@@ -14,7 +14,7 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md' }) 
   const options: { id: ActiveScopeFilter; label: string; icon: React.ReactNode; colorClass: string }[] = [
     { 
       id: 'ALL', 
-      label: 'Todos', 
+      label: 'Tudo', 
       icon: <RefreshCw size={size === 'sm' ? 12 : 13} className="shrink-0" />,
       colorClass: 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
     },
@@ -26,7 +26,7 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md' }) 
     },
     { 
       id: 'BUSINESS', 
-      label: 'Shows', 
+      label: 'Músico / Empresa', 
       icon: <Music size={size === 'sm' ? 12 : 13} className="shrink-0" />,
       colorClass: 'bg-purple-600 text-white shadow-xs'
     }

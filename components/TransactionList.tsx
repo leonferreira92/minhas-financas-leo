@@ -8,9 +8,9 @@ import {
   TrendingDown, Check, Circle, Wallet, ArrowRightLeft, 
   ChevronLeft, ChevronRight, PiggyBank, Plus,
   ListFilter, X, Receipt, Music, Eye, EyeOff, Sparkles,
-  ArrowUpRight, ArrowDownRight, MoreVertical, Edit3, Trash2
+  ArrowUpRight, ArrowDownRight, MoreVertical, Edit3, Trash2, User
 } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction, matchesScope } from '../types';
 import { TransactionForm } from './TransactionForm';
 
 export type PeriodPreset = 'this_month' | 'prev_month' | 'next_month' | 'this_year' | 'custom';
@@ -159,16 +159,19 @@ export const TransactionList: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
   };
 
-  // 1. Filtragem principal de transações por período
+  // 1. Filtragem principal de transações por período e módulo (Tudo | Apenas Pessoal | Apenas Música)
   const periodTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (!t.date) return false;
+      if (!matchesScope(t.scope, activeScope)) {
+        return false;
+      }
       if (periodPreset === 'this_year') {
         return t.date.startsWith(currentYear);
       }
       return t.date.startsWith(selectedMonth);
     });
-  }, [transactions, periodPreset, selectedMonth, currentYear]);
+  }, [transactions, periodPreset, selectedMonth, currentYear, activeScope]);
 
   // 2. Cálculo dos 4 KPI Cards do Período Selecionado
   const kpiData = useMemo(() => {
@@ -381,6 +384,48 @@ export const TransactionList: React.FC = () => {
               </button>
             );
           })}
+        </div>
+
+        {/* Filtro Simples de Módulo: [ Tudo | Apenas Pessoal | Apenas Música ] */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveScope('ALL')}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 ${
+                activeScope === 'ALL'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+              }`}
+            >
+              Tudo
+            </button>
+            <button
+              onClick={() => setActiveScope('PERSONAL')}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1.5 ${
+                activeScope === 'PERSONAL'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-indigo-600'
+              }`}
+            >
+              <User size={13} />
+              <span>Apenas Pessoal</span>
+            </button>
+            <button
+              onClick={() => setActiveScope('BUSINESS')}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1.5 ${
+                activeScope === 'BUSINESS'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-purple-600'
+              }`}
+            >
+              <Music size={13} />
+              <span>Apenas Música</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] font-bold text-slate-400">
+            {periodTransactions.length} {periodTransactions.length === 1 ? 'lançamento' : 'lançamentos'}
+          </span>
         </div>
       </div>
 
@@ -758,6 +803,15 @@ export const TransactionList: React.FC = () => {
                               {/* Categoria */}
                               <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                                 {t.type === 'transfer' ? 'Transferência' : category ? category.name : 'Geral'}
+                              </span>
+
+                              {/* Badge Módulo: Pessoal vs Música */}
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${
+                                t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos'
+                                  ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'
+                                  : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60'
+                              }`}>
+                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' ? '🎸 Música' : '👤 Pessoal'}
                               </span>
 
                               {/* Badge Efetivado / Agendado */}

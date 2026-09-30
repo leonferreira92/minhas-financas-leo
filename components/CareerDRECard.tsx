@@ -16,8 +16,9 @@ interface Props {
 
 export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
   const navigate = useNavigate();
-  const { shows, transactions, accounts, categories, isBlurred, activeScope } = useFinance();
+  const { shows, transactions, accounts, categories, isBlurred, settings } = useFinance();
 
+  const careerName = settings.careerProjectName || 'Leo Ferreira';
   const [periodPreset, setPeriodPreset] = useState<DREPeriodPreset>('current_month');
   const [isProLaboreModalOpen, setIsProLaboreModalOpen] = useState(false);
 
@@ -69,54 +70,64 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
     };
   }, [periodPreset, customStart, customEnd]);
 
-  // Compute DRE Metrics for the period
+  // Compute DRE Metrics for the period:
+  // "A DRE do módulo MÚSICA deve somar exatamente: Entradas do Projeto - Custos/Equipamentos do Projeto = Lucro Real do Projeto"
   const metrics = useMemo(() => {
-    let grossRevenue = 0;
-    let totalExpenses = 0;
-    let showsCount = 0;
+    // 1. Entradas do Projeto no período
+    const projectIncomeTxs = transactions.filter(t => {
+      if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
+      if (t.type !== 'income') return false;
+      
+      const desc = (t.description || '').toLowerCase();
+      // Excluir recebimento de pró-labore na conta pessoal
+      if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
 
-    // 1. Shows no período
-    shows.forEach(show => {
-      if (show.status === 'Cancelado') return;
-      if (!show.date || show.date < periodStart || show.date > periodEnd) return;
-
-      showsCount++;
-      const fin = getShowFinancialSummary(show);
-      grossRevenue += fin.totalPredicted;
-      totalExpenses += fin.totalExpenses;
+      return (
+        t.scope === 'BUSINESS' ||
+        t.categoryId === 'cat_33' ||
+        !!t.showId ||
+        desc.includes('cachê') ||
+        desc.includes('cache') ||
+        desc.includes('show')
+      );
     });
 
-    // 2. Transações de cachê isoladas no período (sem showId vinculado)
-    const unlinkedCacheTxs = transactions.filter(t => 
-      !t.showId &&
-      t.date >= periodStart && t.date <= periodEnd &&
-      t.type === 'income' &&
-      (t.categoryId === 'cat_33' || t.description.toLowerCase().includes('cachê') || t.description.toLowerCase().includes('cache'))
-    );
-    unlinkedCacheTxs.forEach(t => {
-      grossRevenue += Number(t.amount) || 0;
+    const grossRevenue = projectIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // 2. Custos / Equipamentos do Projeto no período
+    const projectExpenseTxs = transactions.filter(t => {
+      if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
+      if (t.type !== 'expense') return false;
+      
+      const desc = (t.description || '').toLowerCase();
+      // Retirada de pró-labore é apurada à parte como distribuição de lucro
+      if (desc.includes('retirada de pró-labore') || desc.includes('retirada de pro-labore')) return false;
+
+      return (
+        t.scope === 'BUSINESS' ||
+        t.categoryId === 'cat_equipamentos' ||
+        t.categoryId === 'cat_producao_shows' ||
+        !!t.showId ||
+        !!t.showExpenseId ||
+        desc.includes('equipamento') ||
+        desc.includes('músico') ||
+        desc.includes('musico') ||
+        desc.includes('ensaio') ||
+        desc.includes('logística') ||
+        desc.includes('logistica')
+      );
     });
 
-    // 3. Custos operacionais extras da música no período (sem showId vinculado)
-    const unlinkedShowExpenseTxs = transactions.filter(t =>
-      !t.showId &&
-      !t.showExpenseId &&
-      t.date >= periodStart && t.date <= periodEnd &&
-      t.type === 'expense' &&
-      (t.scope === 'BUSINESS' || t.description.toLowerCase().includes('músico') || t.description.toLowerCase().includes('musico') || t.description.toLowerCase().includes('equipamento') || t.description.toLowerCase().includes('ensaio') || t.description.toLowerCase().includes('produção'))
-    );
-    unlinkedShowExpenseTxs.forEach(t => {
-      totalExpenses += Number(t.amount) || 0;
-    });
+    const totalExpenses = projectExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    // 4. Lucro Líquido
+    // 3. Lucro Real do Projeto
     const netProfit = grossRevenue - totalExpenses;
     const profitMargin = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
 
-    // 5. Pró-Labore Retirado no período
+    // 4. Pró-Labore Retirado no período
     const proLaboreTxs = transactions.filter(t => {
       if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
-      if (t.status === 'pending') return false; // Apenas saídas realizadas
+      if (t.status === 'pending') return false;
 
       const desc = (t.description || '').toLowerCase();
       const cat = categories.find(c => c.id === t.categoryId);
@@ -124,29 +135,22 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
       
       const isNamedProLabore = desc.includes('pró-labore') || desc.includes('pro-labore') || desc.includes('pro labore') || catName.includes('pró-labore') || catName.includes('pro-labore');
 
-      // Saída da empresa (despesa) com tag de pró-labore
-      if (t.type === 'expense' && isNamedProLabore) {
+      if (t.type === 'expense' && isNamedProLabore && (t.scope === 'BUSINESS' || desc.includes('retirada'))) {
         return true;
       }
 
-      // Transferência identificada como pró-labore
       if (t.type === 'transfer' && isNamedProLabore) {
         return true;
-      }
-
-      // Transferência de conta Business para conta Personal
-      if (t.type === 'transfer' && t.accountId && t.destinationAccountId) {
-        const sourceAcc = accounts.find(a => a.id === t.accountId);
-        const destAcc = accounts.find(a => a.id === t.destinationAccountId);
-        if (sourceAcc?.scope === 'BUSINESS' && destAcc?.scope === 'PERSONAL') {
-          return true;
-        }
       }
 
       return false;
     });
 
     const proLaboreTotal = proLaboreTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // Contagem de shows no período
+    const periodShows = shows.filter(s => s.status !== 'Cancelado' && s.date >= periodStart && s.date <= periodEnd);
+    const showsCount = Math.max(periodShows.length, projectIncomeTxs.length);
 
     return {
       grossRevenue,
@@ -156,7 +160,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
       proLaboreTotal,
       showsCount
     };
-  }, [shows, transactions, accounts, categories, periodStart, periodEnd]);
+  }, [shows, transactions, categories, periodStart, periodEnd]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -191,14 +195,14 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">
-                  DRE Operacional da Carreira
+                  DRE Operacional • {careerName}
                 </span>
                 <span className="text-[9px] bg-purple-900/80 text-purple-200 px-2 py-0.5 rounded-full font-bold">
                   {periodLabel}
                 </span>
               </div>
               <h4 className="text-sm sm:text-base font-black text-white">
-                Faturamento & Custos da Música
+                Faturamento & Custos do Projeto
               </h4>
             </div>
           </div>
@@ -325,7 +329,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             </div>
           </div>
 
-          {/* Card 2: Custos Operacionais */}
+          {/* Card 2: Custos Operacionais & Equipamentos */}
           <div 
             onClick={() => handleNavigateExtrato({ type: 'expense', scope: 'BUSINESS' })}
             className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-rose-500/40 transition cursor-pointer active:scale-95"
@@ -333,7 +337,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
           >
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[9px] font-black uppercase tracking-wider text-slate-300 group-hover:text-rose-300 transition">
-                Custos Operacionais
+                Custos & Equipamentos
               </span>
               <div className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center group-hover:scale-110 transition">
                 <ArrowDownRight size={13} strokeWidth={3} />
@@ -344,21 +348,21 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
                 {!isBlurred ? formatCurrency(metrics.totalExpenses) : 'R$ ••••••'}
               </div>
               <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
-                <span>Logística & Músicos</span>
+                <span>Produção & Equipamentos</span>
                 <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
               </p>
             </div>
           </div>
 
-          {/* Card 3: Lucro Líquido do Módulo */}
+          {/* Card 3: Lucro Real do Projeto */}
           <div 
             onClick={() => handleNavigateExtrato({ scope: 'BUSINESS' })}
             className="group bg-indigo-950/70 border border-indigo-500/30 rounded-2xl p-3.5 flex flex-col justify-between hover:border-indigo-400/60 hover:bg-indigo-950/90 transition cursor-pointer active:scale-95"
-            title="Clique para ver todas as movimentações de shows no Extrato"
+            title="Clique para ver todas as movimentações do projeto no Extrato"
           >
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[9px] font-black uppercase tracking-wider text-indigo-300 group-hover:text-white transition">
-                Lucro Líquido
+                Lucro Real do Projeto
               </span>
               <div className="w-6 h-6 rounded-lg bg-indigo-500/30 text-indigo-300 flex items-center justify-center group-hover:scale-110 transition">
                 <TrendingUp size={13} strokeWidth={2.5} />
@@ -369,7 +373,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
                 {!isBlurred ? formatCurrency(metrics.netProfit) : 'R$ ••••••'}
               </div>
               <p className="text-[9px] text-indigo-300/80 mt-0.5 flex items-center justify-between">
-                <span>Resultado real</span>
+                <span>Entradas - Custos</span>
                 <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
               </p>
             </div>

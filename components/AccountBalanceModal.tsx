@@ -273,20 +273,20 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
 
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                  Escopo da Conta
+                  Módulo / Conta Pertencente
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setScope('PERSONAL')}
                     className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
-                      scope === 'PERSONAL'
+                      scope !== 'BUSINESS'
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                     }`}
                   >
                     <User size={13} />
-                    <span>Pessoal</span>
+                    <span>👤 Pessoal</span>
                   </button>
                   <button
                     type="button"
@@ -298,18 +298,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                     }`}
                   >
                     <Music size={13} />
-                    <span>Shows</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScope('BOTH')}
-                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
-                      scope === 'BOTH'
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <span>Ambos</span>
+                    <span>🎸 Músico / Empresa</span>
                   </button>
                 </div>
               </div>

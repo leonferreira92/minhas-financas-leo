@@ -48,14 +48,18 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_31', name: 'Previdência', type: 'expense', color: '#065f46', icon: 'PiggyBank', classification: 'future' },
 
   // --- RECEITAS ---
-  { id: 'cat_6', name: 'Salário', type: 'income', color: '#3b82f6', icon: 'Briefcase', classification: 'future' },
-  { id: 'cat_33', name: 'Shows / Cachês', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'future' },
-  { id: 'cat_7', name: 'Pró-Labore', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future' },
-  { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future' },
-  { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future' },
-  { id: 'cat_32', name: 'Rendimentos', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future' },
+  { id: 'cat_6', name: 'Salário', type: 'income', color: '#3b82f6', icon: 'Briefcase', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_33', name: 'Shows / Cachês', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_7', name: 'Pró-Labore', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_32', name: 'Rendimentos', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_transfer', name: 'Transferência entre Contas', type: 'transfer', color: '#64748b', icon: 'ArrowRightLeft', classification: 'future' },
   { id: 'cat_adjustment', name: 'Ajuste de Saldo', type: 'adjustment', color: '#64748b', icon: 'Calculator', classification: 'personal' },
+
+  // --- DESPESAS DA MÚSICA / EMPRESA ---
+  { id: 'cat_equipamentos', name: 'Equipamentos', type: 'expense', color: '#8b5cf6', icon: 'Hammer', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_producao_shows', name: 'Produção / Músicos', type: 'expense', color: '#a855f7', icon: 'Users', classification: 'professional', scope: 'BUSINESS' },
 ];
 
 export const DEFAULT_ACCOUNTS: Account[] = [

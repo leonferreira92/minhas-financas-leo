@@ -23,7 +23,7 @@ interface Props {
 
 export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
   const { 
-    addTransaction, updateTransactionSeries, updateDebtTransaction, 
+    addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, 
     deleteTransaction, categories, transactions, accounts, checkTransactionImpact
   } = useFinance();
 
@@ -40,9 +40,10 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [reminderDate, setReminderDate] = useState('');
   const [isFixed, setIsFixed] = useState(false);
   const [scope, setScope] = useState<ScopeType>(() => {
-    if (transaction?.scope) return transaction.scope;
-    if (initialCategoryId === 'cat_33' || transaction?.showId) return 'BUSINESS';
-    return 'BOTH';
+    if (transaction?.scope === 'BUSINESS') return 'BUSINESS';
+    if (transaction?.scope === 'PERSONAL') return 'PERSONAL';
+    if (initialCategoryId === 'cat_33' || initialCategoryId === 'cat_equipamentos' || transaction?.showId) return 'BUSINESS';
+    return 'PERSONAL';
   });
 
   // Progressive Disclosure UI States
@@ -102,7 +103,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (transaction.isFixed) {
         setIsFixed(true);
       }
-      setScope(transaction.scope || 'BOTH');
+      setScope(transaction.scope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL');
       setShowMoreOptions(true);
     }
   }, [transaction]);
@@ -355,6 +356,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     }
 
+    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
+
     const data: any = {
       type, 
       amount: val, 
@@ -368,7 +371,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
       interest: (transaction?.debtId && diffAmount > 0.01) ? diffAmount : 0,
-      scope: scope || 'BOTH'
+      scope: finalScope
     };
 
     if (transaction) {
@@ -378,7 +381,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       } else if (transaction.fixedGroupId) {
         setShowRecurringEditModal(true);
       } else {
-        updateTransactionSeries({ ...transaction, ...data }, false);
+        updateTransaction({ ...transaction, ...data });
         onClose();
       }
     } else {
@@ -390,13 +393,15 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleConfirmRecurringUpdate = (updateFuture: boolean) => {
     if (!transaction) return;
     const val = parseCurrencyInput(amount);
+    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
     const data: any = {
       type, amount: val, description, categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
       accountId, destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
       date, status,
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
-      isFixed
+      isFixed,
+      scope: finalScope
     };
     updateTransactionSeries({ ...transaction, ...data }, updateFuture);
     onClose();
@@ -772,46 +777,35 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                       </div>
                     )}
 
-                    {/* Escopo da Transação */}
+                    {/* Módulo / Conta Pertencente */}
                     <div className="pt-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-                        Escopo do Lançamento
+                        Módulo / Conta Pertencente
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
                           onClick={() => setScope('PERSONAL')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
-                            scope === 'PERSONAL'
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider border flex items-center justify-center space-x-1.5 transition-all ${
+                            scope !== 'BUSINESS'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'
                           }`}
                         >
-                          <User size={13} />
-                          <span>Pessoal</span>
+                          <User size={14} />
+                          <span>👤 Pessoal</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setScope('BUSINESS')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
+                          className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider border flex items-center justify-center space-x-1.5 transition-all ${
                             scope === 'BUSINESS'
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'
                           }`}
                         >
-                          <Music size={13} />
-                          <span>Shows</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setScope('BOTH')}
-                          className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
-                            scope === 'BOTH'
-                              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xs'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                          }`}
-                        >
-                          <span>Ambos</span>
+                          <Music size={14} />
+                          <span>🎸 Músico / Empresa</span>
                         </button>
                       </div>
                     </div>
