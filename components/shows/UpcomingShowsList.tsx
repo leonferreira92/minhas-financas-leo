@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Show } from '../../types';
+import { useFinance } from '../../context/FinanceContext';
 import { 
   Calendar, Clock, MapPin, DollarSign, ChevronRight, 
   Sparkles, CheckCircle2, Music, Plus, ArrowRight,
@@ -19,6 +20,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
   onSelectShow,
   onOpenCreateModal
 }) => {
+  const { transactions } = useFinance();
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   // Filter shows: future or today date, and status === 'Confirmado'
@@ -111,7 +113,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
     today.setHours(0, 0, 0, 0);
 
     upcomingConfirmedShows.forEach(show => {
-      const fin = getShowFinancialSummary(show);
+      const fin = getShowFinancialSummary(show, transactions);
       totalContracted += fin.totalContracted;
       totalPending += fin.totalPending;
 
@@ -202,7 +204,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
           {/* DESTAQUE ESPECIAL: O PRÓXIMO SHOW MAIS IMEDIATO */}
           {nextShow && (() => {
             const countdown = getDaysCountdownTag(nextShow.date);
-            const fin = getShowFinancialSummary(nextShow);
+            const fin = getShowFinancialSummary(nextShow, transactions);
 
             return (
               <div
@@ -308,7 +310,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
 
               {remainingUpcomingShows.map(show => {
                 const countdown = getDaysCountdownTag(show.date);
-                const fin = getShowFinancialSummary(show);
+                const fin = getShowFinancialSummary(show, transactions);
 
                 return (
                   <div

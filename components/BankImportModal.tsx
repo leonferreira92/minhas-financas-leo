@@ -3,7 +3,7 @@ import { useFinance } from '../context/FinanceContext';
 import { 
   UploadCloud, FileText, CheckCircle2, AlertTriangle, 
   Trash2, X, ArrowUpRight, ArrowDownLeft, Filter, 
-  Building2, User, Music, Search, Check, AlertCircle, RefreshCw
+  Building2, User, Music, Search, Check, AlertCircle, RefreshCw, Plus, Calendar, MapPin
 } from 'lucide-react';
 import { 
   readBankFileAsText, 
@@ -12,6 +12,7 @@ import {
   StagingBankTransaction 
 } from '../services/bankStatementParser';
 import { ScopeType } from '../types';
+import { generateUUID } from '../services/uuidHelper';
 
 interface BankImportModalProps {
   isOpen: boolean;
@@ -24,7 +25,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
   onClose,
   defaultAccountId
 }) => {
-  const { accounts, categories, transactions, importTransactions, refreshData } = useFinance();
+  const { accounts, categories, transactions, shows, addShow, importTransactions, refreshData } = useFinance();
 
   const [step, setStep] = useState<'upload' | 'staging' | 'success'>('upload');
   const [fileName, setFileName] = useState('');
@@ -52,8 +53,22 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
   const [batchScope, setBatchScope] = useState<ScopeType | ''>('');
   const [batchAccountId, setBatchAccountId] = useState<string>('');
   const [batchCategoryId, setBatchCategoryId] = useState<string>('');
+  const [batchShowId, setBatchShowId] = useState<string>('');
+
+  // Quick Show creation modal state
+  const [quickShowTargetItem, setQuickShowTargetItem] = useState<StagingBankTransaction | null>(null);
+  const [quickShowContractor, setQuickShowContractor] = useState('');
+  const [quickShowDate, setQuickShowDate] = useState('');
+  const [quickShowTotalCache, setQuickShowTotalCache] = useState('');
+  const [quickShowLocation, setQuickShowLocation] = useState('');
+  const [quickShowCity, setQuickShowCity] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Shows disponíveis para vínculo (Agendados, Confirmados ou Realizados)
+  const availableShows = useMemo(() => {
+    return shows.filter(s => s.status !== 'Cancelado');
+  }, [shows]);
 
   // Filtragem da lista para exibição (Hook posicionado no topo absoluto)
   const filteredStagingList = useMemo(() => {
@@ -201,10 +216,10 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     setStagingList(prev => prev.filter(item => item.tempId !== tempId));
   };
 
-  // Ações em Lote (Batch Actions)
-  const toggleSelectAll = (forceValue?: boolean) => {
-    const targetVal = forceValue !== undefined ? forceValue : !stagingList.every(i => i.selected);
-    setStagingList(prev => prev.map(item => ({ ...item, selected: targetVal })));
+  // Funções em Lote (Batch)
+  const toggleSelectAll = () => {
+    const allSelected = stagingList.every(item => item.selected);
+    setStagingList(prev => prev.map(item => ({ ...item, selected: !allSelected })));
   };
 
   const applyBatchScope = (scope: ScopeType) => {
@@ -224,6 +239,58 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     setBatchCategoryId(catId);
   };
 
+  const applyBatchShow = (showId: string) => {
+    setStagingList(prev => prev.map(item => {
+      if (!item.selected || item.type !== 'income') return item;
+      return { 
+        ...item, 
+        showId: showId || undefined, 
+        scope: showId ? 'BUSINESS' : item.scope,
+        categoryId: showId ? 'cat_33' : item.categoryId
+      };
+    }));
+    setBatchShowId(showId);
+  };
+
+  // Abertura do formulário de criação rápida de show
+  const openQuickShowModal = (item: StagingBankTransaction) => {
+    setQuickShowTargetItem(item);
+    const cleanName = item.description.replace(/^pix\s*(enviado|recebido)\s*/i, '').trim() || 'Show / Evento';
+    setQuickShowContractor(cleanName);
+    setQuickShowDate(item.date);
+    setQuickShowTotalCache(item.amount.toString());
+    setQuickShowLocation('');
+    setQuickShowCity('');
+  };
+
+  const handleSaveQuickShow = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickShowTargetItem || !quickShowContractor.trim()) return;
+
+    const newShowId = generateUUID();
+    const cacheAmount = parseFloat(quickShowTotalCache.replace(',', '.')) || quickShowTargetItem.amount;
+
+    addShow({
+      id: newShowId,
+      name: quickShowContractor.trim(),
+      contractorName: quickShowContractor.trim(),
+      date: quickShowDate || quickShowTargetItem.date,
+      time: '20:00',
+      totalCache: cacheAmount,
+      location: quickShowLocation.trim() || 'A definir',
+      city: quickShowCity.trim() || '',
+      status: 'Confirmado',
+      scope: 'BUSINESS'
+    });
+
+    // Atualiza imediatamente o item de staging para vincular a este novo show
+    updateRowField(quickShowTargetItem.tempId, 'showId', newShowId);
+    updateRowField(quickShowTargetItem.tempId, 'scope', 'BUSINESS');
+    updateRowField(quickShowTargetItem.tempId, 'categoryId', 'cat_33');
+
+    setQuickShowTargetItem(null);
+  };
+
   // Confirmação final da importação
   const handleConfirmImport = () => {
     if (selectedItems.length === 0) {
@@ -235,11 +302,12 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
       date: item.date,
       amount: item.amount,
       type: item.type,
-      categoryId: item.categoryId || (item.type === 'income' ? 'cat_6' : 'cat_7'),
+      categoryId: item.showId ? 'cat_33' : (item.categoryId || (item.type === 'income' ? 'cat_6' : 'cat_7')),
       description: item.description.trim() || item.originalDescription || 'Lançamento Bancário',
       status: 'paid' as const,
       accountId: item.accountId || selectedAccountId || (accounts[0] ? accounts[0].id : 'acc_bank'),
-      scope: item.scope || 'PERSONAL',
+      scope: item.showId ? 'BUSINESS' : (item.scope || 'PERSONAL'),
+      showId: item.showId,
       importedFromBank: true,
       originalBankDescription: item.originalDescription,
       bankFitId: item.fitId
@@ -263,11 +331,11 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fade-in">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fade-in max-w-full overflow-x-hidden">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto">
         
         {/* CABEÇALHO DO MODAL */}
-        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
               <UploadCloud size={22} strokeWidth={2.5} />
@@ -275,7 +343,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
-                  Conciliação Inteligente
+                  Conciliação Inteligente & Vínculo com Shows
                 </span>
                 {step === 'staging' && (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -453,25 +521,25 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                 </div>
               )}
 
-              {/* BARRA DE AÇÕES EM LOTE (BATCH CONTROLS) */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2.5">
-                  
-                  {/* Seleção Global */}
+              {/* BARRA DE AÇÕES EM LOTE */}
+              <div className="p-3.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => toggleSelectAll()}
-                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 hover:border-indigo-500 transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
+                      onClick={toggleSelectAll}
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition shadow-xs"
                     >
-                      <Check size={13} strokeWidth={3} />
-                      <span>{stagingList.every(i => i.selected) ? 'Desmarcar Todos' : 'Selecionar Todos'}</span>
+                      {stagingList.every(i => i.selected) ? 'Desmarcar Todos' : 'Selecionar Todos'}
                     </button>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      ({selectedItems.length} selecionados)
+                    </span>
                   </div>
 
-                  {/* Ações em lote aplicadas aos selecionados */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                      Definir p/ Selecionados:
+                  {/* Ações em lote aplicáveis aos selecionados */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">
+                      Aplicar nos Marcados:
                     </span>
 
                     {/* Módulo em Lote */}
@@ -479,11 +547,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       <button
                         type="button"
                         onClick={() => applyBatchScope('PERSONAL')}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center space-x-1 ${
-                          batchScope === 'PERSONAL' 
-                            ? 'bg-indigo-600 text-white' 
-                            : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600'
-                        }`}
+                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 flex items-center space-x-1 transition"
                         title="Definir Módulo Pessoal para os itens selecionados"
                       >
                         <User size={11} />
@@ -492,11 +556,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       <button
                         type="button"
                         onClick={() => applyBatchScope('BUSINESS')}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition flex items-center space-x-1 ${
-                          batchScope === 'BUSINESS' 
-                            ? 'bg-purple-600 text-white' 
-                            : 'text-slate-600 dark:text-slate-300 hover:text-purple-600'
-                        }`}
+                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 flex items-center space-x-1 transition"
                         title="Definir Módulo Músico / Empresa para os itens selecionados"
                       >
                         <Music size={11} />
@@ -521,12 +581,27 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     <select
                       value={batchCategoryId}
                       onChange={(e) => applyBatchCategory(e.target.value)}
-                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 outline-none shadow-xs max-w-[140px] truncate"
+                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 outline-none shadow-xs max-w-[130px] truncate"
                       title="Definir Categoria para os itens selecionados"
                     >
                       <option value="">Definir Categoria...</option>
                       {categories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+
+                    {/* Vincular Show em Lote */}
+                    <select
+                      value={batchShowId}
+                      onChange={(e) => applyBatchShow(e.target.value)}
+                      className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[11px] font-bold text-purple-900 dark:text-purple-200 outline-none shadow-xs max-w-[140px] truncate"
+                      title="Vincular Show em lote para receitas marcadas"
+                    >
+                      <option value="">Vincular Show...</option>
+                      {availableShows.map(s => (
+                        <option key={s.id} value={s.id}>
+                          🎤 {s.contractorName || s.name} ({s.date ? s.date.slice(5) : ''})
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -602,6 +677,9 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       ) : (
                         filteredStagingList.map(item => {
                           const isIncome = item.type === 'income';
+                          const isMusician = item.scope === 'BUSINESS';
+                          const linkedShow = item.showId ? shows.find(s => s.id === item.showId) : null;
+
                           return (
                             <tr
                               key={item.tempId}
@@ -631,9 +709,9 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 />
                               </td>
 
-                              {/* Descrição com texto original */}
+                              {/* Descrição com texto original e seletor de Show se for receita do Músico */}
                               <td className="p-3">
-                                <div className="space-y-0.5">
+                                <div className="space-y-1">
                                   <input
                                     type="text"
                                     value={item.description}
@@ -656,6 +734,39 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                       </span>
                                     )}
                                   </div>
+
+                                  {/* SELETOR DE VÍNCULO COM O SHOW (SE MÚSICO E RECEITA/ENTRADA) */}
+                                  {isIncome && isMusician && (
+                                    <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center space-x-1.5">
+                                      <span className="text-[9px] font-black uppercase text-purple-600 dark:text-purple-400 flex items-center shrink-0">
+                                        <Music size={10} className="mr-0.5" /> Show:
+                                      </span>
+                                      <select
+                                        value={item.showId || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val === '__NEW_SHOW__') {
+                                            openQuickShowModal(item);
+                                          } else {
+                                            updateRowField(item.tempId, 'showId', val || undefined);
+                                            if (val) {
+                                              updateRowField(item.tempId, 'categoryId', 'cat_33');
+                                            }
+                                          }
+                                        }}
+                                        className="bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/80 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-purple-900 dark:text-purple-200 outline-none focus:border-purple-500 w-full truncate"
+                                      >
+                                        <option value="">Sem vínculo / Receita avulsa</option>
+                                        <option value="__NEW_SHOW__">➕ Criar Novo Show...</option>
+                                        {availableShows.map(s => (
+                                          <option key={s.id} value={s.id}>
+                                            🎤 {s.contractorName || s.name} ({s.date ? s.date.slice(5) : ''})
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+
                                 </div>
                               </td>
 
@@ -679,7 +790,10 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                   <button
                                     type="button"
-                                    onClick={() => updateRowField(item.tempId, 'scope', 'PERSONAL')}
+                                    onClick={() => {
+                                      updateRowField(item.tempId, 'scope', 'PERSONAL');
+                                      updateRowField(item.tempId, 'showId', undefined);
+                                    }}
                                     className={`flex-1 py-1 rounded text-[9px] font-black uppercase tracking-wider transition ${
                                       item.scope === 'PERSONAL'
                                         ? 'bg-indigo-600 text-white shadow-xs'
@@ -748,41 +862,31 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
           {/* PASSO 3: SUCESSO */}
           {step === 'success' && (
-            <div className="py-12 px-4 text-center space-y-5 max-w-md mx-auto animate-scale-up">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10">
-                <CheckCircle2 size={36} strokeWidth={2.5} />
+            <div className="py-12 text-center space-y-4 max-w-md mx-auto">
+              <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle2 size={42} strokeWidth={2.5} />
               </div>
-
               <div className="space-y-1">
                 <h3 className="text-xl font-black text-slate-900 dark:text-white">
                   Importação Concluída com Sucesso!
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  <strong>{importedCount} lançamentos</strong> foram devidamente registrados e categorizados no sistema.
+                  Foram importados <strong>{importedCount} lançamentos</strong> para o seu extrato financeiro. Se você vinculou receitas a shows, os cachês foram atualizados dinamicamente sem gerar duplicidades no caixa.
                 </p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left text-xs space-y-1.5 font-medium">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Saldo das Contas:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">Atualizado</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">DRE do Projeto:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">Recalculado</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Extrato Consolidado:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">Sincronizado</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
+              <div className="pt-4 flex items-center justify-center space-x-3">
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition"
+                >
+                  Importar Outro Arquivo
+                </button>
                 <button
                   onClick={onClose}
-                  className="w-full py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/30 transition active:scale-95"
+                  className="px-6 py-2.5 rounded-2xl bg-indigo-600 text-white font-black text-xs uppercase tracking-wider hover:bg-indigo-700 transition shadow-lg shadow-indigo-500/25"
                 >
-                  Ver Movimentações no Extrato
+                  Concluir & Ver Extrato
                 </button>
               </div>
             </div>
@@ -790,65 +894,143 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
         </div>
 
-        {/* RODAPÉ COM AÇÕES */}
-        <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-          {step === 'upload' ? (
-            <div className="text-[11px] text-slate-400 flex items-center space-x-1.5">
-              <span>Seus dados permanecem 100% locais e seguros no seu navegador.</span>
-            </div>
-          ) : step === 'staging' ? (
-            <div className="flex items-center space-x-3 text-xs">
-              <button
-                onClick={handleReset}
-                className="text-slate-500 hover:text-slate-800 dark:hover:text-white font-bold underline text-[11px]"
-              >
-                Trocar Arquivo
-              </button>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-slate-600 dark:text-slate-300 font-bold">
-                Impacto Líquido: <strong className={stats.netTotal >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{formatCurrency(stats.netTotal)}</strong>
-              </span>
-            </div>
-          ) : (
-            <div />
-          )}
+        {/* RODAPÉ DO MODAL (BARRAS DE AÇÃO) */}
+        {step === 'staging' && (
+          <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+            <button
+              onClick={handleReset}
+              className="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition"
+            >
+              Cancelar / Novo Arquivo
+            </button>
 
-          <div className="flex items-center space-x-2.5 self-end sm:self-auto">
-            {step === 'staging' && (
-              <>
+            <button
+              onClick={handleConfirmImport}
+              disabled={selectedItems.length === 0}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/25 active:scale-95 transition disabled:opacity-40 flex items-center space-x-2"
+            >
+              <Check size={16} strokeWidth={3} />
+              <span>Confirmar e Importar {selectedItems.length} Lançamentos</span>
+            </button>
+          </div>
+        )}
+
+      </div>
+
+      {/* MODAL SIMPLES DE CRIAÇÃO RÁPIDA DE SHOW AO VINCULAR */}
+      {quickShowTargetItem && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 w-full max-w-md shadow-2xl space-y-4 animate-scale-in">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                  <Music size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">Criar Novo Show & Vincular</h3>
+                  <p className="text-[10px] text-slate-400">Associa a receita de {formatCurrency(quickShowTargetItem.amount)} imediatamente</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setQuickShowTargetItem(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickShow} className="space-y-3.5">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  Nome do Show / Contratante
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={quickShowContractor}
+                  onChange={e => setQuickShowContractor(e.target.value)}
+                  placeholder="Ex: Show Aniversário Marina"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Data do Show
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={quickShowDate}
+                    onChange={e => setQuickShowDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Cachê Total (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={quickShowTotalCache}
+                    onChange={e => setQuickShowTotalCache(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Local / Casa de Evento
+                  </label>
+                  <input
+                    type="text"
+                    value={quickShowLocation}
+                    onChange={e => setQuickShowLocation(e.target.value)}
+                    placeholder="Ex: Espaço Gardens"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                    Cidade
+                  </label>
+                  <input
+                    type="text"
+                    value={quickShowCity}
+                    onChange={e => setQuickShowCity(e.target.value)}
+                    placeholder="Ex: São Paulo"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center space-x-2">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition active:scale-95"
+                  onClick={() => setQuickShowTargetItem(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100"
                 >
                   Cancelar
                 </button>
-
                 <button
-                  type="button"
-                  onClick={handleConfirmImport}
-                  disabled={selectedItems.length === 0}
-                  className="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs font-black uppercase tracking-wider shadow-md shadow-indigo-600/30 transition active:scale-95 flex items-center space-x-2"
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider shadow-md shadow-purple-500/20"
                 >
-                  <CheckCircle2 size={16} strokeWidth={2.5} />
-                  <span>Confirmar Importação de {selectedItems.length} {selectedItems.length === 1 ? 'Item' : 'Itens'}</span>
+                  Criar e Vincular
                 </button>
-              </>
-            )}
-
-            {step === 'upload' && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider hover:bg-slate-50 transition active:scale-95"
-              >
-                Fechar
-              </button>
-            )}
+              </div>
+            </form>
           </div>
         </div>
+      )}
 
-      </div>
     </div>
   );
 };

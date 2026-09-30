@@ -21,6 +21,7 @@ export interface StagingBankTransaction extends ParsedBankTransaction {
   accountId: string;
   isDuplicate?: boolean;
   duplicateReason?: string;
+  showId?: string; // ID do Show vinculado
 }
 
 /**

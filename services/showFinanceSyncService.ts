@@ -205,11 +205,11 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
 /**
  * Calcula o resumo financeiro de um Show conforme as regras de negócio:
  * - Valor total previsto = Valor contratado + Extras
- * - Total recebido = soma dos pagamentos efetivamente recebidos
+ * - Total recebido = soma dinâmica das transações vinculadas ao show (ou pagamentos recebidos)
  * - Total a receber = Valor total previsto - Total recebido
  * - Lucro líquido = Total recebido - Total de despesas
  */
-export function getShowFinancialSummary(show: Show | null | undefined): ShowFinancialSummary {
+export function getShowFinancialSummary(show: Show | null | undefined, transactions?: Transaction[]): ShowFinancialSummary {
   if (!show) {
     return {
       totalContracted: 0,
@@ -246,44 +246,101 @@ export function getShowFinancialSummary(show: Show | null | undefined): ShowFina
   let totalReceived = 0;
   let totalScheduled = 0;
 
-  if (Array.isArray(show.payments) && show.payments.length > 0) {
-    show.payments.forEach(p => {
-      if (!p) return;
-      const amt = Number(p.amount) || 0;
-      if (p.status === 'Recebido') {
-        totalReceived += amt;
-      } else if (p.status === 'Agendado' || p.status === 'Previsto') {
-        totalScheduled += amt;
-      }
-    });
-  } else if (Array.isArray(show.receipts) && show.receipts.length > 0) {
-    show.receipts.forEach(r => {
-      if (!r) return;
-      const amt = Number(r.amount) || 0;
-      if (r.status === 'Recebido') {
-        totalReceived += amt;
-      } else {
-        totalScheduled += amt;
-      }
-    });
+  // 1. Apuração dinâmica de receitas das transações do Financeiro vinculadas ao show
+  if (transactions && transactions.length > 0) {
+    const linkedIncomeTxs = transactions.filter(t => 
+      t.showId === show.id && 
+      t.type === 'income' && 
+      t.status === 'paid'
+    );
+    
+    const txReceivedSum = linkedIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const linkedTxIds = new Set(linkedIncomeTxs.map(t => t.id));
+
+    // Pagamentos cadastrados no show que ainda não estão cobertos por transação vinculada (para não duplicar)
+    let manualPaymentsReceived = 0;
+    if (Array.isArray(show.payments)) {
+      show.payments.forEach(p => {
+        if (!p) return;
+        if (p.status === 'Recebido') {
+          if (!p.transactionId || !linkedTxIds.has(p.transactionId)) {
+            // Se o show tiver pagamentos manuais não sincronizados
+            // Apenas conta se não houver já transação com esse ID
+            if (!p.transactionId) {
+              manualPaymentsReceived += Number(p.amount) || 0;
+            }
+          }
+        } else if (p.status === 'Agendado' || p.status === 'Previsto') {
+          totalScheduled += Number(p.amount) || 0;
+        }
+      });
+    }
+
+    totalReceived = txReceivedSum + manualPaymentsReceived;
+  } else {
+    // Fallback se transactions não for passado
+    if (Array.isArray(show.payments) && show.payments.length > 0) {
+      show.payments.forEach(p => {
+        if (!p) return;
+        const amt = Number(p.amount) || 0;
+        if (p.status === 'Recebido') {
+          totalReceived += amt;
+        } else if (p.status === 'Agendado' || p.status === 'Previsto') {
+          totalScheduled += amt;
+        }
+      });
+    } else if (Array.isArray(show.receipts) && show.receipts.length > 0) {
+      show.receipts.forEach(r => {
+        if (!r) return;
+        const amt = Number(r.amount) || 0;
+        if (r.status === 'Recebido') {
+          totalReceived += amt;
+        } else {
+          totalScheduled += amt;
+        }
+      });
+    }
   }
 
   // Total a receber = Valor total previsto - Total recebido
   const totalPending = Math.max(0, Math.round((totalPredicted - totalReceived) * 100) / 100);
 
-  // Despesas
+  // Despesas dinâmicas
   let totalExpenses = 0;
-  if (Array.isArray(show.expenseItems) && show.expenseItems.length > 0) {
-    show.expenseItems.forEach(e => {
-      if (!e) return;
-      totalExpenses += Number(e.amount) || 0;
-    });
-  } else if (show.expenses) {
-    totalExpenses = (Number(show.expenses.fuel) || 0) +
-                    (Number(show.expenses.food) || 0) +
-                    (Number(show.expenses.toll) || 0) +
-                    (Number(show.expenses.commission) || 0) +
-                    (Number(show.expenses.others) || 0);
+  if (transactions && transactions.length > 0) {
+    const linkedExpenseTxs = transactions.filter(t => 
+      t.showId === show.id && 
+      t.type === 'expense' && 
+      t.status === 'paid'
+    );
+    const txExpenseSum = linkedExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const linkedExpenseTxIds = new Set(linkedExpenseTxs.map(t => t.id));
+
+    let manualExpenseSum = 0;
+    if (Array.isArray(show.expenseItems)) {
+      show.expenseItems.forEach(e => {
+        if (!e) return;
+        if (!e.transactionId || !linkedExpenseTxIds.has(e.transactionId)) {
+          if (!e.transactionId) {
+            manualExpenseSum += Number(e.amount) || 0;
+          }
+        }
+      });
+    }
+    totalExpenses = txExpenseSum + manualExpenseSum;
+  } else {
+    if (Array.isArray(show.expenseItems) && show.expenseItems.length > 0) {
+      show.expenseItems.forEach(e => {
+        if (!e) return;
+        totalExpenses += Number(e.amount) || 0;
+      });
+    } else if (show.expenses) {
+      totalExpenses = (Number(show.expenses.fuel) || 0) +
+                      (Number(show.expenses.food) || 0) +
+                      (Number(show.expenses.toll) || 0) +
+                      (Number(show.expenses.commission) || 0) +
+                      (Number(show.expenses.others) || 0);
+    }
   }
 
   // Lucro líquido = Total recebido - Total de despesas

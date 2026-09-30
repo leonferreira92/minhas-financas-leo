@@ -800,6 +800,47 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       StorageService.saveTransactions(txs);
       return txs;
     });
+
+    // Se a transação estiver vinculada a um show, remove a associação no Módulo de Shows
+    setShows(prevShows => {
+      let modified = false;
+      const updated = prevShows.map(show => {
+        let paymentsChanged = false;
+        let expensesChanged = false;
+
+        const updatedPayments = (show.payments || []).filter(p => {
+          if (p.transactionId === id) {
+            paymentsChanged = true;
+            return false; // Remove o pagamento vinculado se a transação do extrato for excluída
+          }
+          return true;
+        });
+
+        const updatedExpenses = (show.expenseItems || []).filter(e => {
+          if (e.transactionId === id) {
+            expensesChanged = true;
+            return false;
+          }
+          return true;
+        });
+
+        if (paymentsChanged || expensesChanged) {
+          modified = true;
+          return {
+            ...show,
+            payments: updatedPayments,
+            expenseItems: updatedExpenses
+          };
+        }
+        return show;
+      });
+
+      if (modified) {
+        StorageService.saveShows(updated);
+        return updated;
+      }
+      return prevShows;
+    });
   };
 
   const checkTransactionImpact = (amount: number, date: string): { compromisedTransaction: Transaction } | null => {

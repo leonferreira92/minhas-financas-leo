@@ -141,7 +141,7 @@ export const ShowDetailModal: React.FC<Props> = ({
 
   const todayStr = getDeviceToday();
   const statusCfg = getStatusConfig(show.status);
-  const finSummary = getShowFinancialSummary(show);
+  const finSummary = getShowFinancialSummary(show, transactions);
 
   const formatCurrency = (val?: number | string | null) => {
     const num = typeof val === 'number' ? val : parseFloat(String(val || 0).replace(',', '.')) || 0;
@@ -934,51 +934,108 @@ export const ShowDetailModal: React.FC<Props> = ({
                 )}
               </div>
 
-              {/* 1.4 LISTA RESUMIDA DAS MOVIMENTAÇÕES NO FINANCEIRO */}
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {/* 1.4 LISTA RESUMIDA DOS RECEBIMENTOS & SINAIS VINCULADOS DO EXTRATO */}
+              <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Movimentações Vinculadas no Extrato ({linkedTransactions.length})
-                  </span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center">
+                      <Sparkles size={14} className="mr-1.5 text-purple-600 dark:text-purple-400" />
+                      Recebimentos / Sinais Vinculados ({linkedTransactions.filter(t => t.type === 'income').length})
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      Entradas e Pix importados do extrato bancário vinculados a este evento
+                    </p>
+                  </div>
                   <button
                     onClick={() => handleNavigateToTransaction()}
-                    className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider hover:underline flex items-center"
+                    className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider hover:underline flex items-center shrink-0"
                   >
-                    Ver Todas no Extrato <ChevronRight size={12} />
+                    Ver Extrato <ChevronRight size={12} />
                   </button>
                 </div>
 
+                {/* Resumo Rápido Solicitado: [ Cachê Total | Total Recebido (Sinais) | Saldo Restante a Receber ] */}
+                <div className="grid grid-cols-3 gap-2 text-center p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                      Cachê Total
+                    </span>
+                    <span className="text-xs font-black text-slate-800 dark:text-white tabular-nums block mt-0.5">
+                      {formatCurrency(finSummary.totalPredicted)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                      Total Recebido (Sinais)
+                    </span>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums block mt-0.5">
+                      {formatCurrency(finSummary.totalReceived)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                      Saldo Restante a Receber
+                    </span>
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400 tabular-nums block mt-0.5">
+                      {formatCurrency(finSummary.totalPending)}
+                    </span>
+                  </div>
+                </div>
+
                 {linkedTransactions.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic py-1">
-                    Nenhuma movimentação gerada ainda no Financeiro.
-                  </p>
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                    <p className="text-xs text-slate-400 font-medium">
+                      Nenhum recebimento ou despesa de extrato vinculado a este show ainda.
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Ao importar extratos bancários (.OFX / .CSV), você pode vincular receitas diretamente a este show.
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-1.5">
-                    {linkedTransactions.map(tx => (
-                      <div
-                        key={tx.id}
-                        onClick={() => handleNavigateToTransaction(tx.id)}
-                        className="p-2.5 rounded-xl bg-slate-50/60 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
-                      >
-                        <div className="min-w-0 pr-2">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
-                            {tx.description}
-                          </span>
-                          <span className="text-[9px] text-slate-400">
-                            {formatDateBR(tx.date)} • {tx.status === 'paid' ? 'Efetivado' : 'Projetado/Agendado'}
-                          </span>
-                        </div>
+                    {linkedTransactions.map(tx => {
+                      const acc = accounts.find(a => a.id === tx.accountId);
+                      const isInc = tx.type === 'income';
+                      return (
+                        <div
+                          key={tx.id}
+                          onClick={() => handleNavigateToTransaction(tx.id)}
+                          className="p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition active:scale-[0.99] group"
+                        >
+                          <div className="min-w-0 pr-2 space-y-0.5">
+                            <div className="flex items-center space-x-1.5">
+                              <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase ${
+                                isInc ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300'
+                              }`}>
+                                {isInc ? 'Sinal / Recebimento' : 'Despesa'}
+                              </span>
+                              <span className="font-bold text-slate-900 dark:text-white truncate">
+                                {tx.description}
+                              </span>
+                            </div>
 
-                        <div className="flex items-center space-x-2 shrink-0">
-                          <span className={`font-black tabular-nums ${
-                            tx.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                          }`}>
-                            {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
-                          </span>
-                          <ChevronRight size={12} className="text-slate-400" />
+                            {tx.originalBankDescription && tx.originalBankDescription !== tx.description && (
+                              <p className="text-[10px] text-slate-400 font-mono truncate" title={tx.originalBankDescription}>
+                                Pix: {tx.originalBankDescription}
+                              </p>
+                            )}
+
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              {formatDateBR(tx.date)} {acc ? `• ${acc.name}` : ''} • {tx.status === 'paid' ? 'Efetivado no Caixa' : 'Projetado'}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <span className={`font-black tabular-nums text-sm ${
+                              isInc ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                            }`}>
+                              {isInc ? '+' : '-'}{formatCurrency(tx.amount)}
+                            </span>
+                            <ChevronRight size={14} className="text-slate-400 group-hover:text-indigo-600 transition" />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
