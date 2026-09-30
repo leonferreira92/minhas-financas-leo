@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Transaction, TransactionType, TransactionStatus, ScopeType } from '../types';
+import { Transaction, TransactionType, TransactionStatus, ScopeType, Show } from '../types';
 import { 
   X, Check, Trash2, Bell, BellRing, Repeat, Copy, Layers, 
   Sparkles, Loader2, TrendingUp, ArrowRightLeft, 
   AlertTriangle, Calendar as CalendarIcon,
   ChevronDown, Wallet, Target, Plus, Search, CheckCircle2,
   SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight,
-  Music, ChevronRight, User
+  Music, ChevronRight, User, MapPin, DollarSign, Calendar
 } from 'lucide-react';
 import { getIcon, parseCurrencyInput } from '../constants';
 import { GeminiService } from '../services/geminiService';
@@ -24,7 +24,7 @@ interface Props {
 export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
   const { 
     addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, 
-    deleteTransaction, categories, transactions, accounts, checkTransactionImpact
+    deleteTransaction, categories, transactions, accounts, shows, addShow, checkTransactionImpact
   } = useFinance();
 
   // Primary Form State
@@ -39,15 +39,28 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [hasReminder, setHasReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [isFixed, setIsFixed] = useState(false);
+  
+  // Scope State (Pessoal vs Músico)
   const [scope, setScope] = useState<ScopeType>(() => {
     if (transaction?.scope === 'BUSINESS') return 'BUSINESS';
     if (transaction?.scope === 'PERSONAL') return 'PERSONAL';
-    if (initialCategoryId === 'cat_33' || initialCategoryId === 'cat_equipamentos' || transaction?.showId) return 'BUSINESS';
+    if (initialCategoryId === 'cat_33' || initialCategoryId === 'cat_equipamentos' || initialCategoryId === 'cat_producao_shows' || transaction?.showId) return 'BUSINESS';
     return 'PERSONAL';
   });
 
+  // Show Link State (Vínculo com Shows no Módulo Músico)
+  const [selectedShowId, setSelectedShowId] = useState<string>(transaction?.showId || '');
+
+  // Quick Show Modal State
+  const [showQuickCreateShowModal, setShowQuickCreateShowModal] = useState(false);
+  const [quickShowContractor, setQuickShowContractor] = useState('');
+  const [quickShowDate, setQuickShowDate] = useState('');
+  const [quickShowTotalCache, setQuickShowTotalCache] = useState('');
+  const [quickShowLocation, setQuickShowLocation] = useState('');
+  const [quickShowCity, setQuickShowCity] = useState('');
+
   // Progressive Disclosure UI States
-  const [showMoreOptions, setShowMoreOptions] = useState(!!transaction);
+  const [showMoreOptions, setShowMoreOptions] = useState(!!transaction || !!transaction?.showId);
   const [showAllCategoriesModal, setShowAllCategoriesModal] = useState(false);
   const [categorySearchTerm, setCategorySearchTerm] = useState('');
   const [userManuallySetCategory, setUserManuallySetCategory] = useState(false);
@@ -61,18 +74,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [impact, setImpact] = useState<{ compromisedTransaction: Transaction } | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
-  // Objetivos Inteligentes (Aporte na Receita)
-  const [showSmartAporteModal, setShowSmartAporteModal] = useState(false);
-  const [pendingIncomeData, setPendingIncomeData] = useState<any>(null);
-  const [selectedAporteGoalId, setSelectedAporteGoalId] = useState<string>('');
-  const [aporteAmountStr, setAporteAmountStr] = useState<string>('');
-  const [remainderAccountId, setRemainderAccountId] = useState<string>('');
-  const [isCreatingGoalInline, setIsCreatingGoalInline] = useState(false);
-  const [inlineGoalName, setInlineGoalName] = useState('Reserva / Meta');
-  const [inlineGoalTarget, setInlineGoalTarget] = useState('5000');
-  const [inlineGoalDeadline, setInlineGoalDeadline] = useState('2026-12-31');
-  const [inlineGoalIcon, setInlineGoalIcon] = useState('Target');
 
   // Initial Account Assignment
   useEffect(() => {
@@ -103,7 +104,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (transaction.isFixed) {
         setIsFixed(true);
       }
-      setScope(transaction.scope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL');
+      const initialScope = (transaction.scope === 'BUSINESS' || transaction.showId || transaction.categoryId === 'cat_33') ? 'BUSINESS' : 'PERSONAL';
+      setScope(initialScope);
+      if (transaction.showId) {
+        setSelectedShowId(transaction.showId);
+      }
       setShowMoreOptions(true);
     }
   }, [transaction]);
@@ -118,6 +123,16 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       setImpact(null);
     }
   }, [amount, date, type, checkTransactionImpact]);
+
+  // Available Shows (Scheduled, Confirmed, Completed)
+  const availableShows = useMemo(() => {
+    return shows.filter(s => s.status !== 'Cancelado').sort((a, b) => b.date.localeCompare(a.date));
+  }, [shows]);
+
+  const activeLinkedShow = useMemo(() => {
+    if (!selectedShowId) return null;
+    return shows.find(s => s.id === selectedShowId) || null;
+  }, [selectedShowId, shows]);
 
   // Handle Date Selection (Auto-set status for new transactions based on date)
   const handleDateSelect = (newDate: string) => {
@@ -141,9 +156,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     const val = e.target.value;
     setDescription(val);
 
-    // Só tenta extrair valor do texto se não estiver editando transação e o campo amount estiver vazio ou originado de parser
     if (!transaction) {
-      // Regex para encontrar número no final do texto (ex: "Almoço 35", "Gasolina 120,50", "Internet R$ 99,90")
       const match = val.match(/^(.+?)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)$/i);
       if (match) {
         const cleanText = match[1].trim();
@@ -165,12 +178,10 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   // ==========================================
   // 2. MEMÓRIA OPERACIONAL & SUGESTÕES INTELIGENTES
   // ==========================================
-  // Analisa histórico de transações para encontrar padrão para a descrição informada
   const smartSuggestion = useMemo(() => {
     const cleanDesc = description.trim().toLowerCase();
     if (!cleanDesc || cleanDesc.length < 2) return null;
 
-    // Filtra transações correspondentes no histórico
     const matches = transactions.filter(t => {
       const tDesc = t.description.toLowerCase();
       return tDesc === cleanDesc || tDesc.includes(cleanDesc) || cleanDesc.includes(tDesc);
@@ -178,7 +189,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     if (matches.length === 0) return null;
 
-    // Conta frequências de categoria e conta
     const categoryCounts: Record<string, number> = {};
     const accountCounts: Record<string, number> = {};
     let fixedCount = 0;
@@ -193,7 +203,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (t.isFixed) fixedCount++;
     });
 
-    // Pega a categoria mais frequente
     let bestCatId = '';
     let maxCatCount = 0;
     Object.entries(categoryCounts).forEach(([catId, count]) => {
@@ -203,7 +212,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     });
 
-    // Pega a conta mais frequente
     let bestAccId = '';
     let maxAccCount = 0;
     Object.entries(accountCounts).forEach(([accId, count]) => {
@@ -229,7 +237,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     };
   }, [description, transactions, categories, accounts]);
 
-  // Pré-preenchimento automático inteligente com base na sugestão (quando o usuário não alterou manualmente)
+  // Pré-preenchimento automático inteligente
   useEffect(() => {
     if (!transaction && smartSuggestion) {
       if (smartSuggestion.categoryId && !userManuallySetCategory) {
@@ -245,14 +253,26 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   }, [smartSuggestion, userManuallySetCategory, userManuallySetAccount, transaction]);
 
   // ==========================================
-  // 3. RANKING DE CATEGORIAS (RECÊNCIA + FREQUÊNCIA)
+  // 3. RANKING DE CATEGORIAS (FILTRADO POR ESCOPO RIGOROSO)
   // ==========================================
+  const moduleCategories = useMemo(() => {
+    return categories.filter(c => {
+      // Filtrar por tipo (expense / income)
+      if (c.type !== type) return false;
+
+      // Filtrar por escopo estrito
+      if (scope === 'PERSONAL') {
+        return c.scope === 'PERSONAL' || (!c.scope && c.id !== 'cat_33' && c.id !== 'cat_equipamentos' && c.id !== 'cat_producao_shows' && c.id !== 'cat_midia_marketing');
+      } else {
+        return c.scope === 'BUSINESS' || (!c.scope && (c.id === 'cat_33' || c.id === 'cat_equipamentos' || c.id === 'cat_producao_shows' || c.id === 'cat_midia_marketing'));
+      }
+    });
+  }, [categories, type, scope]);
+
   const rankedCategories = useMemo(() => {
-    const activeCats = categories.filter(c => c.type === type);
     const now = new Date().getTime();
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
-    // Calcula score para cada categoria com base no histórico
     const scores: Record<string, number> = {};
 
     transactions.forEach(t => {
@@ -262,13 +282,12 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     });
 
-    // Se houver uma categoria sugerida pelo histórico, ela ganha grande prioridade
     if (smartSuggestion?.categoryId) {
       scores[smartSuggestion.categoryId] = (scores[smartSuggestion.categoryId] || 0) + 100;
     }
 
-    return [...activeCats].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
-  }, [categories, type, transactions, smartSuggestion]);
+    return [...moduleCategories].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+  }, [moduleCategories, transactions, smartSuggestion]);
 
   // Top 4 categorias para a barra rápida inicial
   const topCategories = useMemo(() => rankedCategories.slice(0, 4), [rankedCategories]);
@@ -300,6 +319,64 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleSelectAccount = (id: string) => {
     setAccountId(id);
     setUserManuallySetAccount(true);
+  };
+
+  const handleSelectShow = (showId: string) => {
+    if (showId === '__create_new__') {
+      // Abre modal rápido para criar show
+      setQuickShowContractor(description || '');
+      setQuickShowDate(date || new Date().toISOString().slice(0, 10));
+      const val = parseCurrencyInput(amount);
+      setQuickShowTotalCache(val > 0 ? val.toString() : '1500');
+      setQuickShowLocation('');
+      setQuickShowCity('');
+      setShowQuickCreateShowModal(true);
+      return;
+    }
+
+    setSelectedShowId(showId);
+    if (showId) {
+      setScope('BUSINESS');
+      if (!userManuallySetCategory) {
+        const cacheCategory = categories.find(c => c.id === 'cat_33');
+        if (cacheCategory) {
+          setCategoryId(cacheCategory.id);
+        }
+      }
+    }
+  };
+
+  const handleCreateQuickShow = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickShowContractor.trim() || !quickShowDate) {
+      alert('Preencha o nome do contratante/evento e a data.');
+      return;
+    }
+
+    const cacheVal = parseFloat(quickShowTotalCache) || 0;
+    const newShowId = `show_${generateUUID()}`;
+
+    const newShow: Show = {
+      id: newShowId,
+      name: quickShowContractor.trim(),
+      contractorName: quickShowContractor.trim(),
+      date: quickShowDate,
+      time: '20:00',
+      totalCache: cacheVal,
+      location: quickShowLocation.trim() || 'A definir',
+      city: quickShowCity.trim() || 'São Paulo / SP',
+      status: 'Confirmado',
+      scope: 'BUSINESS',
+      createdAt: Date.now()
+    };
+
+    addShow(newShow);
+    setSelectedShowId(newShowId);
+    setScope('BUSINESS');
+    if (!userManuallySetCategory) {
+      setCategoryId('cat_33');
+    }
+    setShowQuickCreateShowModal(false);
   };
 
   const handleSmartFillWithAI = async () => {
@@ -356,7 +433,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     }
 
-    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
+    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
+    const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
 
     const data: any = {
       type, 
@@ -371,7 +449,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
       interest: (transaction?.debtId && diffAmount > 0.01) ? diffAmount : 0,
-      scope: finalScope
+      scope: finalScope,
+      showId: finalShowId,
+      importedFromBank: transaction?.importedFromBank,
+      originalBankDescription: transaction?.originalBankDescription,
+      bankFitId: transaction?.bankFitId
     };
 
     if (transaction) {
@@ -393,15 +475,23 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleConfirmRecurringUpdate = (updateFuture: boolean) => {
     if (!transaction) return;
     const val = parseCurrencyInput(amount);
-    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
+    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
+    const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
+
     const data: any = {
-      type, amount: val, description, categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
-      accountId, destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
-      date, status,
+      type, 
+      amount: val, 
+      description, 
+      categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
+      accountId, 
+      destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
+      date, 
+      status,
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
-      scope: finalScope
+      scope: finalScope,
+      showId: finalShowId
     };
     updateTransactionSeries({ ...transaction, ...data }, updateFuture);
     onClose();
@@ -465,26 +555,102 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pb-36">
             
-            {transaction?.showId && (
-              <div className="mx-6 mt-3 p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-purple-700 dark:text-purple-300">
-                  <Music size={16} />
-                  <span className="text-xs font-bold">Vinculado a um Show / Evento</span>
-                </div>
-                <a
-                  href={`#/shows?showId=${transaction.showId}`}
-                  onClick={onClose}
-                  className="text-[11px] font-black uppercase text-purple-600 dark:text-purple-400 hover:underline flex items-center"
+            {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO */}
+            <div className="px-6 pt-3">
+              <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center justify-between border border-slate-200/60 dark:border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScope('PERSONAL');
+                    setSelectedShowId('');
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
+                    scope === 'PERSONAL'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                  }`}
                 >
-                  Ver Show <ChevronRight size={12} className="ml-0.5" />
-                </a>
+                  <User size={13} />
+                  <span>👤 Pessoal</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setScope('BUSINESS')}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
+                    scope === 'BUSINESS'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-purple-600'
+                  }`}
+                >
+                  <Music size={13} />
+                  <span>🎸 Músico / Carreira</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ========================================== */}
+            {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO + RECEITA) */}
+            {/* ========================================== */}
+            {scope === 'BUSINESS' && type === 'income' && (
+              <div className="mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/70 space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center">
+                      <Music size={13} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 dark:text-purple-300">
+                      Vincular ao Show / Evento
+                    </span>
+                  </div>
+
+                  {activeLinkedShow && (
+                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                      <CheckCircle2 size={11} />
+                      <span>Vinculado</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={selectedShowId || ''}
+                    onChange={(e) => handleSelectShow(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-800 border-2 border-purple-200 dark:border-purple-700/80 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500 appearance-none pr-8 cursor-pointer"
+                  >
+                    <option value="">-- Não vincular a nenhum show (Receita Geral) --</option>
+                    <option value="__create_new__" className="text-purple-600 font-black">+ Criar Novo Show / Evento...</option>
+                    {availableShows.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.contractorName || s.name} ({new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}) - Cachê: R$ {s.totalCache?.toLocaleString('pt-BR')}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+
+                {activeLinkedShow && (
+                  <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/60 flex items-center justify-between text-[11px]">
+                    <div>
+                      <p className="font-extrabold text-slate-800 dark:text-white">{activeLinkedShow.contractorName || activeLinkedShow.name}</p>
+                      <p className="text-[10px] text-slate-500">{new Date(activeLinkedShow.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {activeLinkedShow.city || activeLinkedShow.location}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedShowId('')}
+                      className="text-[10px] font-bold text-rose-500 hover:underline"
+                    >
+                      Desvincular
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             {/* ========================================== */}
             {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA)   */}
             {/* ========================================== */}
-            <div className="flex flex-col items-center justify-center pt-6 pb-4 relative px-6">
+            <div className="flex flex-col items-center justify-center pt-5 pb-3 relative px-6">
               <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>
                 {type === 'expense' ? 'Valor da Despesa' : type === 'income' ? 'Valor da Receita' : 'Valor da Transferência'}
               </span>
@@ -539,7 +705,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                   value={description} 
                   onChange={handleDescriptionChange} 
                   className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200/80 dark:border-slate-700/80 focus:border-indigo-500 dark:focus:border-indigo-500 px-4 py-4 text-base font-bold text-slate-800 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl transition-all shadow-sm"
-                  placeholder={type === 'expense' ? "O que foi? (ex: Almoço, Gasolina 100)" : type === 'income' ? "De onde veio? (ex: Salário, Freelance 500)" : "Descrição da transferência"}
+                  placeholder={type === 'expense' ? "O que foi? (ex: Almoço, Gasolina 100)" : type === 'income' ? (scope === 'BUSINESS' ? "Cachê / Contratante (ex: Bar do Zé, Casamento Pedro)" : "De onde veio? (ex: Pró-Labore, Salário)") : "Descrição da transferência"}
                   required 
                 />
                 
@@ -618,7 +784,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                 <div className="space-y-2.5">
                   <div className="flex justify-between items-center px-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Categorias Sugeridas & Recentes
+                      {scope === 'BUSINESS' ? 'Categorias do Músico / Empresa' : 'Categorias Pessoais'}
                     </span>
 
                     <button
@@ -777,39 +943,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                       </div>
                     )}
 
-                    {/* Módulo / Conta Pertencente */}
-                    <div className="pt-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">
-                        Módulo / Conta Pertencente
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setScope('PERSONAL')}
-                          className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider border flex items-center justify-center space-x-1.5 transition-all ${
-                            scope !== 'BUSINESS'
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                          }`}
-                        >
-                          <User size={14} />
-                          <span>👤 Pessoal</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setScope('BUSINESS')}
-                          className={`py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider border flex items-center justify-center space-x-1.5 transition-all ${
-                            scope === 'BUSINESS'
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                          }`}
-                        >
-                          <Music size={14} />
-                          <span>🎸 Músico / Empresa</span>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Data/Hora do Lembrete */}
                     {hasReminder && (
                       <div className="animate-fade-in pt-1">
@@ -887,7 +1020,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             <div className="flex justify-between items-center mb-4">
               <div>
                 <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">
-                  {type === 'expense' ? 'Categorias de Despesas' : 'Categorias de Receitas'}
+                  {scope === 'BUSINESS' ? 'Categorias do Músico / Empresa' : 'Categorias Pessoais'} • {type === 'expense' ? 'Despesas' : 'Receitas'}
                 </span>
                 <h3 className="text-lg font-black text-slate-800 dark:text-white">Selecione uma Categoria</h3>
               </div>
@@ -940,6 +1073,108 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               })}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* MODAL: CRIAR NOVO SHOW RÁPIDO              */}
+      {/* ========================================== */}
+      {showQuickCreateShowModal && (
+        <div className="fixed inset-0 bg-slate-950/85 z-[130] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                  <Music size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white">Novo Show / Evento</h3>
+                  <p className="text-[10px] text-slate-500 font-bold">Cadastre e vincule a esta receita</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowQuickCreateShowModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickShow} className="space-y-3">
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1">
+                  Nome do Contratante / Evento *
+                </label>
+                <input 
+                  type="text"
+                  value={quickShowContractor}
+                  onChange={(e) => setQuickShowContractor(e.target.value)}
+                  placeholder="Ex: Bar do Zé, Casamento Pedro & Ana"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1 flex items-center">
+                    <Calendar size={11} className="mr-1 text-purple-500" /> Data *
+                  </label>
+                  <input 
+                    type="date"
+                    value={quickShowDate}
+                    onChange={(e) => setQuickShowDate(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1 flex items-center">
+                    <DollarSign size={11} className="mr-1 text-purple-500" /> Cachê Total (R$)
+                  </label>
+                  <input 
+                    type="number"
+                    step="any"
+                    value={quickShowTotalCache}
+                    onChange={(e) => setQuickShowTotalCache(e.target.value)}
+                    placeholder="1500"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1 flex items-center">
+                  <MapPin size={11} className="mr-1 text-purple-500" /> Local / Casa de Show
+                </label>
+                <input 
+                  type="text"
+                  value={quickShowLocation}
+                  onChange={(e) => setQuickShowLocation(e.target.value)}
+                  placeholder="Ex: Av. Paulista, 1000"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="pt-2 flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickCreateShowModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold uppercase"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase shadow-md active:scale-95 transition"
+                >
+                  Criar e Vincular
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
