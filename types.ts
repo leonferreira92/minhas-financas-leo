@@ -135,7 +135,7 @@ export interface ShowExpenses {
   others: number;       // Outros
 }
 
-export type ShowPaymentType = 'Sinal' | 'Parcela' | 'Restante' | 'Pagamento final' | 'Bônus' | 'Extra' | 'Outro';
+export type ShowPaymentType = 'Sinal' | 'Parcela' | 'Restante' | 'Pagamento final' | 'Extra' | 'Bônus' | 'Outro';
 export type ShowPaymentStatus = 'Agendado' | 'Recebido' | 'Previsto' | 'Cancelado';
 
 export interface ShowPayment {
@@ -188,7 +188,8 @@ export interface Show {
   time: string;           // Horário de início
   endTime?: string;       // Horário de término
   duration?: string;      // Duração estimada (ex: 3h)
-  totalCache: number;     // Valor total do cachê
+  totalCache: number;     // Valor total do cachê contratado
+  extraAmount?: number;   // Valor de extras adicionados à contratação
   cacheCombined?: number; // Cachê combinado (para compatibilidade anterior)
   cacheReceived?: number; // Cachê recebido totalizado (para compatibilidade anterior)
   paymentMethod?: string; // Forma de pagamento do show

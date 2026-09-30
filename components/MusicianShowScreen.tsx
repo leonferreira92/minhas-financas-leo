@@ -25,7 +25,7 @@ export const MusicianShowScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ShowScreenTab>('agenda');
   
   // Modals state
-  const [selectedShowForDetail, setSelectedShowForDetail] = useState<Show | null>(null);
+  const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
   const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
@@ -34,16 +34,19 @@ export const MusicianShowScreen: React.FC = () => {
   // Smart Alerts toggle
   const [showAlertsExpanded, setShowAlertsExpanded] = useState(false);
 
+  // Derive active selected show reactively from context
+  const selectedShowForDetail = useMemo(() => {
+    if (!selectedShowId) return null;
+    return shows.find(s => s.id === selectedShowId) || null;
+  }, [shows, selectedShowId]);
+
   // Deep-link from Financeiro/Extrato via ?showId=...
   useEffect(() => {
     const showId = searchParams.get('showId');
     if (showId) {
-      const found = shows.find(s => s.id === showId);
-      if (found) {
-        setSelectedShowForDetail(found);
-      }
+      setSelectedShowId(showId);
     }
-  }, [searchParams, shows]);
+  }, [searchParams]);
 
   // Compute smart alerts
   const smartAlerts = useMemo(() => {
@@ -71,7 +74,7 @@ export const MusicianShowScreen: React.FC = () => {
   };
 
   const handleOpenEditModal = (show: Show) => {
-    setSelectedShowForDetail(null);
+    setSelectedShowId(null);
     setShowToEdit(show);
     setIsFormModalOpen(true);
   };
@@ -92,12 +95,6 @@ export const MusicianShowScreen: React.FC = () => {
       ...show,
       status: newStatus
     });
-    if (selectedShowForDetail && selectedShowForDetail.id === show.id) {
-      setSelectedShowForDetail({
-        ...selectedShowForDetail,
-        status: newStatus
-      });
-    }
   };
 
   const handleConfirmQuote = (show: Show) => {
@@ -105,7 +102,7 @@ export const MusicianShowScreen: React.FC = () => {
     const conflict = checkScheduleConflict(shows, show.date, show.time, show.endTime, show.id);
     if (conflict.hasConflict) {
       // If there's a conflict, open detail to let the user review
-      setSelectedShowForDetail(show);
+      setSelectedShowId(show.id);
     } else {
       updateShow({
         ...show,
@@ -116,10 +113,7 @@ export const MusicianShowScreen: React.FC = () => {
 
   const handleAlertClick = (alert: ShowSmartAlert) => {
     if (alert.showId) {
-      const found = shows.find(s => s.id === alert.showId);
-      if (found) {
-        setSelectedShowForDetail(found);
-      }
+      setSelectedShowId(alert.showId);
     }
   };
 
@@ -294,7 +288,7 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'agenda' && (
         <ShowCalendarView
           shows={shows}
-          onSelectShow={show => setSelectedShowForDetail(show)}
+          onSelectShow={show => setSelectedShowId(show.id)}
           onOpenCreateModal={date => handleOpenCreateModal(date, 'Confirmado')}
         />
       )}
@@ -303,7 +297,7 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'upcoming' && (
         <UpcomingShowsList
           shows={shows}
-          onSelectShow={show => setSelectedShowForDetail(show)}
+          onSelectShow={show => setSelectedShowId(show.id)}
           onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Confirmado')}
         />
       )}
@@ -312,7 +306,7 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'quotes' && (
         <ShowQuotesView
           shows={shows}
-          onSelectShow={show => setSelectedShowForDetail(show)}
+          onSelectShow={show => setSelectedShowId(show.id)}
           onConfirmQuote={handleConfirmQuote}
           onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Orçamento')}
         />
@@ -322,7 +316,7 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'history' && (
         <ShowHistoryView
           shows={shows}
-          onSelectShow={show => setSelectedShowForDetail(show)}
+          onSelectShow={show => setSelectedShowId(show.id)}
         />
       )}
 
@@ -330,7 +324,7 @@ export const MusicianShowScreen: React.FC = () => {
       {selectedShowForDetail && (
         <ShowDetailModal
           show={selectedShowForDetail}
-          onClose={() => setSelectedShowForDetail(null)}
+          onClose={() => setSelectedShowId(null)}
           onEdit={show => handleOpenEditModal(show)}
           onDelete={showId => deleteShow(showId, true)}
           onUpdateStatus={handleQuickUpdateStatus}

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { getIcon } from '../constants';
 import { 
@@ -25,11 +25,32 @@ export const TransactionList = () => {
   const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
 
   // Filters State
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlightId') || searchParams.get('txId');
   const [monthFilter, setMonthFilter] = useState(() => new Date().toISOString().slice(0, 7));
   const [activeFilter, setActiveFilter] = useState<'all' | 'income' | 'expense' | 'pending'>('all');
   const [categoryIdFilter, setCategoryIdFilter] = useState('');
   const [accountIdFilter, setAccountIdFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Handle auto-focus and open transaction details when highlightId is present
+  useEffect(() => {
+    if (highlightId && transactions.length > 0) {
+      const found = transactions.find(t => t.id === highlightId);
+      if (found) {
+        if (found.date) {
+          setMonthFilter(found.date.slice(0, 7));
+        }
+        setEditingTransaction(found);
+        setTimeout(() => {
+          const el = document.getElementById(`tx-${highlightId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 200);
+      }
+    }
+  }, [highlightId, transactions]);
 
   // Balance Summary calculation
   const lastDayOfMonth = useMemo(() => {
@@ -371,12 +392,17 @@ export const TransactionList = () => {
                     const isPending = t.status === 'pending';
                     const account = accounts.find(a => a.id === t.accountId);
 
+                    const isHighlighted = t.id === highlightId;
+
                     return (
                       <div
                         key={t.id}
+                        id={`tx-${t.id}`}
                         onClick={() => setEditingTransaction(t)}
                         className={`group p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                          isPending
+                          isHighlighted
+                            ? 'ring-2 ring-indigo-500 shadow-lg bg-indigo-50/50 dark:bg-indigo-950/40 border-indigo-400'
+                            : isPending
                             ? 'bg-amber-500/[0.03] dark:bg-amber-500/[0.015] border-amber-200/60 dark:border-amber-900/40 hover:bg-amber-500/[0.06]'
                             : 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 hover:bg-slate-100/80 dark:hover:bg-slate-800/80'
                         }`}

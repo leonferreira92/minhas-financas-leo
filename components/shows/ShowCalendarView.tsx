@@ -133,7 +133,10 @@ export const ShowCalendarView: React.FC<Props> = ({
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
     const thisMonthShows = shows.filter(s => s.date && s.date.startsWith(monthPrefix));
     const confirmed = thisMonthShows.filter(s => s.status === 'Confirmado');
-    const totalRevenue = confirmed.reduce((acc, s) => acc + (s.totalCache ?? s.cacheCombined ?? 0), 0);
+    const totalRevenue = confirmed.reduce((acc, s) => {
+      const fin = getShowFinancialSummary(s);
+      return acc + fin.totalPredicted;
+    }, 0);
     return {
       totalShows: confirmed.length,
       totalRevenue,
@@ -398,14 +401,14 @@ export const ShowCalendarView: React.FC<Props> = ({
 
                     <div className="text-right">
                       <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 block tabular-nums">
-                        {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
+                        {formatCurrency(fin.totalPredicted)}
                       </span>
                       {fin.totalPending > 0 && show.status === 'Confirmado' && (
                         <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block">
                           Falta: {formatCurrency(fin.totalPending)}
                         </span>
                       )}
-                      {fin.totalPending === 0 && fin.totalContracted > 0 && (
+                      {fin.totalPending === 0 && fin.totalPredicted > 0 && (
                         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">
                           100% Recebido
                         </span>

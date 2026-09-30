@@ -106,6 +106,7 @@ export const ShowFormModal: React.FC<Props> = ({
       location: location.trim(),
       totalCache: cacheVal,
       cacheCombined: cacheVal,
+      extraAmount: existingShow?.extraAmount || 0,
       status,
       notes: notes.trim()
     };

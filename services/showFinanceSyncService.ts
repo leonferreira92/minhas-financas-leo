@@ -2,19 +2,22 @@ import { Show, ShowPayment, ShowExpenseItem, Transaction, Category } from '../ty
 import { generateUUID } from './uuidHelper';
 
 export interface ShowFinancialSummary {
-  totalContracted: number;
-  totalReceived: number;
-  totalPending: number;
-  totalExpenses: number;
-  netProfit: number; // Fórmula solicitada: total recebido - total de despesas
-  remainingToSchedule: number;
-  isOverTotal: boolean;
-  excessAmount: number;
+  totalContracted: number;     // Valor contratado (cachê base)
+  extraAmount: number;         // Valor de extras adicionados
+  totalPredicted: number;      // Valor total previsto = Valor contratado + Extras
+  totalReceived: number;       // Total recebido = soma dos pagamentos efetivamente recebidos
+  totalPending: number;        // Total a receber = Valor total previsto - Total recebido
+  totalScheduled: number;      // Total agendado em parcelas pendentes
+  totalExpenses: number;       // Total de despesas registradas
+  netProfit: number;           // Lucro líquido = Total recebido - Total de despesas
+  remainingToSchedule: number; // Valor previsto ainda não parcelado/agendado
+  isOverTotal: boolean;        // Se a soma dos pagamentos excede o total previsto
+  excessAmount: number;        // Valor excedente se houver
 }
 
 /**
- * Converte dados legados ou incompletos de um Show para o formato moderno e seguro
- * Garante que nenhum campo undefined, nulo ou string cause falhas na aplicação
+ * Converte dados legados ou incompletos de um Show para o formato moderno e seguro.
+ * NÃO cria parcelas automáticas se o show não tiver pagamentos cadastrados.
  */
 export function normalizeShowFinancials(show: Show, fallbackAccountId: string): Show {
   if (!show) {
@@ -23,7 +26,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
 
   const normalized: Show = { ...show };
 
-  // 1. Normalizar Cachê Total (compatibilidade com cacheCombined antigo)
+  // 1. Normalizar Cachê Total Contratado e Extras
   const totalCacheVal = Number(
     normalized.totalCache !== undefined && normalized.totalCache !== null
       ? normalized.totalCache
@@ -32,7 +35,10 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
       : 0
   ) || 0;
 
+  const extraAmountVal = Number(normalized.extraAmount) || 0;
+
   normalized.totalCache = totalCacheVal;
+  normalized.extraAmount = extraAmountVal;
   normalized.cacheCombined = totalCacheVal;
   normalized.cacheReceived = Number(normalized.cacheReceived) || 0;
 
@@ -57,6 +63,8 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
   normalized.createdAt = normalized.createdAt || Date.now();
 
   // 5. Normalizar Pagamentos (payments)
+  // REGRA FUNDAMENTAL: Se não houver pagamentos, manter array vazio []!
+  // NUNCA criar parcelas automáticas fictícias.
   if (Array.isArray(normalized.payments) && normalized.payments.length > 0) {
     normalized.payments = normalized.payments.map((p, idx) => ({
       id: p.id || generateUUID(),
@@ -70,10 +78,10 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
       transactionId: p.transactionId
     }));
   } else if (Array.isArray(normalized.receipts) && normalized.receipts.length > 0) {
-    // Migrar receipts legados
+    // Migrar receipts legados existentes
     normalized.payments = normalized.receipts.map(r => ({
       id: r.id || generateUUID(),
-      type: r.type === 'Sinal' ? 'Sinal' : (r.type === 'Bônus' ? 'Bônus' : 'Parcela'),
+      type: r.type === 'Sinal' ? 'Sinal' : (r.type === 'Bônus' ? 'Bônus' : (r.type === 'Pagamento final' ? 'Pagamento final' : 'Parcela')),
       amount: Number(r.amount) || 0,
       expectedDate: r.expectedDate || normalized.date,
       effectiveDate: r.effectiveDate,
@@ -82,21 +90,8 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
       transactionId: r.transactionId
     }));
   } else {
-    // Se não tem nem payments nem receipts, criar o primeiro pagamento previsto com base no totalCache
-    if (totalCacheVal > 0) {
-      normalized.payments = [
-        {
-          id: generateUUID(),
-          type: 'Parcela',
-          amount: totalCacheVal,
-          expectedDate: normalized.date,
-          accountId: fallbackAccountId,
-          status: normalized.status === 'Realizado' ? 'Recebido' : 'Agendado'
-        }
-      ];
-    } else {
-      normalized.payments = [];
-    }
+    // Sem pagamentos cadastrados = lista vazia
+    normalized.payments = [];
   }
 
   // 6. Normalizar Despesas (expenseItems)
@@ -111,7 +106,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
       transactionId: e.transactionId
     }));
   } else if (normalized.expenses) {
-    // Migrar expenses legadas
+    // Migrar expenses legadas se existirem
     const items: ShowExpenseItem[] = [];
     const exp = normalized.expenses;
     const expAcc = normalized.expenseAccountId || fallbackAccountId;
@@ -176,15 +171,21 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
 }
 
 /**
- * Calcula o resumo financeiro de um Show
- * Resiliente contra undefined, null, NaN e estruturas incompletas
+ * Calcula o resumo financeiro de um Show conforme as regras de negócio:
+ * - Valor total previsto = Valor contratado + Extras
+ * - Total recebido = soma dos pagamentos efetivamente recebidos
+ * - Total a receber = Valor total previsto - Total recebido
+ * - Lucro líquido = Total recebido - Total de despesas
  */
 export function getShowFinancialSummary(show: Show | null | undefined): ShowFinancialSummary {
   if (!show) {
     return {
       totalContracted: 0,
+      extraAmount: 0,
+      totalPredicted: 0,
       totalReceived: 0,
       totalPending: 0,
+      totalScheduled: 0,
       totalExpenses: 0,
       netProfit: 0,
       remainingToSchedule: 0,
@@ -200,9 +201,12 @@ export function getShowFinancialSummary(show: Show | null | undefined): ShowFina
       ? show.cacheCombined
       : 0
   ) || 0;
+
+  const extraAmount = Number(show.extraAmount) || 0;
+  const totalPredicted = Math.round((totalContracted + extraAmount) * 100) / 100;
   
   let totalReceived = 0;
-  let totalPending = 0;
+  let totalScheduled = 0;
 
   if (Array.isArray(show.payments) && show.payments.length > 0) {
     show.payments.forEach(p => {
@@ -211,7 +215,7 @@ export function getShowFinancialSummary(show: Show | null | undefined): ShowFina
       if (p.status === 'Recebido') {
         totalReceived += amt;
       } else if (p.status === 'Agendado' || p.status === 'Previsto') {
-        totalPending += amt;
+        totalScheduled += amt;
       }
     });
   } else if (Array.isArray(show.receipts) && show.receipts.length > 0) {
@@ -221,17 +225,15 @@ export function getShowFinancialSummary(show: Show | null | undefined): ShowFina
       if (r.status === 'Recebido') {
         totalReceived += amt;
       } else {
-        totalPending += amt;
+        totalScheduled += amt;
       }
     });
-  } else {
-    if (show.status === 'Realizado') {
-      totalReceived = totalContracted;
-    } else {
-      totalPending = totalContracted;
-    }
   }
 
+  // Total a receber = Valor total previsto - Total recebido
+  const totalPending = Math.max(0, Math.round((totalPredicted - totalReceived) * 100) / 100);
+
+  // Despesas
   let totalExpenses = 0;
   if (Array.isArray(show.expenseItems) && show.expenseItems.length > 0) {
     show.expenseItems.forEach(e => {
@@ -246,20 +248,24 @@ export function getShowFinancialSummary(show: Show | null | undefined): ShowFina
                     (Number(show.expenses.others) || 0);
   }
 
-  // Lucro líquido = total recebido - total de despesas (conforme regra do usuário)
-  const netProfit = totalReceived - totalExpenses;
+  // Lucro líquido = Total recebido - Total de despesas
+  const netProfit = Math.round((totalReceived - totalExpenses) * 100) / 100;
 
-  const scheduledTotal = totalReceived + totalPending;
-  const rawRemaining = totalContracted - scheduledTotal;
+  // Soma de todos os pagamentos cadastrados (recebidos + agendados)
+  const totalPaymentsSum = totalReceived + totalScheduled;
+  const rawRemaining = totalPredicted - totalPaymentsSum;
   const remainingToSchedule = rawRemaining > 0 ? Math.round(rawRemaining * 100) / 100 : 0;
-  const isOverTotal = scheduledTotal > (totalContracted + 0.01);
-  const rawExcess = scheduledTotal - totalContracted;
+  const isOverTotal = totalPaymentsSum > (totalPredicted + 0.01);
+  const rawExcess = totalPaymentsSum - totalPredicted;
   const excessAmount = rawExcess > 0 ? Math.round(rawExcess * 100) / 100 : 0;
 
   return {
     totalContracted: Math.round(totalContracted * 100) / 100,
+    extraAmount: Math.round(extraAmount * 100) / 100,
+    totalPredicted: Math.round(totalPredicted * 100) / 100,
     totalReceived: Math.round(totalReceived * 100) / 100,
     totalPending: Math.round(totalPending * 100) / 100,
+    totalScheduled: Math.round(totalScheduled * 100) / 100,
     totalExpenses: Math.round(totalExpenses * 100) / 100,
     netProfit: Math.round(netProfit * 100) / 100,
     remainingToSchedule: isNaN(remainingToSchedule) ? 0 : remainingToSchedule,
@@ -318,7 +324,7 @@ function resolveExpenseCategoryId(categoryName: string, categories: Category[]):
 
 /**
  * Sincroniza um Show com a lista de movimentações financeiras sem criar duplicações.
- * Atualiza pagamentos e despesas mantendo vínculo bidirecional (showId, showPaymentId, showExpenseId).
+ * Atualiza pagamentos e despesas mantendo vínculo bidirecional por ID estável (showId, showPaymentId, showExpenseId).
  */
 export function syncShowWithTransactions(
   show: Show,
@@ -346,7 +352,7 @@ export function syncShowWithTransactions(
     const txStatus = isReceived ? 'paid' : 'pending';
     const txDescription = `Show: ${showTitle} (${p.type || 'Parcela'})`;
 
-    // Encontrar movimentação existente vinculada
+    // Encontrar movimentação existente vinculada pelo ID estável
     let existingTxIndex = txs.findIndex(t => 
       (p.transactionId && t.id === p.transactionId) ||
       (t.showPaymentId === p.id) ||
@@ -379,7 +385,7 @@ export function syncShowWithTransactions(
       txs[existingTxIndex] = updatedTx;
       p.transactionId = updatedTx.id;
     } else {
-      // Criar nova movimentação
+      // Criar nova movimentação vinculada
       const newTxId = p.transactionId || generateUUID();
       const newTx: Transaction = {
         id: newTxId,
@@ -435,7 +441,7 @@ export function syncShowWithTransactions(
       txs[existingTxIndex] = updatedTx;
       e.transactionId = updatedTx.id;
     } else {
-      // Criar nova movimentação de despesa
+      // Criar nova movimentação de despesa vinculada
       const newTxId = e.transactionId || generateUUID();
       const newTx: Transaction = {
         id: newTxId,
@@ -460,7 +466,7 @@ export function syncShowWithTransactions(
   updatedShow.expenseItems = updatedExpenses;
 
   // 3. LIMPEZA DE TRANSAÇÕES ÓRFÃS DESTE SHOW
-  // Se um pagamento ou despesa foi removido do show, remove a transação correspondente (desde que não seja um lançamento avulso)
+  // Se um pagamento ou despesa foi removido do show, remove a transação correspondente
   txs = txs.filter(t => {
     if (t.showId !== show.id) return true;
     if (t.showPaymentId && !validPaymentIds.has(t.showPaymentId)) return false;
@@ -483,7 +489,6 @@ export function cancelShowFutureTransactions(
 ): Transaction[] {
   if (!transactions) return [];
   return transactions.filter(t => {
-    // Se for deste show e estiver pendente/agendada, remove da projeção futura
     if (t.showId === showId && t.status === 'pending') {
       return false;
     }

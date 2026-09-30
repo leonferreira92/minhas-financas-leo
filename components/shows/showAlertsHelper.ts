@@ -189,7 +189,7 @@ export function generateShowSmartAlerts(shows: Show[]): ShowSmartAlert[] {
     }
   });
 
-  // 5. DISCREPÂNCIA FINANCEIRA NO SHOW (Cachê contratado diferente da soma dos pagamentos)
+  // 5. DISCREPÂNCIA FINANCEIRA NO SHOW (Valor total previsto diferente da soma dos pagamentos)
   shows.filter(s => s.status === 'Confirmado' && s.date && s.date >= todayStr).forEach(s => {
     const fin = getShowFinancialSummary(s);
     if (fin.isOverTotal) {
@@ -197,8 +197,8 @@ export function generateShowSmartAlerts(shows: Show[]): ShowSmartAlert[] {
         id: `discrepancy_over_${s.id}`,
         type: 'financial_discrepancy',
         severity: 'medium',
-        title: `Pagamentos ultrapassam cachê (${s.contractorName || s.name})`,
-        description: `A soma das parcelas excede o cachê em ${formatCurrency(fin.excessAmount)}.`,
+        title: `Pagamentos ultrapassam valor previsto (${s.contractorName || s.name})`,
+        description: `A soma das parcelas excede o valor total previsto em ${formatCurrency(fin.excessAmount)}.`,
         showId: s.id,
         showName: s.contractorName || s.name,
         actionLabel: 'Ajustar'
@@ -209,7 +209,7 @@ export function generateShowSmartAlerts(shows: Show[]): ShowSmartAlert[] {
         type: 'financial_discrepancy',
         severity: 'info',
         title: `Falta agendar restante (${s.contractorName || s.name})`,
-        description: `${formatCurrency(fin.remainingToSchedule)} do cachê ainda não foram parcelados.`,
+        description: `${formatCurrency(fin.remainingToSchedule)} do valor previsto ainda não foram parcelados.`,
         showId: s.id,
         showName: s.contractorName || s.name,
         actionLabel: 'Agendar'

@@ -269,12 +269,14 @@ export const UpcomingShowsList: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Resumo Financeiro no Destaque: Valor e Quanto Falta Receber */}
+                    {/* Resumo Financeiro no Destaque: Valor e Quanto Falta Receber */}
                   <div className="pt-3 border-t border-indigo-800/60 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-indigo-300 block">Cachê Contratado</span>
+                      <span className="text-[10px] uppercase font-bold text-indigo-300 block">
+                        {fin.extraAmount > 0 ? 'Total Previsto (Cachê + Extras)' : 'Cachê Contratado'}
+                      </span>
                       <span className="text-lg font-black text-emerald-400 tabular-nums">
-                        {formatCurrency(fin.totalContracted)}
+                        {formatCurrency(fin.totalPredicted)}
                       </span>
                     </div>
 
@@ -334,7 +336,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
 
                       <div className="text-right">
                         <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums block">
-                          {formatCurrency(fin.totalContracted)}
+                          {formatCurrency(fin.totalPredicted)}
                         </span>
                         {fin.totalPending > 0 ? (
                           <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block">
