@@ -504,6 +504,70 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       StorageService.saveTransactions(txs);
       return txs;
     });
+
+    // Sincronização bidirecional automática com o módulo de Shows
+    if (updatedT.showId) {
+      const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+      setShows(prevShows => {
+        let showsModified = false;
+        const updatedShows = prevShows.map(show => {
+          if (show.id !== updatedT.showId) return show;
+          let paymentChanged = false;
+          let expenseChanged = false;
+
+          let newPayments = Array.isArray(show.payments) ? [...show.payments] : [];
+          if (updatedT.showPaymentId || updatedT.type === 'income') {
+            newPayments = newPayments.map(p => {
+              if ((updatedT.showPaymentId && p.id === updatedT.showPaymentId) || p.transactionId === updatedT.id) {
+                paymentChanged = true;
+                return {
+                  ...p,
+                  amount: Number(updatedT.amount) || p.amount,
+                  status: updatedT.status === 'paid' ? 'Recebido' : 'Agendado',
+                  effectiveDate: updatedT.status === 'paid' ? (p.effectiveDate || updatedT.date) : undefined,
+                  expectedDate: updatedT.date || p.expectedDate,
+                  accountId: updatedT.accountId || p.accountId
+                };
+              }
+              return p;
+            });
+          }
+
+          let newExpenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
+          if (updatedT.showExpenseId || updatedT.type === 'expense') {
+            newExpenses = newExpenses.map(e => {
+              if ((updatedT.showExpenseId && e.id === updatedT.showExpenseId) || e.transactionId === updatedT.id) {
+                expenseChanged = true;
+                return {
+                  ...e,
+                  amount: Number(updatedT.amount) || e.amount,
+                  date: updatedT.date || e.date,
+                  accountId: updatedT.accountId || e.accountId
+                };
+              }
+              return e;
+            });
+          }
+
+          if (paymentChanged || expenseChanged) {
+            showsModified = true;
+            return normalizeShowFinancials({
+              ...show,
+              payments: newPayments,
+              expenseItems: newExpenses
+            }, defaultAccId);
+          }
+
+          return show;
+        });
+
+        if (showsModified) {
+          StorageService.saveShows(updatedShows);
+          return updatedShows;
+        }
+        return prevShows;
+      });
+    }
   };
   
   const updateTransactionSeries = (updatedT: Transaction, updateFuture: boolean) => {

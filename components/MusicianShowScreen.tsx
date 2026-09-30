@@ -61,7 +61,15 @@ export const MusicianShowScreen: React.FC = () => {
   }, [shows]);
 
   // Count upcoming confirmed shows
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const getDeviceToday = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = useMemo(() => getDeviceToday(), []);
   const upcomingConfirmedCount = useMemo(() => {
     return shows.filter(s => s.status === 'Confirmado' && (s.date || '') >= todayStr).length;
   }, [shows, todayStr]);
@@ -91,6 +99,9 @@ export const MusicianShowScreen: React.FC = () => {
   };
 
   const handleQuickUpdateStatus = (show: Show, newStatus: ShowStatus) => {
+    if (newStatus === 'Realizado' && (show.date || '') > todayStr) {
+      return;
+    }
     updateShow({
       ...show,
       status: newStatus

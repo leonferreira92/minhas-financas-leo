@@ -49,9 +49,9 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCancelPrompt, setShowCancelPrompt] = useState(false);
 
-  // Extras modal state
-  const [isEditExtrasOpen, setIsEditExtrasOpen] = useState(false);
-  const [extraInput, setExtraInput] = useState('');
+  // Settlement & temporal validation modal states
+  const [settlementPrompt, setSettlementPrompt] = useState<{ isOpen: boolean; pendingAmount: number } | null>(null);
+  const [futureDateWarning, setFutureDateWarning] = useState<string | null>(null);
 
   // Default Account
   const defaultAccountId = accounts && accounts.length > 0 ? accounts[0].id : 'acc_bank';
@@ -114,18 +114,18 @@ export const ShowDetailModal: React.FC<Props> = ({
   useEffect(() => {
     setIsAddPaymentOpen(false);
     setIsAddExpenseOpen(false);
-    setIsEditExtrasOpen(false);
     setEditingPaymentId(null);
     setPaymentWarning(null);
+    setSettlementPrompt(null);
+    setFutureDateWarning(null);
     if (initialShow?.date) {
       setPayDate(initialShow.date);
       setPayEffectiveDate(initialShow.date);
       setExpDate(initialShow.date);
     }
-    setExtraInput(String(initialShow?.extraAmount || ''));
     setPayAccountId(defaultAccountId);
     setExpAccountId(defaultAccountId);
-  }, [initialShow?.id, initialShow?.date, initialShow?.extraAmount, defaultAccountId]);
+  }, [initialShow?.id, initialShow?.date, defaultAccountId]);
 
   // 2. APÓS TODOS OS HOOKS DECLARADOS, VERIFICAÇÃO DE DADOS
   if (!show) return null;
@@ -231,20 +231,24 @@ export const ShowDetailModal: React.FC<Props> = ({
     const amountVal = parseFloat(payAmount.replace(',', '.')) || 0;
     if (amountVal <= 0) return;
 
-    // Regra: Total dos pagamentos <= Valor contratado + Extras
-    const currentSumWithoutThis = (show.payments || [])
-      .filter(p => p.id !== editingPaymentId)
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    
-    const newTotal = currentSumWithoutThis + amountVal;
-    const totalPredicted = finSummary.totalPredicted;
+    const isExtra = payType === 'Extra' || payType === 'Bônus';
 
-    if (newTotal > totalPredicted + 0.01) {
-      const diff = newTotal - totalPredicted;
-      setPaymentWarning(
-        `A soma dos pagamentos (${formatCurrency(newTotal)}) ultrapassa o valor total previsto do show (${formatCurrency(totalPredicted)} = ${formatCurrency(finSummary.totalContracted)} contratado + ${formatCurrency(finSummary.extraAmount)} extras) em ${formatCurrency(diff)}. Ajuste o valor da parcela ou adicione o valor em Extras.`
-      );
-      return;
+    // Regra: Se não for pagamento do tipo Extra, a soma dos pagamentos não pode ultrapassar o valor total previsto
+    if (!isExtra) {
+      const currentSumWithoutThis = (show.payments || [])
+        .filter(p => p.id !== editingPaymentId && p.type !== 'Extra' && p.type !== 'Bônus')
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      
+      const newTotal = currentSumWithoutThis + amountVal;
+      const totalContracted = finSummary.totalContracted;
+
+      if (newTotal > totalContracted + 0.01) {
+        const diff = newTotal - totalContracted;
+        setPaymentWarning(
+          `A soma das parcelas base (${formatCurrency(newTotal)}) ultrapassa o valor contratado do cachê (${formatCurrency(totalContracted)}) em ${formatCurrency(diff)}. Para valores adicionais acordados, selecione o Tipo de Pagamento "Extra".`
+        );
+        return;
+      }
     }
 
     // Lógica inteligente de status por data:
@@ -340,18 +344,111 @@ export const ShowDetailModal: React.FC<Props> = ({
     updateShow(updatedShow);
   };
 
-  // Salvar Extras do Show
-  const handleSaveExtras = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = parseFloat(extraInput.replace(',', '.')) || 0;
+  // Temporalidade e Fluxo Inteligente ao Marcar como Realizado
+  const isFutureShow = (show.date || '') > todayStr;
+
+  const handleInitiateMarkRealizado = () => {
+    // 1. Bloqueio de show futuro
+    if (isFutureShow) {
+      setFutureDateWarning(
+        `Este show está agendado para uma data futura (${formatDateBR(show.date)}) e não pode ser marcado como Realizado antes da data do evento acontecer.`
+      );
+      return;
+    }
+
+    // 2. Verificar se existe saldo restante a receber
+    const pending = finSummary.totalPending;
+    if (pending > 0.01) {
+      setSettlementPrompt({ isOpen: true, pendingAmount: pending });
+    } else {
+      const updatedShow: Show = normalizeShowFinancials({
+        ...show,
+        status: 'Realizado'
+      }, defaultAccountId);
+
+      setLocalShow(updatedShow);
+      updateShow(updatedShow);
+    }
+  };
+
+  // Opção A1: [Sim, Já Recebi] - Converte pendentes para recebido e liquida saldo restante real
+  const handleSettleAsReceived = () => {
+    // 1. Converter todos os pagamentos existentes que estavam Agendados/Pendentes para Recebidos
+    const convertedPayments = (show.payments || []).map(p => {
+      if (p.status === 'Agendado' || p.status === 'Previsto') {
+        return {
+          ...p,
+          status: 'Recebido' as ShowPaymentStatus,
+          effectiveDate: p.effectiveDate || todayStr
+        };
+      }
+      return p;
+    });
+
+    // 2. Calcular o Saldo Restante Real após a conversão
+    const totalReceivedAfterConversion = convertedPayments
+      .filter(p => p.status === 'Recebido')
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    
+    const realRemaining = Math.max(0, Math.round((finSummary.totalPredicted - totalReceivedAfterConversion) * 100) / 100);
+
+    // 3. Se houver diferença não coberta, lança um único pagamento de quitação
+    if (realRemaining > 0.01) {
+      convertedPayments.push({
+        id: generateUUID(),
+        type: 'Restante',
+        amount: realRemaining,
+        expectedDate: todayStr,
+        effectiveDate: todayStr,
+        accountId: defaultAccountId,
+        status: 'Recebido',
+        notes: 'Quitação na conclusão do show'
+      });
+    }
+
     const updatedShow: Show = normalizeShowFinancials({
       ...show,
-      extraAmount: Math.max(0, val)
+      status: 'Realizado',
+      payments: convertedPayments
     }, defaultAccountId);
 
     setLocalShow(updatedShow);
     updateShow(updatedShow);
-    setIsEditExtrasOpen(false);
+    setSettlementPrompt(null);
+  };
+
+  // Opção A2: [Manter Pendente] - Mantém agendados e lança diferença faltante como agendada
+  const handleKeepAsPending = () => {
+    const currentPayments = [...(show.payments || [])];
+    
+    // Soma de todos os pagamentos já lançados (recebidos ou agendados)
+    const totalRegistered = currentPayments
+      .filter(p => p.status !== 'Cancelado')
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+    const unallocated = Math.max(0, Math.round((finSummary.totalPredicted - totalRegistered) * 100) / 100);
+
+    if (unallocated > 0.01) {
+      currentPayments.push({
+        id: generateUUID(),
+        type: 'Restante',
+        amount: unallocated,
+        expectedDate: todayStr,
+        accountId: defaultAccountId,
+        status: 'Agendado',
+        notes: 'Saldo pendente a receber'
+      });
+    }
+
+    const updatedShow: Show = normalizeShowFinancials({
+      ...show,
+      status: 'Realizado',
+      payments: currentPayments
+    }, defaultAccountId);
+
+    setLocalShow(updatedShow);
+    updateShow(updatedShow);
+    setSettlementPrompt(null);
   };
 
   // Salvar Despesa
@@ -574,15 +671,6 @@ export const ShowDetailModal: React.FC<Props> = ({
                   </div>
 
                   <div className="text-right space-y-1">
-                    <button
-                      onClick={() => {
-                        setExtraInput(String(show.extraAmount || ''));
-                        setIsEditExtrasOpen(true);
-                      }}
-                      className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-[10px] font-black uppercase tracking-wider text-amber-400 border border-amber-500/30 transition"
-                    >
-                      {show.extraAmount ? 'Editar Extras' : '+ Adicionar Extra'}
-                    </button>
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
                         Lucro Líquido
@@ -996,13 +1084,26 @@ export const ShowDetailModal: React.FC<Props> = ({
                   )}
 
                   {show.status !== 'Realizado' && (
-                    <button
-                      onClick={() => onUpdateStatus(show, 'Realizado')}
-                      className="p-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/20 text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center space-x-1"
-                    >
-                      <CheckCircle2 size={14} strokeWidth={2.5} />
-                      <span>Marcar Realizado</span>
-                    </button>
+                    <div className="space-y-1">
+                      <button
+                        onClick={handleInitiateMarkRealizado}
+                        disabled={isFutureShow}
+                        className={`w-full p-2.5 rounded-xl border text-xs font-black uppercase tracking-wider transition flex items-center justify-center space-x-1 ${
+                          isFutureShow
+                            ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-60'
+                            : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/20 active:scale-95'
+                        }`}
+                        title={isFutureShow ? 'Este evento é futuro e não pode ser marcado como Realizado antes da data' : 'Marcar Show como Realizado'}
+                      >
+                        <CheckCircle2 size={14} strokeWidth={2.5} />
+                        <span>Marcar Realizado</span>
+                      </button>
+                      {isFutureShow && (
+                        <span className="text-[9px] text-slate-400 font-bold block text-center">
+                          Disponível em {formatDateBR(show.date)} (evento futuro)
+                        </span>
+                      )}
+                    </div>
                   )}
 
                   {show.status !== 'Orçamento' && (
@@ -1051,73 +1152,82 @@ export const ShowDetailModal: React.FC<Props> = ({
 
         </div>
 
-        {/* MODAL ADICIONAR / EDITAR EXTRAS */}
-        {isEditExtrasOpen && (
+        {/* MODAL DE CONFIRMAÇÃO DE QUITAÇÃO AO MARCAR SHOW COMO REALIZADO */}
+        {settlementPrompt && settlementPrompt.isOpen && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-md space-y-4 shadow-2xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center">
-                  <Tag size={16} className="mr-2 text-amber-500" />
-                  Extras da Contratação
+                  <CheckCircle2 size={18} className="mr-2 text-purple-600" />
+                  Conclusão e Quitação do Show
                 </h3>
-                <button onClick={() => setIsEditExtrasOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setSettlementPrompt(null)} className="text-slate-400 hover:text-slate-600">
                   <X size={18} />
                 </button>
               </div>
 
-              <p className="text-xs text-slate-500">
-                Informe valores adicionais acordados com o contratante que aumentam o valor total previsto do show.
+              <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/40 space-y-2 text-center">
+                <span className="text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 block tracking-wider">
+                  Saldo Pendente a Receber
+                </span>
+                <span className="text-2xl font-black text-purple-700 dark:text-purple-300 tabular-nums block">
+                  {formatCurrency(settlementPrompt.pendingAmount)}
+                </span>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  O show possui um saldo restante de <strong>{formatCurrency(settlementPrompt.pendingAmount)}</strong>. Como deseja lançar este valor?
+                </p>
+              </div>
+
+              <div className="space-y-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSettleAsReceived}
+                  className="w-full p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md flex items-center justify-center space-x-2"
+                >
+                  <Check size={16} strokeWidth={3} />
+                  <span>Sim, Já Recebi (Quitar Agora)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleKeepAsPending}
+                  className="w-full p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-black uppercase tracking-wider transition active:scale-95 flex items-center justify-center space-x-2"
+                >
+                  <Clock size={16} />
+                  <span>Manter Pendente (Receber Depois)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSettlementPrompt(null)}
+                  className="w-full p-2 text-center text-xs font-bold text-slate-400 hover:text-slate-600 transition"
+                >
+                  Voltar sem alterar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE AVISO: BLOQUEIO DE SHOW FUTURO */}
+        {futureDateWarning && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-60 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 border-2 border-amber-500 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl text-center">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Evento em Data Futura
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                {futureDateWarning}
               </p>
-
-              <form onSubmit={handleSaveExtras} className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black uppercase text-slate-400 block mb-1">
-                    Valor de Extras (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={extraInput}
-                    onChange={e => setExtraInput(e.target.value)}
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-base font-black tabular-nums text-slate-900 dark:text-white outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Cachê Base:</span>
-                    <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(finSummary.totalContracted)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Extras:</span>
-                    <span className="font-bold text-amber-500">+{formatCurrency(parseFloat(extraInput.replace(',', '.')) || 0)}</span>
-                  </div>
-                  <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
-                    <span className="font-bold text-slate-600 dark:text-slate-300">Novo Total Previsto:</span>
-                    <span className="font-black text-indigo-600 dark:text-indigo-400">
-                      {formatCurrency(finSummary.totalContracted + (parseFloat(extraInput.replace(',', '.')) || 0))}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditExtrasOpen(false)}
-                    className="w-1/2 p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="w-1/2 p-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase hover:bg-indigo-700 shadow-md"
-                  >
-                    Salvar Extras
-                  </button>
-                </div>
-              </form>
+              <button
+                onClick={() => setFutureDateWarning(null)}
+                className="w-full p-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-wider hover:bg-indigo-700 transition"
+              >
+                Entendi
+              </button>
             </div>
           </div>
         )}

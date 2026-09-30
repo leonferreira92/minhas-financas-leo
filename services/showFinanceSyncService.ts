@@ -36,11 +36,43 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
   ) || 0;
 
   const extraAmountVal = Number(normalized.extraAmount) || 0;
+  
+  // Normalizar Pagamentos primeiro para calcular extras
+  let currentPayments: ShowPayment[] = [];
+  if (Array.isArray(normalized.payments) && normalized.payments.length > 0) {
+    currentPayments = normalized.payments.map((p, idx) => ({
+      id: p.id || generateUUID(),
+      type: p.type || (idx === 0 && normalized.payments!.length > 1 ? 'Sinal' : 'Parcela'),
+      amount: Number(p.amount) || 0,
+      expectedDate: p.expectedDate || normalized.date,
+      effectiveDate: p.effectiveDate,
+      accountId: p.accountId || fallbackAccountId,
+      status: p.status === 'Recebido' ? 'Recebido' : (p.status === 'Cancelado' ? 'Cancelado' : 'Agendado'),
+      notes: p.notes || '',
+      transactionId: p.transactionId
+    }));
+  } else if (Array.isArray(normalized.receipts) && normalized.receipts.length > 0) {
+    currentPayments = normalized.receipts.map(r => ({
+      id: r.id || generateUUID(),
+      type: r.type === 'Sinal' ? 'Sinal' : (r.type === 'Bônus' ? 'Bônus' : (r.type === 'Pagamento final' ? 'Pagamento final' : 'Parcela')),
+      amount: Number(r.amount) || 0,
+      expectedDate: r.expectedDate || normalized.date,
+      effectiveDate: r.effectiveDate,
+      accountId: r.accountId || fallbackAccountId,
+      status: r.status === 'Recebido' ? 'Recebido' : 'Agendado',
+      transactionId: r.transactionId
+    }));
+  }
+
+  const extraFromPayments = currentPayments
+    .filter(p => p && (p.type === 'Extra' || p.type === 'Bônus') && p.status !== 'Cancelado')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
   normalized.totalCache = totalCacheVal;
-  normalized.extraAmount = extraAmountVal;
+  normalized.extraAmount = Math.max(extraAmountVal, extraFromPayments);
   normalized.cacheCombined = totalCacheVal;
   normalized.cacheReceived = Number(normalized.cacheReceived) || 0;
+  normalized.payments = currentPayments;
 
   // 2. Normalizar Contratante e Nome
   const contractor = (normalized.contractorName || normalized.name || 'Apresentação').trim();
@@ -202,7 +234,13 @@ export function getShowFinancialSummary(show: Show | null | undefined): ShowFina
       : 0
   ) || 0;
 
-  const extraAmount = Number(show.extraAmount) || 0;
+  const extraFromPayments = Array.isArray(show.payments)
+    ? show.payments
+        .filter(p => p && (p.type === 'Extra' || p.type === 'Bônus') && p.status !== 'Cancelado')
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    : 0;
+
+  const extraAmount = Math.max(Number(show.extraAmount) || 0, extraFromPayments);
   const totalPredicted = Math.round((totalContracted + extraAmount) * 100) / 100;
   
   let totalReceived = 0;
