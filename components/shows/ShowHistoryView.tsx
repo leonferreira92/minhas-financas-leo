@@ -44,15 +44,28 @@ export const ShowHistoryView: React.FC<Props> = ({
       .sort((a, b) => b.date.localeCompare(a.date)); // Most recent first
   }, [shows, filterType, searchQuery, todayStr]);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const formatCurrency = (val?: number | string | null) => {
+    const num = typeof val === 'number' ? val : parseFloat(String(val || 0).replace(',', '.')) || 0;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isNaN(num) ? 0 : num);
   };
 
-  const formatDateLabel = (dStr: string) => {
+  const formatDateLabel = (dStr?: string | null) => {
     if (!dStr) return '';
-    const [y, m, d] = dStr.split('-');
-    const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+    try {
+      const parts = String(dStr).split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+      }
+      const dt = new Date(String(dStr));
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+    } catch {}
+    return String(dStr || '');
   };
 
   return (
@@ -152,7 +165,7 @@ export const ShowHistoryView: React.FC<Props> = ({
 
                 <div className="text-right shrink-0">
                   <span className="text-xs font-black tabular-nums text-slate-900 dark:text-white block">
-                    {formatCurrency(show.totalCache)}
+                    {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
                   </span>
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
                     Ver ficha

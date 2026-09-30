@@ -30,27 +30,49 @@ export const UpcomingShowsList: React.FC<Props> = ({
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [shows, todayStr]);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const formatCurrency = (val?: number | string | null) => {
+    const num = typeof val === 'number' ? val : parseFloat(String(val || 0).replace(',', '.')) || 0;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isNaN(num) ? 0 : num);
   };
 
-  const formatDateLabel = (dStr: string) => {
+  const formatDateLabel = (dStr?: string | null) => {
     if (!dStr) return '';
-    const [y, m, d] = dStr.split('-');
-    const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
-    return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+    try {
+      const parts = String(dStr).split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+        }
+      }
+      const dt = new Date(String(dStr));
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+      }
+    } catch {}
+    return String(dStr || '');
   };
 
-  const getDaysCountdownTag = (dStr: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(dStr + 'T12:00:00');
-    target.setHours(0, 0, 0, 0);
-    const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const getDaysCountdownTag = (dStr?: string | null) => {
+    if (!dStr) return { label: 'Data a definir', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const target = new Date(String(dStr).includes('T') ? String(dStr) : `${dStr}T12:00:00`);
+      target.setHours(0, 0, 0, 0);
+      const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diff === 0) return { label: 'Hoje', color: 'bg-rose-500/10 text-rose-600 border-rose-200' };
-    if (diff === 1) return { label: 'Amanhã', color: 'bg-amber-500/10 text-amber-600 border-amber-200' };
-    return { label: `Em ${diff} dias`, color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+      if (isNaN(diff)) {
+        return { label: 'Agendado', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+      }
+      if (diff === 0) return { label: 'Hoje', color: 'bg-rose-500/10 text-rose-600 border-rose-200' };
+      if (diff === 1) return { label: 'Amanhã', color: 'bg-amber-500/10 text-amber-600 border-amber-200' };
+      if (diff < 0) return { label: 'Passado', color: 'bg-slate-100 text-slate-500 border-slate-200' };
+      return { label: `Em ${diff} dias`, color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+    } catch {
+      return { label: 'Agendado', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700' };
+    }
   };
 
   return (
@@ -116,7 +138,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
                   </div>
 
                   <span className="text-base font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                    {formatCurrency(show.totalCache)}
+                    {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
                   </span>
                 </div>
 

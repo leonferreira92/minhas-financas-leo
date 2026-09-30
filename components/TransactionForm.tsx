@@ -12,6 +12,7 @@ import {
 import { getIcon, parseCurrencyInput } from '../constants';
 import { GeminiService } from '../services/geminiService';
 import { CalendarModal } from './CalendarModal';
+import { generateUUID } from '../services/uuidHelper';
 
 interface Props {
   onClose: () => void;
@@ -439,7 +440,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       alert("Preencha o nome e valor da meta.");
       return;
     }
-    const newId = crypto.randomUUID();
+    const newId = generateUUID();
     addGoal({
       id: newId,
       name: inlineGoalName.trim(),

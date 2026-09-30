@@ -2,19 +2,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Show, ShowStatus, ShowPayment, ShowExpenseItem, ShowPaymentType, ShowPaymentStatus } from '../../types';
 import { useFinance } from '../../context/FinanceContext';
 import { 
-  X, Calendar, Clock, MapPin, User, DollarSign, 
-  FileText, CheckCircle2, AlertCircle, Edit3, Trash2, 
-  TrendingUp, Wallet, ArrowDownRight, ArrowUpRight, 
-  Check, ArrowRight, Sparkles, Plus, AlertTriangle, 
-  Receipt, ArrowRightLeft, ShieldCheck, ChevronRight, CornerDownRight 
+  X, Calendar, Clock, MapPin, DollarSign, 
+  CheckCircle2, AlertCircle, Edit3, Trash2, 
+  Wallet, ArrowDownRight, 
+  Check, Plus, AlertTriangle, 
+  ChevronRight 
 } from 'lucide-react';
 import { getStatusConfig } from './types';
 import { 
   normalizeShowFinancials, 
-  getShowFinancialSummary, 
-  syncShowWithTransactions, 
-  cancelShowFutureTransactions 
+  getShowFinancialSummary 
 } from '../../services/showFinanceSyncService';
+import { generateUUID } from '../../services/uuidHelper';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -42,21 +41,35 @@ export const ShowDetailModal: React.FC<Props> = ({
   onDelete,
   onUpdateStatus
 }) => {
+  // 1. TODAS AS CHAMADAS DE HOOKS NO TOPO ABSOLUTO (SEM CONDICIONAIS OU RETORNOS ANTECIPADOS)
   const navigate = useNavigate();
-  const { accounts, categories, transactions, updateShow } = useFinance();
+  const { accounts, transactions, updateShow } = useFinance();
 
   const [activeSection, setActiveSection] = useState<'info' | 'finance' | 'contract' | 'history'>('finance');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCancelPrompt, setShowCancelPrompt] = useState(false);
 
-  // Normalized show state
-  const defaultAccountId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+  // Normalized show state (executado incondicionalmente)
+  const defaultAccountId = accounts && accounts.length > 0 ? accounts[0].id : 'acc_bank';
   const show = useMemo(() => {
     if (!initialShow) return null;
-    return normalizeShowFinancials(initialShow, defaultAccountId);
+    try {
+      return normalizeShowFinancials(initialShow, defaultAccountId);
+    } catch (e) {
+      console.error('Erro ao normalizar dados do show:', e);
+      return initialShow;
+    }
   }, [initialShow, defaultAccountId]);
 
-  // Payment Form State
+  // Transações vinculadas (executado incondicionalmente no topo de hooks)
+  const linkedTransactions = useMemo(() => {
+    if (!transactions || !show?.id) return [];
+    return transactions
+      .filter(t => t && t.showId === show.id)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }, [transactions, show?.id]);
+
+  // Payment Form State (executado incondicionalmente)
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [payType, setPayType] = useState<ShowPaymentType>('Parcela');
@@ -67,7 +80,7 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [payNotes, setPayNotes] = useState('');
   const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
 
-  // Expense Form State
+  // Expense Form State (executado incondicionalmente)
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [expCategory, setExpCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [expAmount, setExpAmount] = useState('');
@@ -75,28 +88,56 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [expAccountId, setExpAccountId] = useState(defaultAccountId);
   const [expNotes, setExpNotes] = useState('');
 
+  // Sincronizar estados dos formulários quando o show selecionado mudar
+  useEffect(() => {
+    setIsAddPaymentOpen(false);
+    setIsAddExpenseOpen(false);
+    setEditingPaymentId(null);
+    setPaymentWarning(null);
+    if (initialShow?.date) {
+      setPayDate(initialShow.date);
+      setExpDate(initialShow.date);
+    }
+    setPayAccountId(defaultAccountId);
+    setExpAccountId(defaultAccountId);
+  }, [initialShow?.id, initialShow?.date, defaultAccountId]);
+
+  // 2. APÓS TODOS OS HOOKS DECLARADOS, VERIFICAÇÃO DE DADOS
   if (!show) return null;
 
   const statusCfg = getStatusConfig(show.status);
   const finSummary = getShowFinancialSummary(show);
 
-  const formatCurrency = (val?: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+  const formatCurrency = (val?: number | string | null) => {
+    const num = typeof val === 'number' ? val : parseFloat(String(val || 0).replace(',', '.')) || 0;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isNaN(num) ? 0 : num);
   };
 
-  const formatDateBR = (dStr: string) => {
+  const formatDateBR = (dStr?: string | null) => {
     if (!dStr) return '';
-    const [y, m, d] = dStr.split('-');
-    const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
-    return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    try {
+      const s = String(dStr);
+      if (s.includes('-')) {
+        const [y, m, d] = s.split('-');
+        const numY = Number(y);
+        const numM = Number(m);
+        const numD = Number(d);
+        if (!isNaN(numY) && !isNaN(numM) && !isNaN(numD)) {
+          const date = new Date(numY, numM - 1, numD, 12, 0, 0);
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+          }
+        }
+      }
+      const dt = new Date(s);
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      return s;
+    } catch {
+      return String(dStr || '');
+    }
   };
-
-  // Transactions linked to this show
-  const linkedTransactions = useMemo(() => {
-    return transactions
-      .filter(t => t.showId === show.id)
-      .sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactions, show.id]);
 
   // Handle open add payment modal with auto remaining balance calculation
   const handleOpenAddPayment = (suggestRestante = false) => {
@@ -124,14 +165,16 @@ export const ShowDetailModal: React.FC<Props> = ({
     const amountVal = parseFloat(payAmount.replace(',', '.')) || 0;
     if (amountVal <= 0) return;
 
+    const currentTotalCache = Number(show.totalCache ?? show.cacheCombined ?? 0);
+
     // Check if total exceeds totalCache
     const currentSumWithoutThis = (show.payments || [])
       .filter(p => p.id !== editingPaymentId)
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     
     const newTotal = currentSumWithoutThis + amountVal;
-    if (newTotal > show.totalCache + 0.01 && payType !== 'Extra') {
-      setPaymentWarning(`A soma dos pagamentos (R$ ${newTotal.toFixed(2)}) ultrapassa o cachê contratado (R$ ${show.totalCache.toFixed(2)}). Se este valor é adicional, selecione o tipo "Extra" ou reajuste o valor do show.`);
+    if (newTotal > currentTotalCache + 0.01 && payType !== 'Extra') {
+      setPaymentWarning(`A soma dos pagamentos (${formatCurrency(newTotal)}) ultrapassa o cachê contratado (${formatCurrency(currentTotalCache)}). Se este valor é adicional, selecione o tipo "Extra" ou reajuste o valor do show.`);
       return;
     }
 
@@ -152,7 +195,7 @@ export const ShowDetailModal: React.FC<Props> = ({
       }
     } else {
       currentPayments.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         type: payType,
         amount: amountVal,
         expectedDate: payDate,
@@ -210,7 +253,7 @@ export const ShowDetailModal: React.FC<Props> = ({
 
     const currentExpenses = [...(show.expenseItems || [])];
     currentExpenses.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       category: expCategory,
       amount: amountVal,
       date: expDate,
@@ -242,7 +285,8 @@ export const ShowDetailModal: React.FC<Props> = ({
     const currentSum = (show.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     updateShow({
       ...show,
-      totalCache: currentSum
+      totalCache: currentSum,
+      cacheCombined: currentSum
     });
     setPaymentWarning(null);
   };
@@ -254,10 +298,10 @@ export const ShowDetailModal: React.FC<Props> = ({
 
     const currentPayments = [...(show.payments || [])];
     currentPayments.push({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       type: 'Restante',
       amount: remaining,
-      expectedDate: show.date,
+      expectedDate: show.date || new Date().toISOString().slice(0, 10),
       accountId: defaultAccountId,
       status: 'Agendado'
     });
@@ -772,7 +816,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                   <span className="text-xs font-bold text-slate-500">Valor Total Contratado:</span>
                   <span className="text-base font-black text-slate-900 dark:text-white tabular-nums">
-                    {formatCurrency(show.totalCache)}
+                    {formatCurrency(show.totalCache ?? show.cacheCombined)}
                   </span>
                 </div>
               </div>
@@ -833,12 +877,12 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <div className="flex justify-between">
                   <span className="text-slate-400">Data de Cadastro:</span>
                   <span className="font-bold text-slate-700 dark:text-slate-300">
-                    {show.createdAt ? new Date(show.createdAt).toLocaleDateString('pt-BR') : 'Original'}
+                    {show.createdAt && !isNaN(new Date(show.createdAt).getTime()) ? new Date(show.createdAt).toLocaleDateString('pt-BR') : 'Original'}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Identificador:</span>
-                  <span className="font-mono text-[10px] text-slate-500">{show.id.slice(0, 8)}...</span>
+                  <span className="font-mono text-[10px] text-slate-500">{String(show.id || '').slice(0, 8)}...</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400">Situação:</span>

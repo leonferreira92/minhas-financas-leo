@@ -193,13 +193,15 @@ export const MusicianShowScreen: React.FC = () => {
       )}
 
       {/* MODAL: DETALHES DO SHOW (FICHA EM 4 SEÇÕES) */}
-      <ShowDetailModal
-        show={selectedShowForDetail}
-        onClose={() => setSelectedShowForDetail(null)}
-        onEdit={show => handleOpenEditModal(show)}
-        onDelete={showId => deleteShow(showId, true)}
-        onUpdateStatus={handleQuickUpdateStatus}
-      />
+      {selectedShowForDetail && (
+        <ShowDetailModal
+          show={selectedShowForDetail}
+          onClose={() => setSelectedShowForDetail(null)}
+          onEdit={show => handleOpenEditModal(show)}
+          onDelete={showId => deleteShow(showId, true)}
+          onUpdateStatus={handleQuickUpdateStatus}
+        />
+      )}
 
       {/* MODAL: CADASTRO / EDIÇÃO DO SHOW COM VERIFICAÇÃO DE CONFLITO */}
       <ShowFormModal

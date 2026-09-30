@@ -90,14 +90,28 @@ export const ShowCalendarView: React.FC<Props> = ({
   }, [showsOnSelectedDate]);
 
   // Format currency helper
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const formatCurrency = (val?: number | string | null) => {
+    const num = typeof val === 'number' ? val : parseFloat(String(val || 0).replace(',', '.')) || 0;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isNaN(num) ? 0 : num);
   };
 
   const formatSelectedDateHeader = (dateStr: string) => {
-    const [y, m, d] = dateStr.split('-');
-    const dt = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
-    return dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    if (!dateStr) return '';
+    try {
+      const parts = String(dateStr).split('-');
+      if (parts.length === 3) {
+        const [y, m, d] = parts;
+        const dt = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0);
+        if (!isNaN(dt.getTime())) {
+          return dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        }
+      }
+      const dt = new Date(dateStr);
+      if (!isNaN(dt.getTime())) {
+        return dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      }
+    } catch {}
+    return String(dateStr);
   };
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -293,7 +307,7 @@ export const ShowCalendarView: React.FC<Props> = ({
                     </div>
 
                     <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                      {formatCurrency(show.totalCache)}
+                      {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
                     </span>
                   </div>
 

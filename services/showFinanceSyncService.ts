@@ -1,4 +1,5 @@
-import { Show, ShowPayment, ShowExpenseItem, Transaction, Category, Account } from '../types';
+import { Show, ShowPayment, ShowExpenseItem, Transaction, Category } from '../types';
+import { generateUUID } from './uuidHelper';
 
 export interface ShowFinancialSummary {
   totalContracted: number;
@@ -12,33 +13,82 @@ export interface ShowFinancialSummary {
 }
 
 /**
- * Converte dados legados de um Show (receipts e expenses) para o formato moderno de payments e expenseItems
+ * Converte dados legados ou incompletos de um Show para o formato moderno e seguro
+ * Garante que nenhum campo undefined, nulo ou string cause falhas na aplicação
  */
 export function normalizeShowFinancials(show: Show, fallbackAccountId: string): Show {
+  if (!show) {
+    throw new Error('Show não fornecido para normalização');
+  }
+
   const normalized: Show = { ...show };
 
-  // Migrar receipts legados para payments se payments estiver vazio
-  if ((!normalized.payments || normalized.payments.length === 0) && normalized.receipts && normalized.receipts.length > 0) {
+  // 1. Normalizar Cachê Total (compatibilidade com cacheCombined antigo)
+  const totalCacheVal = Number(
+    normalized.totalCache !== undefined && normalized.totalCache !== null
+      ? normalized.totalCache
+      : normalized.cacheCombined !== undefined && normalized.cacheCombined !== null
+      ? normalized.cacheCombined
+      : 0
+  ) || 0;
+
+  normalized.totalCache = totalCacheVal;
+  normalized.cacheCombined = totalCacheVal;
+  normalized.cacheReceived = Number(normalized.cacheReceived) || 0;
+
+  // 2. Normalizar Contratante e Nome
+  const contractor = (normalized.contractorName || normalized.name || 'Apresentação').trim();
+  normalized.contractorName = contractor;
+  normalized.name = normalized.name ? normalized.name.trim() : contractor;
+
+  // 3. Normalizar Status
+  if (normalized.status === 'Agendado') {
+    normalized.status = 'Aguardando confirmação';
+  } else if (!normalized.status) {
+    normalized.status = 'Confirmado';
+  }
+
+  // 4. Normalizar Dados de Agenda
+  normalized.date = normalized.date || new Date().toISOString().slice(0, 10);
+  normalized.time = normalized.time || '20:00';
+  normalized.location = normalized.location || '';
+  normalized.city = normalized.city || '';
+  normalized.eventType = normalized.eventType || 'Show / Apresentação';
+  normalized.createdAt = normalized.createdAt || Date.now();
+
+  // 5. Normalizar Pagamentos (payments)
+  if (Array.isArray(normalized.payments) && normalized.payments.length > 0) {
+    normalized.payments = normalized.payments.map((p, idx) => ({
+      id: p.id || generateUUID(),
+      type: p.type || (idx === 0 && normalized.payments!.length > 1 ? 'Sinal' : 'Parcela'),
+      amount: Number(p.amount) || 0,
+      expectedDate: p.expectedDate || normalized.date,
+      effectiveDate: p.effectiveDate,
+      accountId: p.accountId || fallbackAccountId,
+      status: p.status === 'Recebido' ? 'Recebido' : (p.status === 'Cancelado' ? 'Cancelado' : 'Agendado'),
+      notes: p.notes || '',
+      transactionId: p.transactionId
+    }));
+  } else if (Array.isArray(normalized.receipts) && normalized.receipts.length > 0) {
+    // Migrar receipts legados
     normalized.payments = normalized.receipts.map(r => ({
-      id: r.id,
-      type: r.type === 'Sinal' ? 'Sinal' : 'Parcela',
+      id: r.id || generateUUID(),
+      type: r.type === 'Sinal' ? 'Sinal' : (r.type === 'Bônus' ? 'Bônus' : 'Parcela'),
       amount: Number(r.amount) || 0,
-      expectedDate: r.expectedDate || show.date,
+      expectedDate: r.expectedDate || normalized.date,
       effectiveDate: r.effectiveDate,
       accountId: r.accountId || fallbackAccountId,
       status: r.status === 'Recebido' ? 'Recebido' : 'Agendado',
       transactionId: r.transactionId
     }));
-  }
-
-  // Se não tem nem payments nem receipts, criar o primeiro pagamento previsto baseado no cachê total
-  if (!normalized.payments || normalized.payments.length === 0) {
-    if (normalized.totalCache > 0) {
+  } else {
+    // Se não tem nem payments nem receipts, criar o primeiro pagamento previsto com base no totalCache
+    if (totalCacheVal > 0) {
       normalized.payments = [
         {
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           type: 'Parcela',
-          amount: Number(normalized.totalCache),
+          amount: totalCacheVal,
           expectedDate: normalized.date,
           accountId: fallbackAccountId,
           status: normalized.status === 'Realizado' ? 'Recebido' : 'Agendado'
@@ -49,15 +99,26 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
     }
   }
 
-  // Migrar expenses legadas se expenseItems estiver vazio
-  if ((!normalized.expenseItems || normalized.expenseItems.length === 0) && normalized.expenses) {
+  // 6. Normalizar Despesas (expenseItems)
+  if (Array.isArray(normalized.expenseItems) && normalized.expenseItems.length > 0) {
+    normalized.expenseItems = normalized.expenseItems.map(e => ({
+      id: e.id || generateUUID(),
+      category: e.category || 'Outros',
+      amount: Number(e.amount) || 0,
+      date: e.date || normalized.date,
+      accountId: e.accountId || fallbackAccountId,
+      notes: e.notes || '',
+      transactionId: e.transactionId
+    }));
+  } else if (normalized.expenses) {
+    // Migrar expenses legadas
     const items: ShowExpenseItem[] = [];
     const exp = normalized.expenses;
     const expAcc = normalized.expenseAccountId || fallbackAccountId;
 
     if (Number(exp.fuel) > 0) {
       items.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         category: 'Combustível',
         amount: Number(exp.fuel),
         date: normalized.date,
@@ -67,7 +128,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
     }
     if (Number(exp.food) > 0) {
       items.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         category: 'Alimentação',
         amount: Number(exp.food),
         date: normalized.date,
@@ -77,7 +138,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
     }
     if (Number(exp.toll) > 0) {
       items.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         category: 'Pedágio',
         amount: Number(exp.toll),
         date: normalized.date,
@@ -87,7 +148,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
     }
     if (Number(exp.commission) > 0) {
       items.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         category: 'Comissão',
         amount: Number(exp.commission),
         date: normalized.date,
@@ -97,7 +158,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
     }
     if (Number(exp.others) > 0) {
       items.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         category: 'Outros',
         amount: Number(exp.others),
         date: normalized.date,
@@ -107,9 +168,7 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
     }
 
     normalized.expenseItems = items;
-  }
-
-  if (!normalized.expenseItems) {
+  } else {
     normalized.expenseItems = [];
   }
 
@@ -118,27 +177,51 @@ export function normalizeShowFinancials(show: Show, fallbackAccountId: string): 
 
 /**
  * Calcula o resumo financeiro de um Show
+ * Resiliente contra undefined, null, NaN e estruturas incompletas
  */
-export function getShowFinancialSummary(show: Show): ShowFinancialSummary {
-  const totalContracted = Number(show.totalCache) || 0;
+export function getShowFinancialSummary(show: Show | null | undefined): ShowFinancialSummary {
+  if (!show) {
+    return {
+      totalContracted: 0,
+      totalReceived: 0,
+      totalPending: 0,
+      totalExpenses: 0,
+      netProfit: 0,
+      remainingToSchedule: 0,
+      isOverTotal: false,
+      excessAmount: 0
+    };
+  }
+
+  const totalContracted = Number(
+    show.totalCache !== undefined && show.totalCache !== null
+      ? show.totalCache
+      : show.cacheCombined !== undefined && show.cacheCombined !== null
+      ? show.cacheCombined
+      : 0
+  ) || 0;
   
   let totalReceived = 0;
   let totalPending = 0;
 
-  if (show.payments && show.payments.length > 0) {
+  if (Array.isArray(show.payments) && show.payments.length > 0) {
     show.payments.forEach(p => {
+      if (!p) return;
+      const amt = Number(p.amount) || 0;
       if (p.status === 'Recebido') {
-        totalReceived += Number(p.amount) || 0;
+        totalReceived += amt;
       } else if (p.status === 'Agendado' || p.status === 'Previsto') {
-        totalPending += Number(p.amount) || 0;
+        totalPending += amt;
       }
     });
-  } else if (show.receipts && show.receipts.length > 0) {
+  } else if (Array.isArray(show.receipts) && show.receipts.length > 0) {
     show.receipts.forEach(r => {
+      if (!r) return;
+      const amt = Number(r.amount) || 0;
       if (r.status === 'Recebido') {
-        totalReceived += Number(r.amount) || 0;
+        totalReceived += amt;
       } else {
-        totalPending += Number(r.amount) || 0;
+        totalPending += amt;
       }
     });
   } else {
@@ -150,8 +233,9 @@ export function getShowFinancialSummary(show: Show): ShowFinancialSummary {
   }
 
   let totalExpenses = 0;
-  if (show.expenseItems && show.expenseItems.length > 0) {
+  if (Array.isArray(show.expenseItems) && show.expenseItems.length > 0) {
     show.expenseItems.forEach(e => {
+      if (!e) return;
       totalExpenses += Number(e.amount) || 0;
     });
   } else if (show.expenses) {
@@ -166,19 +250,21 @@ export function getShowFinancialSummary(show: Show): ShowFinancialSummary {
   const netProfit = totalReceived - totalExpenses;
 
   const scheduledTotal = totalReceived + totalPending;
-  const remainingToSchedule = Math.max(0, parseFloat((totalContracted - scheduledTotal).toFixed(2)));
-  const isOverTotal = scheduledTotal > totalContracted + 0.01;
-  const excessAmount = Math.max(0, parseFloat((scheduledTotal - totalContracted).toFixed(2)));
+  const rawRemaining = totalContracted - scheduledTotal;
+  const remainingToSchedule = rawRemaining > 0 ? Math.round(rawRemaining * 100) / 100 : 0;
+  const isOverTotal = scheduledTotal > (totalContracted + 0.01);
+  const rawExcess = scheduledTotal - totalContracted;
+  const excessAmount = rawExcess > 0 ? Math.round(rawExcess * 100) / 100 : 0;
 
   return {
-    totalContracted: parseFloat(totalContracted.toFixed(2)),
-    totalReceived: parseFloat(totalReceived.toFixed(2)),
-    totalPending: parseFloat(totalPending.toFixed(2)),
-    totalExpenses: parseFloat(totalExpenses.toFixed(2)),
-    netProfit: parseFloat(netProfit.toFixed(2)),
-    remainingToSchedule,
-    isOverTotal,
-    excessAmount
+    totalContracted: Math.round(totalContracted * 100) / 100,
+    totalReceived: Math.round(totalReceived * 100) / 100,
+    totalPending: Math.round(totalPending * 100) / 100,
+    totalExpenses: Math.round(totalExpenses * 100) / 100,
+    netProfit: Math.round(netProfit * 100) / 100,
+    remainingToSchedule: isNaN(remainingToSchedule) ? 0 : remainingToSchedule,
+    isOverTotal: Boolean(isOverTotal),
+    excessAmount: isNaN(excessAmount) ? 0 : excessAmount
   };
 }
 
@@ -186,25 +272,42 @@ export function getShowFinancialSummary(show: Show): ShowFinancialSummary {
  * Localiza ou determina a categoria apropriada para receita e despesas de show
  */
 function resolveIncomeCategoryId(categories: Category[]): string {
-  const showCat = categories.find(c => c.id === 'cat_33' || (c.type === 'income' && (c.name.toLowerCase().includes('show') || c.name.toLowerCase().includes('cachê') || c.name.toLowerCase().includes('cache'))));
+  if (!categories || categories.length === 0) return 'cat_33';
+  const showCat = categories.find(c => 
+    c.id === 'cat_33' || 
+    (c.type === 'income' && (
+      c.name.toLowerCase().includes('show') || 
+      c.name.toLowerCase().includes('cachê') || 
+      c.name.toLowerCase().includes('cache')
+    ))
+  );
   if (showCat) return showCat.id;
   const anyIncome = categories.find(c => c.type === 'income');
   return anyIncome ? anyIncome.id : 'cat_33';
 }
 
 function resolveExpenseCategoryId(categoryName: string, categories: Category[]): string {
-  const lower = categoryName.toLowerCase();
+  if (!categories || categories.length === 0) return 'cat_1';
+  const lower = (categoryName || '').toLowerCase();
   
   if (lower.includes('combust')) {
     const found = categories.find(c => c.type === 'expense' && c.name.toLowerCase().includes('combust'));
     if (found) return found.id;
   }
   if (lower.includes('aliment') || lower.includes('lanche')) {
-    const found = categories.find(c => c.type === 'expense' && (c.name.toLowerCase().includes('restauran') || c.name.toLowerCase().includes('aliment') || c.name.toLowerCase().includes('delivery')));
+    const found = categories.find(c => c.type === 'expense' && (
+      c.name.toLowerCase().includes('restauran') || 
+      c.name.toLowerCase().includes('aliment') || 
+      c.name.toLowerCase().includes('delivery')
+    ));
     if (found) return found.id;
   }
   if (lower.includes('pedág') || lower.includes('estacion') || lower.includes('transp')) {
-    const found = categories.find(c => c.type === 'expense' && (c.name.toLowerCase().includes('transp') || c.name.toLowerCase().includes('taxa') || c.name.toLowerCase().includes('imposto')));
+    const found = categories.find(c => c.type === 'expense' && (
+      c.name.toLowerCase().includes('transp') || 
+      c.name.toLowerCase().includes('taxa') || 
+      c.name.toLowerCase().includes('imposto')
+    ));
     if (found) return found.id;
   }
 
@@ -226,24 +329,24 @@ export function syncShowWithTransactions(
   updatedTransactions: Transaction[];
 } {
   const updatedShow: Show = { ...show };
-  let txs = [...existingTransactions];
+  let txs = Array.isArray(existingTransactions) ? [...existingTransactions] : [];
 
   const incomeCatId = resolveIncomeCategoryId(categories);
   const showTitle = show.contractorName || show.name || 'Show';
 
   // 1. SINCRONIZAR PAGAMENTOS (RECEITAS)
-  const currentPayments = updatedShow.payments || [];
+  const currentPayments = Array.isArray(updatedShow.payments) ? updatedShow.payments : [];
   const validPaymentIds = new Set(currentPayments.map(p => p.id));
 
   const updatedPayments = currentPayments.map(payment => {
     const p = { ...payment };
     const isReceived = p.status === 'Recebido';
     const isCancelled = p.status === 'Cancelado';
-    const txDate = (isReceived && p.effectiveDate) ? p.effectiveDate : p.expectedDate;
+    const txDate = (isReceived && p.effectiveDate) ? p.effectiveDate : (p.expectedDate || show.date);
     const txStatus = isReceived ? 'paid' : 'pending';
-    const txDescription = `Show: ${showTitle} (${p.type})`;
+    const txDescription = `Show: ${showTitle} (${p.type || 'Parcela'})`;
 
-    // Encontrar movimentação existente
+    // Encontrar movimentação existente vinculada
     let existingTxIndex = txs.findIndex(t => 
       (p.transactionId && t.id === p.transactionId) ||
       (t.showPaymentId === p.id) ||
@@ -277,7 +380,7 @@ export function syncShowWithTransactions(
       p.transactionId = updatedTx.id;
     } else {
       // Criar nova movimentação
-      const newTxId = p.transactionId || crypto.randomUUID();
+      const newTxId = p.transactionId || generateUUID();
       const newTx: Transaction = {
         id: newTxId,
         date: txDate,
@@ -301,7 +404,7 @@ export function syncShowWithTransactions(
   updatedShow.payments = updatedPayments;
 
   // 2. SINCRONIZAR DESPESAS
-  const currentExpenses = updatedShow.expenseItems || [];
+  const currentExpenses = Array.isArray(updatedShow.expenseItems) ? updatedShow.expenseItems : [];
   const validExpenseIds = new Set(currentExpenses.map(e => e.id));
 
   const updatedExpenses = currentExpenses.map(expense => {
@@ -321,7 +424,7 @@ export function syncShowWithTransactions(
       const updatedTx: Transaction = {
         ...existingTx,
         amount: Number(e.amount) || 0,
-        date: e.date,
+        date: e.date || show.date,
         status: 'paid',
         accountId: e.accountId,
         categoryId: existingTx.categoryId || expCatId,
@@ -333,10 +436,10 @@ export function syncShowWithTransactions(
       e.transactionId = updatedTx.id;
     } else {
       // Criar nova movimentação de despesa
-      const newTxId = e.transactionId || crypto.randomUUID();
+      const newTxId = e.transactionId || generateUUID();
       const newTx: Transaction = {
         id: newTxId,
-        date: e.date,
+        date: e.date || show.date,
         amount: Number(e.amount) || 0,
         type: 'expense',
         categoryId: expCatId,
@@ -378,6 +481,7 @@ export function cancelShowFutureTransactions(
   showId: string,
   transactions: Transaction[]
 ): Transaction[] {
+  if (!transactions) return [];
   return transactions.filter(t => {
     // Se for deste show e estiver pendente/agendada, remove da projeção futura
     if (t.showId === showId && t.status === 'pending') {

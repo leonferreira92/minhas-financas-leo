@@ -55,7 +55,7 @@ export const Dashboard: React.FC = () => {
   const nextShow = useMemo<Show | null>(() => {
     const upcoming = shows
       .filter(s => s.status !== 'Cancelado' && s.date >= todayStr)
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     
     return upcoming.length > 0 ? upcoming[0] : null;
   }, [shows, todayStr]);
@@ -293,7 +293,7 @@ export const Dashboard: React.FC = () => {
               </div>
 
               <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                {!isBlurred ? formatCurrency(nextShow.totalCache) : '••••'}
+                {!isBlurred ? formatCurrency(nextShow.totalCache ?? nextShow.cacheCombined) : '••••'}
               </span>
             </div>
 

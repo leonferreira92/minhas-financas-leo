@@ -5,6 +5,7 @@ import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
 import { normalizeShowFinancials, syncShowWithTransactions, cancelShowFutureTransactions } from '../services/showFinanceSyncService';
+import { generateUUID } from '../services/uuidHelper';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -117,14 +118,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const cacheTransactions = currentTransactions.filter(t => t.categoryId === 'cat_33');
     
     cacheTransactions.forEach(t => {
-      // Is this transaction linked to any receipt in any show?
+      // Is this transaction linked to any receipt or payment in any show?
       const isLinked = updatedShows.some(show => 
-        show.receipts && show.receipts.some(r => r.transactionId === t.id)
+        (show.receipts && show.receipts.some(r => r.transactionId === t.id)) ||
+        (show.payments && show.payments.some(p => p.transactionId === t.id)) ||
+        (t.showId && show.id === t.showId) ||
+        (t.showPaymentId && show.payments && show.payments.some(p => p.id === t.showPaymentId))
       );
 
       if (!isLinked) {
         // Not linked! Let's auto-create a Show for it
-        const showId = crypto.randomUUID();
+        const showId = generateUUID();
         const newShow: Show = {
           id: showId,
           name: t.description || 'Show / Evento',
@@ -138,8 +142,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           paymentMethod: 'Pix',
           notes: `Importado automaticamente a partir do lançamento de receita em "${t.description}"`,
           status: t.status === 'paid' ? 'Realizado' : 'Confirmado',
+          payments: [{
+            id: generateUUID(),
+            amount: t.amount,
+            expectedDate: t.date,
+            effectiveDate: t.status === 'paid' ? t.date : undefined,
+            accountId: t.accountId,
+            status: t.status === 'paid' ? 'Recebido' : 'Agendado',
+            type: 'Pagamento final',
+            transactionId: t.id
+          }],
           receipts: [{
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             amount: t.amount,
             expectedDate: t.date,
             effectiveDate: t.status === 'paid' ? t.date : undefined,
@@ -228,9 +242,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const finalShowsList: Show[] = [];
     updatedShows.forEach(show => {
       if (show.isImported) {
-        const hasActiveTx = show.receipts && show.receipts.some(r => 
-          r.transactionId && currentTransactions.some(tx => tx.id === r.transactionId && tx.categoryId === 'cat_33')
-        );
+        const hasActiveTx = 
+          (show.receipts && show.receipts.some(r => 
+            r.transactionId && currentTransactions.some(tx => tx.id === r.transactionId && tx.categoryId === 'cat_33')
+          )) ||
+          (show.payments && show.payments.some(p => 
+            p.transactionId && currentTransactions.some(tx => tx.id === p.transactionId && tx.categoryId === 'cat_33')
+          )) ||
+          currentTransactions.some(tx => tx.showId === show.id && tx.categoryId === 'cat_33');
+
         if (!hasActiveTx) {
           showsChanged = true;
           return;
@@ -283,10 +303,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     
     let finalCategories = storedCategories;
     
-    if (missingDefaults.length > 0) {
+     if (missingDefaults.length > 0) {
       const toAdd = missingDefaults.map(cat => ({
          ...cat,
-         id: storedCategories.some(sc => sc.id === cat.id) ? crypto.randomUUID() : cat.id
+         id: storedCategories.some(sc => sc.id === cat.id) ? generateUUID() : cat.id
       }));
 
       finalCategories = [...storedCategories, ...toAdd];
@@ -312,7 +332,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       const updatedReceipts = (show.receipts || []).map(r => {
         const txExists = r.transactionId && finalTransactions.some(tx => tx.id === r.transactionId);
         if (!txExists && r.amount > 0) {
-          const newTxId = r.transactionId || crypto.randomUUID();
+          const newTxId = r.transactionId || generateUUID();
           finalTransactions.push({
             id: newTxId,
             date: r.expectedDate || show.date,
@@ -417,7 +437,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addAccount = (a: Omit<Account, 'id'>) => saveAccounts([...accounts, { ...a, id: crypto.randomUUID() }]);
+  const addAccount = (a: Omit<Account, 'id'>) => saveAccounts([...accounts, { ...a, id: generateUUID() }]);
   const updateAccount = (a: Account) => saveAccounts(accounts.map(acc => acc.id === a.id ? a : acc));
   const deleteAccount = (id: string) => saveAccounts(accounts.filter(a => a.id !== id));
 
@@ -462,15 +482,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addTransaction = (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => {
-    const fixedGroupId = t.isFixed ? crypto.randomUUID() : undefined;
+    const fixedGroupId = t.isFixed ? generateUUID() : undefined;
     setTransactions(prev => {
       const txs = [...prev];
-      const tid = t.id || crypto.randomUUID();
+      const tid = t.id || generateUUID();
       txs.push({ ...t, id: tid, createdAt: Date.now(), fixedGroupId });
       if (t.isFixed && fixedGroupId) {
         for (let i = 1; i < 12; i++) {
           const d = new Date(t.date); d.setMonth(d.getMonth() + i);
-          txs.push({ ...t, id: crypto.randomUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId });
+          txs.push({ ...t, id: generateUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId });
         }
       }
       StorageService.saveTransactions(txs);
@@ -592,7 +612,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addDebt = (debtData: Omit<Debt, 'id'>, installmentsData: any) => {
-    const debtId = crypto.randomUUID();
+    const debtId = generateUUID();
     const newDebt = { ...debtData, id: debtId };
     const newDebts = [...debts, newDebt];
     
@@ -604,7 +624,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (downPayment && Number(downPayment) > 0) {
       newTransactions.push({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         debtId,
         description: `Entrada - ${debtData.name}`,
         amount: Number(downPayment),
@@ -640,7 +660,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
        }
 
        newTransactions.push({
-         id: crypto.randomUUID(),
+         id: generateUUID(),
          debtId,
          description: `${debtData.name} (${i + 1}/${installments})`,
          amount: Number(installmentValue.toFixed(2)),
@@ -689,7 +709,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   };
 
-  const addCategory = (c: Omit<Category, 'id'>) => saveCategories([...categories, { ...c, id: crypto.randomUUID() }]);
+  const addCategory = (c: Omit<Category, 'id'>) => saveCategories([...categories, { ...c, id: generateUUID() }]);
   const updateCategory = (c: Category) => saveCategories(categories.map(cat => cat.id === c.id ? c : cat));
   const deleteCategory = (id: string) => saveCategories(categories.filter(c => c.id !== id));
 
@@ -703,7 +723,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteBudget = (categoryId: string) => saveBudgetsInternal(budgets.filter(b => b.categoryId !== categoryId));
   const addGoal = (g: Omit<Goal, 'id'> & { id?: string }) => {
     setGoals(prev => {
-      const goalId = g.id || crypto.randomUUID();
+      const goalId = g.id || generateUUID();
       const updated = [...prev, { ...g, id: goalId }];
       StorageService.saveGoals(updated);
       return updated;
@@ -725,7 +745,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addShow = (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => {
-    const id = s.id || crypto.randomUUID();
+    const id = s.id || generateUUID();
     const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
     const showWithId: Show = { ...s, id, createdAt: Date.now() };
     const normalized = normalizeShowFinancials(showWithId, defaultAccId);

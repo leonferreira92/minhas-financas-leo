@@ -47,7 +47,8 @@ export const ShowFormModal: React.FC<Props> = ({
       setEndTime(existingShow.endTime || '');
       setCity(existingShow.city || '');
       setLocation(existingShow.location || '');
-      setTotalCache(existingShow.totalCache ? String(existingShow.totalCache) : '');
+      const cacheVal = existingShow.totalCache ?? existingShow.cacheCombined;
+      setTotalCache(cacheVal !== undefined && cacheVal !== null ? String(cacheVal) : '');
       setStatus((existingShow.status === 'Agendado' ? 'Aguardando confirmação' : existingShow.status) || 'Confirmado');
       setNotes(existingShow.notes || '');
     } else {
@@ -102,6 +103,7 @@ export const ShowFormModal: React.FC<Props> = ({
       city: city.trim(),
       location: location.trim(),
       totalCache: cacheVal,
+      cacheCombined: cacheVal,
       status,
       notes: notes.trim()
     };
