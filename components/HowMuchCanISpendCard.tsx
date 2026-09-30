@@ -84,7 +84,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
   const targetFromMonths = monthlyEssentialCost > 0 ? (targetReserveMonths * monthlyEssentialCost) : 0;
   const targetSafetyReserve = Math.max(minReserveConfigured, targetFromMonths);
 
-  // Déficit da reserva (quanto falta guardar nos cofrinhos para atingir a meta configurada)
+  // Déficit da reserva (quanto falta guardar na poupança/reserva para atingir a meta configurada)
   const reserveDeficit = Math.max(0, targetSafetyReserve - actualReservedInGoals);
 
   // 4. COMPROMISSOS FUTUROS CONSIDERADOS (Despesas pendentes cadastradas a vencer a partir de hoje)
@@ -511,7 +511,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
-                <span className="text-slate-500 dark:text-slate-400">(-) Déficit da Reserva Mínima (blindado em cofrinho)</span>
+                <span className="text-slate-500 dark:text-slate-400">(-) Déficit da Reserva Mínima (blindado em reserva)</span>
                 <span className="font-bold text-amber-600 dark:text-amber-400">
                   {reserveDeficit > 0 ? `-${formatBRL(reserveDeficit)}` : 'R$ 0,00 (100% coberta)'}
                 </span>

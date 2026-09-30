@@ -206,7 +206,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 </div>
                 <div>
                   <span className="text-xs font-black text-amber-700 dark:text-amber-400 block">Guardar Dinheiro</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Aporte no cofrinho</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Aporte na reserva</span>
                 </div>
               </button>
             </div>

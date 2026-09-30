@@ -59,7 +59,7 @@ export const FinancialProjectionSection: React.FC = () => {
 
     // 1. Saldo Inicial Operacional Hoje (Exclui contas de reserva/poupança)
     const operationalAccounts = accounts.filter(
-      a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
+      a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia'))
     );
     const startingCashToday = operationalAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
 

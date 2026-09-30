@@ -44,13 +44,46 @@ export const Dashboard: React.FC = () => {
     return accounts.filter(a => matchesScope(a.scope, activeScope));
   }, [accounts, activeScope]);
 
-  // Total Patrimony: sum of filtered account balances
+  // Total Patrimony: sum of all active accounts
+  const consolidatedPatrimony = useMemo(() => {
+    return accounts.filter(a => a.enabled !== false).reduce((acc, a) => acc + getAccountBalance(a.id), 0);
+  }, [accounts, getAccountBalance]);
+
+  // DIRETRIZ 1 & 4: Isolamento de Caixas a partir de 01/10/2026
+  // Saldo de Caixa dos Shows: Movimentações pagas de música a partir de 01/10/2026 + contas dedicadas a BUSINESS
+  const businessCash = useMemo(() => {
+    const businessAccountsInitial = accounts
+      .filter(a => a.scope === 'BUSINESS')
+      .reduce((s, a) => s + (Number(a.initialBalance) || 0), 0);
+
+    let netFlow = 0;
+    transactions.forEach(t => {
+      if (t.status !== 'paid') return;
+      if (t.date >= '2026-10-01') {
+        if (t.scope === 'BUSINESS') {
+          if (t.type === 'income') netFlow += Number(t.amount) || 0;
+          else if (t.type === 'expense') netFlow -= Number(t.amount) || 0;
+        }
+      }
+    });
+
+    return parseFloat((businessAccountsInitial + netFlow).toFixed(2));
+  }, [accounts, transactions]);
+
+  // Caixa Pessoal (Patrimônio / Reserva): Histórico acumulado até 30/09/2026 + fluxos pessoais a partir de 01/10/2026
+  const personalCash = useMemo(() => {
+    return parseFloat((consolidatedPatrimony - businessCash).toFixed(2));
+  }, [consolidatedPatrimony, businessCash]);
+
+  // Total exibido de acordo com o escopo ativo
   const totalPatrimony = useMemo(() => {
-    return filteredAccounts.reduce((acc, a) => acc + getAccountBalance(a.id), 0);
-  }, [filteredAccounts, getAccountBalance]);
+    if (activeScope === 'BUSINESS') return businessCash;
+    if (activeScope === 'PERSONAL') return personalCash;
+    return consolidatedPatrimony;
+  }, [activeScope, businessCash, personalCash, consolidatedPatrimony]);
 
   // Dinheiro Disponível (em contas ativas operacionais)
-  const availableMoney = summary.realBalance;
+  const availableMoney = totalPatrimony;
 
   // Próximo Show (se houver)
   const nextShow = useMemo<Show | null>(() => {
@@ -173,16 +206,24 @@ export const Dashboard: React.FC = () => {
         <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 space-y-4">
-          {/* PATRIMÔNIO TOTAL */}
+          {/* PATRIMÔNIO / CAIXA CONFORME ESCOPO */}
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">
-              Patrimônio Total
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">
+                {activeScope === 'BUSINESS' ? 'Saldo do Caixa dos Shows (Empresa)' : activeScope === 'PERSONAL' ? 'Caixa Pessoal (Patrimônio & Reserva)' : 'Patrimônio Total'}
+              </span>
+              <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-white/10 text-indigo-300">
+                {activeScope === 'BUSINESS' ? 'Shows' : activeScope === 'PERSONAL' ? 'Pessoal' : 'Consolidado'}
+              </span>
+            </div>
+
             <div className="text-3xl sm:text-4xl font-black tracking-tight tabular-nums text-white mt-0.5">
               {!isBlurred ? formatCurrency(totalPatrimony) : 'R$ •••••••'}
             </div>
             <p className="text-[11px] text-slate-400 font-medium mt-1">
-              Contas bancárias + Reservas e Cofrinhos
+              {activeScope === 'BUSINESS' 
+                ? 'Operação oficial de shows a partir de 01/10/2026' 
+                : 'Contas bancárias + Caixa Livre Real'}
             </p>
           </div>
 
@@ -196,7 +237,7 @@ export const Dashboard: React.FC = () => {
                 {!isBlurred ? formatCurrency(availableMoney) : '••••'}
               </span>
               <span className="text-[9px] text-slate-400 font-medium block truncate mt-0.5">
-                Saldo em contas ativas
+                {activeScope === 'BUSINESS' ? 'Disponível no caixa de shows' : 'Saldo em contas ativas'}
               </span>
             </div>
 

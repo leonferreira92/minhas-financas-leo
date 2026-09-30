@@ -211,7 +211,7 @@ export const FinancialSettingsScreen: React.FC = () => {
 
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-            <span className="text-[10px] text-slate-400 block mb-0.5">Reservado Hoje (Cofrinhos)</span>
+            <span className="text-[10px] text-slate-400 block mb-0.5">Reservado Hoje (Poupança)</span>
             <span className="text-base font-black text-white">{formatBRL(totalReservedToday)}</span>
           </div>
           <div className="p-3 rounded-xl bg-white/5 border border-white/10">
@@ -240,7 +240,7 @@ export const FinancialSettingsScreen: React.FC = () => {
               Reserva Mínima Desejada (R$)
             </label>
             <p className="text-[11px] text-slate-400 mb-2">
-              Patrimônio intocável em cofrinhos/poupança que protege contra imprevistos. O sistema só autoriza gastos discricionários quando esse montante estiver guarnecido.
+              Patrimônio intocável em reservas e poupança que protege contra imprevistos. O sistema só autoriza gastos discricionários quando esse montante estiver guarnecido.
             </p>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">

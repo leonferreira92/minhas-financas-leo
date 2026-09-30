@@ -315,7 +315,7 @@ export const FinancialOverviewSection: React.FC = () => {
               {formatBRL(cashAvailableToday)}
             </span>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Contas operacionais livres (exclui cofrinhos)
+              Contas operacionais livres (exclui poupança/reserva)
             </span>
           </div>
         </div>
@@ -366,7 +366,7 @@ export const FinancialOverviewSection: React.FC = () => {
               </span>
             </div>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Guardado: {formatBRL(actualReservedMoney)} em cofrinhos/poupança
+              Guardado: {formatBRL(actualReservedMoney)} na poupança/reserva
             </span>
           </div>
         </div>

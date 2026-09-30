@@ -184,8 +184,8 @@ export const isTransferMovement = (t: Transaction): boolean => {
 };
 
 /**
- * 2. ECONOMIA / COFRINHO
- * REGRA: Cofrinhos não são despesas. Representam dinheiro reservado e protegido.
+ * 2. ECONOMIA / RESERVA
+ * REGRA: Reservas não são despesas. Representam dinheiro reservado e protegido.
  */
 export const isGoalMovement = (t: Transaction): boolean => {
   return t.categoryId === 'cat_savings';
@@ -450,10 +450,10 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   }));
 
   const operationalAccounts = accountsWithBalances.filter(
-    a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
+    a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia'))
   );
   const savingsAccounts = accountsWithBalances.filter(
-    a => (a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
+    a => (a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia'))
   );
 
   const totalAvailableOperationalToday = operationalAccounts.reduce((sum, a) => sum + a.currentBalance, 0);
@@ -906,7 +906,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
 
   if (maxSafeCash > 0) {
     if (reserveDeficit === 0) {
-      // Reserva mínima 100% atingida nos cofrinhos/poupança!
+      // Reserva mínima 100% atingida na poupança/reserva!
       safePurchaseMargin = Math.max(0, Math.round(maxSafeCash * 0.7));
     } else {
       // O excedente de caixa operacional precisa cobrir o déficit da reserva antes de liberar compras discricionárias
@@ -958,7 +958,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push('1. DINHEIRO HOJE');
   lines.push('============================================================');
   lines.push(`• Dinheiro disponível hoje (em contas operacionais): ${formatBRL(totalAvailableOperationalToday)}`);
-  lines.push(`• Dinheiro reservado (cofrinhos / metas / poupança - intocável): ${formatBRL(totalMoneyReserved)}`);
+  lines.push(`• Dinheiro reservado (poupança / reserva - intocável): ${formatBRL(totalMoneyReserved)}`);
   lines.push(`  - Reserva mínima desejada configurada: ${formatBRL(userConfiguredMinReserve)}`);
   lines.push(`  - Meta por meses essenciais (${targetReserveMonths} meses): ${formatBRL(targetReserveFromMonths)}`);
   lines.push(`  - Meta total adotada para reserva: ${formatBRL(targetSafetyReserveTotal)}`);
@@ -966,7 +966,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push(`• Compromissos imediatos (contas a vencer no mês atual): ${formatBRL(totalImmediateCommitments)}`);
   lines.push(`• Caixa livre imediato (disponível - compromissos imediatos): ${formatBRL(immediateFreeCash)}`);
   lines.push(`• Patrimônio líquido total (disponível + reservado): ${formatBRL(totalNetWorth)}`);
-  lines.push('NOTA METODOLÓGICA: Cofrinhos e poupança NÃO são despesas nem dinheiro livre para consumo corrente; representam patrimônio reservado e protegido.');
+  lines.push('NOTA METODOLÓGICA: Reservas e poupança NÃO são despesas nem dinheiro livre para consumo corrente; representam patrimônio reservado e protegido.');
 
   // SEÇÃO 2: ENTRADAS FUTURAS
   lines.push('');
@@ -1024,7 +1024,7 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   lines.push(`• Despesas fixas recorrentes programadas: ${formatBRL(futureRecurringTotal)}`);
   lines.push(`• Investimentos profissionais programados (equipamentos/trabalho): ${formatBRL(futureProfTotal)}`);
   lines.push(`• Despesas discricionárias programadas: ${formatBRL(futureDiscretionaryTotal)}`);
-  lines.push('NOTA: Transferências internas entre contas e aportes em cofrinhos foram desconsiderados (não representam despesa).');
+  lines.push('NOTA: Transferências internas entre contas e aportes em reservas foram desconsiderados (não representam despesa).');
 
   // SEÇÃO 4: CUSTO MENSAL
   lines.push('');

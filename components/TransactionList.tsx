@@ -26,7 +26,9 @@ export const TransactionList: React.FC = () => {
     deleteTransaction,
     accounts, 
     isBlurred, 
-    toggleBlur 
+    toggleBlur,
+    activeScope,
+    setActiveScope
   } = useFinance();
   
   // Modal State for Editing / Creating Transaction
@@ -82,6 +84,30 @@ export const TransactionList: React.FC = () => {
       }
     }
   }, [highlightId, transactions, currentYearMonth]);
+
+  // Sincronizar filtros vindos da URL (ex: vindos dos cliques na DRE)
+  useEffect(() => {
+    const urlType = searchParams.get('type') as TypeFilter | null;
+    const urlSearch = searchParams.get('search');
+    const urlScope = searchParams.get('scope');
+    const urlMonth = searchParams.get('month');
+
+    if (urlType && ['all', 'income', 'expense'].includes(urlType)) {
+      setTypeFilter(urlType);
+    }
+    if (urlSearch) {
+      setSearchTerm(urlSearch);
+    }
+    if (urlScope && ['ALL', 'PERSONAL', 'BUSINESS'].includes(urlScope)) {
+      setActiveScope(urlScope as any);
+    }
+    if (urlMonth && /^\d{4}-\d{2}$/.test(urlMonth)) {
+      setSelectedMonth(urlMonth);
+      if (urlMonth !== currentYearMonth) {
+        setPeriodPreset('custom');
+      }
+    }
+  }, [searchParams, currentYearMonth, setActiveScope]);
 
   // Handle Quick Period Preset changes
   const handlePeriodPresetChange = (preset: PeriodPreset) => {

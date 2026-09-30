@@ -32,10 +32,10 @@ export const CostOfLivingSection: React.FC = () => {
   }, [settings.financialSettings]);
 
   // ---------------------------------------------------------------------------
-  // APURAÇÃO HISTÓRICA REAL DAS MOVIMENTAÇÕES (EXCLUINDO TRANSFERÊNCIAS E COFRINHOS)
+  // APURAÇÃO HISTÓRICA REAL DAS MOVIMENTAÇÕES (EXCLUINDO TRANSFERÊNCIAS E RESERVAS)
   // ---------------------------------------------------------------------------
   const metrics = useMemo(() => {
-    // 1. Filtrar todas as despesas operacionais reais (não transferências, não cofrinhos)
+    // 1. Filtrar todas as despesas operacionais reais (não transferências, não reservas)
     const validExpenseTxs = transactions.filter(t => 
       t.type === 'expense' && 
       !isTransferMovement(t) && 
@@ -272,16 +272,9 @@ export const CostOfLivingSection: React.FC = () => {
         <div className="flex items-center space-x-2">
           <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
           <span>
-            Transferências entre contas e aportes em cofrinhos foram <strong>rigorosamente desconsiderados</strong> como despesas.
+            Transferências entre contas e aportes em reservas foram <strong>rigorosamente desconsiderados</strong> como despesas.
           </span>
         </div>
-        <Link 
-          to="/goals" 
-          className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline shrink-0 flex items-center space-x-1"
-        >
-          <span>Ver Metas ({metrics.activeGoalsCount})</span>
-          <ArrowUpRight size={12} />
-        </Link>
       </div>
 
     </section>

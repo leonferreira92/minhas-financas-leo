@@ -120,7 +120,7 @@ export const AIReportScreen = () => {
   // Resumo Executivo para os Cards Superiores
   const snapshot = useMemo(() => {
     const operationalAccounts = accounts.filter(
-      a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia') || a.name.toLowerCase().includes('cofrinho'))
+      a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia'))
     );
     const available = operationalAccounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
     const reserved = 0;
@@ -247,7 +247,7 @@ export const AIReportScreen = () => {
           <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.reserved) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Metas & cofrinhos (intocável)</span>
+          <span className="text-[10px] text-slate-400">Poupança e Reserva (intocável)</span>
         </div>
 
         {/* 3. Compromissos Imediatos */}

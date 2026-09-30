@@ -193,7 +193,7 @@ export const PlanningScreen = () => {
         dividas += Number(t.amount);
       } else if (cat?.classification === 'essential' || nameLower.includes('moradia') || nameLower.includes('aluguel') || nameLower.includes('mercado') || nameLower.includes('alimentação') || nameLower.includes('luz') || nameLower.includes('água') || nameLower.includes('saúde') || nameLower.includes('transporte')) {
         essencial += Number(t.amount);
-      } else if (cat?.classification === 'future' || nameLower.includes('cofrinho') || nameLower.includes('reserva') || nameLower.includes('investimento')) {
+      } else if (cat?.classification === 'future' || nameLower.includes('reserva') || nameLower.includes('investimento')) {
         metasGroup += Number(t.amount);
       } else {
         livreGroup += Number(t.amount);
@@ -320,7 +320,6 @@ export const PlanningScreen = () => {
             { id: 'overview', label: 'Decisão' },
             { id: 'groups', label: 'Grupos' },
             { id: 'budgets', label: 'Tetos' },
-            { id: 'goals', label: 'Cofrinhos' },
             { id: 'rule', label: '50/30/20' }
           ].map(tab => (
             <button
@@ -401,10 +400,10 @@ export const PlanningScreen = () => {
                 </div>
               </div>
 
-              {/* 3. METAS / COFRINHOS */}
+              {/* 3. METAS / RESERVAS */}
               <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">Metas</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">Reservas</span>
                   <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                     <PiggyBank size={16} strokeWidth={2.5} />
                   </div>
@@ -414,7 +413,7 @@ export const PlanningScreen = () => {
                     {formatCurrency(goalsTotal)}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                    Reservado para objetivos
+                    Poupança e reservas
                   </p>
                 </div>
               </div>
@@ -455,8 +454,8 @@ export const PlanningScreen = () => {
 
               <p className="text-xs text-slate-300/90 leading-relaxed relative z-10 font-medium">
                 {freeToSpend >= 0 
-                  ? 'Você pode utilizar este valor para gastos discricionários sem comprometer suas obrigações cadastradas nem seus cofrinhos.'
-                  : 'Atenção: Suas obrigações pendentes e metas superam o dinheiro disponível hoje. Evite novas despesas até efetivar entradas.'
+                  ? 'Você pode utilizar este valor para gastos discricionários sem comprometer suas obrigações cadastradas nem suas reservas.'
+                  : 'Atenção: Suas obrigações pendentes superam o dinheiro disponível hoje. Evite novas despesas até efetivar entradas.'
                 }
               </p>
             </div>
@@ -725,12 +724,12 @@ export const PlanningScreen = () => {
 
             {/* 3. METAS */}
             <GroupCard 
-              title="Metas & Reservas" 
+              title="Reservas & Futuro" 
               icon={PiggyBank} 
               color="bg-amber-500 text-amber-500" 
               amount={planningGroupsData.metasGroup} 
               pct={planningGroupsData.pcts.metasGroup} 
-              desc="Aportes em cofrinhos e construção de patrimônio." 
+              desc="Aportes em poupança, reservas e construção de patrimônio." 
               formatCurrency={formatCurrency}
             />
 

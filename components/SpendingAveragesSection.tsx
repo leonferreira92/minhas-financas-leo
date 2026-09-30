@@ -41,7 +41,7 @@ export const SpendingAveragesSection: React.FC = () => {
     pastMonths, 
     hasOverallInsufficientHistory 
   } = useMemo(() => {
-    // 1. Filtrar despesas operacionais reais (exclui transferências e cofrinhos)
+    // 1. Filtrar despesas operacionais reais (exclui transferências e reservas)
     const filtered = transactions.filter(t => 
       t.type === 'expense' && 
       !isTransferMovement(t) && 
@@ -545,7 +545,7 @@ export const SpendingAveragesSection: React.FC = () => {
         <div className="flex items-center space-x-1.5">
           <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
           <span>
-            Transferências entre contas e aportes em cofrinhos são excluídos das médias.
+            Transferências entre contas e aportes em reservas são excluídos das médias.
           </span>
         </div>
         <span className="text-[10px] text-slate-400">
