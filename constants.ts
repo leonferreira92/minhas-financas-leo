@@ -64,10 +64,10 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 export const DEFAULT_ACCOUNTS: Account[] = [
-  { id: 'acc_bank', name: 'Conta Corrente', type: 'bank', color: '#3b82f6', initialBalance: 1500, enabled: true },
-  { id: 'acc_wallet', name: 'Carteira', type: 'wallet', color: '#10b981', initialBalance: 250, enabled: true },
-  { id: 'acc_savings', name: 'Economias', type: 'savings', color: '#f59e0b', initialBalance: 3000, enabled: true },
-  { id: 'acc_invest', name: 'Investimentos', type: 'investment', color: '#8b5cf6', initialBalance: 5000, enabled: true },
+  { id: 'acc_bb', name: 'Banco do Brasil', type: 'bank', color: '#f59e0b', initialBalance: 1500, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
+  { id: 'acc_mp', name: 'Mercado Pago (Shows / PJ)', type: 'bank', color: '#06b6d4', initialBalance: 3200, enabled: true, scope: 'BUSINESS', vinculo: 'MUSICO' },
+  { id: 'acc_wallet', name: 'Carteira (Dinheiro)', type: 'wallet', color: '#10b981', initialBalance: 250, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
+  { id: 'acc_savings', name: 'Reserva de Emergência', type: 'savings', color: '#8b5cf6', initialBalance: 5000, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
 ];
 
 export const ICON_MAP: Record<string, any> = {

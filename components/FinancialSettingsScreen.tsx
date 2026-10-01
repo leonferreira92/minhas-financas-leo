@@ -224,26 +224,26 @@ export const FinancialSettingsScreen: React.FC = () => {
       <div className="space-y-6">
         
         {/* SEÇÃO 1: RESERVA MÍNIMA E MESES */}
-        <div className="p-5 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+        <div className="p-5 rounded-[2rem] bg-[#18181b] border border-zinc-800 shadow-xs space-y-5">
           <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center font-black text-xs">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center font-black text-xs border border-amber-500/30">
               1
             </div>
-            <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
+            <h2 className="text-sm font-black text-white uppercase tracking-wider">
               Reserva Financeira e Sobrevivência
             </h2>
           </div>
 
           {/* Campo 1: Valor da Reserva Mínima em R$ */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
               Reserva Mínima Desejada (R$)
             </label>
-            <p className="text-[11px] text-slate-400 mb-2">
+            <p className="text-[11px] text-zinc-400 mb-2">
               Patrimônio intocável em reservas e poupança que protege contra imprevistos. O sistema só autoriza gastos discricionários quando esse montante estiver guarnecido.
             </p>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500 font-bold text-sm">
                 R$
               </div>
               <input
@@ -251,7 +251,7 @@ export const FinancialSettingsScreen: React.FC = () => {
                 value={minReserve}
                 onChange={(e) => setMinReserve(e.target.value)}
                 placeholder="5000"
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-black text-base outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#121212] border border-zinc-700/80 text-white font-black text-base outline-none focus:border-emerald-500"
               />
             </div>
           </div>
@@ -259,14 +259,14 @@ export const FinancialSettingsScreen: React.FC = () => {
           {/* Campo 2: Quantidade de Meses de Reserva */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-zinc-300">
                 Quantidade de Meses de Reserva Desejada
               </label>
-              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+              <span className="text-xs font-black text-emerald-400">
                 {targetMonths} meses
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 mb-2.5">
+            <p className="text-[11px] text-zinc-400 mb-2.5">
               Quantos meses de despesas essenciais você deseja ter garantidos de reserva para emergências.
             </p>
 
@@ -278,8 +278,8 @@ export const FinancialSettingsScreen: React.FC = () => {
                   onClick={() => setTargetMonths(m)}
                   className={`py-2 px-3 rounded-xl text-xs font-black transition active:scale-95 border ${
                     targetMonths === m
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                      ? 'bg-emerald-500 text-zinc-950 border-emerald-500 shadow-sm'
+                      : 'bg-[#121212] border-zinc-800 text-zinc-400 hover:text-white'
                   }`}
                 >
                   {m} meses
@@ -288,9 +288,9 @@ export const FinancialSettingsScreen: React.FC = () => {
             </div>
 
             {monthlyEssentialEstimate > 0 && (
-              <div className="mt-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+              <div className="mt-3 p-3 rounded-xl bg-[#121212] border border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
                 <span>Custo Essencial Estimado ({targetMonths}m):</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-white">
                   {formatBRL(targetFromMonths)} ({formatBRL(monthlyEssentialEstimate)}/mês)
                 </span>
               </div>
@@ -299,34 +299,34 @@ export const FinancialSettingsScreen: React.FC = () => {
         </div>
 
         {/* SEÇÃO 2: CLASSIFICAÇÃO DE CATEGORIAS */}
-        <div className="p-5 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+        <div className="p-5 rounded-[2rem] bg-[#18181b] border border-zinc-800 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-black text-xs">
+              <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center font-black text-xs border border-purple-500/30">
                 2
               </div>
-              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
+              <h2 className="text-sm font-black text-white uppercase tracking-wider">
                 Classificação de Categorias
               </h2>
             </div>
-            <span className="text-[10px] text-slate-400 font-bold">
+            <span className="text-[10px] text-zinc-400 font-bold">
               {expenseCategories.length} categorias
             </span>
           </div>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          <p className="text-xs text-zinc-400 leading-relaxed">
             Selecione em qual pilar cada categoria de despesa se enquadra. Essa classificação é usada para calcular seu custo básico de subsistência, seus investimentos de trabalho e seu saldo realmente livre.
           </p>
 
           {/* Legenda dos 3 pilares */}
           <div className="grid grid-cols-3 gap-2 text-[10px] font-black uppercase tracking-wider text-center">
-            <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30">
               Essencial
             </div>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">
+            <div className="p-2 rounded-xl bg-purple-500/15 text-purple-300 border border-purple-500/30">
               Estilo de Vida
             </div>
-            <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/50">
+            <div className="p-2 rounded-xl bg-sky-500/15 text-sky-300 border border-sky-500/30">
               Profissional
             </div>
           </div>
@@ -342,17 +342,17 @@ export const FinancialSettingsScreen: React.FC = () => {
               return (
                 <div 
                   key={cat.id}
-                  className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                  className="p-3 rounded-2xl bg-[#121212] border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                 >
                   <div className="flex items-center space-x-2.5">
                     <div 
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs"
-                      style={{ backgroundColor: cat.color || '#6366f1' }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-950 font-bold shrink-0 shadow-xs"
+                      style={{ backgroundColor: cat.color || '#10b981' }}
                     >
                       <IconComp size={16} />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-slate-800 dark:text-white block">
+                      <span className="text-xs font-bold text-white block">
                         {cat.name}
                       </span>
                     </div>
@@ -365,8 +365,8 @@ export const FinancialSettingsScreen: React.FC = () => {
                       onClick={() => handleAssignCategory(cat.id, 'essential')}
                       className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black transition active:scale-95 border ${
                         isEss
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800'
+                          ? 'bg-amber-500 text-zinc-950 border-amber-500 shadow-xs'
+                          : 'bg-[#18181b] border-zinc-800 text-zinc-400 hover:text-white'
                       }`}
                     >
                       Essencial
@@ -377,11 +377,11 @@ export const FinancialSettingsScreen: React.FC = () => {
                       onClick={() => handleAssignCategory(cat.id, 'lifestyle')}
                       className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black transition active:scale-95 border ${
                         isLife
-                          ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800'
+                          ? 'bg-purple-500 text-white border-purple-500 shadow-xs'
+                          : 'bg-[#18181b] border-zinc-800 text-zinc-400 hover:text-white'
                       }`}
                     >
-                      Estilo Vida
+                      Estilo de Vida
                     </button>
 
                     <button
@@ -389,8 +389,8 @@ export const FinancialSettingsScreen: React.FC = () => {
                       onClick={() => handleAssignCategory(cat.id, 'professional')}
                       className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black transition active:scale-95 border ${
                         isProf
-                          ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800'
+                          ? 'bg-sky-500 text-white border-sky-500 shadow-xs'
+                          : 'bg-[#18181b] border-zinc-800 text-zinc-400 hover:text-white'
                       }`}
                     >
                       Profissional
@@ -405,10 +405,10 @@ export const FinancialSettingsScreen: React.FC = () => {
           <div className="pt-3">
             <button
               onClick={handleSave}
-              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm transition active:scale-95 shadow-md flex items-center justify-center space-x-2"
+              className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-sm uppercase tracking-wider transition active:scale-95 shadow-lg shadow-emerald-500/20 flex items-center justify-center space-x-2"
             >
-              <Save size={18} />
-              <span>Salvar Configurações Financeiras</span>
+              <Save size={18} strokeWidth={2.5} />
+              <span>Salvar Parâmetros Financeiros</span>
             </button>
           </div>
         </div>

@@ -15,14 +15,12 @@ import { ShowTargetSection } from './ShowTargetSection';
 import { HowMuchCanISpendCard } from './HowMuchCanISpendCard';
 import { FinancialOverviewSection } from './FinancialOverviewSection';
 import { FinancialProjectionSection } from './FinancialProjectionSection';
-import { PlanningScreen } from './PlanningScreen';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
 import { ScopeSelector } from './ScopeSelector';
 import { BankImportModal } from './BankImportModal';
 import { TopExpensesCard } from './extrato/TopExpensesCard';
 import { CacheEvolutionChart } from './extrato/CacheEvolutionChart';
-import { CashFlowSimulator } from './extrato/CashFlowSimulator';
 import { CareerLifeDiagnostic } from './extrato/CareerLifeDiagnostic';
 import { Account, AccountType } from '../types';
 
@@ -283,18 +281,14 @@ export const FinancialHubScreen: React.FC<Props> = ({ initialTab = 'movimentacoe
           <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50">
             <h3 className="text-xs font-black text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center">
               <TrendingUp size={15} className="mr-1.5 text-blue-600 dark:text-blue-400" />
-              Projeções & Simulador de Fluxo Futuro
+              Projeções & Régua de Liquidez
             </h3>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Simule cenários conservadores, moderados ou otimistas para a sua agenda de shows e saúde financeira.
+              Visão unificada da régua de liquidez e previsibilidade financeira para o seu caixa.
             </p>
           </div>
 
-          {/* Simulador de Fluxo de Caixa Futuro */}
-          <CashFlowSimulator />
-
           <FinancialProjectionSection />
-          <PlanningScreen />
         </div>
       )}
 

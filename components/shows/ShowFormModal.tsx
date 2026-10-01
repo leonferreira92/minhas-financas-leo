@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Show, ShowStatus } from '../../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Show, ShowStatus, ShowPayment } from '../../types';
+import { useFinance } from '../../context/FinanceContext';
 import { 
   X, Calendar, Clock, MapPin, User, DollarSign, 
-  FileText, AlertTriangle, Check, Sparkles, AlertCircle 
+  FileText, AlertTriangle, Check, Sparkles, AlertCircle,
+  Phone, Wallet, ArrowDownRight
 } from 'lucide-react';
 import { EVENT_TYPES, SHOW_STATUSES } from './types';
 import { checkScheduleConflict, ConflictResult } from './conflictHelper';
+import { generateUUID } from '../../services/uuidHelper';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (showData: Partial<Show>) => void;
+  onSave: (showData: Partial<Show>, initialDepositTx?: any) => void;
   existingShow?: Show | null;
   existingShows: Show[];
   prefilledDate?: string;
@@ -26,7 +29,11 @@ export const ShowFormModal: React.FC<Props> = ({
   prefilledDate,
   initialStatus
 }) => {
+  const { accounts } = useFinance();
+  const defaultAccountId = accounts && accounts.length > 0 ? accounts[0].id : 'acc_bank';
+
   const [contractorName, setContractorName] = useState('');
+  const [contractorPhone, setContractorPhone] = useState('');
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
   const [date, setDate] = useState(() => prefilledDate || new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState('20:00');
@@ -37,12 +44,25 @@ export const ShowFormModal: React.FC<Props> = ({
   const [status, setStatus] = useState<ShowStatus>(() => initialStatus || 'Confirmado');
   const [notes, setNotes] = useState('');
 
+  // Entrada / Sinal imediato
+  const [hasImmediateDeposit, setHasImmediateDeposit] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositAccountId, setDepositAccountId] = useState(defaultAccountId);
+  const [depositDate, setDepositDate] = useState(() => new Date().toISOString().slice(0, 10));
+
   // Conflict warning state
   const [conflictPrompt, setConflictPrompt] = useState<ConflictResult | null>(null);
+
+  // Live conflict feedback while user edits date & time
+  const liveConflict = useMemo(() => {
+    if (status !== 'Confirmado') return { hasConflict: false };
+    return checkScheduleConflict(existingShows, date, time, endTime, existingShow?.id);
+  }, [existingShows, date, time, endTime, existingShow?.id, status]);
 
   useEffect(() => {
     if (existingShow) {
       setContractorName(existingShow.contractorName || existingShow.name || '');
+      setContractorPhone(existingShow.contractorPhone || '');
       setEventType(existingShow.eventType || EVENT_TYPES[0]);
       setDate(existingShow.date || new Date().toISOString().slice(0, 10));
       setTime(existingShow.time || '20:00');
@@ -53,8 +73,11 @@ export const ShowFormModal: React.FC<Props> = ({
       setTotalCache(cacheVal !== undefined && cacheVal !== null ? String(cacheVal) : '');
       setStatus((existingShow.status === 'Agendado' ? 'Aguardando confirmação' : existingShow.status) || 'Confirmado');
       setNotes(existingShow.notes || '');
+      setHasImmediateDeposit(false);
+      setDepositAmount('');
     } else {
       setContractorName('');
+      setContractorPhone('');
       setEventType(EVENT_TYPES[0]);
       setDate(prefilledDate || new Date().toISOString().slice(0, 10));
       setTime('20:00');
@@ -64,9 +87,13 @@ export const ShowFormModal: React.FC<Props> = ({
       setTotalCache('');
       setStatus(initialStatus || 'Confirmado');
       setNotes('');
+      setHasImmediateDeposit(false);
+      setDepositAmount('');
+      setDepositAccountId(defaultAccountId);
+      setDepositDate(new Date().toISOString().slice(0, 10));
     }
     setConflictPrompt(null);
-  }, [existingShow, prefilledDate, initialStatus, isOpen]);
+  }, [existingShow, prefilledDate, initialStatus, isOpen, defaultAccountId]);
 
   if (!isOpen) return null;
 
@@ -95,9 +122,46 @@ export const ShowFormModal: React.FC<Props> = ({
 
   const executeSave = () => {
     const cacheVal = parseFloat(totalCache.replace(',', '.')) || 0;
+    const depVal = hasImmediateDeposit ? (parseFloat(depositAmount.replace(',', '.')) || 0) : 0;
+
+    const paymentsList: ShowPayment[] = existingShow?.payments ? [...existingShow.payments] : [];
+    let initialDepositTx: any = null;
+
+    if (!existingShow && depVal > 0) {
+      const txId = generateUUID();
+      const paymentId = generateUUID();
+
+      paymentsList.push({
+        id: paymentId,
+        type: 'Sinal',
+        amount: depVal,
+        status: 'Recebido',
+        expectedDate: depositDate,
+        effectiveDate: depositDate,
+        accountId: depositAccountId,
+        notes: 'Sinal registrado no cadastro do evento',
+        transactionId: txId
+      });
+
+      initialDepositTx = {
+        id: txId,
+        type: 'income',
+        amount: depVal,
+        description: `Cachê: ${contractorName.trim()} (Sinal)`,
+        categoryId: 'cat_33',
+        accountId: depositAccountId,
+        date: depositDate,
+        status: 'paid',
+        scope: 'BUSINESS',
+        showPaymentType: 'Sinal',
+        showPaymentId: paymentId
+      };
+    }
+
     const showPayload: Partial<Show> = {
       name: contractorName.trim(),
       contractorName: contractorName.trim(),
+      contractorPhone: contractorPhone.trim() || undefined,
       eventType,
       date,
       time,
@@ -109,10 +173,11 @@ export const ShowFormModal: React.FC<Props> = ({
       extraAmount: existingShow?.extraAmount || 0,
       status,
       notes: notes.trim(),
-      scope: existingShow?.scope || 'BUSINESS'
+      scope: existingShow?.scope || 'BUSINESS',
+      payments: paymentsList
     };
 
-    onSave(showPayload);
+    onSave(showPayload, initialDepositTx);
     onClose();
   };
 
@@ -146,21 +211,39 @@ export const ShowFormModal: React.FC<Props> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           
-          {/* Contratante */}
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
-              Nome do Contratante / Evento *
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                placeholder="Ex: Cerimonial Sol Nascente, Bar do Zé, etc."
-                value={contractorName}
-                onChange={e => setContractorName(e.target.value)}
-                className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
-              />
-              <User size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+          {/* Contratante & WhatsApp */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                Nome do Contratante / Evento *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Cerimonial Sol Nascente, Bar do Zé"
+                  value={contractorName}
+                  onChange={e => setContractorName(e.target.value)}
+                  className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                />
+                <User size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                Telefone / WhatsApp (Opcional)
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  placeholder="(35) 99999-9999"
+                  value={contractorPhone}
+                  onChange={e => setContractorPhone(e.target.value)}
+                  className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                />
+                <Phone size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+              </div>
             </div>
           </div>
 
@@ -246,6 +329,32 @@ export const ShowFormModal: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* Feedback em Tempo Real de Compatibilidade de Horários */}
+          {liveConflict.hasConflict ? (
+            <div className="p-3 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 flex items-start space-x-2 text-xs animate-shake">
+              <AlertTriangle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-black text-rose-200 block">⚠️ Conflito de Horário!</strong>
+                <span className="text-[11px] opacity-90">{liveConflict.message}</span>
+              </div>
+            </div>
+          ) : (
+            (() => {
+              const otherShowsOnDate = existingShows.filter(s => s.id !== existingShow?.id && s.date === date && s.status !== 'Cancelado');
+              if (otherShowsOnDate.length > 0) {
+                return (
+                  <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 flex items-center space-x-2 text-xs">
+                    <Check size={14} className="text-emerald-400 shrink-0" />
+                    <span className="text-[11px] font-bold">
+                      ✅ {otherShowsOnDate.length} outro(s) evento(s) nesta data: horários compatíveis!
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()
+          )}
+
           {/* Cidade & Local */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -295,6 +404,69 @@ export const ShowFormModal: React.FC<Props> = ({
               <DollarSign size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
             </div>
           </div>
+
+          {/* Seção Inteligente: Registrar Entrada / Sinal Imediato (Apenas para novos cadastros) */}
+          {!existingShow && (
+            <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 space-y-3">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasImmediateDeposit}
+                  onChange={e => setHasImmediateDeposit(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-xs font-black text-emerald-800 dark:text-emerald-300">
+                  ⚡ Já recebeu um Sinal / PIX adiantado deste show?
+                </span>
+              </label>
+
+              {hasImmediateDeposit && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 animate-fade-in">
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 block mb-1">
+                      Valor do Sinal (R$) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required={hasImmediateDeposit}
+                      placeholder="Ex: 500"
+                      value={depositAmount}
+                      onChange={e => setDepositAmount(e.target.value)}
+                      className="w-full p-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-xl text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 block mb-1">
+                      Data do Sinal
+                    </label>
+                    <input
+                      type="date"
+                      value={depositDate}
+                      onChange={e => setDepositDate(e.target.value)}
+                      className="w-full p-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-300 block mb-1">
+                      Conta de Destino
+                    </label>
+                    <select
+                      value={depositAccountId}
+                      onChange={e => setDepositAccountId(e.target.value)}
+                      className="w-full p-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none"
+                    >
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Observações */}
           <div>

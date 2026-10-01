@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { Category, TransactionType, ScopeType } from '../types';
 import { getIcon, ICON_MAP } from '../constants';
-import { Trash2, Plus, X, ChevronLeft, Lock, CheckCircle2, Search, ArrowDownCircle, ArrowUpCircle, ChevronRight, User, Music, Sparkles } from 'lucide-react';
+import { Trash2, Plus, X, ChevronLeft, Lock, CheckCircle2, Search, ArrowDownCircle, ArrowUpCircle, ChevronRight, User, Music, Sparkles, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const COLORS = [
@@ -31,6 +31,7 @@ export const CategoryList = () => {
   const [icon, setIcon] = useState('DollarSign');
 
   // Stats for Usage Locking
+  const [deleteBlockMessage, setDeleteBlockMessage] = useState<string | null>(null);
   const categoryStats = useMemo(() => {
     const stats: Record<string, number> = {};
     transactions.forEach(t => {
@@ -73,7 +74,7 @@ export const CategoryList = () => {
   const handleDeleteClick = (id: string) => {
     const count = categoryStats[id] || 0;
     if (count > 0) {
-      alert(`Esta categoria não pode ser excluída pois possui ${count} lançamento(s) associado(s).`);
+      setDeleteBlockMessage(`Esta categoria não pode ser excluída pois possui ${count} lançamento(s) associado(s).`);
       return;
     }
     setDeleteConfirmationId(id);
@@ -419,6 +420,28 @@ export const CategoryList = () => {
                     Excluir
                  </button>
               </div>
+           </div>
+        </div>
+      )}
+
+      {/* Delete Blocked Modal (Substitui window.alert) */}
+      {deleteBlockMessage && (
+        <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
+           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in text-center">
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                 <AlertTriangle size={32} />
+              </div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2">Categoria em Uso</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium leading-relaxed">
+                 {deleteBlockMessage}
+              </p>
+              
+              <button 
+                onClick={() => setDeleteBlockMessage(null)}
+                className="w-full py-3.5 text-white font-bold bg-indigo-600 hover:bg-indigo-700 rounded-2xl text-xs uppercase tracking-wider shadow-md"
+              >
+                 Entendido
+              </button>
            </div>
         </div>
       )}

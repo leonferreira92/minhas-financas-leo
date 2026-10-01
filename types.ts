@@ -3,7 +3,7 @@ export type ScopeType = 'PERSONAL' | 'BUSINESS' | 'BOTH';
 export type ActiveScopeFilter = 'ALL' | 'PERSONAL' | 'BUSINESS';
 
 export type TransactionType = 'income' | 'expense' | 'transfer' | 'adjustment' | 'goal_deposit' | 'goal_withdraw';
-export type TransactionStatus = 'paid' | 'pending';
+export type TransactionStatus = 'paid' | 'pending' | 'cancelled';
 export type AccountType = 'wallet' | 'bank' | 'savings' | 'investment' | 'other';
 
 export type DebtType = 'bank' | 'person' | 'card_installment' | 'car_financing';
@@ -123,6 +123,8 @@ export interface AppSettings {
   notificationInterval?: number;
   dashboardLayout: DashboardWidgetConfig[];
   financialSettings?: FinancialSettings;
+  personalDefaultAccountId?: string;
+  businessDefaultAccountId?: string;
 }
 
 export interface ShowExpenses {
@@ -179,6 +181,7 @@ export interface Show {
   id: string;
   name: string;           // Nome do evento / Show
   contractorName: string; // Nome do contratante
+  contractorPhone?: string; // Telefone / WhatsApp do contratante
   eventType?: string;     // Tipo de evento (Casamento, Corporativo, Bar, etc.)
   location: string;       // Local da apresentação / Endereço
   city?: string;          // Cidade

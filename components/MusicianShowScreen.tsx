@@ -19,18 +19,19 @@ import { checkScheduleConflict } from './shows/conflictHelper';
 import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
 import { getShowFinancialSummary } from '../services/showFinanceSyncService';
 import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
-import { CareerLiquidityProjectionCard } from './extrato/CareerLiquidityProjectionCard';
+import { generateUUID } from '../services/uuidHelper';
 
 export type ShowScreenTab = 'agenda' | 'upcoming' | 'quotes' | 'history';
 
 export const MusicianShowScreen: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { shows, transactions, addShow, updateShow, deleteShow } = useFinance();
+  const { shows, transactions, addShow, updateShow, deleteShow, addTransaction } = useFinance();
 
   const [activeTab, setActiveTab] = useState<ShowScreenTab>('agenda');
   
   // Modals & Drawer state
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
+  const [openPaymentDirectly, setOpenPaymentDirectly] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
@@ -106,22 +107,17 @@ export const MusicianShowScreen: React.FC = () => {
   // 2. MÉTRICAS E DASHBOARD DO MÊS SELECIONADO (CONFORME REGRAS DE NEGÓCIO)
   // =========================================================================
   const monthlyMetrics = useMemo(() => {
-    const monthShows = shows.filter(s => s.date && s.date.startsWith(selectedMonthPrefix));
+    const monthShows = shows.filter(s => s.date && s.date.startsWith(selectedMonthPrefix) && s.status !== 'Cancelado');
 
-    // Shows Realizados / Concluídos no mês
-    const isCompletedStatus = (st?: string) => {
-      if (!st) return false;
-      const lower = st.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return lower === 'realizado' || lower === 'concluido';
-    };
-
-    const completedShows = monthShows.filter(s => isCompletedStatus(s.status));
+    const completedShows = monthShows.filter(s => s.status === 'Realizado');
     const confirmedShows = monthShows.filter(s => s.status === 'Confirmado');
-
-    // 1. Apresentações Realizadas: Conta todos os shows do mês onde status == 'realizado' OU 'concluido'
     const completedCount = completedShows.length;
+    const confirmedCount = confirmedShows.length;
+    const totalShowsCount = monthShows.length;
 
     // 2. Faturamento do Mês (Regime de Caixa / Entradas Reais no Mês)
+    // Computa TODOS os valores que entraram (status 'paid') SOMENTE NAQUELE MÊS,
+    // independente se o evento acontece em data futura!
     const monthIncomeTxs = transactions.filter(t => {
       if (!t.date || !t.date.startsWith(selectedMonthPrefix)) return false;
       if (t.type !== 'income' || t.status !== 'paid') return false;
@@ -139,38 +135,36 @@ export const MusicianShowScreen: React.FC = () => {
     });
     const cashInflowsMonth = monthIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    // 3. Faturamento Bruto Contratado dos Shows Realizados no mês
-    const monthlyGrossRevenue = completedShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalPredicted;
-    }, 0);
-
-    // 4. A Receber (Shows Realizados): Soma o saldo restante dos shows já realizados no mês que ainda não foram 100% quitados
-    const pendingToReceiveRealizados = completedShows.reduce((sum, s) => {
+    // 3. A Receber dos Shows DESTE MÊS: Soma o que ainda falta receber de todos os shows agendados neste mês
+    const pendingToReceiveMonth = monthShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
       return sum + fin.totalPending;
     }, 0);
 
-    // 5. Recebido Efetivo dos Shows Realizados
-    const totalReceivedRealizados = completedShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalReceived;
-    }, 0);
+    // 4. Despesas de shows no mês
+    const monthExpenseTxs = transactions.filter(t => {
+      if (!t.date || !t.date.startsWith(selectedMonthPrefix)) return false;
+      if (t.type !== 'expense' || t.status !== 'paid') return false;
+      return !!t.showId || t.categoryId === 'cat_producao_shows';
+    });
+    const cashOutflowsMonth = monthExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const netProfitMonth = Math.round((cashInflowsMonth - cashOutflowsMonth) * 100) / 100;
 
-    // 6. Shows Confirmados / Projetado no mês
-    const confirmedRevenue = confirmedShows.reduce((sum, s) => {
+    // 5. Cachê Total Contratado dos shows deste mês
+    const contractedRevenueMonth = monthShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalPredicted;
+      return sum + fin.totalContracted;
     }, 0);
 
     return {
       completedCount,
+      confirmedCount,
+      totalShowsCount,
       cashInflowsMonth: Math.round(cashInflowsMonth * 100) / 100,
-      monthlyGrossRevenue: Math.round(monthlyGrossRevenue * 100) / 100,
-      pendingToReceiveRealizados: Math.round(pendingToReceiveRealizados * 100) / 100,
-      totalReceivedRealizados: Math.round(totalReceivedRealizados * 100) / 100,
-      confirmedCount: confirmedShows.length,
-      confirmedRevenue: Math.round(confirmedRevenue * 100) / 100
+      cashOutflowsMonth: Math.round(cashOutflowsMonth * 100) / 100,
+      netProfitMonth,
+      pendingToReceiveMonth: Math.round(pendingToReceiveMonth * 100) / 100,
+      contractedRevenueMonth: Math.round(contractedRevenueMonth * 100) / 100
     };
   }, [shows, transactions, selectedMonthPrefix]);
 
@@ -191,14 +185,43 @@ export const MusicianShowScreen: React.FC = () => {
     setIsFormModalOpen(true);
   };
 
-  const handleSaveShow = (showData: Partial<Show>) => {
+  const handleSaveShow = (showData: Partial<Show>, initialDepositTx?: any) => {
     if (showToEdit) {
       updateShow({
         ...showToEdit,
         ...showData
       } as Show);
     } else {
-      addShow(showData as any);
+      const newShowId = `show_${generateUUID()}`;
+      const finalShow: Show = {
+        location: '',
+        ...showData,
+        id: newShowId,
+        name: showData.name || showData.contractorName || 'Show',
+        contractorName: showData.contractorName || showData.name || 'Show',
+        date: showData.date || new Date().toISOString().slice(0, 10),
+        time: showData.time || '20:00',
+        totalCache: showData.totalCache || 0,
+        status: showData.status || 'Confirmado',
+        scope: 'BUSINESS',
+        createdAt: Date.now()
+      };
+
+      if (initialDepositTx) {
+        finalShow.payments = (finalShow.payments || []).map(p => ({
+          ...p,
+          transactionId: initialDepositTx.id
+        }));
+      }
+
+      addShow(finalShow);
+
+      if (initialDepositTx) {
+        addTransaction({
+          ...initialDepositTx,
+          showId: newShowId
+        });
+      }
     }
   };
 
@@ -329,73 +352,95 @@ export const MusicianShowScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* 3 KPI Cards Principais */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* 4 KPI Cards Principais de Desempenho do Mês */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           
-          {/* KPI 1: Apresentações Realizadas */}
-          <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-1.5">
+          {/* KPI 1: Shows do Mês */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                Apresentações Realizadas
+                Shows no Mês
               </span>
-              <div className="w-7 h-7 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                <Music size={14} />
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <Music size={13} />
               </div>
             </div>
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-2xl font-black text-purple-900 dark:text-purple-100">
-                {monthlyMetrics.completedCount}
+              <span className="text-xl sm:text-2xl font-black text-purple-900 dark:text-purple-100 tabular-nums">
+                {monthlyMetrics.totalShowsCount}
               </span>
-              <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">
-                {monthlyMetrics.completedCount === 1 ? 'show concluído' : 'shows concluídos'}
+              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold hidden sm:inline">
+                {monthlyMetrics.totalShowsCount === 1 ? 'show' : 'shows'}
               </span>
             </div>
-            <p className="text-[10px] text-purple-500/80 dark:text-purple-400/70 font-medium">
-              Eventos com status Realizado no mês
+            <p className="text-[9px] sm:text-[10px] text-purple-500/80 dark:text-purple-400/70 font-medium truncate">
+              {monthlyMetrics.confirmedCount} confirmados • {monthlyMetrics.completedCount} realizados
             </p>
           </div>
 
-          {/* KPI 2: Faturamento do Mês (Entradas Reais / Regime de Caixa) */}
-          <div className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 space-y-1.5">
+          {/* KPI 2: Faturamento do Mês (Entradas Reais no Mês) */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                Faturamento do Mês
+                Entradas no Caixa
               </span>
-              <div className="w-7 h-7 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <DollarSign size={14} />
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <DollarSign size={13} />
               </div>
             </div>
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums truncate">
                 {formatCurrency(monthlyMetrics.cashInflowsMonth)}
               </span>
             </div>
-            <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/70 font-medium">
-              Entradas reais de Pix/Cachês em {monthLabel}
+            <p className="text-[9px] sm:text-[10px] text-emerald-600/80 dark:text-emerald-400/70 font-medium truncate">
+              Recebidos em {monthLabel}
             </p>
           </div>
 
-          {/* KPI 3: A Receber (Shows Realizados) */}
-          <div className="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 space-y-1.5">
+          {/* KPI 3: A Receber (Shows deste Mês) */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                A Receber (Shows Realizados)
+                A Receber (Mês)
               </span>
-              <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <Clock size={14} />
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Clock size={13} />
               </div>
             </div>
             <div className="flex items-baseline space-x-1.5">
-              <span className={`text-2xl font-black tabular-nums ${
-                monthlyMetrics.pendingToReceiveRealizados > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'
+              <span className={`text-lg sm:text-2xl font-black tabular-nums truncate ${
+                monthlyMetrics.pendingToReceiveMonth > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'
               }`}>
-                {formatCurrency(monthlyMetrics.pendingToReceiveRealizados)}
+                {formatCurrency(monthlyMetrics.pendingToReceiveMonth)}
               </span>
             </div>
-            <p className="text-[10px] text-amber-600/80 dark:text-amber-400/70 font-medium">
-              {monthlyMetrics.pendingToReceiveRealizados === 0 
-                ? '✓ 100% dos shows realizados já quitados' 
-                : 'Saldo restante pendente de quitação'}
+            <p className="text-[9px] sm:text-[10px] text-amber-600/80 dark:text-amber-400/70 font-medium truncate">
+              {monthlyMetrics.pendingToReceiveMonth === 0 
+                ? '✓ 100% quitados' 
+                : `Falta receber dos shows do mês`}
+            </p>
+          </div>
+
+          {/* KPI 4: Lucro Líquido dos Shows do Mês */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                Lucro Líquido
+              </span>
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <TrendingUp size={13} />
+              </div>
+            </div>
+            <div className="flex items-baseline space-x-1.5">
+              <span className={`text-lg sm:text-2xl font-black tabular-nums truncate ${
+                monthlyMetrics.netProfitMonth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-500'
+              }`}>
+                {formatCurrency(monthlyMetrics.netProfitMonth)}
+              </span>
+            </div>
+            <p className="text-[9px] sm:text-[10px] text-blue-500/80 dark:text-blue-400/70 font-medium truncate">
+              {monthlyMetrics.cashOutflowsMonth > 0 ? `Custos: -${formatCurrency(monthlyMetrics.cashOutflowsMonth)}` : 'Sem custos pagos no mês'}
             </p>
           </div>
 
@@ -519,18 +564,31 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'agenda' && (
         <ShowCalendarView
           shows={shows}
-          onSelectShow={show => setSelectedShowId(show.id)}
+          currentDate={currentDate}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onGoToday={handleGoCurrentMonth}
+          onSelectShow={(show, tab, openPay) => {
+            setOpenPaymentDirectly(Boolean(openPay));
+            setSelectedShowId(show.id);
+          }}
+          onQuickAddPayment={(show) => {
+            setOpenPaymentDirectly(true);
+            setSelectedShowId(show.id);
+          }}
           onOpenCreateModal={date => handleOpenCreateModal(date, 'Confirmado')}
         />
       )}
 
-      {/* 2. PRÓXIMOS SHOWS (CRONOLÓGICO COM BARRA DE PROGRESSO E PREVISIBILIDADE) */}
+      {/* 2. PRÓXIMOS SHOWS (CRONOLÓGICO) */}
       {activeTab === 'upcoming' && (
         <div className="space-y-4">
-          <CareerLiquidityProjectionCard />
           <UpcomingShowsList
             shows={shows}
-            onSelectShow={show => setSelectedShowId(show.id)}
+            onSelectShow={show => {
+              setOpenPaymentDirectly(false);
+              setSelectedShowId(show.id);
+            }}
             onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Confirmado')}
           />
         </div>
@@ -540,7 +598,10 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'quotes' && (
         <ShowQuotesView
           shows={shows}
-          onSelectShow={show => setSelectedShowId(show.id)}
+          onSelectShow={show => {
+            setOpenPaymentDirectly(false);
+            setSelectedShowId(show.id);
+          }}
           onConfirmQuote={handleConfirmQuote}
           onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Orçamento')}
         />
@@ -550,7 +611,10 @@ export const MusicianShowScreen: React.FC = () => {
       {activeTab === 'history' && (
         <ShowHistoryView
           shows={shows}
-          onSelectShow={show => setSelectedShowId(show.id)}
+          onSelectShow={show => {
+            setOpenPaymentDirectly(false);
+            setSelectedShowId(show.id);
+          }}
         />
       )}
 
@@ -558,11 +622,16 @@ export const MusicianShowScreen: React.FC = () => {
       {selectedShowForDetail && (
         <ShowDetailModal
           show={selectedShowForDetail}
-          onClose={() => setSelectedShowId(null)}
+          openPaymentDirectly={openPaymentDirectly}
+          onClose={() => {
+            setSelectedShowId(null);
+            setOpenPaymentDirectly(false);
+          }}
           onEdit={show => handleOpenEditModal(show)}
           onDelete={showId => {
             deleteShow(showId, true);
             setSelectedShowId(null);
+            setOpenPaymentDirectly(false);
           }}
           onUpdateStatus={handleQuickUpdateStatus}
         />

@@ -25,7 +25,8 @@ interface Props {
 export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
   const { 
     addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, 
-    deleteTransaction, categories, transactions, accounts, shows, addShow, checkTransactionImpact
+    deleteTransaction, categories, transactions, accounts, shows, addShow, checkTransactionImpact,
+    getDefaultAccountForScope
   } = useFinance();
 
   // Primary Form State
@@ -75,13 +76,16 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [impact, setImpact] = useState<{ compromisedTransaction: Transaction } | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [quickShowError, setQuickShowError] = useState<string | null>(null);
 
   // Initial Account Assignment
   useEffect(() => {
     if (!accountId && accounts.length > 0) {
-      setAccountId(accounts[0].id);
+      const defAcc = getDefaultAccountForScope(scope);
+      setAccountId(defAcc || accounts[0].id);
     }
-  }, [accounts]);
+  }, [accounts, scope, getDefaultAccountForScope, accountId]);
 
   // Load existing transaction for editing
   useEffect(() => {
@@ -350,7 +354,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleCreateQuickShow = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickShowContractor.trim() || !quickShowDate) {
-      alert('Preencha o nome do contratante/evento e a data.');
+      setQuickShowError('Preencha o nome do contratante/evento e a data.');
       return;
     }
 
@@ -377,6 +381,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     if (!userManuallySetCategory) {
       setCategoryId('cat_33');
     }
+    setQuickShowError(null);
     setShowQuickCreateShowModal(false);
   };
 
@@ -408,31 +413,33 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     e.preventDefault();
     const val = parseCurrencyInput(amount);
     
-    if (!val || val <= 0 || !description || !accountId) {
-      alert("Preencha o valor, a descrição e a conta.");
+    if (!val || val <= 0 || !description.trim() || !accountId) {
+      setValidationError("Preencha o valor, a descrição e a conta de lançamento.");
       return;
     }
 
     if (isAmountInvalid) {
-      alert("Valor inválido para dívida.");
+      setValidationError("Valor inválido para dívida.");
       return;
     }
 
     if (type !== 'transfer' && !categoryId) {
-      alert("Selecione uma categoria.");
+      setValidationError("Por favor, selecione uma categoria.");
       return;
     }
 
     if (type === 'transfer') {
       if (!destinationAccountId) {
-        alert("Selecione a conta de destino.");
+        setValidationError("Selecione a conta de destino para a transferência.");
         return;
       }
       if (accountId === destinationAccountId) {
-        alert("A conta de origem e destino devem ser diferentes.");
+        setValidationError("A conta de origem e destino devem ser diferentes.");
         return;
       }
     }
+
+    setValidationError(null);
 
     const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
     const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
@@ -966,6 +973,21 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             </div>
           </form>
 
+          {/* MENSAGEM VISUAL DE VALIDAÇÃO INLINE (SEM WINDOW.ALERT) */}
+          {validationError && (
+            <div className="absolute bottom-24 left-4 right-4 z-40 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center space-x-2 animate-fade-in shadow-xl backdrop-blur-md">
+              <AlertTriangle size={16} className="shrink-0 text-rose-500" />
+              <span className="flex-1">{validationError}</span>
+              <button 
+                type="button" 
+                onClick={() => setValidationError(null)} 
+                className="p-1 rounded-lg hover:bg-rose-500/20 text-rose-300"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           {/* ========================================== */}
           {/* 8. BOTÃO CONFIRMAR (FIXO NO BOTTOM)        */}
           {/* ========================================== */}
@@ -1102,6 +1124,13 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                 <X size={18} />
               </button>
             </div>
+
+            {quickShowError && (
+              <div className="mb-3 p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center space-x-2 animate-fade-in">
+                <AlertTriangle size={14} className="shrink-0 text-rose-500" />
+                <span className="flex-1">{quickShowError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateQuickShow} className="space-y-3">
               <div>

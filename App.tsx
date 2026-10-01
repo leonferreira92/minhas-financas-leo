@@ -40,7 +40,6 @@ const AppContent = () => {
         {/* ROTAS LEGADAS / ACESSOS DIRETOS PRESERVADOS (REDIRECIONAMENTO OU ACESSO TRANSPARENTE) */}
         <Route path="/transactions" element={<FinancialHubScreen initialTab="movimentacoes" />} />
         <Route path="/debts" element={<FinancialHubScreen initialTab="dividas" />} />
-        <Route path="/metas" element={<Navigate to="/financeiro" replace />} />
         <Route path="/planning" element={<FinancialHubScreen initialTab="projecoes" />} />
         <Route path="/flow" element={<ReportsHubScreen initialTab="flow" />} />
         <Route path="/insights" element={<FinancialHubScreen initialTab="insights" />} />

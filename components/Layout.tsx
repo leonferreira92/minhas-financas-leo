@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
-  Home, Wallet, Music, BarChart3, Menu, Plus, X, 
-  ArrowUpRight, ArrowDownRight, ArrowRightLeft, PiggyBank
+  Home, Wallet, Music, BarChart3, Menu
 } from 'lucide-react';
 
 interface Props {
@@ -10,25 +9,14 @@ interface Props {
   onOpenAdd: (type?: 'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw') => void;
 }
 
-export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
+export const Layout: React.FC<Props> = ({ children }) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
-
-  const handleQuickAction = (actionType: 'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw' | 'show') => {
-    setIsQuickActionOpen(false);
-    if (actionType === 'show') {
-      navigate('/shows');
-    } else {
-      onOpenAdd(actionType);
-    }
-  };
 
   // Determine active states for the 5 primary navigation tabs
   const isHomeActive = location.pathname === '/';
   
   const isFinanceiroActive = [
-    '/financeiro', '/transactions', '/debts', '/metas', '/planning', '/flow', '/insights'
+    '/financeiro', '/transactions', '/debts', '/planning', '/flow', '/insights'
   ].some(path => location.pathname === path || location.pathname.startsWith('/financeiro'));
 
   const isShowsActive = location.pathname.startsWith('/shows');
@@ -41,178 +29,63 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
     '/mais', '/settings', '/financial-settings', '/categories', '/alerts'
   ].some(path => location.pathname === path || location.pathname.startsWith('/mais'));
 
+  const navItems = [
+    { to: '/', label: 'Home', icon: Home, isActive: isHomeActive },
+    { to: '/financeiro', label: 'Finanças', icon: Wallet, isActive: isFinanceiroActive },
+    { to: '/shows', label: 'Shows', icon: Music, isActive: isShowsActive },
+    { to: '/relatorios', label: 'Relatórios', icon: BarChart3, isActive: isRelatoriosActive },
+    { to: '/mais', label: 'Mais', icon: Menu, isActive: isMaisActive },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#09090b] font-sans text-white selection:bg-emerald-500/30 selection:text-emerald-400 transition-colors duration-200">
+    <div className="min-h-screen bg-[#09090b] font-sans text-white selection:bg-emerald-500/30 selection:text-emerald-400">
       
-      {/* Container Principal */}
-      <main className="w-full max-w-md mx-auto min-h-screen bg-[#121212] sm:border-x sm:border-zinc-800/80 shadow-2xl relative transition-colors duration-200 pb-28 overflow-x-hidden">
-        <div className="p-3.5 sm:p-5 w-full max-w-full overflow-x-hidden">
+      {/* Container Principal Mobile-First */}
+      <main className="w-full max-w-md mx-auto min-h-screen bg-[#09090b] sm:border-x sm:border-zinc-800/60 shadow-2xl relative pb-28 overflow-x-hidden">
+        <div className="p-3.5 sm:p-4 w-full max-w-full overflow-x-hidden">
           {children}
         </div>
       </main>
 
-      {/* NAVBAR INFERIOR FIXA - DESIGN SYSTEM SPOTIFY STYLE */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#181818]/95 backdrop-blur-xl border-t border-zinc-800/80 pb-[env(safe-area-inset-bottom,12px)] shadow-2xl">
-        <div className="max-w-md mx-auto relative px-1 sm:px-2">
-          
-          <nav className="flex justify-between items-center h-[64px] relative z-10">
-            {/* 1. HOME */}
-            <NavLink 
-              to="/" 
-              className={`
-                flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isHomeActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
-              `}
-            >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isHomeActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
-                <Home size={20} strokeWidth={isHomeActive ? 2.5 : 1.8} />
-              </div>
-              <span className="text-[10px] tracking-tight mt-0.5">Home</span>
-            </NavLink>
+      {/* FLOATING BOTTOM NAVIGATION BAR - DESIGN SYSTEM FIGMA iBank / FinPay */}
+      <div className="fixed bottom-3 left-0 right-0 z-40 px-3 sm:px-4 pointer-events-none">
+        <div className="max-w-md mx-auto pointer-events-auto">
+          <nav className="bg-[#18181b]/90 backdrop-blur-2xl border border-zinc-800/80 rounded-2xl sm:rounded-3xl p-1.5 shadow-2xl shadow-black/80 flex items-center justify-between gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={`
+                    relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 group
+                    ${item.isActive 
+                      ? 'text-emerald-400 font-bold' 
+                      : 'text-zinc-400 hover:text-zinc-200 font-medium'
+                    }
+                  `}
+                >
+                  {/* Subtle active glow container */}
+                  <div className={`
+                    relative p-1 rounded-lg transition-all duration-200
+                    ${item.isActive ? 'bg-emerald-500/15 text-emerald-400 shadow-[0_0_12px_rgba(34,197,94,0.35)]' : 'group-hover:bg-zinc-800/40'}
+                  `}>
+                    <Icon size={19} strokeWidth={item.isActive ? 2.5 : 2} />
+                  </div>
+                  <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
+                    {item.label}
+                  </span>
 
-            {/* 2. FINANCEIRO */}
-            <NavLink 
-              to="/financeiro" 
-              className={`
-                flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isFinanceiroActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
-              `}
-            >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isFinanceiroActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
-                <Wallet size={20} strokeWidth={isFinanceiroActive ? 2.5 : 1.8} />
-              </div>
-              <span className="text-[10px] tracking-tight mt-0.5">Financeiro</span>
-            </NavLink>
-
-            {/* 3. SHOWS */}
-            <NavLink 
-              to="/shows" 
-              className={`
-                flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isShowsActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
-              `}
-            >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isShowsActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
-                <Music size={20} strokeWidth={isShowsActive ? 2.5 : 1.8} />
-              </div>
-              <span className="text-[10px] tracking-tight mt-0.5">Shows</span>
-            </NavLink>
-
-            {/* 4. RELATÓRIOS */}
-            <NavLink 
-              to="/relatorios" 
-              className={`
-                flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isRelatoriosActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
-              `}
-            >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isRelatoriosActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
-                <BarChart3 size={20} strokeWidth={isRelatoriosActive ? 2.5 : 1.8} />
-              </div>
-              <span className="text-[10px] tracking-tight mt-0.5">Relatórios</span>
-            </NavLink>
-
-            {/* 5. MAIS */}
-            <NavLink 
-              to="/mais" 
-              className={`
-                flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isMaisActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
-              `}
-            >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isMaisActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
-                <Menu size={20} strokeWidth={isMaisActive ? 2.5 : 1.8} />
-              </div>
-              <span className="text-[10px] tracking-tight mt-0.5">Mais</span>
-            </NavLink>
+                  {/* Active dot indicator */}
+                  {item.isActive && (
+                    <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-emerald-400 shadow-[0_0_6px_#22c55e]" />
+                  )}
+                </NavLink>
+              );
+            })}
           </nav>
         </div>
       </div>
-
-      {/* QUICK ACTIONS MODAL (SE ACIONADO PELAS TELAS OU ATALHOS) */}
-      {isQuickActionOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
-          <div 
-            className="fixed inset-0" 
-            onClick={() => setIsQuickActionOpen(false)} 
-          />
-          
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl border-t sm:border border-slate-200 dark:border-slate-800 z-10 animate-slide-up space-y-5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-                  <Plus size={20} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-800 dark:text-white">Nova Movimentação</h3>
-                  <p className="text-[11px] font-medium text-slate-400">Selecione o tipo de registro rápido</p>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => setIsQuickActionOpen(false)}
-                className="p-2 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleQuickAction('income')}
-                className="p-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-left transition-all active:scale-95 group flex flex-col justify-between h-24"
-              >
-                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md">
-                  <ArrowUpRight size={18} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 block">Receita</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Entradas e salários</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleQuickAction('expense')}
-                className="p-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-left transition-all active:scale-95 group flex flex-col justify-between h-24"
-              >
-                <div className="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-md">
-                  <ArrowDownRight size={18} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <span className="text-xs font-black text-rose-700 dark:text-rose-400 block">Despesa</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Contas e compras</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleQuickAction('transfer')}
-                className="p-4 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-left transition-all active:scale-95 group flex flex-col justify-between h-24"
-              >
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
-                  <ArrowRightLeft size={18} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <span className="text-xs font-black text-indigo-700 dark:text-indigo-400 block">Transferência</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Entre suas contas</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleQuickAction('goal_deposit')}
-                className="p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-left transition-all active:scale-95 group flex flex-col justify-between h-24"
-              >
-                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-md">
-                  <PiggyBank size={18} strokeWidth={2.5} />
-                </div>
-                <div>
-                  <span className="text-xs font-black text-amber-700 dark:text-amber-400 block">Guardar Dinheiro</span>
-                  <span className="text-[10px] text-slate-400 font-medium">Aporte na reserva</span>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

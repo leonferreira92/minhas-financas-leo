@@ -193,7 +193,7 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
                     <div className="flex-1 ml-5 cursor-pointer" onClick={() => setRecalcTransaction(t)}>
                        <div className="flex justify-between items-center mb-1">
                           <span className={`text-xs font-black uppercase tracking-widest ${isTPaid ? 'text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                            Parcela {t.installmentNumber}
+                            {t.installmentNumber ? `Parcela ${t.installmentNumber}` : (t.description?.includes('Entrada') ? 'Entrada Inicial' : 'Entrada Inicial')}
                           </span>
                           <span className={`text-base font-black tabular-nums ${isTPaid ? 'text-slate-400 line-through' : isOverdue ? 'text-rose-500' : 'text-slate-800 dark:text-white'}`}>
                             {formatCurrency(t.amount)}
@@ -242,13 +242,17 @@ const RecalculateModal = ({ transaction, onClose, onSave }: { transaction: Trans
       <div className="fixed inset-0 bg-slate-900/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in">
             <div className="flex justify-between items-center mb-8">
-               <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tighter">Ajustar Parcela {transaction.installmentNumber}</h3>
+               <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tighter">
+                  Ajustar {transaction.installmentNumber && transaction.installmentNumber > 0 ? `Parcela ${transaction.installmentNumber}` : 'Entrada Inicial'}
+               </h3>
                <button onClick={onClose} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-rose-500 transition-colors active:scale-95"><X size={20}/></button>
             </div>
 
             <div className="space-y-8">
                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Novo Valor da Parcela</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">
+                     Novo Valor {transaction.installmentNumber && transaction.installmentNumber > 0 ? 'da Parcela' : 'da Entrada Inicial'}
+                  </label>
                   <div className="relative">
                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">R$</span>
                      <input 

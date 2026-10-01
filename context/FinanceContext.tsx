@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, DashboardWidgetConfig, Show, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, DashboardWidgetConfig, Show, ShowPayment, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
@@ -47,6 +47,7 @@ interface FinanceContextType {
   deleteAccount: (id: string) => void;
   reconcileBalance: (accountId: string, realBalance: number) => void;
   getAccountBalance: (accountId: string) => number;
+  getDefaultAccountForScope: (scope?: ScopeType | ActiveScopeFilter) => string;
   
   addDebt: (debtData: Omit<Debt, 'id'>, installmentsData: any) => void;
   updateDebt: (id: string, name: string, installmentCount: number) => void;
@@ -104,13 +105,43 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const [activeScope, setActiveScopeState] = useState<ActiveScopeFilter>(() => {
     const saved = localStorage.getItem('fin_app_scope');
-    return (saved === 'PERSONAL' || saved === 'BUSINESS') ? saved : 'ALL';
+    return (saved === 'PERSONAL' || saved === 'BUSINESS') ? saved : 'PERSONAL';
   });
 
   const setActiveScope = (scope: ActiveScopeFilter) => {
     setActiveScopeState(scope);
     localStorage.setItem('fin_app_scope', scope);
   };
+
+  const getDefaultAccountForScope = useCallback((scope?: ScopeType | ActiveScopeFilter): string => {
+    const targetScope = scope || activeScope;
+    if (targetScope === 'BUSINESS') {
+      if (settings.businessDefaultAccountId && accounts.some(a => a.id === settings.businessDefaultAccountId)) {
+        return settings.businessDefaultAccountId;
+      }
+      const bizAcc = accounts.find(a => 
+        a.scope === 'BUSINESS' || 
+        a.vinculo === 'MUSICO' || 
+        a.name.toLowerCase().includes('mercado') || 
+        a.name.toLowerCase().includes('pj') ||
+        a.name.toLowerCase().includes('show')
+      );
+      if (bizAcc) return bizAcc.id;
+    } else {
+      if (settings.personalDefaultAccountId && accounts.some(a => a.id === settings.personalDefaultAccountId)) {
+        return settings.personalDefaultAccountId;
+      }
+      const persAcc = accounts.find(a => 
+        a.scope === 'PERSONAL' || 
+        a.vinculo === 'PESSOAL' || 
+        a.name.toLowerCase().includes('brasil') || 
+        a.name.toLowerCase().includes('corrente') ||
+        a.name.toLowerCase().includes('bb')
+      );
+      if (persAcc) return persAcc.id;
+    }
+    return accounts.length > 0 ? accounts[0].id : 'acc_bb';
+  }, [accounts, activeScope, settings]);
 
   const toggleBlur = () => {
     setIsBlurred(prev => {
@@ -173,9 +204,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   useEffect(() => {
-    if (settings.theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [settings.theme]);
+    // Pure Dark Spotify / Fintech theme permanent enforcement
+    document.documentElement.classList.add('dark');
+  }, []);
 
   useEffect(() => {
     const colorKey = settings.primaryColor || 'lime';
@@ -457,10 +488,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const addTransaction = (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => {
     const fixedGroupId = t.isFixed ? generateUUID() : undefined;
+    const tid = t.id || generateUUID();
+    const cleanAmount = Number(t.amount) || 0;
+    const cleanScope: ScopeType = t.scope || ((t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || !!t.showId) ? 'BUSINESS' : (activeScope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL'));
+
+    const fullTx: Transaction = {
+      ...t,
+      id: tid,
+      amount: cleanAmount,
+      scope: cleanScope,
+      createdAt: Date.now(),
+      fixedGroupId
+    };
+
     setTransactions(prev => {
-      const txs = [...prev];
-      const tid = t.id || generateUUID();
-      txs.push({ ...t, id: tid, createdAt: Date.now(), fixedGroupId });
+      const txs = [...prev, fullTx];
       if (t.isFixed && fixedGroupId) {
         for (let i = 1; i < 12; i++) {
           const d = new Date(t.date); d.setMonth(d.getMonth() + i);
@@ -470,6 +512,66 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       StorageService.saveTransactions(txs);
       return txs;
     });
+
+    if (t.showId) {
+      const defaultAccId = getDefaultAccountForScope('BUSINESS');
+      setShows(prevShows => {
+        let modified = false;
+        const updated = prevShows.map(show => {
+          if (show.id !== t.showId) return show;
+          modified = true;
+          if (t.type === 'income') {
+            let payments = Array.isArray(show.payments) ? [...show.payments] : [];
+            const existingIdx = payments.findIndex(p => p.transactionId === tid || (t.showPaymentId && p.id === t.showPaymentId));
+            const pType = t.showPaymentType || (t.description?.toLowerCase().includes('sinal') ? 'Sinal' : 'Parcela');
+            
+            const updatedPayment: ShowPayment = {
+              id: (existingIdx >= 0 && payments[existingIdx].id) ? payments[existingIdx].id : (t.showPaymentId || generateUUID()),
+              type: pType,
+              amount: cleanAmount,
+              status: t.status === 'paid' ? 'Recebido' : 'Agendado',
+              expectedDate: t.date,
+              effectiveDate: t.status === 'paid' ? t.date : undefined,
+              accountId: t.accountId || defaultAccId,
+              transactionId: tid
+            };
+
+            if (existingIdx >= 0) {
+              payments[existingIdx] = updatedPayment;
+            } else {
+              payments.push(updatedPayment);
+            }
+            return normalizeShowFinancials({ ...show, payments }, defaultAccId);
+          } else if (t.type === 'expense') {
+            let expenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
+            const existingIdx = expenses.findIndex(e => e.transactionId === tid || (t.showExpenseId && e.id === t.showExpenseId));
+            const updatedExpense = {
+              id: (existingIdx >= 0 && expenses[existingIdx].id) ? expenses[existingIdx].id : (t.showExpenseId || generateUUID()),
+              category: 'Outros',
+              notes: t.description || 'Despesa do Show',
+              amount: cleanAmount,
+              date: t.date,
+              accountId: t.accountId || defaultAccId,
+              transactionId: tid
+            };
+
+            if (existingIdx >= 0) {
+              expenses[existingIdx] = updatedExpense;
+            } else {
+              expenses.push(updatedExpense);
+            }
+            return normalizeShowFinancials({ ...show, expenseItems: expenses }, defaultAccId);
+          }
+          return show;
+        });
+
+        if (modified) {
+          StorageService.saveShows(updated);
+          return updated;
+        }
+        return prevShows;
+      });
+    }
   };
 
   const importTransactions = (newTxs: Array<Omit<Transaction, 'id' | 'createdAt'> & { id?: string }>) => {
@@ -603,39 +705,57 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const originalT = transactions.find(t => t.id === transactionId);
     if (!originalT || !originalT.debtId) return;
 
-    const oldAmount = Number(originalT.amount);
-    const difference = Number(newAmount) - oldAmount;
+    const debt = debts.find(d => d.id === originalT.debtId);
+    const allDebtTxs = transactions.filter(t => t.debtId === originalT.debtId);
+    const totalContract = debt ? Number(debt.totalAmount) : allDebtTxs.reduce((s, t) => s + Number(t.amount || 0), 0);
 
-    if (Math.abs(difference) < 0.01) {
-        updateTransaction({ ...originalT, amount: newAmount });
-        return;
-    }
-
-    const futureInstallments = transactions
+    const futureInstallments = allDebtTxs
       .filter(t => 
-        t.debtId === originalT.debtId && 
         t.status === 'pending' && 
         t.id !== transactionId && 
-        new Date(t.date) > new Date(originalT.date)
+        (
+          (t.installmentNumber !== undefined && originalT.installmentNumber !== undefined)
+            ? t.installmentNumber > originalT.installmentNumber
+            : new Date(t.date + 'T12:00:00').getTime() >= new Date(originalT.date + 'T12:00:00').getTime()
+        )
       )
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => {
+        if (a.installmentNumber !== undefined && b.installmentNumber !== undefined) {
+          return a.installmentNumber - b.installmentNumber;
+        }
+        return new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime();
+      });
 
     if (futureInstallments.length === 0) {
-       updateTransaction({ ...originalT, amount: newAmount });
-       return;
+      updateTransaction({ ...originalT, amount: newAmount });
+      return;
     }
 
-    const adjustmentPerInstallment = (difference * -1) / futureInstallments.length;
+    const otherPaidAmount = allDebtTxs
+      .filter(t => t.id !== transactionId && t.status === 'paid')
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
+
+    const remainingForFuture = Math.max(0, parseFloat((totalContract - otherPaidAmount - newAmount).toFixed(2)));
+    const basePerInstallment = Math.floor((remainingForFuture / futureInstallments.length) * 100) / 100;
+    const allocatedSoFar = parseFloat((basePerInstallment * futureInstallments.length).toFixed(2));
+    const remainderDiff = parseFloat((remainingForFuture - allocatedSoFar).toFixed(2));
+
+    const futureMap = new Map<string, number>();
+    futureInstallments.forEach((fi, idx) => {
+      // Ajusta centavos residuais na última parcela para soma exata sem descartar nada
+      const isLast = idx === futureInstallments.length - 1;
+      const adjustedVal = isLast ? Math.max(0, parseFloat((basePerInstallment + remainderDiff).toFixed(2))) : basePerInstallment;
+      futureMap.set(fi.id, adjustedVal);
+    });
 
     const newTransactions = transactions.map(t => {
-       if (t.id === transactionId) {
-          return { ...t, amount: newAmount };
-       }
-       if (futureInstallments.some(fi => fi.id === t.id)) {
-          const adjustedAmount = Math.max(0, Number(t.amount) + adjustmentPerInstallment);
-          return { ...t, amount: parseFloat(adjustedAmount.toFixed(2)) };
-       }
-       return t;
+      if (t.id === transactionId) {
+        return { ...t, amount: newAmount };
+      }
+      if (futureMap.has(t.id)) {
+        return { ...t, amount: futureMap.get(t.id)! };
+      }
+      return t;
     });
 
     saveTransactions(newTransactions);
@@ -741,13 +861,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       newTransactions.push({
         id: generateUUID(),
         debtId,
-        description: `Entrada - ${debtData.name}`,
+        description: `Entrada Inicial - ${debtData.name}`,
         amount: Number(downPayment),
         type: 'expense',
         status: 'paid',
         date: today,
         categoryId,
         accountId,
+        installmentNumber: 0,
+        installmentTotal: installments,
         createdAt: createdAtBase
       });
     }
@@ -857,26 +979,31 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const updateShow = (s: Show) => {
-    const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+    const defaultAccId = getDefaultAccountForScope('BUSINESS');
     const normalized = normalizeShowFinancials(s, defaultAccId);
 
-    // Se o show foi cancelado, remove/ajusta as receitas futuras agendadas
-    let currentTxs = transactions;
-    if (s.status === 'Cancelado') {
-      currentTxs = cancelShowFutureTransactions(s.id, currentTxs);
-    }
+    setTransactions(prevTxs => {
+      let currentTxs = prevTxs;
+      if (s.status === 'Cancelado') {
+        currentTxs = cancelShowFutureTransactions(s.id, currentTxs);
+      }
 
-    // Sincronizar movimentações
-    const { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, currentTxs, categories);
+      let { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, currentTxs, categories);
 
-    setShows(prev => {
-      const updated = prev.map(show => show.id === s.id ? updatedShow : show);
-      StorageService.saveShows(updated);
-      return updated;
+      if (s.status === 'Cancelado') {
+        updatedTransactions = cancelShowFutureTransactions(s.id, updatedTransactions);
+      }
+
+      StorageService.saveTransactions(updatedTransactions);
+
+      setShows(prevShows => {
+        const updated = prevShows.map(show => show.id === s.id ? updatedShow : show);
+        StorageService.saveShows(updated);
+        return updated;
+      });
+
+      return updatedTransactions;
     });
-
-    setTransactions(updatedTransactions);
-    StorageService.saveTransactions(updatedTransactions);
   };
 
   const deleteShow = (id: string, deleteTransactions: boolean = false) => {
@@ -921,8 +1048,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let monthlyIncome = 0, monthlyExpense = 0, pendingIncome = 0, pendingExpense = 0;
 
     const filteredTransactions = transactions.filter(t => matchesScope(t.scope, currentScope));
+    const cancelledShowIds = new Set(
+      shows.filter(s => s.status === 'Cancelado').map(s => s.id)
+    );
 
     filteredTransactions.forEach(t => {
+      if (t.status === 'cancelled') return;
+      if (t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid') return;
       const amount = Number(t.amount) || 0;
       const isPaid = t.status === 'paid';
       const tTime = new Date(t.date + 'T12:00:00').getTime();
@@ -994,7 +1126,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <FinanceContext.Provider value={{
       transactions, categories, debts, accounts, budgets, shows, settings, isBlurred, toggleBlur,
-      activeScope, setActiveScope,
+      activeScope, setActiveScope, getDefaultAccountForScope,
       addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,

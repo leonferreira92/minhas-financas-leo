@@ -248,99 +248,144 @@ export const Settings = () => {
       <div className="space-y-6 px-3 pt-4">
         
         {/* --- Profile & Main Settings --- */}
-        <section className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800 relative overflow-hidden">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+        <section className="bg-[#18181b] rounded-[2.2rem] p-6 shadow-sm border border-zinc-800 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
            
            {/* Profile Input */}
            <div className="flex items-center space-x-4 relative z-10 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none shrink-0">
-                 <User size={32} strokeWidth={1.5} />
+              <div className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-[1.2rem] flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-emerald-500/20 shrink-0">
+                 <User size={32} strokeWidth={2} />
               </div>
               <div className="flex-1">
-                 <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-1">Nome de Usuário</label>
+                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">Nome de Usuário</label>
                  <input 
                    value={settings.userName || ''} 
                    onChange={(e) => updateSettings({ userName: e.target.value })} 
                    placeholder="Seu Nome"
-                   className="w-full bg-transparent text-xl font-black text-slate-800 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 border-b border-transparent focus:border-indigo-200 transition-colors pb-1"
+                   className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
                  />
               </div>
            </div>
 
            {/* Nome do Projeto / Carreira */}
-           <div className="flex items-center space-x-4 relative z-10 mb-8 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <div className="w-16 h-16 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-purple-200 dark:shadow-none shrink-0">
+           <div className="flex items-center space-x-4 relative z-10 mb-6 pt-4 border-t border-zinc-800">
+              <div className="w-16 h-16 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0">
                  <Music size={30} strokeWidth={2} />
               </div>
               <div className="flex-1">
-                 <label className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest block mb-1">
-                   Nome do Projeto / Carreira
+                 <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">
+                   Nome do Projeto / Carreira (Empresa)
                  </label>
                  <input 
                    value={settings.careerProjectName !== undefined ? settings.careerProjectName : 'Leo Ferreira'} 
                    onChange={(e) => updateSettings({ careerProjectName: e.target.value })} 
                    placeholder="Ex: Leo Ferreira"
-                   className="w-full bg-transparent text-xl font-black text-slate-800 dark:text-white outline-none placeholder:text-slate-300 dark:placeholder:text-slate-700 border-b border-transparent focus:border-purple-300 transition-colors pb-1"
+                   className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-purple-400 transition-colors pb-1"
                  />
-                 <span className="text-[10px] text-slate-400 block mt-1">Nome exibido na DRE e relatórios musicais</span>
+                 <span className="text-[10px] text-zinc-400 block mt-1">Nome exibido nos relatórios e contratos de shows</span>
               </div>
            </div>
 
-           {/* Settings Grid */}
-           <div className="grid grid-cols-2 gap-3">
-              {/* Theme Toggle */}
-              <button 
-                onClick={() => updateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-                className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex flex-col items-start border border-slate-100 dark:border-slate-700 transition active:scale-95"
-              >
-                 <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Tema</span>
-                    {settings.theme === 'dark' ? <Moon size={16} className="text-indigo-400" /> : <Sun size={16} className="text-amber-500" />}
-                 </div>
-                 <span className="text-sm font-bold dark:text-white capitalize">{settings.theme === 'light' ? 'Claro' : 'Escuro'}</span>
-              </button>
+           {/* CONTAS PADRÃO POR MÓDULO (PESSOAL x EMPRESA) */}
+           <div className="pt-4 border-t border-zinc-800 space-y-3 mb-6">
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">
+                Contas Bancárias Padrão por Módulo
+              </span>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Conta Padrão Pessoal */}
+                <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
+                  <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1">
+                    <User size={12} />
+                    <span>Conta Padrão Pessoal</span>
+                  </label>
+                  <select
+                    value={settings.personalDefaultAccountId || 'acc_bb'}
+                    onChange={e => updateSettings({ personalDefaultAccountId: e.target.value })}
+                    className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-emerald-500"
+                  >
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                    ))}
+                  </select>
+                  <span className="text-[9px] text-zinc-400 block">Usada por padrão em despesas e compras pessoais</span>
+                </div>
+
+                {/* Conta Padrão Empresa */}
+                <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
+                  <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-1">
+                    <Music size={12} />
+                    <span>Conta Padrão Empresa (Shows)</span>
+                  </label>
+                  <select
+                    value={settings.businessDefaultAccountId || 'acc_mp'}
+                    onChange={e => updateSettings({ businessDefaultAccountId: e.target.value })}
+                    className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-purple-500"
+                  >
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                    ))}
+                  </select>
+                  <span className="text-[9px] text-zinc-400 block">Usada por padrão para recebimentos e custos de shows</span>
+                </div>
+              </div>
+              <p className="text-[10px] text-zinc-400">
+                💡 A <strong>Carteira (Dinheiro)</strong> pertence ao Pessoal, mas pode receber entradas de shows quando pago em espécie no evento.
+              </p>
+           </div>
+
+           {/* Settings Grid */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Notification Toggle (Simulated cycle) */}
               <button 
                 onClick={() => {
                    const next = settings.notificationInterval === 0 ? 12 : settings.notificationInterval === 12 ? 24 : 0;
                    updateSettings({ notificationInterval: next });
                 }}
-                className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex flex-col items-start border border-slate-100 dark:border-slate-700 transition active:scale-95"
+                className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800 transition active:scale-95 text-left"
               >
                  <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Alertas</span>
-                    <Bell size={16} className={settings.notificationInterval ? 'text-indigo-500' : 'text-slate-300'} />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Alertas de Vencimento</span>
+                    <Bell size={16} className={settings.notificationInterval ? 'text-emerald-400' : 'text-zinc-600'} />
                  </div>
-                 <span className="text-sm font-bold dark:text-white">{settings.notificationInterval ? `${settings.notificationInterval}h` : 'Desligado'}</span>
+                 <span className="text-sm font-bold text-white">{settings.notificationInterval ? `A cada ${settings.notificationInterval}h` : 'Desligado'}</span>
               </button>
 
+              {/* Tema Fixo (Spotify / Fintech Dark) */}
+              <div className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800">
+                 <div className="flex justify-between w-full mb-2">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Tema Padrão</span>
+                    <Moon size={16} className="text-emerald-400" />
+                 </div>
+                 <span className="text-sm font-bold text-white">Fintech Dark (Spotify)</span>
+              </div>
+
               {/* Configurações Financeiras */}
-              <Link to="/financial-settings" className="bg-gradient-to-r from-amber-50 to-amber-100/60 dark:from-amber-950/40 dark:to-amber-900/20 p-4 rounded-2xl flex flex-col items-start border border-amber-200/80 dark:border-amber-800/50 transition active:scale-95 col-span-2 flex-row items-center justify-between shadow-xs">
+              <Link to="/financial-settings" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
-                    <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-xs">
+                    <div className="p-2.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl">
                        <Sliders size={18} />
                     </div>
                     <div className="text-left">
-                       <span className="text-sm font-black text-slate-800 dark:text-white block">Configurações Financeiras</span>
-                       <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">Reserva mínima, meses de proteção e categorias</span>
+                       <span className="text-sm font-black text-white block">Parâmetros Financeiros</span>
+                       <span className="text-[11px] text-zinc-400 font-medium">Reserva mínima, meses de proteção e categorias</span>
                     </div>
                  </div>
-                 <ChevronRight size={18} className="text-amber-500" />
+                 <ChevronRight size={18} className="text-zinc-500" />
               </Link>
 
               {/* Categories */}
-              <Link to="/categories" className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl flex flex-col items-start border border-slate-100 dark:border-slate-700 transition active:scale-95 col-span-2 flex-row items-center justify-between">
+              <Link to="/categories" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                    <div className="p-2.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl">
                        <LayoutGrid size={18} />
                     </div>
                     <div className="text-left">
-                       <span className="text-sm font-bold text-slate-800 dark:text-white block">Categorias</span>
-                       <span className="text-[10px] text-slate-400">Gerenciar etiquetas</span>
+                       <span className="text-sm font-bold text-white block">Categorias</span>
+                       <span className="text-[10px] text-zinc-400">Gerenciar etiquetas de receitas e despesas</span>
                     </div>
                  </div>
-                 <ChevronRight size={18} className="text-slate-300" />
+                 <ChevronRight size={18} className="text-zinc-500" />
               </Link>
            </div>
         </section>
@@ -348,8 +393,8 @@ export const Settings = () => {
         {/* --- Accounts Management --- */}
         <section>
            <div className="flex justify-between items-center mb-3 px-2">
-              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Minhas Contas</h2>
-              <button onClick={() => openAccountModal()} className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none active:scale-90 transition-all">
+              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Minhas Contas</h2>
+              <button onClick={() => openAccountModal()} className="p-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-90 transition-all font-black">
                  <Plus size={16} strokeWidth={3} />
               </button>
            </div>
@@ -359,25 +404,28 @@ export const Settings = () => {
                 const Icon = getAccountIcon(acc.type);
                 const balance = getAccountBalance(acc.id);
                 return (
-                  <div key={acc.id} onClick={() => openAccountModal(acc)} className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
+                  <div key={acc.id} onClick={() => openAccountModal(acc)} className="bg-[#18181b] p-4 rounded-3xl border border-zinc-800 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: acc.color }}>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-zinc-950 font-bold shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: acc.color }}>
                            <Icon size={20} strokeWidth={2} />
                         </div>
                         <div>
-                           <h3 className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{acc.name}</h3>
-                           <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{acc.type === 'wallet' ? 'Carteira' : acc.type === 'bank' ? 'Conta Corrente' : acc.type === 'savings' ? 'Economias' : 'Investimento'}</span>
+                           <h3 className="font-bold text-white text-sm leading-tight">{acc.name}</h3>
+                           <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wide">
+                             {acc.type === 'wallet' ? 'Carteira (Espécie)' : acc.type === 'bank' ? 'Conta Bancária' : acc.type === 'savings' ? 'Reserva' : 'Investimento'}
+                             {acc.scope === 'BUSINESS' ? ' • Empresa' : ' • Pessoal'}
+                           </span>
                         </div>
                      </div>
                      <div className="flex flex-col items-end">
-                        <span className={`font-black text-sm ${balance >= 0 ? 'text-slate-800 dark:text-white' : 'text-rose-500'}`}>
+                        <span className={`font-black text-sm ${balance >= 0 ? 'text-white' : 'text-rose-400'}`}>
                            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                         <button 
                           onClick={(e) => { e.stopPropagation(); openReconcileModal(acc); }}
-                          className="flex items-center text-[9px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg mt-1 group-hover:bg-indigo-100 transition-colors"
+                          className="flex items-center text-[9px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded-lg mt-1 transition-colors"
                         >
-                           <RefreshCw size={10} className="mr-1" /> Ajustar
+                           <RefreshCw size={10} className="mr-1" /> Ajustar Saldo
                         </button>
                      </div>
                   </div>
@@ -387,25 +435,25 @@ export const Settings = () => {
         </section>
 
         {/* --- Data & Security --- */}
-        <section className="bg-white dark:bg-slate-900 rounded-[2.2rem] overflow-hidden border border-slate-100 dark:border-slate-800">
-           <div className="p-5 border-b border-slate-50 dark:border-slate-800/50">
-              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center">
-                 <Database size={14} className="mr-2" /> Dados e Backup
+        <section className="bg-[#18181b] rounded-[2.2rem] overflow-hidden border border-zinc-800">
+           <div className="p-5 border-b border-zinc-800/80">
+              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center">
+                 <Database size={14} className="mr-2 text-emerald-400" /> Dados e Backup
               </h2>
               
               {/* Backup Status */}
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/50 mb-4">
+              <div className="bg-emerald-950/30 p-4 rounded-2xl flex items-center justify-between border border-emerald-800/40 mb-4">
                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                     <div>
-                       <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block">Backup Automático</span>
-                       <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                          {backupInfo ? `Última cópia: ${backupInfo.date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : 'Aguardando sincronização...'}
+                       <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wide block">Backup Automático Local</span>
+                       <span className="text-xs text-zinc-400 font-medium">
+                          {backupInfo ? `Última cópia: ${backupInfo.date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : 'Sincronizado'}
                        </span>
                     </div>
                  </div>
                  {backupInfo && (
-                    <button onClick={handleAutoRestore} className="p-2 bg-white dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400 rounded-xl shadow-sm hover:shadow-md transition active:scale-95">
+                    <button onClick={handleAutoRestore} className="p-2 bg-emerald-500 text-zinc-950 rounded-xl shadow-sm hover:bg-emerald-400 transition active:scale-95">
                        <RefreshCw size={16} />
                     </button>
                  )}
@@ -413,13 +461,13 @@ export const Settings = () => {
 
               {/* Actions Grid */}
               <div className="grid grid-cols-2 gap-3">
-                 <button onClick={handleExport} className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl transition active:scale-95 hover:bg-slate-100 dark:hover:bg-slate-700">
-                    <Download size={20} className="text-indigo-500 mb-2" />
-                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Exportar JSON</span>
+                 <button onClick={handleExport} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
+                    <Download size={20} className="text-emerald-400 mb-2" />
+                    <span className="text-[10px] font-bold text-zinc-300">Exportar Backup JSON</span>
                  </button>
-                 <button onClick={handleRestoreClick} className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl transition active:scale-95 hover:bg-slate-100 dark:hover:bg-slate-700">
-                    <Upload size={20} className="text-indigo-500 mb-2" />
-                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Importar JSON</span>
+                 <button onClick={handleRestoreClick} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
+                    <Upload size={20} className="text-emerald-400 mb-2" />
+                    <span className="text-[10px] font-bold text-zinc-300">Restaurar JSON</span>
                  </button>
                  <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
               </div>
@@ -428,7 +476,7 @@ export const Settings = () => {
            {/* Danger Zone */}
            <button 
              onClick={handleClearData}
-             className="w-full p-5 flex items-center justify-center space-x-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+             className="w-full p-5 flex items-center justify-center space-x-2 text-rose-400 hover:bg-rose-950/30 transition-colors"
            >
               <LogOut size={16} />
               <span className="text-xs font-black uppercase tracking-widest">Resetar Aplicativo</span>

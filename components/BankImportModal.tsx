@@ -295,7 +295,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
   // Confirmação final da importação
   const handleConfirmImport = () => {
     if (selectedItems.length === 0) {
-      alert('Selecione pelo menos um lançamento para importar.');
+      setErrorMessage('Selecione pelo menos um lançamento para importar.');
       return;
     }
 

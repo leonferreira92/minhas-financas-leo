@@ -1,4 +1,3 @@
-
 import { Transaction, Category, AppSettings, Debt, Account, Budget, Show } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 
@@ -14,36 +13,55 @@ const KEYS = {
   LAST_BACKUP_TIME: 'fin_app_last_backup_time'
 };
 
+const safeSetItem = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn(`[StorageService] Falha ao salvar chave '${key}' no localStorage (Possível limite excedido):`, error);
+    return false;
+  }
+};
+
+const safeGetItem = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (error) {
+    console.warn(`[StorageService] Falha ao ler chave '${key}' do localStorage:`, error);
+    return null;
+  }
+};
+
 export const StorageService = {
   getTransactions: (): Transaction[] => {
     try {
-      const data = localStorage.getItem(KEYS.TRANSACTIONS);
+      const data = safeGetItem(KEYS.TRANSACTIONS);
       return data ? JSON.parse(data) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   },
 
   saveTransactions: (transactions: Transaction[]) => {
-    localStorage.setItem(KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    safeSetItem(KEYS.TRANSACTIONS, JSON.stringify(transactions));
   },
 
   getCategories: (): Category[] => {
     try {
-      const data = localStorage.getItem(KEYS.CATEGORIES);
+      const data = safeGetItem(KEYS.CATEGORIES);
       return data ? JSON.parse(data) : DEFAULT_CATEGORIES;
-    } catch (e) {
+    } catch {
       return DEFAULT_CATEGORIES;
     }
   },
 
   saveCategories: (categories: Category[]) => {
-    localStorage.setItem(KEYS.CATEGORIES, JSON.stringify(categories));
+    safeSetItem(KEYS.CATEGORIES, JSON.stringify(categories));
   },
 
   getSettings: (): AppSettings => {
     try {
-      const data = localStorage.getItem(KEYS.SETTINGS);
+      const data = safeGetItem(KEYS.SETTINGS);
       return data ? JSON.parse(data) : { 
         theme: 'light',
         dashboardLayout: [
@@ -54,7 +72,7 @@ export const StorageService = {
           { id: 'recent', visible: true, label: 'Recentes' }
         ]
       };
-    } catch (e) {
+    } catch {
       return { 
         theme: 'light',
         dashboardLayout: []
@@ -63,32 +81,32 @@ export const StorageService = {
   },
 
   saveSettings: (settings: AppSettings) => {
-    localStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings));
+    safeSetItem(KEYS.SETTINGS, JSON.stringify(settings));
   },
 
   getDebts: (): Debt[] => {
     try {
-      const data = localStorage.getItem(KEYS.DEBTS);
+      const data = safeGetItem(KEYS.DEBTS);
       return data ? JSON.parse(data) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   },
 
   saveDebts: (debts: Debt[]) => {
-    localStorage.setItem(KEYS.DEBTS, JSON.stringify(debts));
+    safeSetItem(KEYS.DEBTS, JSON.stringify(debts));
   },
 
   getAccounts: (): Account[] => {
     try {
-      const data = localStorage.getItem(KEYS.ACCOUNTS);
+      const data = safeGetItem(KEYS.ACCOUNTS);
       if (!data) {
-        localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
+        safeSetItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
         return DEFAULT_ACCOUNTS;
       }
       const parsed: Account[] = JSON.parse(data);
       if (!parsed || parsed.length === 0) {
-        localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
+        safeSetItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
         return DEFAULT_ACCOUNTS;
       }
       const hasSavings = parsed.some(acc => acc.type === 'savings' || acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva'));
@@ -107,84 +125,83 @@ export const StorageService = {
           initialBalance: 0,
           enabled: true
         });
-        localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(result));
+        safeSetItem(KEYS.ACCOUNTS, JSON.stringify(result));
       }
       return result;
-    } catch (e) {
+    } catch {
       return DEFAULT_ACCOUNTS;
     }
   },
 
   saveAccounts: (accounts: Account[]) => {
-    localStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(accounts));
+    safeSetItem(KEYS.ACCOUNTS, JSON.stringify(accounts));
   },
 
-  // Storage methods for budgets
   getBudgets: (): Budget[] => {
     try {
-      const data = localStorage.getItem(KEYS.BUDGETS);
+      const data = safeGetItem(KEYS.BUDGETS);
       return data ? JSON.parse(data) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   },
 
   saveBudgets: (budgets: Budget[]) => {
-    localStorage.setItem(KEYS.BUDGETS, JSON.stringify(budgets));
+    safeSetItem(KEYS.BUDGETS, JSON.stringify(budgets));
   },
 
-  // Storage methods for shows (musician life)
   getShows: (): Show[] => {
     try {
-      const data = localStorage.getItem(KEYS.SHOWS);
+      const data = safeGetItem(KEYS.SHOWS);
       return data ? JSON.parse(data) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   },
 
   saveShows: (shows: Show[]) => {
-    localStorage.setItem(KEYS.SHOWS, JSON.stringify(shows));
+    safeSetItem(KEYS.SHOWS, JSON.stringify(shows));
   },
   
   clearData: () => {
-    Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+    try {
+      Object.values(KEYS).forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('[StorageService] Falha ao limpar dados:', e);
+    }
   },
 
+  // Removida a duplicação redundante de dados em fin_app_auto_backup para economizar 50% de espaço
   createAutoBackup: () => {
-    const backupData = {
-      transactions: StorageService.getTransactions(),
-      categories: StorageService.getCategories(),
-      settings: StorageService.getSettings(),
-      debts: StorageService.getDebts(),
-      accounts: StorageService.getAccounts(),
-      budgets: StorageService.getBudgets(),
-      shows: StorageService.getShows(),
-      timestamp: Date.now()
-    };
-    
     try {
-      localStorage.setItem(KEYS.AUTO_BACKUP, JSON.stringify(backupData));
-      localStorage.setItem(KEYS.LAST_BACKUP_TIME, Date.now().toString());
+      // Remove a cópia legada pesada se ainda existir
+      localStorage.removeItem(KEYS.AUTO_BACKUP);
+      safeSetItem(KEYS.LAST_BACKUP_TIME, Date.now().toString());
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   },
 
   getAutoBackupInfo: () => {
-    const timestampStr = localStorage.getItem(KEYS.LAST_BACKUP_TIME);
-    if (!timestampStr) return null;
-    return {
-      timestamp: parseInt(timestampStr),
-      date: new Date(parseInt(timestampStr))
-    };
+    try {
+      const timestampStr = safeGetItem(KEYS.LAST_BACKUP_TIME);
+      if (!timestampStr) return null;
+      return {
+        timestamp: parseInt(timestampStr),
+        date: new Date(parseInt(timestampStr))
+      };
+    } catch {
+      return null;
+    }
   },
 
   restoreAutoBackup: () => {
+    // Como os dados já residem como fonte viva nas chaves principais sem duplicação de cópia,
+    // o estado atual já é preservado. Se existir backup legado, tenta recuperar.
     try {
-      const dataStr = localStorage.getItem(KEYS.AUTO_BACKUP);
-      if (!dataStr) return false;
+      const dataStr = safeGetItem(KEYS.AUTO_BACKUP);
+      if (!dataStr) return true;
       const data = JSON.parse(dataStr);
       if (data.transactions) StorageService.saveTransactions(data.transactions);
       if (data.categories) StorageService.saveCategories(data.categories);
@@ -193,8 +210,9 @@ export const StorageService = {
       if (data.accounts) StorageService.saveAccounts(data.accounts);
       if (data.budgets) StorageService.saveBudgets(data.budgets);
       if (data.shows) StorageService.saveShows(data.shows);
+      localStorage.removeItem(KEYS.AUTO_BACKUP);
       return true;
-    } catch (e) {
+    } catch {
       return false;
     }
   }

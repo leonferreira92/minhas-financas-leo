@@ -11,8 +11,11 @@ export interface ShowFinancialSummary {
   totalPending: number;        // Saldo restante do cachê base = Math.max(0, totalContracted - baseCacheReceived)
   percentReceived: number;     // % quitada do cachê base (0 a 100%)
   totalScheduled: number;      // Total agendado em parcelas pendentes
+  paidExpenses: number;        // Total de despesas pagas
+  pendingExpenses: number;     // Total de despesas pendentes/agendadas
   totalExpenses: number;       // Total de despesas registradas
-  netProfit: number;           // Lucro líquido = Total recebido - Total de despesas
+  netProfit: number;           // Lucro líquido = Total recebido - Total de despesas pagas
+  projectedProfit: number;     // Lucro líquido projetado = Total previsto - Total de despesas
   remainingToSchedule: number; // Valor previsto ainda não parcelado/agendado
   isOverTotal: boolean;        // Se a soma dos pagamentos excede o total previsto
   excessAmount: number;        // Valor excedente se houver
@@ -134,8 +137,11 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       totalPending: 0,
       percentReceived: 0,
       totalScheduled: 0,
+      paidExpenses: 0,
+      pendingExpenses: 0,
       totalExpenses: 0,
       netProfit: 0,
+      projectedProfit: 0,
       remainingToSchedule: 0,
       isOverTotal: false,
       excessAmount: 0
@@ -154,12 +160,13 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
   let extraReceived = 0;
   let totalScheduled = 0;
 
-  // 1. Apuração dinâmica de receitas das transações do Financeiro vinculadas ao show
+  // Set de IDs de transações processadas para evitar qualquer duplicidade
+  const processedTxIds = new Set<string>();
+
+  // 1. Apuração dinâmica e prioritária a partir das transações do livro-razão vinculadas ao show
   if (transactions && transactions.length > 0) {
     const linkedIncomeTxs = transactions.filter(t => 
-      t.showId === show.id && 
-      t.type === 'income' && 
-      t.status === 'paid'
+      t && t.showId === show.id && t.type === 'income'
     );
     
     linkedIncomeTxs.forEach(t => {
@@ -168,72 +175,57 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || 
                       desc.includes('hora extra') || desc.includes('gorjeta') || desc.includes('adicional');
       
-      if (isExtra) {
-        extraReceived += amt;
-      } else {
-        baseCacheReceived += amt;
+      if (t.id) {
+        processedTxIds.add(t.id);
+      }
+
+      if (t.status === 'paid') {
+        if (isExtra) {
+          extraReceived += amt;
+        } else {
+          baseCacheReceived += amt;
+        }
+      } else if (t.status === 'pending') {
+        totalScheduled += amt;
       }
     });
+  }
 
-    const linkedTxIds = new Set(linkedIncomeTxs.map(t => t.id));
+  // 2. Pagamentos registrados no array `payments` do show que ainda não foram capturados pelas transações
+  if (Array.isArray(show.payments) && show.payments.length > 0) {
+    show.payments.forEach(p => {
+      if (!p || (p.transactionId && processedTxIds.has(p.transactionId))) return;
+      
+      const amt = Number(p.amount) || 0;
+      const isExtra = p.type === 'Extra' || p.type === 'Bônus';
 
-    // Pagamentos cadastrados no show que ainda não têm transação no extrato
-    if (Array.isArray(show.payments)) {
-      show.payments.forEach(p => {
-        if (!p) return;
-        const amt = Number(p.amount) || 0;
-        const isExtra = p.type === 'Extra' || p.type === 'Bônus';
-
-        if (p.status === 'Recebido') {
-          if (!p.transactionId || !linkedTxIds.has(p.transactionId)) {
-            if (!p.transactionId) {
-              if (isExtra) {
-                extraReceived += amt;
-              } else {
-                baseCacheReceived += amt;
-              }
-            }
-          }
-        } else if (p.status === 'Agendado' || p.status === 'Previsto') {
-          totalScheduled += amt;
-        }
-      });
-    }
-  } else {
-    // Fallback se transactions não for passado
-    if (Array.isArray(show.payments) && show.payments.length > 0) {
-      show.payments.forEach(p => {
-        if (!p) return;
-        const amt = Number(p.amount) || 0;
-        const isExtra = p.type === 'Extra' || p.type === 'Bônus';
-
-        if (p.status === 'Recebido') {
-          if (isExtra) {
-            extraReceived += amt;
-          } else {
-            baseCacheReceived += amt;
-          }
-        } else if (p.status === 'Agendado' || p.status === 'Previsto') {
-          totalScheduled += amt;
-        }
-      });
-    } else if (Array.isArray(show.receipts) && show.receipts.length > 0) {
-      show.receipts.forEach(r => {
-        if (!r) return;
-        const amt = Number(r.amount) || 0;
-        const isExtra = r.type === 'Bônus';
-
-        if (r.status === 'Recebido') {
-          if (isExtra) {
-            extraReceived += amt;
-          } else {
-            baseCacheReceived += amt;
-          }
+      if (p.status === 'Recebido') {
+        if (isExtra) {
+          extraReceived += amt;
         } else {
-          totalScheduled += amt;
+          baseCacheReceived += amt;
         }
-      });
-    }
+      } else if (p.status === 'Agendado' || p.status === 'Previsto') {
+        totalScheduled += amt;
+      }
+    });
+  } else if (Array.isArray(show.receipts) && show.receipts.length > 0) {
+    // Fallback legado
+    show.receipts.forEach(r => {
+      if (!r || (r.transactionId && processedTxIds.has(r.transactionId))) return;
+      const amt = Number(r.amount) || 0;
+      const isExtra = r.type === 'Bônus';
+
+      if (r.status === 'Recebido') {
+        if (isExtra) {
+          extraReceived += amt;
+        } else {
+          baseCacheReceived += amt;
+        }
+      } else {
+        totalScheduled += amt;
+      }
+    });
   }
 
   const extraAmount = Math.max(Number(show.extraAmount) || 0, extraReceived);
@@ -248,52 +240,63 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
     ? Math.min(100, Math.round((baseCacheReceived / totalContracted) * 100))
     : 100;
 
-  // Despesas dinâmicas
-  let totalExpenses = 0;
+  // Despesas dinâmicas (Pagas e Pendentes)
+  let paidExpenses = 0;
+  let pendingExpenses = 0;
+
   if (transactions && transactions.length > 0) {
     const linkedExpenseTxs = transactions.filter(t => 
       t.showId === show.id && 
-      t.type === 'expense' && 
-      t.status === 'paid'
+      t.type === 'expense' &&
+      t.status !== 'cancelled'
     );
-    const txExpenseSum = linkedExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    
+    linkedExpenseTxs.forEach(t => {
+      const amt = Number(t.amount) || 0;
+      if (t.status === 'paid') {
+        paidExpenses += amt;
+      } else if (t.status === 'pending') {
+        pendingExpenses += amt;
+      }
+    });
+
     const linkedExpenseTxIds = new Set(linkedExpenseTxs.map(t => t.id));
 
-    let manualExpenseSum = 0;
     if (Array.isArray(show.expenseItems)) {
       show.expenseItems.forEach(e => {
         if (!e) return;
         if (!e.transactionId || !linkedExpenseTxIds.has(e.transactionId)) {
           if (!e.transactionId) {
-            manualExpenseSum += Number(e.amount) || 0;
+            paidExpenses += Number(e.amount) || 0;
           }
         }
       });
     }
-    totalExpenses = txExpenseSum + manualExpenseSum;
   } else {
     if (Array.isArray(show.expenseItems) && show.expenseItems.length > 0) {
       show.expenseItems.forEach(e => {
         if (!e) return;
-        totalExpenses += Number(e.amount) || 0;
+        paidExpenses += Number(e.amount) || 0;
       });
     } else if (show.expenses) {
-      totalExpenses = (Number(show.expenses.fuel) || 0) +
-                      (Number(show.expenses.food) || 0) +
-                      (Number(show.expenses.toll) || 0) +
-                      (Number(show.expenses.commission) || 0) +
-                      (Number(show.expenses.others) || 0);
+      paidExpenses = (Number(show.expenses.fuel) || 0) +
+                     (Number(show.expenses.food) || 0) +
+                     (Number(show.expenses.toll) || 0) +
+                     (Number(show.expenses.commission) || 0) +
+                     (Number(show.expenses.others) || 0);
     }
   }
 
-  // Lucro líquido = Total recebido - Total de despesas
-  const netProfit = Math.round((totalReceived - totalExpenses) * 100) / 100;
+  const totalExpenses = Math.round((paidExpenses + pendingExpenses) * 100) / 100;
+
+  // Lucro líquido realizado = Total recebido - Despesas pagas
+  const netProfit = Math.round((totalReceived - paidExpenses) * 100) / 100;
+  // Lucro projetado = Total previsto - Todas as despesas
+  const projectedProfit = Math.round((totalPredicted - totalExpenses) * 100) / 100;
 
   const totalPaymentsSum = totalReceived + totalScheduled;
   const rawRemaining = totalPredicted - totalPaymentsSum;
   const remainingToSchedule = rawRemaining > 0 ? Math.round(rawRemaining * 100) / 100 : 0;
-  const isOverTotal = baseCacheReceived > (totalContracted + 0.01);
-  const excessAmount = Math.max(0, Math.round((baseCacheReceived - totalContracted) * 100) / 100);
 
   return {
     totalContracted: Math.round(totalContracted * 100) / 100,
@@ -305,11 +308,14 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
     totalPending: Math.round(totalPending * 100) / 100,
     percentReceived,
     totalScheduled: Math.round(totalScheduled * 100) / 100,
-    totalExpenses: Math.round(totalExpenses * 100) / 100,
-    netProfit: Math.round(netProfit * 100) / 100,
+    paidExpenses: Math.round(paidExpenses * 100) / 100,
+    pendingExpenses: Math.round(pendingExpenses * 100) / 100,
+    totalExpenses,
+    netProfit,
+    projectedProfit,
     remainingToSchedule: isNaN(remainingToSchedule) ? 0 : remainingToSchedule,
-    isOverTotal: Boolean(isOverTotal),
-    excessAmount: isNaN(excessAmount) ? 0 : excessAmount
+    isOverTotal: false,
+    excessAmount: 0
   };
 }
 
@@ -347,6 +353,7 @@ export function syncShowWithTransactions(
 
   const incomeCatId = resolveIncomeCategoryId(categories);
   const showTitle = show.contractorName || show.name || 'Show';
+  const isShowCancelled = show.status === 'Cancelado';
 
   // 1. SINCRONIZAR PAGAMENTOS (RECEITAS)
   const currentPayments = Array.isArray(updatedShow.payments) ? updatedShow.payments : [];
@@ -355,15 +362,19 @@ export function syncShowWithTransactions(
     const p = { ...payment };
     const isReceived = p.status === 'Recebido';
     const txDate = (isReceived && p.effectiveDate) ? p.effectiveDate : (p.expectedDate || show.date);
-    const txStatus = isReceived ? 'paid' : 'pending';
-    const txDescription = `Show: ${showTitle} (${p.type || 'Parcela'})`;
+    const txStatus = isReceived ? 'paid' : (isShowCancelled ? ('cancelled' as const) : 'pending');
+    const baseDesc = `Show: ${showTitle} (${p.type || 'Parcela'})`;
+    const txDescription = (isShowCancelled && !isReceived)
+      ? (baseDesc.startsWith('[CANCELADO]') ? baseDesc : `[CANCELADO] ${baseDesc}`)
+      : baseDesc;
+    const txAmount = (isShowCancelled && !isReceived) ? 0 : p.amount;
 
     if (p.transactionId) {
       const txIndex = txs.findIndex(t => t.id === p.transactionId);
       if (txIndex >= 0) {
         txs[txIndex] = {
           ...txs[txIndex],
-          amount: p.amount,
+          amount: txAmount,
           date: txDate,
           accountId: p.accountId,
           status: txStatus,
@@ -389,10 +400,12 @@ export function syncShowWithTransactions(
 
 export function cancelShowFutureTransactions(showId: string, transactions: Transaction[]): Transaction[] {
   return transactions.map(t => {
-    if (t.showId === showId && t.status === 'pending') {
+    if (t.showId === showId && (t.status === 'pending' || t.status === 'cancelled')) {
       return {
         ...t,
-        description: `[CANCELADO] ${t.description}`
+        status: 'cancelled' as const,
+        amount: 0,
+        description: t.description.startsWith('[CANCELADO]') ? t.description : `[CANCELADO] ${t.description}`
       };
     }
     return t;
