@@ -4,7 +4,7 @@ import {
   X, ArrowRightLeft, Wallet, CheckCircle2, DollarSign, Calendar, 
   Landmark, Info, ShieldCheck, TrendingUp, Sparkles, AlertCircle, Target
 } from 'lucide-react';
-import { parseCurrencyInput } from '../constants';
+import { getAccountVinculo, parseCurrencyInput } from '../services/financeAggregator';
 
 interface Props {
   isOpen: boolean;
@@ -18,14 +18,14 @@ export const ProLaboreWithdrawModal: React.FC<Props> = ({ isOpen, onClose, defau
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const currentMonthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
-  // Find business account or first active account
+  // Find business account (vinculo === 'MUSICO') or first active account
   const defaultSourceAccount = useMemo(() => {
-    return accounts.find(a => a.scope === 'BUSINESS') || accounts.find(a => a.enabled !== false) || accounts[0];
+    return accounts.find(a => getAccountVinculo(a) === 'MUSICO') || accounts.find(a => a.scope === 'BUSINESS') || accounts.find(a => a.enabled !== false) || accounts[0];
   }, [accounts]);
 
-  // Find personal account or second account
+  // Find personal account (vinculo === 'PESSOAL') or second account
   const defaultDestAccount = useMemo(() => {
-    return accounts.find(a => a.scope === 'PERSONAL') || accounts.find(a => a.id !== defaultSourceAccount?.id && a.enabled !== false) || accounts[0];
+    return accounts.find(a => getAccountVinculo(a) === 'PESSOAL') || accounts.find(a => a.scope === 'PERSONAL') || accounts.find(a => a.id !== defaultSourceAccount?.id && a.enabled !== false) || accounts[0];
   }, [accounts, defaultSourceAccount]);
 
   // ---------------------------------------------------------------------------

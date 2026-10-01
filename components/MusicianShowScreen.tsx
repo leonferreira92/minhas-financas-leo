@@ -6,7 +6,8 @@ import {
   Calendar as CalendarIcon, ListOrdered, FileText, 
   Archive, Plus, Music, Sparkles, AlertTriangle, 
   Bell, CheckCircle2, ChevronRight, X, Clock, FilePlus,
-  TrendingUp, DollarSign, ArrowUpRight, ChevronLeft, Calendar
+  TrendingUp, DollarSign, ArrowUpRight, ChevronLeft, Calendar,
+  Calculator
 } from 'lucide-react';
 import { ShowCalendarView } from './shows/ShowCalendarView';
 import { UpcomingShowsList } from './shows/UpcomingShowsList';
@@ -17,6 +18,8 @@ import { ShowFormModal } from './shows/ShowFormModal';
 import { checkScheduleConflict } from './shows/conflictHelper';
 import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
 import { getShowFinancialSummary } from '../services/showFinanceSyncService';
+import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
+import { CareerLiquidityProjectionCard } from './extrato/CareerLiquidityProjectionCard';
 
 export type ShowScreenTab = 'agenda' | 'upcoming' | 'quotes' | 'history';
 
@@ -29,6 +32,7 @@ export const MusicianShowScreen: React.FC = () => {
   // Modals & Drawer state
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
   const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
   const [initialStatusForNewShow, setInitialStatusForNewShow] = useState<ShowStatus>('Confirmado');
@@ -258,7 +262,16 @@ export const MusicianShowScreen: React.FC = () => {
         </div>
 
         {/* BOTÕES DE ACESSO RÁPIDO */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
+          <button
+            onClick={() => setIsCalculatorOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-300/60 dark:border-purple-700/60 flex items-center space-x-1.5"
+            title="Calculadora de Precificação de Cachê"
+          >
+            <Calculator size={15} strokeWidth={2.5} />
+            <span>Calculadora Cachê</span>
+          </button>
+
           <button
             onClick={() => handleOpenCreateModal(undefined, 'Orçamento')}
             className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-amber-300/60 dark:border-amber-700/60 flex items-center space-x-1.5"
@@ -511,13 +524,16 @@ export const MusicianShowScreen: React.FC = () => {
         />
       )}
 
-      {/* 2. PRÓXIMOS SHOWS (CRONOLÓGICO COM BARRA DE PROGRESSO) */}
+      {/* 2. PRÓXIMOS SHOWS (CRONOLÓGICO COM BARRA DE PROGRESSO E PREVISIBILIDADE) */}
       {activeTab === 'upcoming' && (
-        <UpcomingShowsList
-          shows={shows}
-          onSelectShow={show => setSelectedShowId(show.id)}
-          onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Confirmado')}
-        />
+        <div className="space-y-4">
+          <CareerLiquidityProjectionCard />
+          <UpcomingShowsList
+            shows={shows}
+            onSelectShow={show => setSelectedShowId(show.id)}
+            onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Confirmado')}
+          />
+        </div>
       )}
 
       {/* 3. ORÇAMENTOS (OPORTUNIDADES EM NEGOCIAÇÃO) */}
@@ -565,6 +581,18 @@ export const MusicianShowScreen: React.FC = () => {
         existingShows={shows}
         prefilledDate={prefilledDateForNewShow}
         initialStatus={initialStatusForNewShow}
+      />
+
+      {/* FERRAMENTA: CALCULADORA DE PRECIFICAÇÃO DE CACHÊ SMART CACHÊ 360 */}
+      <CachePricingCalculatorModal
+        isOpen={isCalculatorOpen}
+        onClose={() => setIsCalculatorOpen(false)}
+        onCreateQuote={(calculatedCache, contractorName, notes, date, location) => {
+          setShowToEdit(null);
+          setPrefilledDateForNewShow(date);
+          setInitialStatusForNewShow('Orçamento');
+          setIsFormModalOpen(true);
+        }}
       />
     </div>
   );

@@ -21,12 +21,15 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
   const [type, setType] = useState<AccountType>('bank');
   const [color, setColor] = useState('#6366f1');
   const [scope, setScope] = useState<ScopeType>('BOTH');
+  const [vinculo, setVinculo] = useState<'PESSOAL' | 'MUSICO' | 'NEUTRO'>('NEUTRO');
 
   useEffect(() => {
     if (account) {
       setName(account.name);
       setType(account.type);
       setColor(account.color);
+      const v = account.vinculo || (account.scope === 'BUSINESS' ? 'MUSICO' : account.scope === 'PERSONAL' ? 'PESSOAL' : 'NEUTRO');
+      setVinculo(v);
       setScope(account.scope || 'BOTH');
       const currentVal = getAccountBalance(account.id);
       setNewBalanceInput(currentVal.toString());
@@ -54,12 +57,14 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
   const handleSaveDetails = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() === '') return;
+    const finalScope: ScopeType = vinculo === 'MUSICO' ? 'BUSINESS' : vinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH';
     updateAccount({
       ...account,
       name,
       type,
       color,
-      scope: scope || 'BOTH'
+      vinculo,
+      scope: finalScope
     });
     onClose();
   };
@@ -273,32 +278,44 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
 
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                  Módulo / Conta Pertencente
+                  Vínculo / Módulo Pertencente
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setScope('PERSONAL')}
-                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
-                      scope !== 'BUSINESS'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <User size={13} />
-                    <span>👤 Pessoal</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScope('BUSINESS')}
-                    className={`py-2 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border flex items-center justify-center space-x-1 transition-all ${
-                      scope === 'BUSINESS'
+                    onClick={() => setVinculo('MUSICO')}
+                    className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border flex flex-col items-center justify-center space-y-1 transition-all ${
+                      vinculo === 'MUSICO'
                         ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    <Music size={13} />
-                    <span>🎸 Músico / Empresa</span>
+                    <Music size={14} />
+                    <span>🎸 Músico</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVinculo('PESSOAL')}
+                    className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border flex flex-col items-center justify-center space-y-1 transition-all ${
+                      vinculo === 'PESSOAL'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <User size={14} />
+                    <span>👤 Pessoal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVinculo('NEUTRO')}
+                    className={`py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border flex flex-col items-center justify-center space-y-1 transition-all ${
+                      vinculo === 'NEUTRO'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <Wallet size={14} />
+                    <span>⚖️ Neutro</span>
                   </button>
                 </div>
               </div>

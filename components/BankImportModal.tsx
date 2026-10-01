@@ -13,6 +13,7 @@ import {
 } from '../services/bankStatementParser';
 import { ScopeType } from '../types';
 import { generateUUID } from '../services/uuidHelper';
+import { parseCurrencyInput } from '../services/financeAggregator';
 
 interface BankImportModalProps {
   isOpen: boolean;
@@ -268,7 +269,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     if (!quickShowTargetItem || !quickShowContractor.trim()) return;
 
     const newShowId = generateUUID();
-    const cacheAmount = parseFloat(quickShowTotalCache.replace(',', '.')) || quickShowTargetItem.amount;
+    const cacheAmount = parseCurrencyInput(quickShowTotalCache) || quickShowTargetItem.amount;
 
     addShow({
       id: newShowId,

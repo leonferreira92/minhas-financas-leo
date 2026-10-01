@@ -9,7 +9,8 @@ import {
   SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight,
   Music, ChevronRight, User, MapPin, DollarSign, Calendar
 } from 'lucide-react';
-import { getIcon, parseCurrencyInput } from '../constants';
+import { getIcon } from '../constants';
+import { parseCurrencyInput } from '../services/financeAggregator';
 import { GeminiService } from '../services/geminiService';
 import { CalendarModal } from './CalendarModal';
 import { generateUUID } from '../services/uuidHelper';

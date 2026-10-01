@@ -173,12 +173,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   useEffect(() => {
-    if (transactions.length > 0 || shows.length > 0) {
-      syncShowsWithTransactions(transactions, shows);
-    }
-  }, [transactions, shows, syncShowsWithTransactions]);
-
-  useEffect(() => {
     if (settings.theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [settings.theme]);
@@ -408,8 +402,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const addAccount = (a: Omit<Account, 'id'>) => saveAccounts([...accounts, { ...a, id: generateUUID() }]);
-  const updateAccount = (a: Account) => saveAccounts(accounts.map(acc => acc.id === a.id ? a : acc));
+  const addAccount = (a: Omit<Account, 'id'>) => {
+    const vinculo = a.vinculo || (a.scope === 'BUSINESS' ? 'MUSICO' : a.scope === 'PERSONAL' ? 'PESSOAL' : 'NEUTRO');
+    const scope = a.scope || (vinculo === 'MUSICO' ? 'BUSINESS' : vinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH');
+    saveAccounts([...accounts, { ...a, vinculo, scope, id: generateUUID() }]);
+  };
+
+  const updateAccount = (a: Account) => {
+    const vinculo = a.vinculo || (a.scope === 'BUSINESS' ? 'MUSICO' : a.scope === 'PERSONAL' ? 'PESSOAL' : 'NEUTRO');
+    const scope = a.scope || (vinculo === 'MUSICO' ? 'BUSINESS' : vinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH');
+    saveAccounts(accounts.map(acc => acc.id === a.id ? { ...a, vinculo, scope } : acc));
+  };
   const deleteAccount = (id: string) => saveAccounts(accounts.filter(a => a.id !== id));
 
   const getAccountBalance = (accountId: string): number => {

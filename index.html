@@ -13,21 +13,35 @@
         theme: {
           extend: {
             colors: {
+              spotify: {
+                green: '#1ed760',
+                greenHover: '#1fdf64',
+                darkGreen: '#1db954',
+                bg: '#121212',
+                bgDeep: '#09090b',
+                card: '#181818',
+                cardHover: '#222222',
+                elevated: '#282828',
+                border: '#2a2a2a',
+                subtleBorder: '#3f3f46',
+                subtext: '#a1a1aa',
+                muted: '#71717a'
+              },
               slate: {
                 50: '#f8fafc',
                 100: '#f1f5f9',
                 200: '#e2e8f0',
                 300: '#cbd5e1',
-                400: '#94a3b8',
-                500: '#64748b',
-                600: '#475569',
-                700: '#334155',
-                800: '#1e293b',
-                850: '#0f172a', // Mais escuro para contraste
-                900: '#020617', // Quase preto
-                950: '#000000', // Preto absoluto para OLED/Alto Contraste
+                400: '#a1a1aa',
+                500: '#71717a',
+                600: '#52525b',
+                700: '#3f3f46',
+                800: '#27272a',
+                850: '#181818',
+                900: '#121212',
+                950: '#09090b',
               },
-              indigo: { // Mapeado para as variáveis CSS (agora Lime)
+              indigo: {
                 50: 'var(--color-primary-50)',
                 100: 'var(--color-primary-100)',
                 200: 'var(--color-primary-200)',
@@ -43,8 +57,8 @@
             },
             animation: {
               'pulse-soft': 'pulseSoft 3s infinite',
-              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-              'fade-in': 'fadeIn 0.4s ease-out'
+              'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              'fade-in': 'fadeIn 0.3s ease-out'
             },
             keyframes: {
               pulseSoft: {
@@ -52,7 +66,7 @@
                 '50%': { opacity: 0.85, transform: 'scale(1.02)' },
               },
               slideUp: {
-                '0%': { transform: 'translateY(20px)', opacity: 0 },
+                '0%': { transform: 'translateY(16px)', opacity: 0 },
                 '100%': { transform: 'translateY(0)', opacity: 1 },
               },
               fadeIn: {
@@ -65,21 +79,21 @@
       }
     </script>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
       
       :root {
-        /* Tema Fresh Lime (Alto Contraste) */
-        --color-primary-50: #f7fee7;  /* Lime 50 */
-        --color-primary-100: #ecfccb; /* Lime 100 */
-        --color-primary-200: #d9f99d; /* Lime 200 */
-        --color-primary-300: #bef264; /* Lime 300 */
-        --color-primary-400: #a3e635; /* Lime 400 - Vibrante */
-        --color-primary-500: #84cc16; /* Lime 500 - Base */
-        --color-primary-600: #65a30d; /* Lime 600 - Texto legível */
-        --color-primary-700: #4d7c0f; /* Lime 700 */
-        --color-primary-800: #3f6212; /* Lime 800 */
-        --color-primary-900: #365314; /* Lime 900 */
-        --color-primary-950: #1a2e05; /* Lime 950 */
+        /* Spotify Green Accent System */
+        --color-primary-50: #f0fdf4;
+        --color-primary-100: #dcfce7;
+        --color-primary-200: #bbf7d0;
+        --color-primary-300: #86efac;
+        --color-primary-400: #4ade80;
+        --color-primary-500: #22c55e;
+        --color-primary-600: #1ed760;
+        --color-primary-700: #15803d;
+        --color-primary-800: #166534;
+        --color-primary-900: #14532d;
+        --color-primary-950: #052e16;
       }
 
       body {

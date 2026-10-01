@@ -73,10 +73,10 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
   // Compute DRE Metrics for the period:
   // "A DRE do módulo MÚSICA deve somar exatamente: Entradas do Projeto - Custos/Equipamentos do Projeto = Lucro Real do Projeto"
   const metrics = useMemo(() => {
-    // 1. Entradas do Projeto no período
+    // 1. Entradas Efetivas do Projeto no período (Regime de Caixa)
     const projectIncomeTxs = transactions.filter(t => {
       if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
-      if (t.type !== 'income') return false;
+      if (t.type !== 'income' || t.status !== 'paid') return false;
       
       const desc = (t.description || '').toLowerCase();
       // Excluir recebimento de pró-labore na conta pessoal
@@ -94,10 +94,10 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
 
     const grossRevenue = projectIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-    // 2. Custos / Equipamentos do Projeto no período
+    // 2. Custos / Equipamentos Efetivados do Projeto no período (Regime de Caixa)
     const projectExpenseTxs = transactions.filter(t => {
       if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
-      if (t.type !== 'expense') return false;
+      if (t.type !== 'expense' || t.status !== 'paid') return false;
       
       const desc = (t.description || '').toLowerCase();
       // Retirada de pró-labore é apurada à parte como distribuição de lucro

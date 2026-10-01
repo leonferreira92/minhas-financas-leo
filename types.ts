@@ -34,6 +34,7 @@ export interface Account {
   initialBalance: number;
   enabled: boolean;
   scope?: ScopeType;
+  vinculo?: 'PESSOAL' | 'MUSICO' | 'NEUTRO';
 }
 
 export interface Debt {

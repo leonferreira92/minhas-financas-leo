@@ -15,26 +15,26 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fu
   const options: { id: ActiveScopeFilter; label: string; icon: React.ReactNode; colorClass: string }[] = [
     { 
       id: 'ALL', 
-      label: 'Tudo', 
+      label: 'Geral', 
       icon: <RefreshCw size={size === 'sm' ? 11 : 13} className="shrink-0" />,
-      colorClass: 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+      colorClass: 'bg-emerald-500 text-zinc-950 font-black shadow-md'
     },
     { 
       id: 'PERSONAL', 
       label: 'Pessoal', 
       icon: <User size={size === 'sm' ? 11 : 13} className="shrink-0" />,
-      colorClass: 'bg-indigo-600 text-white shadow-xs'
+      colorClass: 'bg-emerald-500 text-zinc-950 font-black shadow-md'
     },
     { 
       id: 'BUSINESS', 
       label: 'Músico', 
       icon: <Music size={size === 'sm' ? 11 : 13} className="shrink-0" />,
-      colorClass: 'bg-purple-600 text-white shadow-xs'
+      colorClass: 'bg-emerald-500 text-zinc-950 font-black shadow-md'
     }
   ];
 
   return (
-    <div className={`p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 shadow-xs ${
+    <div className={`p-1 bg-[#181818] rounded-2xl border border-zinc-800 shadow-xs ${
       fullWidth ? 'w-full grid grid-cols-3 gap-1' : 'inline-flex items-center space-x-0.5 max-w-full overflow-x-auto no-scrollbar'
     } ${className}`}>
       {options.map((opt) => {
@@ -44,12 +44,12 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fu
             key={opt.id}
             type="button"
             onClick={() => setActiveScope(opt.id)}
-            className={`flex items-center justify-center space-x-1 sm:space-x-1.5 rounded-xl font-black uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap text-center ${
-              size === 'sm' ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-1.5 text-xs'
+            className={`flex items-center justify-center space-x-1 sm:space-x-1.5 rounded-xl font-bold tracking-tight transition-all active:scale-95 whitespace-nowrap text-center ${
+              size === 'sm' ? 'px-2 py-1.5 text-[11px]' : 'px-3 py-2 text-xs'
             } ${
               isActive
                 ? opt.colorClass
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
             }`}
           >
             <span>{opt.icon}</span>

@@ -42,17 +42,17 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   ].some(path => location.pathname === path || location.pathname.startsWith('/mais'));
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-100 selection:text-indigo-700 transition-colors duration-200">
+    <div className="min-h-screen bg-[#09090b] font-sans text-white selection:bg-emerald-500/30 selection:text-emerald-400 transition-colors duration-200">
       
       {/* Container Principal */}
-      <main className="w-full max-w-md mx-auto min-h-screen bg-slate-50 dark:bg-slate-950 sm:border-x sm:border-slate-200/80 dark:sm:border-slate-800/80 shadow-2xl relative transition-colors duration-200 pb-28 overflow-x-hidden">
+      <main className="w-full max-w-md mx-auto min-h-screen bg-[#121212] sm:border-x sm:border-zinc-800/80 shadow-2xl relative transition-colors duration-200 pb-28 overflow-x-hidden">
         <div className="p-3.5 sm:p-5 w-full max-w-full overflow-x-hidden">
           {children}
         </div>
       </main>
 
-      {/* NAVBAR INFERIOR SIMPLES COM 5 ÁREAS: Home, Financeiro, Shows, Relatórios, Mais */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800/80 pb-[env(safe-area-inset-bottom,12px)] shadow-lg">
+      {/* NAVBAR INFERIOR FIXA - DESIGN SYSTEM SPOTIFY STYLE */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#181818]/95 backdrop-blur-xl border-t border-zinc-800/80 pb-[env(safe-area-inset-bottom,12px)] shadow-2xl">
         <div className="max-w-md mx-auto relative px-1 sm:px-2">
           
           <nav className="flex justify-between items-center h-[64px] relative z-10">
@@ -61,10 +61,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               to="/" 
               className={`
                 flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isHomeActive ? 'text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'}
+                ${isHomeActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
               `}
             >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isHomeActive ? 'bg-indigo-50 dark:bg-indigo-950/60' : ''}`}>
+              <div className={`relative p-1.5 rounded-xl transition-all ${isHomeActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
                 <Home size={20} strokeWidth={isHomeActive ? 2.5 : 1.8} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">Home</span>
@@ -75,10 +75,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               to="/financeiro" 
               className={`
                 flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isFinanceiroActive ? 'text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'}
+                ${isFinanceiroActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
               `}
             >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isFinanceiroActive ? 'bg-indigo-50 dark:bg-indigo-950/60' : ''}`}>
+              <div className={`relative p-1.5 rounded-xl transition-all ${isFinanceiroActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
                 <Wallet size={20} strokeWidth={isFinanceiroActive ? 2.5 : 1.8} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">Financeiro</span>
@@ -89,10 +89,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               to="/shows" 
               className={`
                 flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isShowsActive ? 'text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'}
+                ${isShowsActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
               `}
             >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isShowsActive ? 'bg-indigo-50 dark:bg-indigo-950/60' : ''}`}>
+              <div className={`relative p-1.5 rounded-xl transition-all ${isShowsActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
                 <Music size={20} strokeWidth={isShowsActive ? 2.5 : 1.8} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">Shows</span>
@@ -103,10 +103,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               to="/relatorios" 
               className={`
                 flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isRelatoriosActive ? 'text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'}
+                ${isRelatoriosActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
               `}
             >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isRelatoriosActive ? 'bg-indigo-50 dark:bg-indigo-950/60' : ''}`}>
+              <div className={`relative p-1.5 rounded-xl transition-all ${isRelatoriosActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
                 <BarChart3 size={20} strokeWidth={isRelatoriosActive ? 2.5 : 1.8} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">Relatórios</span>
@@ -117,10 +117,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               to="/mais" 
               className={`
                 flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-150 active:scale-95
-                ${isMaisActive ? 'text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'}
+                ${isMaisActive ? 'text-[#1ed760] font-black' : 'text-zinc-400 hover:text-white font-medium'}
               `}
             >
-              <div className={`relative p-1.5 rounded-xl transition-all ${isMaisActive ? 'bg-indigo-50 dark:bg-indigo-950/60' : ''}`}>
+              <div className={`relative p-1.5 rounded-xl transition-all ${isMaisActive ? 'bg-emerald-500/10 border border-emerald-500/20 shadow-xs' : ''}`}>
                 <Menu size={20} strokeWidth={isMaisActive ? 2.5 : 1.8} />
               </div>
               <span className="text-[10px] tracking-tight mt-0.5">Mais</span>

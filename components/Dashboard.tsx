@@ -15,6 +15,7 @@ import { TransactionForm } from './TransactionForm';
 import { ScopeSelector } from './ScopeSelector';
 import { BankImportModal } from './BankImportModal';
 import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
+import { getAccountVinculo, getMonthlyCareerMetrics, parseCurrencyInput } from '../services/financeAggregator';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -61,35 +62,41 @@ export const Dashboard: React.FC = () => {
     });
   }, [accounts, activeScope]);
 
-  // Total Patrimony: soma de todas as contas ativas
+  // 1. PATRIMÔNIO CONSOLIDADO: Soma de todas as contas ativas
   const consolidatedPatrimony = useMemo(() => {
-    return accounts.filter(a => a.enabled !== false).reduce((acc, a) => acc + getAccountBalance(a.id), 0);
+    return accounts
+      .filter(a => a.enabled !== false)
+      .reduce((acc, a) => acc + getAccountBalance(a.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // Saldo de Caixa dos Shows / Empresa
+  // 2. CAIXA MÚSICO / EMPRESA: Soma das contas com vinculo == 'MUSICO'
   const businessCash = useMemo(() => {
-    const businessAccountsInitial = accounts
-      .filter(a => a.scope === 'BUSINESS')
-      .reduce((s, a) => s + (Number(a.initialBalance) || 0), 0);
+    const musicAccounts = accounts.filter(a => a.enabled !== false && getAccountVinculo(a) === 'MUSICO');
 
+    if (musicAccounts.length > 0) {
+      const musicBal = musicAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+      return parseFloat(musicBal.toFixed(2));
+    }
+
+    // Se nenhuma conta for atrelada como MUSICO, calcula pelo fluxo liquido das movimentacoes de escopo BUSINESS
     let netFlow = 0;
     transactions.forEach(t => {
       if (t.status !== 'paid') return;
-      if (t.date >= '2026-10-01') {
-        if (t.scope === 'BUSINESS') {
-          if (t.type === 'income') netFlow += Number(t.amount) || 0;
-          else if (t.type === 'expense') netFlow -= Number(t.amount) || 0;
-        }
+      if (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId) {
+        if (t.type === 'income') netFlow += Number(t.amount) || 0;
+        else if (t.type === 'expense') netFlow -= Number(t.amount) || 0;
       }
     });
 
-    return parseFloat((businessAccountsInitial + netFlow).toFixed(2));
-  }, [accounts, transactions]);
+    return Math.max(0, parseFloat(netFlow.toFixed(2)));
+  }, [accounts, transactions, getAccountBalance]);
 
-  // Caixa Pessoal (Patrimônio / Reserva)
+  // 3. CAIXA PESSOAL: Soma das contas vinculadas ao Pessoal e Neutro
   const personalCash = useMemo(() => {
-    return parseFloat((consolidatedPatrimony - businessCash).toFixed(2));
-  }, [consolidatedPatrimony, businessCash]);
+    const personalAccounts = accounts.filter(a => a.enabled !== false && getAccountVinculo(a) !== 'MUSICO');
+    const total = personalAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+    return parseFloat(total.toFixed(2));
+  }, [accounts, getAccountBalance]);
 
   // Total exibido de acordo com o escopo ativo
   const totalPatrimony = useMemo(() => {
@@ -101,66 +108,16 @@ export const Dashboard: React.FC = () => {
   // Dinheiro Disponível
   const availableMoney = totalPatrimony;
 
-  // DIRETRIZ 2: Métricas do Mês para Card Resumo da Carreira (Músico)
-  // "Faturamento do Mês, Custos e Lucro Líquido"
+  // DIRETRIZ 2: Métricas do Mês para Card Resumo da Carreira (Músico - Regime de Caixa Estrito)
   const careerMonthMetrics = useMemo(() => {
-    const monthStart = `${currentMonthStr}-01`;
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const monthEnd = `${currentMonthStr}-${String(lastDay).padStart(2, '0')}`;
-
-    // 1. Faturamento do Mês (Entradas Efetivas do Projeto / Regime de Caixa)
-    const incomeTxs = transactions.filter(t => {
-      if (!t.date || t.date < monthStart || t.date > monthEnd) return false;
-      if (t.type !== 'income' || t.status !== 'paid') return false;
-      const desc = (t.description || '').toLowerCase();
-      if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
-
-      return (
-        t.scope === 'BUSINESS' ||
-        t.categoryId === 'cat_33' ||
-        !!t.showId ||
-        desc.includes('cachê') ||
-        desc.includes('cache') ||
-        desc.includes('show')
-      );
-    });
-    const faturamentoMes = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    // 2. Custos / Equipamentos do Mês (Despesas Efetivadas / Regime de Caixa)
-    const expenseTxs = transactions.filter(t => {
-      if (!t.date || t.date < monthStart || t.date > monthEnd) return false;
-      if (t.type !== 'expense' || t.status !== 'paid') return false;
-      const desc = (t.description || '').toLowerCase();
-      if (desc.includes('retirada de pró-labore') || desc.includes('retirada de pro-labore')) return false;
-
-      return (
-        t.scope === 'BUSINESS' ||
-        t.categoryId === 'cat_equipamentos' ||
-        t.categoryId === 'cat_producao_shows' ||
-        !!t.showId ||
-        !!t.showExpenseId ||
-        desc.includes('equipamento') ||
-        desc.includes('músico') ||
-        desc.includes('musico') ||
-        desc.includes('ensaio') ||
-        desc.includes('logística') ||
-        desc.includes('logistica')
-      );
-    });
-    const custosMes = expenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    // 3. Lucro Líquido
-    const lucroLiquido = faturamentoMes - custosMes;
-    const margemLucro = faturamentoMes > 0 ? (lucroLiquido / faturamentoMes) * 100 : 0;
-
+    const metrics = getMonthlyCareerMetrics(transactions, currentMonthStr);
     return {
-      faturamentoMes,
-      custosMes,
-      lucroLiquido,
-      margemLucro,
-      incomeCount: incomeTxs.length,
-      expenseCount: expenseTxs.length
+      faturamentoMes: metrics.faturamentoReal,
+      custosMes: metrics.custosReais,
+      lucroLiquido: metrics.lucroLiquido,
+      margemLucro: metrics.margemLucro,
+      incomeCount: metrics.incomeCount,
+      expenseCount: metrics.expenseCount
     };
   }, [transactions, currentMonthStr]);
 
