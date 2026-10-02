@@ -120,6 +120,9 @@ export interface AppSettings {
   primaryColor?: string;
   userName?: string;
   careerProjectName?: string; // Nome do Projeto/Carreira (ex: "Leo Ferreira")
+  musicianCpf?: string; // CPF do Músico para recibos e contratos
+  musicianCity?: string; // Cidade-UF base do músico
+  musicianArtisticName?: string; // Nome artístico
   notificationInterval?: number;
   dashboardLayout: DashboardWidgetConfig[];
   financialSettings?: FinancialSettings;
@@ -212,6 +215,7 @@ export interface Show {
   createdAt: number;
   isImported?: boolean; // Indica se foi gerado por importação automática
   scope?: ScopeType;
+  googleCalendarEventId?: string;
 }
 
 /**

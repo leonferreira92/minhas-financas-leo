@@ -19,6 +19,7 @@ import { checkScheduleConflict } from './shows/conflictHelper';
 import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
 import { getShowFinancialSummary } from '../services/showFinanceSyncService';
 import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
+import { GoogleCalendarSyncModal } from './shows/GoogleCalendarSyncModal';
 import { generateUUID } from '../services/uuidHelper';
 
 export type ShowScreenTab = 'agenda' | 'upcoming' | 'quotes' | 'history';
@@ -34,6 +35,7 @@ export const MusicianShowScreen: React.FC = () => {
   const [openPaymentDirectly, setOpenPaymentDirectly] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+  const [isGoogleCalendarOpen, setIsGoogleCalendarOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
   const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
   const [initialStatusForNewShow, setInitialStatusForNewShow] = useState<ShowStatus>('Confirmado');
@@ -286,6 +288,15 @@ export const MusicianShowScreen: React.FC = () => {
 
         {/* BOTÕES DE ACESSO RÁPIDO */}
         <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
+          <button
+            onClick={() => setIsGoogleCalendarOpen(true)}
+            className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-[#1ed760] text-xs font-black uppercase tracking-wider transition active:scale-95 border border-emerald-500/30 flex items-center space-x-1.5 shadow-sm"
+            title="Sincronizar Agenda com Google Calendar"
+          >
+            <CalendarIcon size={15} strokeWidth={2.5} />
+            <span>Google Calendar</span>
+          </button>
+
           <button
             onClick={() => setIsCalculatorOpen(true)}
             className="px-3.5 py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-300/60 dark:border-purple-700/60 flex items-center space-x-1.5"
@@ -568,12 +579,8 @@ export const MusicianShowScreen: React.FC = () => {
           onPrevMonth={handlePrevMonth}
           onNextMonth={handleNextMonth}
           onGoToday={handleGoCurrentMonth}
-          onSelectShow={(show, tab, openPay) => {
-            setOpenPaymentDirectly(Boolean(openPay));
-            setSelectedShowId(show.id);
-          }}
-          onQuickAddPayment={(show) => {
-            setOpenPaymentDirectly(true);
+          onSelectShow={(show) => {
+            setOpenPaymentDirectly(false);
             setSelectedShowId(show.id);
           }}
           onOpenCreateModal={date => handleOpenCreateModal(date, 'Confirmado')}
@@ -662,6 +669,14 @@ export const MusicianShowScreen: React.FC = () => {
           setInitialStatusForNewShow('Orçamento');
           setIsFormModalOpen(true);
         }}
+      />
+
+      {/* FERRAMENTA: SINCRONIZAÇÃO GOOGLE CALENDAR */}
+      <GoogleCalendarSyncModal
+        isOpen={isGoogleCalendarOpen}
+        onClose={() => setIsGoogleCalendarOpen(false)}
+        shows={shows}
+        onUpdateShow={updateShow}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import { FinancialSettingsScreen } from './FinancialSettingsScreen';
 import { CategoryList } from './CategoryList';
 import { Settings } from './Settings';
 import { AlertsScreen } from './AlertsScreen';
+import { AuthHeaderWidget } from './AuthHeaderWidget';
 
 export type MoreTab = 'financial' | 'categories' | 'settings' | 'alerts';
 
@@ -51,6 +52,9 @@ export const MoreHubScreen: React.FC<Props> = ({ initialTab = 'financial' }) => 
           </h1>
         </div>
       </div>
+
+      {/* AUTENTICAÇÃO / BANCO DE DADOS EM NUVEM */}
+      <AuthHeaderWidget />
 
       {/* SUB-MENU DE ABAS ROLÁVEL */}
       <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">

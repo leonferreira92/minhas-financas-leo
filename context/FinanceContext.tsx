@@ -6,6 +6,35 @@ import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
 import { normalizeShowFinancials, syncShowWithTransactions, cancelShowFutureTransactions } from '../services/showFinanceSyncService';
 import { generateUUID } from '../services/uuidHelper';
+import { User } from 'firebase/auth';
+import { 
+  subscribeToAuth, 
+  signInWithGoogle, 
+  logoutUser, 
+  subscribeToUserAccounts, 
+  subscribeToUserTransactions, 
+  subscribeToUserShows,
+  subscribeToUserDebts,
+  subscribeToUserCategories,
+  subscribeToUserBudgets,
+  subscribeToUserSettings,
+  saveAccountToFirestore,
+  deleteAccountFromFirestore,
+  saveTransactionToFirestore,
+  deleteTransactionFromFirestore,
+  saveShowToFirestore,
+  deleteShowFromFirestore,
+  saveDebtToFirestore,
+  deleteDebtFromFirestore,
+  saveCategoryToFirestore,
+  deleteCategoryFromFirestore,
+  saveBudgetToFirestore,
+  deleteBudgetFromFirestore,
+  saveSettingsToFirestore,
+  syncLocalDataToFirestore,
+  testFirestoreConnection,
+  checkUserInitialized
+} from '../services/firebaseService';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -70,6 +99,12 @@ interface FinanceContextType {
   restoreAutoBackup: () => boolean;
   getBackupInfo: () => { timestamp: number; date: Date } | null;
   requestNotificationPermission: () => Promise<boolean>;
+
+  // Firebase Auth & Cloud Sync
+  currentUser: User | null;
+  isAuthLoading: boolean;
+  signInWithGoogle: () => Promise<void>;
+  logoutUser: () => Promise<void>;
 }
 
 const DEFAULT_DASHBOARD_LAYOUT: DashboardWidgetConfig[] = [
@@ -84,12 +119,115 @@ const DEFAULT_DASHBOARD_LAYOUT: DashboardWidgetConfig[] = [
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user);
+      setIsAuthLoading(false);
+      if (user) {
+        testFirestoreConnection();
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const uid = currentUser.uid;
+
+    // Sincronização inicial inteligente: Se o usuário ainda não tiver sido inicializado no Firestore,
+    // envia os dados locais existentes (localStorage) para a nuvem
+    checkUserInitialized(uid).then((isInit) => {
+      if (!isInit) {
+        const localAccounts = StorageService.getAccounts();
+        const localTransactions = StorageService.getTransactions();
+        const localShows = StorageService.getShows();
+        const localDebts = StorageService.getDebts();
+        const localCategories = StorageService.getCategories();
+        const localBudgets = StorageService.getBudgets();
+        const localSettings = StorageService.getSettings();
+
+        syncLocalDataToFirestore(uid, {
+          accounts: localAccounts,
+          transactions: localTransactions,
+          shows: localShows,
+          debts: localDebts,
+          categories: localCategories,
+          budgets: localBudgets,
+          settings: localSettings
+        });
+      }
+    });
+
+    // 1. Escutador em tempo real: Contas Bancárias
+    const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
+      setAccounts(cloudAccounts);
+      StorageService.saveAccounts(cloudAccounts);
+    });
+
+    // 2. Escutador em tempo real: Transações / Lançamentos
+    const unsubTransactions = subscribeToUserTransactions(uid, (cloudTxs) => {
+      setTransactions(cloudTxs);
+      StorageService.saveTransactions(cloudTxs);
+    });
+
+    // 3. Escutador em tempo real: Shows / Apresentações
+    const unsubShows = subscribeToUserShows(uid, (cloudShows) => {
+      setShows(cloudShows);
+      StorageService.saveShows(cloudShows);
+    });
+
+    // 4. Escutador em tempo real: Dívidas / Parcelamentos
+    const unsubDebts = subscribeToUserDebts(uid, (cloudDebts) => {
+      setDebts(cloudDebts);
+      StorageService.saveDebts(cloudDebts);
+    });
+
+    // 5. Escutador em tempo real: Categorias Customizadas
+    const unsubCategories = subscribeToUserCategories(uid, (cloudCategories) => {
+      if (cloudCategories && cloudCategories.length > 0) {
+        setCategories(cloudCategories);
+        StorageService.saveCategories(cloudCategories);
+      }
+    });
+
+    // 6. Escutador em tempo real: Orçamentos (Budgets)
+    const unsubBudgets = subscribeToUserBudgets(uid, (cloudBudgets) => {
+      setBudgets(cloudBudgets);
+      StorageService.saveBudgets(cloudBudgets);
+    });
+
+    // 7. Escutador em tempo real: Configurações do Usuário
+    const unsubSettings = subscribeToUserSettings(uid, (cloudSettings) => {
+      if (cloudSettings && Object.keys(cloudSettings).length > 0) {
+        setSettings(prev => {
+          const merged = { ...prev, ...cloudSettings };
+          StorageService.saveSettings(merged);
+          return merged;
+        });
+      }
+    });
+
+    return () => {
+      unsubAccounts && unsubAccounts();
+      unsubTransactions && unsubTransactions();
+      unsubShows && unsubShows();
+      unsubDebts && unsubDebts();
+      unsubCategories && unsubCategories();
+      unsubBudgets && unsubBudgets();
+      unsubSettings && unsubSettings();
+    };
+  }, [currentUser]);
   const [settings, setSettings] = useState<AppSettings>({ 
     theme: 'light', 
     primaryColor: 'lime', 
@@ -392,16 +530,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setSettings(mergedSettings);
   };
 
-  const saveTransactions = (ts: Transaction[]) => { setTransactions(ts); StorageService.saveTransactions(ts); };
-  const saveCategories = (cs: Category[]) => { setCategories(cs); StorageService.saveCategories(cs); };
-  const saveDebts = (ds: Debt[]) => { setDebts(ds); StorageService.saveDebts(ds); };
-  const saveAccounts = (as: Account[]) => { setAccounts(as); StorageService.saveAccounts(as); };
-  const saveBudgetsInternal = (bs: Budget[]) => { setBudgets(bs); StorageService.saveBudgets(bs); };
+  const saveTransactions = (ts: Transaction[]) => { 
+    setTransactions(ts); 
+    StorageService.saveTransactions(ts); 
+  };
+  const saveCategories = (cs: Category[]) => { 
+    setCategories(cs); 
+    StorageService.saveCategories(cs); 
+  };
+  const saveDebts = (ds: Debt[]) => { 
+    setDebts(ds); 
+    StorageService.saveDebts(ds); 
+  };
+  const saveAccounts = (as: Account[]) => { 
+    setAccounts(as); 
+    StorageService.saveAccounts(as); 
+  };
+  const saveBudgetsInternal = (bs: Budget[]) => { 
+    setBudgets(bs); 
+    StorageService.saveBudgets(bs); 
+  };
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
     StorageService.saveSettings(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, updated);
+    }
   };
 
   const updateFinancialSettings = (fs: Partial<FinancialSettings>) => {
@@ -416,6 +572,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
     setSettings(updatedSettings);
     StorageService.saveSettings(updatedSettings);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, updatedSettings);
+    }
 
     if (fs.essentialCategoryIds || fs.lifestyleCategoryIds || fs.professionalCategoryIds) {
       const ess = new Set(updatedFs.essentialCategoryIds);
@@ -430,21 +589,37 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
       setCategories(updatedCategories);
       StorageService.saveCategories(updatedCategories);
+      if (currentUser) {
+        updatedCategories.forEach(c => saveCategoryToFirestore(currentUser.uid, c));
+      }
     }
   };
 
   const addAccount = (a: Omit<Account, 'id'>) => {
     const vinculo = a.vinculo || (a.scope === 'BUSINESS' ? 'MUSICO' : a.scope === 'PERSONAL' ? 'PESSOAL' : 'NEUTRO');
     const scope = a.scope || (vinculo === 'MUSICO' ? 'BUSINESS' : vinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH');
-    saveAccounts([...accounts, { ...a, vinculo, scope, id: generateUUID() }]);
+    const newAccount: Account = { ...a, vinculo, scope, id: generateUUID() };
+    saveAccounts([...accounts, newAccount]);
+    if (currentUser) {
+      saveAccountToFirestore(currentUser.uid, newAccount);
+    }
   };
 
   const updateAccount = (a: Account) => {
     const vinculo = a.vinculo || (a.scope === 'BUSINESS' ? 'MUSICO' : a.scope === 'PERSONAL' ? 'PESSOAL' : 'NEUTRO');
     const scope = a.scope || (vinculo === 'MUSICO' ? 'BUSINESS' : vinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH');
-    saveAccounts(accounts.map(acc => acc.id === a.id ? { ...a, vinculo, scope } : acc));
+    const updatedAccount = { ...a, vinculo, scope };
+    saveAccounts(accounts.map(acc => acc.id === a.id ? updatedAccount : acc));
+    if (currentUser) {
+      saveAccountToFirestore(currentUser.uid, updatedAccount);
+    }
   };
-  const deleteAccount = (id: string) => saveAccounts(accounts.filter(a => a.id !== id));
+  const deleteAccount = (id: string) => {
+    saveAccounts(accounts.filter(a => a.id !== id));
+    if (currentUser) {
+      deleteAccountFromFirestore(currentUser.uid, id);
+    }
+  };
 
   const getAccountBalance = (accountId: string): number => {
     const account = accounts.find(a => a.id === accountId);
@@ -506,12 +681,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (t.isFixed && fixedGroupId) {
         for (let i = 1; i < 12; i++) {
           const d = new Date(t.date); d.setMonth(d.getMonth() + i);
-          txs.push({ ...t, id: generateUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId });
+          const recurTx: Transaction = { ...t, id: generateUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId, amount: cleanAmount, scope: cleanScope };
+          txs.push(recurTx);
+          if (currentUser) {
+            saveTransactionToFirestore(currentUser.uid, recurTx);
+          }
         }
       }
       StorageService.saveTransactions(txs);
       return txs;
     });
+
+    if (currentUser) {
+      saveTransactionToFirestore(currentUser.uid, fullTx);
+    }
 
     if (t.showId) {
       const defaultAccId = getDefaultAccountForScope('BUSINESS');
@@ -567,6 +750,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         if (modified) {
           StorageService.saveShows(updated);
+          if (currentUser) {
+            const currentShow = updated.find(s => s.id === t.showId);
+            if (currentShow) saveShowToFirestore(currentUser.uid, currentShow);
+          }
           return updated;
         }
         return prevShows;
@@ -581,14 +768,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         const tid = t.id || generateUUID();
         const cleanAmount = Number(t.amount) || 0;
         const cleanScope: ScopeType = (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
-        txs.push({
+        const item: Transaction = {
           ...t,
           id: tid,
           amount: cleanAmount,
           scope: cleanScope,
           status: t.status || 'paid',
           createdAt: Date.now()
-        });
+        };
+        txs.push(item);
+        if (currentUser) {
+          saveTransactionToFirestore(currentUser.uid, item);
+        }
       });
       StorageService.saveTransactions(txs);
       return txs;
@@ -610,6 +801,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       StorageService.saveTransactions(txs);
       return txs;
     });
+
+    if (currentUser) {
+      saveTransactionToFirestore(currentUser.uid, cleanT);
+    }
 
     // Sincronização bidirecional automática com o módulo de Shows
     const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
@@ -676,6 +871,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       if (showsModified) {
         StorageService.saveShows(updatedShows);
+        if (currentUser) {
+          updatedShows
+            .filter(s => s.id === cleanT.showId || (s.payments && s.payments.some(p => p.transactionId === cleanT.id)) || (s.expenseItems && s.expenseItems.some(e => e.transactionId === cleanT.id)))
+            .forEach(s => saveShowToFirestore(currentUser.uid, s));
+        }
         return updatedShows;
       }
       return prevShows;
@@ -688,11 +888,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       const txs = prev.map(t => {
         if (t.id === updatedT.id) return updatedT;
         if (t.fixedGroupId === updatedT.fixedGroupId && new Date(t.date) > new Date(updatedT.date)) {
-          return { ...t, amount: updatedT.amount, categoryId: updatedT.categoryId, description: updatedT.description, type: updatedT.type, accountId: updatedT.accountId };
+          const mod = { ...t, amount: updatedT.amount, categoryId: updatedT.categoryId, description: updatedT.description, type: updatedT.type, accountId: updatedT.accountId };
+          if (currentUser) {
+            saveTransactionToFirestore(currentUser.uid, mod);
+          }
+          return mod;
         }
         return t;
       });
       StorageService.saveTransactions(txs);
+      if (currentUser) {
+        saveTransactionToFirestore(currentUser.uid, updatedT);
+      }
       return txs;
     });
   };
@@ -759,6 +966,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
 
     saveTransactions(newTransactions);
+    if (currentUser) {
+      newTransactions
+        .filter(t => t.id === transactionId || futureMap.has(t.id))
+        .forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+    }
   };
 
   const deleteTransaction = (id: string, deleteSeries: boolean = false) => {
@@ -766,9 +978,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       const target = prev.find(t => t.id === id);
       let txs;
       if (deleteSeries && target && target.fixedGroupId) {
+        const toDelete = prev.filter(t => t.fixedGroupId === target.fixedGroupId);
+        if (currentUser) {
+          toDelete.forEach(t => deleteTransactionFromFirestore(currentUser.uid, t.id));
+        }
         txs = prev.filter(t => t.fixedGroupId !== target.fixedGroupId);
       } else {
         txs = prev.filter(t => t.id !== id);
+        if (currentUser) {
+          deleteTransactionFromFirestore(currentUser.uid, id);
+        }
       }
       StorageService.saveTransactions(txs);
       return txs;
@@ -799,11 +1018,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         if (paymentsChanged || expensesChanged) {
           modified = true;
-          return {
+          const newShow = {
             ...show,
             payments: updatedPayments,
             expenseItems: updatedExpenses
           };
+          if (currentUser) {
+            saveShowToFirestore(currentUser.uid, newShow);
+          }
+          return newShow;
         }
         return show;
       });
@@ -916,14 +1139,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     saveTransactions(newTransactions);
     setDebts(newDebts);
     setTransactions(newTransactions);
+
+    if (currentUser) {
+      saveDebtToFirestore(currentUser.uid, newDebt);
+      newTransactions.filter(t => t.debtId === debtId).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+    }
   };
 
   const updateDebt = (id: string, name: string, installmentCount: number) => {
-    saveDebts(debts.map(d => d.id === id ? { ...d, name, installmentCount } : d));
-    saveTransactions(transactions.map(t => t.debtId === id ? { ...t, description: `${name} (${t.installmentNumber}/${installmentCount})`, installmentTotal: installmentCount } : t));
+    const updatedDebts = debts.map(d => d.id === id ? { ...d, name, installmentCount } : d);
+    const updatedTxs = transactions.map(t => t.debtId === id ? { ...t, description: `${name} (${t.installmentNumber}/${installmentCount})`, installmentTotal: installmentCount } : t);
+    saveDebts(updatedDebts);
+    saveTransactions(updatedTxs);
+
+    if (currentUser) {
+      const d = updatedDebts.find(item => item.id === id);
+      if (d) saveDebtToFirestore(currentUser.uid, d);
+      updatedTxs.filter(t => t.debtId === id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+    }
   };
 
-  const deleteDebt = (id: string) => { saveDebts(debts.filter(d => d.id !== id)); saveTransactions(transactions.filter(t => t.debtId !== id)); };
+  const deleteDebt = (id: string) => { 
+    saveDebts(debts.filter(d => d.id !== id)); 
+    saveTransactions(transactions.filter(t => t.debtId !== id)); 
+    if (currentUser) {
+      deleteDebtFromFirestore(currentUser.uid, id);
+      transactions.filter(t => t.debtId === id).forEach(t => deleteTransactionFromFirestore(currentUser.uid, t.id));
+    }
+  };
 
   const getDebtProgress = (debtId: string) => {
     const txs = transactions.filter(t => t.debtId === debtId);
@@ -946,9 +1189,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
   };
 
-  const addCategory = (c: Omit<Category, 'id'>) => saveCategories([...categories, { ...c, id: generateUUID() }]);
-  const updateCategory = (c: Category) => saveCategories(categories.map(cat => cat.id === c.id ? c : cat));
-  const deleteCategory = (id: string) => saveCategories(categories.filter(c => c.id !== id));
+  const addCategory = (c: Omit<Category, 'id'>) => {
+    const newCat = { ...c, id: generateUUID() };
+    saveCategories([...categories, newCat]);
+    if (currentUser) {
+      saveCategoryToFirestore(currentUser.uid, newCat);
+    }
+  };
+  const updateCategory = (c: Category) => {
+    saveCategories(categories.map(cat => cat.id === c.id ? c : cat));
+    if (currentUser) {
+      saveCategoryToFirestore(currentUser.uid, c);
+    }
+  };
+  const deleteCategory = (id: string) => {
+    saveCategories(categories.filter(c => c.id !== id));
+    if (currentUser) {
+      deleteCategoryFromFirestore(currentUser.uid, id);
+    }
+  };
 
   const saveBudget = (b: Budget) => {
     const idx = budgets.findIndex(item => item.categoryId === b.categoryId);
@@ -956,8 +1215,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (idx >= 0) newBudgets[idx] = b;
     else newBudgets.push(b);
     saveBudgetsInternal(newBudgets);
+    if (currentUser) {
+      saveBudgetToFirestore(currentUser.uid, b);
+    }
   };
-  const deleteBudget = (categoryId: string) => saveBudgetsInternal(budgets.filter(b => b.categoryId !== categoryId));
+  const deleteBudget = (categoryId: string) => {
+    saveBudgetsInternal(budgets.filter(b => b.categoryId !== categoryId));
+    if (currentUser) {
+      deleteBudgetFromFirestore(currentUser.uid, categoryId);
+    }
+  };
 
   const addShow = (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => {
     const id = s.id || generateUUID();
@@ -976,6 +1243,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setTransactions(updatedTransactions);
     StorageService.saveTransactions(updatedTransactions);
+
+    if (currentUser) {
+      saveShowToFirestore(currentUser.uid, updatedShow);
+      updatedTransactions.forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+    }
   };
 
   const updateShow = (s: Show) => {
@@ -1002,6 +1274,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         return updated;
       });
 
+      if (currentUser) {
+        saveShowToFirestore(currentUser.uid, updatedShow);
+        updatedTransactions.forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      }
+
       return updatedTransactions;
     });
   };
@@ -1013,8 +1290,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return updated;
     });
 
+    if (currentUser) {
+      deleteShowFromFirestore(currentUser.uid, id);
+    }
+
     if (deleteTransactions) {
       setTransactions(prev => {
+        const toDelete = prev.filter(t => t.showId === id);
+        if (currentUser) {
+          toDelete.forEach(t => deleteTransactionFromFirestore(currentUser.uid, t.id));
+        }
         const updated = prev.filter(t => t.showId !== id);
         StorageService.saveTransactions(updated);
         return updated;
@@ -1026,6 +1311,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setTransactions(prev => {
       const updated = cancelShowFutureTransactions(showId, prev);
       StorageService.saveTransactions(updated);
+      if (currentUser) {
+        updated.filter(t => t.showId === showId).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      }
       return updated;
     });
   };
@@ -1119,6 +1407,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return alerts;
   }, [transactions, accounts, activeScope]);
 
+  const handleSignInWithGoogle = async () => {
+    await signInWithGoogle();
+  };
+
   const restoreAutoBackup = () => { if (StorageService.restoreAutoBackup()) { refreshData(); return true; } return false; };
   const getBackupInfo = () => StorageService.getAutoBackupInfo();
   const requestNotificationPermission = () => NotificationService.requestPermission();
@@ -1134,7 +1426,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       saveBudget, deleteBudget,
       addShow, updateShow, deleteShow, cancelShowFutureFinancials,
       getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
-      restoreAutoBackup, getBackupInfo, requestNotificationPermission
+      restoreAutoBackup, getBackupInfo, requestNotificationPermission,
+      currentUser, isAuthLoading, signInWithGoogle: handleSignInWithGoogle, logoutUser
     }}>
       {children}
     </FinanceContext.Provider>

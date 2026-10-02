@@ -1,0 +1,148 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "Perfil do Usuário",
+      "description": "Dados do usuário autenticado no sistema",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Account": {
+      "title": "Conta Financeira",
+      "description": "Conta bancária ou carteira do usuário",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "initialBalance": { "type": "number" },
+        "color": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "scope": { "type": "string" }
+      },
+      "required": ["id", "name", "type"]
+    },
+    "Transaction": {
+      "title": "Movimentação Financeira",
+      "description": "Registro de receita, despesa ou transferência",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "accountId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" },
+        "scope": { "type": "string" },
+        "showId": { "type": "string" }
+      },
+      "required": ["id", "description", "amount", "type", "accountId", "date", "status"]
+    },
+    "Show": {
+      "title": "Apresentação / Show",
+      "description": "Ficha completa de evento ou show cadastrado pelo músico",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "contractorName": { "type": "string" },
+        "location": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "totalCache": { "type": "number" },
+        "status": { "type": "string" },
+        "googleCalendarEventId": { "type": "string" }
+      },
+      "required": ["id", "name", "contractorName", "location", "date", "totalCache", "status"]
+    },
+    "Debt": {
+      "title": "Dívida ou Financiamento",
+      "description": "Registro de dívida, empréstimo ou parcelamento",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "startDate": { "type": "string" },
+        "installmentCount": { "type": "number" }
+      },
+      "required": ["id", "name", "totalAmount", "startDate", "installmentCount"]
+    },
+    "Category": {
+      "title": "Categoria Financeira",
+      "description": "Categoria customizada de receitas e despesas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "color": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["id", "name", "type"]
+    },
+    "Budget": {
+      "title": "Orçamento / Meta de Categoria",
+      "description": "Limite planejado para gastos por categoria",
+      "type": "object",
+      "properties": {
+        "categoryId": { "type": "string" },
+        "limit": { "type": "number" }
+      },
+      "required": ["categoryId", "limit"]
+    },
+    "AppSettings": {
+      "title": "Configurações da Aplicação",
+      "description": "Preferências do usuário, temas e opções",
+      "type": "object",
+      "properties": {
+        "theme": { "type": "string" },
+        "userName": { "type": "string" },
+        "careerProjectName": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Documento de perfil do usuário"
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "Coleção de contas bancárias do usuário"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Coleção de transações do usuário"
+    },
+    "/users/{userId}/shows/{showId}": {
+      "schema": "Show",
+      "description": "Coleção de shows do usuário"
+    },
+    "/users/{userId}/debts/{debtId}": {
+      "schema": "Debt",
+      "description": "Coleção de dívidas do usuário"
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Coleção de categorias customizadas do usuário"
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": "Budget",
+      "description": "Coleção de orçamentos do usuário"
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": "AppSettings",
+      "description": "Configurações e parâmetros do usuário"
+    }
+  }
+}

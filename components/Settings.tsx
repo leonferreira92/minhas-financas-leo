@@ -282,7 +282,36 @@ export const Settings = () => {
                    placeholder="Ex: Leo Ferreira"
                    className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-purple-400 transition-colors pb-1"
                  />
-                 <span className="text-[10px] text-zinc-400 block mt-1">Nome exibido nos relatórios e contratos de shows</span>
+                 <span className="text-[10px] text-zinc-400 block mt-1">Nome exibido nos relatórios e recibos de shows</span>
+              </div>
+           </div>
+
+           {/* Dados Profissionais para Recibos e Comprovantes */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 pt-4 border-t border-zinc-800 relative z-10">
+              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800">
+                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">
+                   CPF do Músico (Recibos)
+                 </label>
+                 <input 
+                   value={settings.musicianCpf || ''} 
+                   onChange={(e) => updateSettings({ musicianCpf: e.target.value })} 
+                   placeholder="000.000.000-00"
+                   className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
+                 />
+                 <span className="text-[9px] text-zinc-500 block mt-1">Utilizado na assinatura do Recibo de Sinal</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800">
+                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">
+                   Cidade / UF Base
+                 </label>
+                 <input 
+                   value={settings.musicianCity || ''} 
+                   onChange={(e) => updateSettings({ musicianCity: e.target.value })} 
+                   placeholder="Ex: Baependi - MG"
+                   className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
+                 />
+                 <span className="text-[9px] text-zinc-500 block mt-1">Cidade da emissão no rodapé do comprovante</span>
               </div>
            </div>
 

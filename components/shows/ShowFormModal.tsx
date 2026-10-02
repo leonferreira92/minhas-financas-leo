@@ -396,6 +396,7 @@ export const ShowFormModal: React.FC<Props> = ({
               <input
                 type="number"
                 step="0.01"
+                inputMode="decimal"
                 placeholder="0,00"
                 value={totalCache}
                 onChange={e => setTotalCache(e.target.value)}
@@ -429,6 +430,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     <input
                       type="number"
                       step="0.01"
+                      inputMode="decimal"
                       required={hasImmediateDeposit}
                       placeholder="Ex: 500"
                       value={depositAmount}

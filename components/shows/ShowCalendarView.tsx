@@ -4,8 +4,7 @@ import { useFinance } from '../../context/FinanceContext';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   Clock, MapPin, Plus, CheckCircle2, AlertTriangle, AlertCircle,
-  Sparkles, Check, ChevronDown, Music, DollarSign, ArrowRight,
-  Zap
+  Sparkles, Check, ChevronDown, Music, DollarSign, ArrowRight
 } from 'lucide-react';
 import { getStatusConfig } from './types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
@@ -474,7 +473,7 @@ export const ShowCalendarView: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* AÇÕES RÁPIDAS: BAIXA RÁPIDA (⚡ Registrar PIX / Sinal) & VER FICHA */}
+                  {/* DETALHES & ACESSO À FICHA COMPLETA */}
                   <div className="flex items-center justify-between text-xs text-zinc-400 pt-2 border-t border-zinc-800/80 font-medium">
                     <div className="flex items-center space-x-1.5 min-w-0">
                       <MapPin size={13} className="text-zinc-500 shrink-0" />
@@ -483,33 +482,9 @@ export const ShowCalendarView: React.FC<Props> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-2 shrink-0">
-                      {/* ATALHO DE BAIXA RÁPIDA (1 CLIQUE) */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onQuickAddPayment) {
-                            onQuickAddPayment(show);
-                          } else {
-                            onSelectShow(show, 'finance', true);
-                          }
-                        }}
-                        className="px-2.5 py-1 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-[11px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95 shadow-xs"
-                        title="Registrar Sinal ou Pagamento Pix agora"
-                      >
-                        <Zap size={11} strokeWidth={2.5} />
-                        <span>⚡ Registrar PIX / Sinal</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => onSelectShow(show)}
-                        className="text-[11px] font-bold text-zinc-400 hover:text-white flex items-center space-x-0.5 transition"
-                      >
-                        <span>Ficha</span>
-                        <ArrowRight size={12} />
-                      </button>
+                    <div className="flex items-center space-x-1.5 shrink-0 text-emerald-400 font-bold text-xs group-hover:translate-x-0.5 transition-transform">
+                      <span>Ver Ficha do Evento</span>
+                      <ArrowRight size={13} />
                     </div>
                   </div>
                 </div>

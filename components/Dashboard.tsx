@@ -17,6 +17,7 @@ import { ScopeSelector } from './ScopeSelector';
 import { BankImportModal } from './BankImportModal';
 import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
 import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
+import { AuthHeaderWidget } from './AuthHeaderWidget';
 import { getAccountVinculo, getMonthlyCareerMetrics, parseCurrencyInput } from '../services/financeAggregator';
 import { getIcon } from '../constants';
 
@@ -294,6 +295,9 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 1.5. BARRA DE AUTENTICAÇÃO / LOGIN E NUVEM */}
+      <AuthHeaderWidget />
 
       {/* 2. SELETOR DE MÓDULOS [ VISÃO GERAL | PESSOAL | EMPRESA ] */}
       <ScopeSelector size="sm" fullWidth={true} />
