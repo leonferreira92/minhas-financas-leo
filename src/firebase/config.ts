@@ -1,16 +1,17 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import appletConfig from '../../firebase-applet-config.json';
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyB0lOaJchUodU5ocuNXmMJPpYp8qJQWmF4",
-  authDomain: "gen-lang-client-0039679199.firebaseapp.com",
-  projectId: "gen-lang-client-0039679199",
-  storageBucket: "gen-lang-client-0039679199.firebasestorage.app",
-  messagingSenderId: "487650344076",
-  appId: "1:487650344076:web:fe4abb23a5bf5a57098fa9",
-  measurementId: "G-F2SWWEFW9E",
-  firestoreDatabaseId: "ai-studio-copyoffinanaspro-bc264f67-4bcd-49ec-83aa-0eade5a8c42b"
+  apiKey: appletConfig.apiKey || "AIzaSyA6SPisJ3DkG9lpKtuq2ZZvYe8cKNlAxfM",
+  authDomain: appletConfig.authDomain || "gen-lang-client-0039679199.firebaseapp.com",
+  projectId: appletConfig.projectId || "gen-lang-client-0039679199",
+  storageBucket: appletConfig.storageBucket || "gen-lang-client-0039679199.firebasestorage.app",
+  messagingSenderId: appletConfig.messagingSenderId || "487650344076",
+  appId: appletConfig.appId || "1:487650344076:web:5f2df0c356732488098fa9",
+  measurementId: appletConfig.measurementId || "",
+  firestoreDatabaseId: appletConfig.firestoreDatabaseId || "ai-studio-copyoffinanaspro-bc264f67-4bcd-49ec-83aa-0eade5a8c42b"
 };
 
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
