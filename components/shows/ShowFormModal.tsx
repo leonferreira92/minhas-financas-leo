@@ -47,8 +47,28 @@ export const ShowFormModal: React.FC<Props> = ({
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState<ShowStatus>(() => initialStatus || 'Confirmado');
 
-  // --- BLOCO B: RESUMO FINANCEIRO ---
+  // --- BLOCO B: RESUMO FINANCEIRO & MODELO DE RECEITA ---
   const [totalCache, setTotalCache] = useState('');
+  const [revenueModel, setRevenueModel] = useState<'fixed' | 'couvert' | 'hybrid'>('fixed');
+  const [estimatedPeople, setEstimatedPeople] = useState('80');
+  const [couvertPrice, setCouvertPrice] = useState('15');
+  const [guaranteedMinCache, setGuaranteedMinCache] = useState('500');
+  const [couvertPercentage, setCouvertPercentage] = useState('100');
+
+  // Tempo Dedicado
+  const [travelTimeMinutes, setTravelTimeMinutes] = useState('60');
+  const [soundcheckTimeMinutes, setSoundcheckTimeMinutes] = useState('60');
+  const [showHours, setShowHours] = useState('2');
+
+  // Fundo de Depreciação / Reserva para Equipamento
+  const [equipmentReserveAmount, setEquipmentReserveAmount] = useState('20');
+
+  // Calculadora de Logística (Veículo Próprio)
+  const [transportDistanceKm, setTransportDistanceKm] = useState('40');
+  const [carKmPerLiter, setCarKmPerLiter] = useState('10');
+  const [fuelPricePerLiter, setFuelPricePerLiter] = useState('6.00');
+  const [tollCost, setTollCost] = useState('15');
+
   const [hasImmediateDeposit, setHasImmediateDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAccountId, setDepositAccountId] = useState(defaultAccountId);
@@ -114,6 +134,23 @@ export const ShowFormModal: React.FC<Props> = ({
       setStatus((existingShow.status === 'Agendado' ? 'Aguardando confirmação' : existingShow.status) || 'Confirmado');
       setNotes(existingShow.notes || '');
 
+      setRevenueModel(existingShow.revenueModel || 'fixed');
+      setEstimatedPeople(existingShow.estimatedPeople ? String(existingShow.estimatedPeople) : '80');
+      setCouvertPrice(existingShow.couvertPrice ? String(existingShow.couvertPrice) : '15');
+      setGuaranteedMinCache(existingShow.guaranteedMinCache ? String(existingShow.guaranteedMinCache) : '500');
+      setCouvertPercentage(existingShow.couvertPercentage ? String(existingShow.couvertPercentage) : '100');
+
+      setTravelTimeMinutes(existingShow.travelTimeMinutes ? String(existingShow.travelTimeMinutes) : '60');
+      setSoundcheckTimeMinutes(existingShow.soundcheckTimeMinutes ? String(existingShow.soundcheckTimeMinutes) : '60');
+      setShowHours(existingShow.showHours ? String(existingShow.showHours) : '2');
+
+      setEquipmentReserveAmount(existingShow.equipmentReserveAmount !== undefined ? String(existingShow.equipmentReserveAmount) : '20');
+
+      setTransportDistanceKm(existingShow.transportDistanceKm ? String(existingShow.transportDistanceKm) : '40');
+      setCarKmPerLiter(existingShow.carKmPerLiter ? String(existingShow.carKmPerLiter) : '10');
+      setFuelPricePerLiter(existingShow.fuelPricePerLiter ? String(existingShow.fuelPricePerLiter) : '6.00');
+      setTollCost(existingShow.tollCost ? String(existingShow.tollCost) : '15');
+
       setCrewMembers(existingShow.crewMembers || []);
       setLogistics(existingShow.logistics || []);
       setOtherExpenses(existingShow.otherExpenses || []);
@@ -133,6 +170,19 @@ export const ShowFormModal: React.FC<Props> = ({
       setTotalCache(prefilledVenueData?.totalCache ? String(prefilledVenueData.totalCache) : '');
       setStatus(initialStatus || 'Confirmado');
       setNotes('');
+      setRevenueModel('fixed');
+      setEstimatedPeople('80');
+      setCouvertPrice('15');
+      setGuaranteedMinCache('500');
+      setCouvertPercentage('100');
+      setTravelTimeMinutes('60');
+      setSoundcheckTimeMinutes('60');
+      setShowHours('2');
+      setEquipmentReserveAmount('20');
+      setTransportDistanceKm('40');
+      setCarKmPerLiter('10');
+      setFuelPricePerLiter('6.00');
+      setTollCost('15');
       setCrewMembers([]);
       setLogistics([]);
       setOtherExpenses([]);
@@ -148,7 +198,19 @@ export const ShowFormModal: React.FC<Props> = ({
   // RECALCULO INSTANTÂNEO EM TEMPO REAL: CUSTOS, LUCRO LÍQUIDO E MARGEM (%)
   // =========================================================================
   const financialSummaryLive = useMemo(() => {
-    const grossCache = parseFloat(totalCache.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    let grossCache = parseFloat(totalCache.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+
+    const people = Math.max(0, parseFloat(estimatedPeople) || 0);
+    const cPrice = Math.max(0, parseFloat(couvertPrice.replace(',', '.')) || 0);
+    const minCache = Math.max(0, parseFloat(guaranteedMinCache.replace(',', '.')) || 0);
+    const cPct = Math.max(0, parseFloat(couvertPercentage) || 100) / 100;
+
+    if (revenueModel === 'couvert') {
+      grossCache = people * cPrice;
+    } else if (revenueModel === 'hybrid') {
+      grossCache = minCache + (people * cPrice * cPct);
+    }
+
     const depVal = hasImmediateDeposit ? (parseFloat(depositAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0) : 0;
 
     // 1. Custos de Equipe
@@ -163,8 +225,21 @@ export const ShowFormModal: React.FC<Props> = ({
     // Total de Custos
     const totalCosts = crewCost + logisticsCost + otherCost;
 
+    // Fundo de Depreciação / Reserva para Equipamento
+    const reserveVal = Math.max(0, parseFloat(equipmentReserveAmount.replace(',', '.')) || 0);
+
     // Lucro Líquido Real = Cachê Bruto - Custo Total
     const netProfit = grossCache - totalCosts;
+    const netProfitAfterReserve = netProfit - reserveVal;
+
+    // Tempo Dedicado Total (Horas)
+    const sHours = Math.max(0.5, parseFloat(showHours) || 2);
+    const tMins = Math.max(0, parseFloat(travelTimeMinutes) || 0);
+    const scMins = Math.max(0, parseFloat(soundcheckTimeMinutes) || 0);
+    const totalDedicatedHours = Math.max(0.5, Math.round((sHours + (tMins / 60) + (scMins / 60)) * 10) / 10);
+
+    // Lucro por Hora Trabalhada
+    const profitPerHour = Math.round((netProfit / totalDedicatedHours) * 100) / 100;
 
     // Margem de Lucro (%)
     const marginPercent = grossCache > 0 ? (netProfit / grossCache) * 100 : 0;
@@ -180,10 +255,18 @@ export const ShowFormModal: React.FC<Props> = ({
       logisticsCost,
       otherCost,
       totalCosts,
+      reserveVal,
       netProfit,
+      netProfitAfterReserve,
+      totalDedicatedHours,
+      profitPerHour,
       marginPercent
     };
-  }, [totalCache, hasImmediateDeposit, depositAmount, crewMembers, logistics, otherExpenses]);
+  }, [
+    totalCache, revenueModel, estimatedPeople, couvertPrice, guaranteedMinCache, couvertPercentage,
+    hasImmediateDeposit, depositAmount, crewMembers, logistics, otherExpenses, equipmentReserveAmount,
+    showHours, travelTimeMinutes, soundcheckTimeMinutes
+  ]);
 
   if (!isOpen) return null;
 
@@ -377,6 +460,19 @@ export const ShowFormModal: React.FC<Props> = ({
       totalCache: cacheVal,
       status,
       notes: notes.trim() || undefined,
+      revenueModel,
+      estimatedPeople: parseFloat(estimatedPeople) || undefined,
+      couvertPrice: parseFloat(couvertPrice.replace(',', '.')) || undefined,
+      guaranteedMinCache: parseFloat(guaranteedMinCache.replace(',', '.')) || undefined,
+      couvertPercentage: parseFloat(couvertPercentage) || undefined,
+      travelTimeMinutes: parseFloat(travelTimeMinutes) || undefined,
+      soundcheckTimeMinutes: parseFloat(soundcheckTimeMinutes) || undefined,
+      showHours: parseFloat(showHours) || undefined,
+      equipmentReserveAmount: parseFloat(equipmentReserveAmount.replace(',', '.')) || undefined,
+      transportDistanceKm: parseFloat(transportDistanceKm) || undefined,
+      carKmPerLiter: parseFloat(carKmPerLiter) || undefined,
+      fuelPricePerLiter: parseFloat(fuelPricePerLiter.replace(',', '.')) || undefined,
+      tollCost: parseFloat(tollCost.replace(',', '.')) || undefined,
       crewMembers,
       logistics,
       otherExpenses,
@@ -594,75 +690,242 @@ export const ShowFormModal: React.FC<Props> = ({
           </div>
 
           {/* ========================================================================= */}
-          {/* 2. BLOCO B: RESUMO FINANCEIRO & TERMÔMETRO DE LUCRO EM TEMPO REAL         */}
+          {/* 2. BLOCO B: RESUMO FINANCEIRO & MODELO DE RECEITA                         */}
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-[#1b152b] via-[#16131f] to-[#121214] border border-purple-500/30 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-purple-900/40">
               <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
                 <DollarSign size={13} className="text-emerald-400" />
-                BLOCO B • Resumo Financeiro & Termômetro de Lucro
+                BLOCO B • Modelo de Receita & Resumo Financeiro
               </span>
               <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">
                 Cálculo Instantâneo
               </span>
             </div>
 
-            {/* Cachê Bruto e Sinal */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* SELEÇÃO DO MODELO DE RECEITA */}
+            <div className="space-y-3">
               <div>
-                <label className="text-zinc-200 font-bold block mb-1">
-                  Cachê Bruto Combinado (R$) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={totalCache}
-                  onChange={(e) => setTotalCache(e.target.value)}
-                  placeholder="0,00"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-2xl p-3 text-lg font-black text-emerald-400 focus:outline-none focus:border-purple-500"
-                />
+                <label className="text-zinc-300 font-bold block mb-1.5">Formato de Recebimento</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'fixed', label: 'Cachê Fixo' },
+                    { value: 'couvert', label: 'Couvert Artístico' },
+                    { value: 'hybrid', label: 'Híbrido' }
+                  ].map(item => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setRevenueModel(item.value as any)}
+                      className={`py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition border ${
+                        revenueModel === item.value
+                          ? 'bg-purple-600 text-white border-transparent shadow-md'
+                          : 'bg-[#121214] text-zinc-400 border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Sinal / Adiantamento */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between pt-1">
-                  <label className="text-zinc-300 font-bold flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={hasImmediateDeposit}
-                      onChange={(e) => setHasImmediateDeposit(e.target.checked)}
-                      className="rounded accent-purple-600 w-4 h-4"
-                    />
-                    <span>Recebeu Sinal / Entrada no Fechamento?</span>
+              {/* INPUTS DINÂMICOS DO MODELO DE RECEITA */}
+              {revenueModel === 'fixed' && (
+                <div>
+                  <label className="text-zinc-200 font-bold block mb-1">
+                    Cachê Fixo Combinado (R$) *
                   </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={totalCache}
+                    onChange={(e) => setTotalCache(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full bg-[#121214] border border-zinc-800 rounded-2xl p-3 text-lg font-black text-emerald-400 focus:outline-none focus:border-purple-500"
+                  />
                 </div>
+              )}
 
-                {hasImmediateDeposit && (
-                  <div className="grid grid-cols-2 gap-2 pt-1 animate-fade-in">
+              {revenueModel === 'couvert' && (
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-[#121214] border border-zinc-800 animate-fade-in">
+                  <div>
+                    <label className="text-zinc-400 font-bold block mb-1">Pessoas Estimadas</label>
+                    <input
+                      type="number"
+                      value={estimatedPeople}
+                      onChange={(e) => setEstimatedPeople(e.target.value)}
+                      placeholder="Ex: 80"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-zinc-400 font-bold block mb-1">Couvert (R$/pessoa)</label>
                     <input
                       type="number"
                       step="0.01"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      placeholder="Valor do Sinal (R$)"
-                      className="bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold"
+                      value={couvertPrice}
+                      onChange={(e) => setCouvertPrice(e.target.value)}
+                      placeholder="Ex: 15.00"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-[#1ed760] font-bold"
                     />
-                    <select
-                      value={depositAccountId}
-                      onChange={(e) => setDepositAccountId(e.target.value)}
-                      className="bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white"
-                    >
-                      {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>{acc.name}</option>
-                      ))}
-                    </select>
                   </div>
-                )}
+                  <div className="col-span-2 text-right text-xs text-zinc-400">
+                    Cachê Previsto Estimado: <strong className="text-emerald-400 font-black">{formatCurrency(financialSummaryLive.grossCache)}</strong>
+                  </div>
+                </div>
+              )}
+
+              {revenueModel === 'hybrid' && (
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-[#121214] border border-zinc-800 animate-fade-in">
+                  <div>
+                    <label className="text-zinc-400 font-bold block mb-1">Cachê Mínimo Garantido (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={guaranteedMinCache}
+                      onChange={(e) => setGuaranteedMinCache(e.target.value)}
+                      placeholder="Ex: 500"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-[#1ed760] font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-zinc-400 font-bold block mb-1">Couvert (R$/pessoa)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={couvertPrice}
+                      onChange={(e) => setCouvertPrice(e.target.value)}
+                      placeholder="Ex: 15.00"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-zinc-400 font-bold block mb-1">Pessoas Estimadas</label>
+                    <input
+                      type="number"
+                      value={estimatedPeople}
+                      onChange={(e) => setEstimatedPeople(e.target.value)}
+                      placeholder="Ex: 80"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-zinc-400 font-bold block mb-1">% de Repasse p/ Artista</label>
+                    <input
+                      type="number"
+                      value={couvertPercentage}
+                      onChange={(e) => setCouvertPercentage(e.target.value)}
+                      placeholder="Ex: 100"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white"
+                    />
+                  </div>
+                  <div className="col-span-2 text-right text-xs text-zinc-400">
+                    Cachê Previsto Estimado: <strong className="text-emerald-400 font-black">{formatCurrency(financialSummaryLive.grossCache)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sinal / Adiantamento */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between pt-1">
+                <label className="text-zinc-300 font-bold flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={hasImmediateDeposit}
+                    onChange={(e) => setHasImmediateDeposit(e.target.checked)}
+                    className="rounded accent-purple-600 w-4 h-4"
+                  />
+                  <span>Recebeu Sinal / Entrada no Fechamento?</span>
+                </label>
+              </div>
+
+              {hasImmediateDeposit && (
+                <div className="grid grid-cols-2 gap-2 pt-1 animate-fade-in">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="Valor do Sinal (R$)"
+                    className="bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold"
+                  />
+                  <select
+                    value={depositAccountId}
+                    onChange={(e) => setDepositAccountId(e.target.value)}
+                    className="bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white"
+                  >
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* MÉTRICA DE TEMPO DEDICADO & LUCRO POR HORA */}
+            <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 block">
+                Métrica de Tempo Dedicado & Lucratividade por Hora
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-0.5 text-[9px]">Deslocamento (min)</label>
+                  <input
+                    type="number"
+                    value={travelTimeMinutes}
+                    onChange={(e) => setTravelTimeMinutes(e.target.value)}
+                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-0.5 text-[9px]">Montagem / Som (min)</label>
+                  <input
+                    type="number"
+                    value={soundcheckTimeMinutes}
+                    onChange={(e) => setSoundcheckTimeMinutes(e.target.value)}
+                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-400 font-bold block mb-0.5 text-[9px]">Show (horas)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={showHours}
+                    onChange={(e) => setShowHours(e.target.value)}
+                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white font-bold"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs text-zinc-300 pt-1 border-t border-zinc-800/80">
+                <span>Tempo Dedicado: <strong className="text-purple-400">{financialSummaryLive.totalDedicatedHours}h</strong></span>
+                <span>Lucro Líquido p/ Hora: <strong className="text-[#1ed760]">{formatCurrency(financialSummaryLive.profitPerHour)}/h</strong></span>
               </div>
             </div>
 
-            {/* TERMÔMETRO DE LUCRO (4 CARDS VISUAIS) */}
+            {/* FUNDO DE DEPRECIAÇÃO / RESERVA PARA EQUIPAMENTO */}
+            <div className="p-3 rounded-2xl bg-[#121214]/80 border border-amber-500/20 space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-amber-400 font-black uppercase text-[10px] tracking-wider">
+                  Reserva p/ Equipamentos (Fundo de Depreciação / Show)
+                </label>
+                <span className="text-xs font-black text-amber-400">{formatCurrency(financialSummaryLive.reserveVal)}</span>
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                value={equipmentReserveAmount}
+                onChange={(e) => setEquipmentReserveAmount(e.target.value)}
+                placeholder="Ex: 20.00"
+                className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs font-bold"
+              />
+              <p className="text-[9px] text-zinc-500">
+                Esse valor será deduzido do Lucro Líquido do show e acumulado no card de "Reserva para Equipamentos".
+              </p>
+            </div>
+
+            {/* TERMÔMETRO DE LUCRO (4 CARDS VISUAIS ATUALIZADOS) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
               <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-0.5">
                 <span className="text-[9px] font-bold text-zinc-400 uppercase block">Cachê Bruto</span>
@@ -876,8 +1139,89 @@ export const ShowFormModal: React.FC<Props> = ({
               </div>
 
               {/* Adicionar transporte */}
-              <div className="p-3 rounded-2xl bg-[#121214] border border-zinc-800 space-y-2">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="p-4 rounded-2xl bg-[#121214] border border-zinc-800 space-y-4">
+                {/* CALCULADORA INTELIGENTE DE LOGÍSTICA (VEÍCULO PRÓPRIO) */}
+                <div className="p-3 rounded-xl bg-[#18181b] border border-sky-500/20 space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 block">
+                    Calculadora Inteligente de Logística (Veículo Próprio)
+                  </span>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div>
+                      <label className="text-[9px] text-zinc-400 block mb-0.5">Distância (KM ida/volta)</label>
+                      <input
+                        type="number"
+                        value={transportDistanceKm}
+                        onChange={(e) => setTransportDistanceKm(e.target.value)}
+                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-zinc-400 block mb-0.5">Consumo (KM/L)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={carKmPerLiter}
+                        onChange={(e) => setCarKmPerLiter(e.target.value)}
+                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-zinc-400 block mb-0.5">Preço Litro (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={fuelPricePerLiter}
+                        onChange={(e) => setFuelPricePerLiter(e.target.value)}
+                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-zinc-400 block mb-0.5">Pedágio (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={tollCost}
+                        onChange={(e) => setTollCost(e.target.value)}
+                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+                    <span>Custo Estimado: <strong>{formatCurrency((parseFloat(transportDistanceKm) / (parseFloat(carKmPerLiter) || 10)) * parseFloat(fuelPricePerLiter) + (parseFloat(tollCost) || 0))}</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const dist = parseFloat(transportDistanceKm) || 0;
+                        const cons = parseFloat(carKmPerLiter) || 10;
+                        const price = parseFloat(fuelPricePerLiter) || 0;
+                        const toll = parseFloat(tollCost) || 0;
+                        const calcCost = (dist / cons) * price + toll;
+                        if (calcCost > 0) {
+                          setLogistics(prev => [
+                            ...prev,
+                            {
+                              id: generateUUID(),
+                              type: 'car_km',
+                              description: `Veículo Próprio (${dist} KM ida/volta)`,
+                              amount: Math.round(calcCost * 100) / 100,
+                              km: dist,
+                              pricePerKm: Math.round((price / cons) * 100) / 100,
+                              status: 'pending'
+                            }
+                          ]);
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-black text-[9px] uppercase tracking-wider transition"
+                    >
+                      Aplicar na Logística do Show
+                    </button>
+                  </div>
+                </div>
+
+                {/* Formulário Avulso / Outros Deslocamentos */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
                   <select
                     value={logisticsType}
                     onChange={(e) => setLogisticsType(e.target.value as any)}
@@ -895,7 +1239,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     type="text"
                     value={logisticsDesc}
                     onChange={(e) => setLogisticsDesc(e.target.value)}
-                    placeholder="Descrição (ex: Van 6 pessoas)"
+                    placeholder="Descrição (ex: Uber ida)"
                     className="bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
                   />
 
@@ -930,7 +1274,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     onClick={handleAddLogistics}
                     className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs"
                   >
-                    + Lançar Logística
+                    + Outra Logística
                   </button>
                 </div>
               </div>

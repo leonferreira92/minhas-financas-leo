@@ -343,7 +343,16 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     setSelectedShowId(showId);
     if (showId) {
       setScope('BUSINESS');
-      if (!userManuallySetCategory) {
+      const targetShow = shows.find(s => s.id === showId);
+      if (targetShow) {
+        if (targetShow.date) {
+          setDate(targetShow.date);
+        }
+        if (targetShow.status !== 'Realizado') {
+          setStatus('pending');
+        }
+      }
+      if (!userManuallySetCategory && type === 'income') {
         const cacheCategory = categories.find(c => c.id === 'cat_33');
         if (cacheCategory) {
           setCategoryId(cacheCategory.id);
@@ -443,7 +452,22 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     setValidationError(null);
 
     const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
-    const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
+    const finalShowId = (finalScope === 'BUSINESS' && selectedShowId) ? selectedShowId : undefined;
+
+    // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status 'pending' se o evento não tiver sido realizado
+    let finalDate = date;
+    let finalStatus = status;
+    if (finalShowId) {
+      const linkedShow = shows.find(s => s.id === finalShowId);
+      if (linkedShow) {
+        if (linkedShow.date) {
+          finalDate = linkedShow.date;
+        }
+        if (type === 'expense' && linkedShow.status !== 'Realizado') {
+          finalStatus = 'pending';
+        }
+      }
+    }
 
     const data: any = {
       type, 
@@ -452,8 +476,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
       accountId, 
       destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
-      date, 
-      status,
+      date: finalDate, 
+      status: finalStatus,
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
@@ -599,9 +623,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             </div>
 
             {/* ========================================== */}
-            {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO + RECEITA) */}
+            {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO)      */}
             {/* ========================================== */}
-            {scope === 'BUSINESS' && type === 'income' && (
+            {scope === 'BUSINESS' && type !== 'transfer' && (
               <div className="mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/70 space-y-2 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -627,7 +651,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                     onChange={(e) => handleSelectShow(e.target.value)}
                     className="w-full bg-white dark:bg-slate-800 border-2 border-purple-200 dark:border-purple-700/80 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500 appearance-none pr-8 cursor-pointer"
                   >
-                    <option value="">-- Não vincular a nenhum show (Receita Geral) --</option>
+                    <option value="">-- Não vincular a nenhum show ({type === 'expense' ? 'Despesa Geral' : 'Receita Geral'}) --</option>
                     <option value="__create_new__" className="text-purple-600 font-black">+ Criar Novo Show / Evento...</option>
                     {availableShows.map(s => (
                       <option key={s.id} value={s.id}>

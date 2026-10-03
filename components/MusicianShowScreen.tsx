@@ -100,22 +100,22 @@ export const MusicianShowScreen: React.FC = () => {
     ).length;
   }, [shows]);
 
-  const handleOpenCreateModal = (date?: string, status: ShowStatus = 'Confirmado', venueData?: { location?: string; city?: string; totalCache?: number }) => {
+  const handleOpenCreateModal = useCallback((date?: string, status: ShowStatus = 'Confirmado', venueData?: { location?: string; city?: string; totalCache?: number }) => {
     setShowToEdit(null);
     setPrefilledDateForNewShow(date);
     setInitialStatusForNewShow(status);
     setPrefilledVenueData(venueData);
     setIsFormModalOpen(true);
-  };
+  }, []);
 
-  const handleOpenEditModal = (show: Show) => {
+  const handleOpenEditModal = useCallback((show: Show) => {
     setSelectedShowId(null);
     setShowToEdit(show);
     setPrefilledVenueData(undefined);
     setIsFormModalOpen(true);
-  };
+  }, []);
 
-  const handleSaveShow = (showData: Partial<Show>, initialDepositTx?: any) => {
+  const handleSaveShow = useCallback((showData: Partial<Show>, initialDepositTx?: any) => {
     if (showToEdit) {
       updateShow({
         ...showToEdit,
@@ -153,16 +153,16 @@ export const MusicianShowScreen: React.FC = () => {
         });
       }
     }
-  };
+  }, [showToEdit, updateShow, addShow, addTransaction]);
 
-  const handleQuickUpdateStatus = (show: Show, newStatus: ShowStatus) => {
+  const handleQuickUpdateStatus = useCallback((show: Show, newStatus: ShowStatus) => {
     updateShow({
       ...show,
       status: newStatus
     });
-  };
+  }, [updateShow]);
 
-  const handleConfirmQuote = (show: Show) => {
+  const handleConfirmQuote = useCallback((show: Show) => {
     const conflict = checkScheduleConflict(shows, show.date, show.time, show.endTime, show.id);
     if (conflict.hasConflict) {
       setSelectedShowId(show.id);
@@ -172,13 +172,13 @@ export const MusicianShowScreen: React.FC = () => {
         status: 'Confirmado'
       });
     }
-  };
+  }, [shows, updateShow]);
 
-  const handleAlertClick = (alert: ShowSmartAlert) => {
+  const handleAlertClick = useCallback((alert: ShowSmartAlert) => {
     if (alert.showId) {
       setSelectedShowId(alert.showId);
     }
-  };
+  }, []);
 
   // 8 ABAS DO MÓDULO EMPRESA / MÚSICO DEDICADO
   const careerTabs: { id: CareerTab; label: string; icon: any; badge?: number; badgeColor?: string }[] = [

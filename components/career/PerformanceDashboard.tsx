@@ -73,21 +73,27 @@ export const PerformanceDashboard: React.FC<Props> = ({
         revenue = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
       }
 
-      // Despesas do Mês a partir dos shows
-      let expenses = monthShows.reduce((sum, s) => {
-        const fin = getShowFinancialSummary(s, transactions);
-        const cost = fin.totalExpenses || (s as any).costs || 0;
-        return sum + cost;
-      }, 0);
+      // Despesas do Mês: Soma TODAS as transações marcadas com escopo Músico/Carreira ('scope: BUSINESS' ou categorias de música/equipamentos), mais despesas de shows não vinculadas
+      const monthBusinessExpenseTxs = transactions.filter(t => {
+        if (!t.date || !t.date.startsWith(m.monthKey)) return false;
+        if (t.type !== 'expense' || t.status === 'cancelled') return false;
+        return t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_marketing' || !!t.showId;
+      });
 
-      if (expenses === 0) {
-        const expenseTxs = transactions.filter(t => {
-          if (!t.date || !t.date.startsWith(m.monthKey)) return false;
-          if (t.type !== 'expense' || t.status === 'cancelled') return false;
-          return t.scope === 'BUSINESS' || !!t.showId || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_marketing';
-        });
-        expenses = expenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      }
+      const txIdsInMonth = new Set(monthBusinessExpenseTxs.map(t => t.id));
+      let unlinkedShowExpenses = 0;
+
+      monthShows.forEach(s => {
+        if (Array.isArray(s.expenseItems)) {
+          s.expenseItems.forEach(e => {
+            if (e && e.amount && (!e.transactionId || !txIdsInMonth.has(e.transactionId))) {
+              unlinkedShowExpenses += Number(e.amount) || 0;
+            }
+          });
+        }
+      });
+
+      const expenses = monthBusinessExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) + unlinkedShowExpenses;
 
       const profit = Math.round((revenue - expenses) * 100) / 100;
       const showsCount = monthShows.length;
@@ -130,12 +136,33 @@ export const PerformanceDashboard: React.FC<Props> = ({
       return sum + gross;
     }, 0);
 
-    // Custos Totais da Música (somando diretamente todas as despesas/equipe/logística dos shows)
-    const totalMusicExpenses = validShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
-      const cost = fin.totalExpenses || (s as any).costs || 0;
-      return sum + cost;
-    }, 0);
+    // Custos Totais da Música (somando TODAS as despesas com escopo BUSINESS no período, com ou sem showId)
+    const periodBusinessExpenseTxs = transactions.filter(t => {
+      if (!t.date) return false;
+      if (t.type !== 'expense' || t.status === 'cancelled') return false;
+      if (timeRange !== 'all' && monthsData.length > 0) {
+        const minMonth = monthsData[0].monthKey;
+        const maxMonth = monthsData[monthsData.length - 1].monthKey;
+        const txMonth = t.date.slice(0, 7);
+        if (txMonth < minMonth || txMonth > maxMonth) return false;
+      }
+      return t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_marketing' || !!t.showId;
+    });
+
+    const globalTxIds = new Set(periodBusinessExpenseTxs.map(t => t.id));
+    let globalUnlinkedShowExpenses = 0;
+
+    validShows.forEach(s => {
+      if (Array.isArray(s.expenseItems)) {
+        s.expenseItems.forEach(e => {
+          if (e && e.amount && (!e.transactionId || !globalTxIds.has(e.transactionId))) {
+            globalUnlinkedShowExpenses += Number(e.amount) || 0;
+          }
+        });
+      }
+    });
+
+    const totalMusicExpenses = periodBusinessExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) + globalUnlinkedShowExpenses;
 
     // Total Efetivamente Recebido em Caixa
     const totalReceivedInCash = validShows.reduce((sum, s) => {
@@ -158,6 +185,11 @@ export const PerformanceDashboard: React.FC<Props> = ({
     const monthsDivisor = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : timeRange === '12m' ? 12 : Math.max(1, chartSeries.length || 1);
     const averageMonthlyProfit = netRealProfit / monthsDivisor;
 
+    // Fundo de Depreciação / Reserva para Equipamento Acumulada
+    const totalEquipmentReserve = validShows.reduce((sum, s) => {
+      return sum + (Number(s.equipmentReserveAmount) || 0);
+    }, 0);
+
     return {
       totalShowsCount,
       completedShowsCount,
@@ -171,7 +203,8 @@ export const PerformanceDashboard: React.FC<Props> = ({
       profitMargin,
       averageTicketPerShow,
       averageProfitPerShow,
-      averageMonthlyProfit
+      averageMonthlyProfit,
+      totalEquipmentReserve
     };
   }, [shows, transactions, timeRange, monthsData, chartSeries]);
 
@@ -259,7 +292,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {/* 2. CARDS PRINCIPAIS DE PERFORMANCE (REQUISITO 1 DO BRIEFING)              */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         
         {/* CARD 1: TOTAL DE SHOWS */}
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-purple-950/40 via-[#16131f] to-[#121214] border border-purple-500/30 space-y-2 shadow-lg">
@@ -345,6 +378,27 @@ export const PerformanceDashboard: React.FC<Props> = ({
           </div>
           <p className="text-[10px] text-zinc-400 font-medium">
             Receita bruta menos todos os custos
+          </p>
+        </div>
+
+        {/* CARD 5: RESERVA PARA EQUIPAMENTOS (FUNDO DE DEPRECIAÇÃO) */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-950/40 via-[#261c10] to-[#121214] border border-amber-500/30 space-y-2 shadow-lg col-span-2 md:col-span-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+              <Sparkles size={12} className="text-amber-400" />
+              Reserva Equipamentos
+            </span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+              Fundo
+            </span>
+          </div>
+          <div className="flex items-baseline space-x-1.5">
+            <span className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">
+              {formatCurrency(globalMetrics.totalEquipmentReserve)}
+            </span>
+          </div>
+          <p className="text-[10px] text-zinc-400 font-medium">
+            Reserva acumulada retida de shows
           </p>
         </div>
 

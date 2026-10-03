@@ -9,7 +9,7 @@ import {
   ChevronRight, ExternalLink, Sparkles, Tag, Info, Music,
   ArrowRight, Zap, Lock, HelpCircle, FileText, CheckCircle,
   Copy, Volume2, Navigation, Phone, MessageCircle, Users, Car,
-  Fuel, ShieldCheck, RefreshCw
+  Fuel, Receipt, ShieldCheck, RefreshCw
 } from 'lucide-react';
 import { getStatusConfig } from './types';
 import { 
@@ -98,6 +98,24 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [otherCat, setOtherCat] = useState('Alimentação / Camarim');
   const [otherDesc, setOtherDesc] = useState('');
   const [otherAmount, setOtherAmount] = useState('');
+
+  // Estados de edição inline de custos existentes
+  const [editingCrewIndex, setEditingCrewIndex] = useState<number | null>(null);
+  const [editCrewName, setEditCrewName] = useState('');
+  const [editCrewRole, setEditCrewRole] = useState('');
+  const [editCrewCache, setEditCrewCache] = useState('');
+  const [editCrewPix, setEditCrewPix] = useState('');
+
+  const [editingLogisticsIndex, setEditingLogisticsIndex] = useState<number | null>(null);
+  const [editLogType, setEditLogType] = useState<ShowLogisticsItem['type']>('fuel');
+  const [editLogDesc, setEditLogDesc] = useState('');
+  const [editLogAmount, setEditLogAmount] = useState('');
+  const [editLogKm, setEditLogKm] = useState('');
+
+  const [editingOtherIndex, setEditingOtherIndex] = useState<number | null>(null);
+  const [editOtherCat, setEditOtherCat] = useState('Outros Custos');
+  const [editOtherDesc, setEditOtherDesc] = useState('');
+  const [editOtherAmount, setEditOtherAmount] = useState('');
 
   // Edição inline de Contato & Observações
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -196,15 +214,333 @@ export const ShowDetailModal: React.FC<Props> = ({
   const remainingToReceive = Math.max(0, grossCache - totalReceived);
   const percentReceived = grossCache > 0 ? Math.min(100, Math.round((totalReceived / grossCache) * 100)) : 100;
 
-  // 2. Custos estruturados
-  const crewCost = (show.crewMembers || []).reduce((sum, c) => sum + (Number(c.cacheAmount) || 0), 0);
-  const logisticsCost = (show.logistics || []).reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-  const otherCost = (show.otherExpenses || []).reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  // Normalização e Agrupamento de Custos Diretos com Compatibilidade Multichaves / Aliases
+  const normalizedCostBlocks = useMemo(() => {
+    if (!show) return { crew: [], logistics: [], other: [], crewCost: 0, logisticsCost: 0, otherCost: 0, totalCosts: 0 };
 
-  // Custos de transações do caixa não cobertos pelos itens acima
-  const extraExpensesFromTx = linkedExpenseTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  
-  const totalCosts = crewCost + logisticsCost + otherCost + (show.crewMembers?.length ? 0 : extraExpensesFromTx);
+    const logisticsAliases = ['combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'fuel', 'logistica', 'logística', 'deslocamento', 'transporte', 'uber', '99', 'taxi', 'táxi', 'carro', 'car_km', 'km', 'trajeto', 'viagem', 'pedagio', 'pedágio', 'toll', 'van', 'estacionamento', 'parking', 'passagem'];
+    const crewAliases = ['musico', 'músico', 'musicos', 'músicos', 'freelancer', 'freelancers', 'equipe', 'cache', 'cachê', 'membros', 'banda', 'tecnico', 'técnico', 'roadie', 'bateria', 'baixo', 'guitarra', 'teclado', 'sanfona', 'percussao', 'percussão', 'vocal', 'backing', 'fotógrafo', 'fotografo', 'video', 'vídeo', 'som'];
+
+    const crewItems: Array<{ id: string; name: string; role: string; amount: number; status: 'paid' | 'pending'; pixKey?: string; origType: 'crew' | 'expenseItem'; origIndex: number }> = [];
+    const logisticsItems: Array<{ id: string; type: string; description: string; amount: number; km?: number; pricePerKm?: number; status: 'paid' | 'pending'; origType: 'logistics' | 'expenseItem' | 'legacy'; origIndex: number }> = [];
+    const otherItems: Array<{ id: string; category: string; description: string; amount: number; status: 'paid' | 'pending'; origType: 'other' | 'expenseItem' | 'legacy'; origIndex: number }> = [];
+
+    // 1. Integrantes de Equipe registrados
+    (show.crewMembers || []).forEach((c, i) => {
+      crewItems.push({
+        id: c.id || `crew_${i}`,
+        name: c.name,
+        role: c.role || 'Músico',
+        amount: Number(c.cacheAmount) || 0,
+        status: c.status === 'paid' ? 'paid' : 'pending',
+        pixKey: c.pixKey,
+        origType: 'crew',
+        origIndex: i
+      });
+    });
+
+    // 2. Logística e Deslocamento registrados
+    (show.logistics || []).forEach((l, i) => {
+      logisticsItems.push({
+        id: l.id || `log_${i}`,
+        type: l.type || 'fuel',
+        description: l.description || 'Deslocamento',
+        amount: Number(l.amount) || 0,
+        km: l.km,
+        pricePerKm: l.pricePerKm,
+        status: l.status === 'paid' ? 'paid' : 'pending',
+        origType: 'logistics',
+        origIndex: i
+      });
+    });
+
+    // 3. Outras Despesas registradas
+    (show.otherExpenses || []).forEach((o, i) => {
+      otherItems.push({
+        id: o.id || `oth_${i}`,
+        category: o.category || 'Outras Despesas',
+        description: o.description || o.category || 'Despesa Extra',
+        amount: Number(o.amount) || 0,
+        status: o.status === 'paid' ? 'paid' : 'pending',
+        origType: 'other',
+        origIndex: i
+      });
+    });
+
+    // 4. Processar expenseItems por aliases de categoria
+    (show.expenseItems || []).forEach((e, i) => {
+      const text = ((e.category || '') + ' ' + (e.notes || '')).toLowerCase();
+      const isLogistics = logisticsAliases.some(a => text.includes(a));
+      const isCrew = crewAliases.some(a => text.includes(a));
+
+      if (isLogistics) {
+        logisticsItems.push({
+          id: e.id || `exp_log_${i}`,
+          type: 'fuel',
+          description: e.notes || e.category || 'Combustível / Transporte',
+          amount: Number(e.amount) || 0,
+          status: 'paid',
+          origType: 'expenseItem',
+          origIndex: i
+        });
+      } else if (isCrew) {
+        crewItems.push({
+          id: e.id || `exp_crew_${i}`,
+          name: e.notes || e.category || 'Músico Convidado',
+          role: e.category || 'Músico',
+          amount: Number(e.amount) || 0,
+          status: 'paid',
+          origType: 'expenseItem',
+          origIndex: i
+        });
+      } else {
+        otherItems.push({
+          id: e.id || `exp_oth_${i}`,
+          category: e.category || 'Outras Despesas',
+          description: e.notes || e.category || 'Despesa Extra',
+          amount: Number(e.amount) || 0,
+          status: 'paid',
+          origType: 'expenseItem',
+          origIndex: i
+        });
+      }
+    });
+
+    // 5. Objeto de despesas legadas (fuel, toll, food, commission, others)
+    if (show.expenses) {
+      if (show.expenses.fuel > 0 && logisticsItems.length === 0) {
+        logisticsItems.push({
+          id: 'legacy_fuel',
+          type: 'fuel',
+          description: 'Combustível / Gasolina',
+          amount: Number(show.expenses.fuel),
+          status: 'paid',
+          origType: 'legacy',
+          origIndex: -1
+        });
+      }
+      if (show.expenses.toll > 0 && !logisticsItems.some(l => l.description.toLowerCase().includes('pedágio') || l.description.toLowerCase().includes('pedagio'))) {
+        logisticsItems.push({
+          id: 'legacy_toll',
+          type: 'toll',
+          description: 'Pedágio',
+          amount: Number(show.expenses.toll),
+          status: 'paid',
+          origType: 'legacy',
+          origIndex: -1
+        });
+      }
+      if (show.expenses.food > 0 && !otherItems.some(o => o.description.toLowerCase().includes('alimentação') || o.description.toLowerCase().includes('lanche'))) {
+        otherItems.push({
+          id: 'legacy_food',
+          category: 'Alimentação / Camarim',
+          description: 'Alimentação / Lanche',
+          amount: Number(show.expenses.food),
+          status: 'paid',
+          origType: 'legacy',
+          origIndex: -1
+        });
+      }
+      if (show.expenses.others > 0) {
+        otherItems.push({
+          id: 'legacy_others',
+          category: 'Outros Custos',
+          description: 'Outras Despesas do Show',
+          amount: Number(show.expenses.others),
+          status: 'paid',
+          origType: 'legacy',
+          origIndex: -1
+        });
+      }
+    }
+
+    const crewCostVal = crewItems.reduce((s, c) => s + c.amount, 0);
+    const logisticsCostVal = logisticsItems.reduce((s, l) => s + l.amount, 0);
+    const otherCostVal = otherItems.reduce((s, o) => s + o.amount, 0);
+    const totalCostsVal = crewCostVal + logisticsCostVal + otherCostVal;
+
+    return {
+      crew: crewItems,
+      logistics: logisticsItems,
+      other: otherItems,
+      crewCost: crewCostVal,
+      logisticsCost: logisticsCostVal,
+      otherCost: otherCostVal,
+      totalCosts: totalCostsVal
+    };
+  }, [show]);
+
+  const { crewCost, logisticsCost, otherCost, totalCosts } = normalizedCostBlocks;
+
+  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE EQUIPE ---
+  const handleStartEditCrew = (idx: number, item: any) => {
+    setEditingCrewIndex(idx);
+    setEditCrewName(item.name || '');
+    setEditCrewRole(item.role || 'Músico');
+    setEditCrewCache(String(item.amount || ''));
+    setEditCrewPix(item.pixKey || '');
+  };
+
+  const handleSaveEditCrewItem = (item: any) => {
+    const amt = parseFloat(editCrewCache.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    if (item.origType === 'crew') {
+      const updated = (show.crewMembers || []).map((c, i) => {
+        if (i === item.origIndex) {
+          return {
+            ...c,
+            name: editCrewName.trim() || c.name,
+            role: editCrewRole.trim() || c.role,
+            cacheAmount: amt,
+            pixKey: editCrewPix.trim() || undefined
+          };
+        }
+        return c;
+      });
+      updateShow({ ...show, crewMembers: updated });
+    } else if (item.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).map((e, i) => {
+        if (i === item.origIndex) {
+          return { ...e, category: editCrewRole, notes: editCrewName, amount: amt };
+        }
+        return e;
+      });
+      updateShow({ ...show, expenseItems: updated });
+    }
+    setEditingCrewIndex(null);
+    showToast('Membro da equipe atualizado e sincronizado com o Extrato!');
+  };
+
+  const handleRemoveCrewItem = (item: any) => {
+    if (item.origType === 'crew') {
+      const updated = (show.crewMembers || []).filter((_, i) => i !== item.origIndex);
+      updateShow({ ...show, crewMembers: updated });
+    } else if (item.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).filter((_, i) => i !== item.origIndex);
+      updateShow({ ...show, expenseItems: updated });
+    }
+    showToast('Membro removido e lançamento excluído do Extrato!');
+  };
+
+  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE LOGÍSTICA ---
+  const handleStartEditLogistics = (idx: number, item: any) => {
+    setEditingLogisticsIndex(idx);
+    setEditLogType(item.type || 'fuel');
+    setEditLogDesc(item.description || '');
+    setEditLogAmount(String(item.amount || ''));
+    setEditLogKm(item.km ? String(item.km) : '');
+  };
+
+  const handleSaveEditLogisticsItem = (item: any) => {
+    let amt = parseFloat(editLogAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    const kmNum = parseFloat(editLogKm.replace(',', '.')) || undefined;
+    if (editLogType === 'car_km' && kmNum && !amt) {
+      amt = kmNum * 1.2;
+    }
+
+    if (item.origType === 'logistics') {
+      const updated = (show.logistics || []).map((l, i) => {
+        if (i === item.origIndex) {
+          return {
+            ...l,
+            type: editLogType,
+            description: editLogDesc.trim() || l.description,
+            amount: amt,
+            km: kmNum
+          };
+        }
+        return l;
+      });
+      updateShow({ ...show, logistics: updated });
+    } else if (item.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).map((e, i) => {
+        if (i === item.origIndex) {
+          return { ...e, category: 'Combustível', notes: editLogDesc.trim(), amount: amt };
+        }
+        return e;
+      });
+      updateShow({ ...show, expenseItems: updated });
+    } else if (item.origType === 'legacy') {
+      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
+      if (item.id === 'legacy_fuel') updatedExpenses.fuel = amt;
+      if (item.id === 'legacy_toll') updatedExpenses.toll = amt;
+      updateShow({ ...show, expenses: updatedExpenses });
+    }
+    setEditingLogisticsIndex(null);
+    showToast('Transporte atualizado e sincronizado com o Extrato!');
+  };
+
+  const handleRemoveLogisticsItem = (item: any) => {
+    if (item.origType === 'logistics') {
+      const updated = (show.logistics || []).filter((_, i) => i !== item.origIndex);
+      updateShow({ ...show, logistics: updated });
+    } else if (item.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).filter((_, i) => i !== item.origIndex);
+      updateShow({ ...show, expenseItems: updated });
+    } else if (item.origType === 'legacy') {
+      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
+      if (item.id === 'legacy_fuel') updatedExpenses.fuel = 0;
+      if (item.id === 'legacy_toll') updatedExpenses.toll = 0;
+      updateShow({ ...show, expenses: updatedExpenses });
+    }
+    showToast('Transporte removido e lançamento excluído do Extrato!');
+  };
+
+  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE OUTRAS DESPESAS ---
+  const handleStartEditOther = (idx: number, item: any) => {
+    setEditingOtherIndex(idx);
+    setEditOtherCat(item.category || 'Outros Custos');
+    setEditOtherDesc(item.description || '');
+    setEditOtherAmount(String(item.amount || ''));
+  };
+
+  const handleSaveEditOtherItem = (item: any) => {
+    const amt = parseFloat(editOtherAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    if (item.origType === 'other') {
+      const updated = (show.otherExpenses || []).map((o, i) => {
+        if (i === item.origIndex) {
+          return {
+            ...o,
+            category: editOtherCat,
+            description: editOtherDesc.trim() || o.description,
+            amount: amt
+          };
+        }
+        return o;
+      });
+      updateShow({ ...show, otherExpenses: updated });
+    } else if (item.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).map((e, i) => {
+        if (i === item.origIndex) {
+          return { ...e, category: editOtherCat, notes: editOtherDesc.trim(), amount: amt };
+        }
+        return e;
+      });
+      updateShow({ ...show, expenseItems: updated });
+    } else if (item.origType === 'legacy') {
+      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
+      if (item.id === 'legacy_food') updatedExpenses.food = amt;
+      if (item.id === 'legacy_others') updatedExpenses.others = amt;
+      updateShow({ ...show, expenses: updatedExpenses });
+    }
+    setEditingOtherIndex(null);
+    showToast('Despesa extra atualizada e sincronizada com o Extrato!');
+  };
+
+  const handleRemoveOtherItem = (item: any) => {
+    if (item.origType === 'other') {
+      const updated = (show.otherExpenses || []).filter((_, i) => i !== item.origIndex);
+      updateShow({ ...show, otherExpenses: updated });
+    } else if (item.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).filter((_, i) => i !== item.origIndex);
+      updateShow({ ...show, expenseItems: updated });
+    } else if (item.origType === 'legacy') {
+      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
+      if (item.id === 'legacy_food') updatedExpenses.food = 0;
+      if (item.id === 'legacy_others') updatedExpenses.others = 0;
+      updateShow({ ...show, expenses: updatedExpenses });
+    }
+    showToast('Despesa extra removida e lançamento excluído do Extrato!');
+  };
   const netProfit = grossCache - totalCosts;
   const marginPercent = grossCache > 0 ? Math.round((netProfit / grossCache) * 100) : 0;
 
@@ -707,6 +1043,49 @@ export const ShowDetailModal: React.FC<Props> = ({
                 />
               </div>
 
+              {/* INDICADORES INTELIGENTES DE PERFORMANCE */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3">
+                {/* Formato de Recebimento */}
+                <div className="p-3 rounded-xl bg-[#0f0f11] border border-zinc-800 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-zinc-500 block">Formato de Recebimento</span>
+                  <div className="text-xs font-black text-white">
+                    {((show as any).revenueModel === 'couvert') ? 'Couvert Artístico' :
+                     ((show as any).revenueModel === 'hybrid') ? 'Híbrido' : 'Cachê Fixo'}
+                  </div>
+                  <div className="text-[10px] text-zinc-400">
+                    {((show as any).revenueModel === 'couvert') && `Est: ${(show as any).estimatedPeople || 80} pessoas × R$ ${(show as any).couvertPrice || 15}`}
+                    {((show as any).revenueModel === 'hybrid') && `R$ ${(show as any).guaranteedMinCache || 500} garante + ${(show as any).estimatedPeople || 80}p × ${(show as any).couvertPercentage || 100}%`}
+                    {(!((show as any).revenueModel) || (show as any).revenueModel === 'fixed') && 'Valor fechado com o contratante'}
+                  </div>
+                </div>
+
+                {/* Tempo Dedicado & Lucro/Hora */}
+                <div className="p-3 rounded-xl bg-[#0f0f11] border border-zinc-800 space-y-1">
+                  <span className="text-[9px] font-black uppercase text-zinc-500 block">Tempo & Lucro/Hora</span>
+                  <div className="text-xs font-black text-[#1ed760] flex items-center justify-between">
+                    <span>{formatCurrency(Math.round((netProfit / (Number((show as any).showHours || 2) + (Number((show as any).travelTimeMinutes || 0) / 60) + (Number((show as any).soundcheckTimeMinutes || 0) / 60))) * 100) / 100)}/h</span>
+                    <span className="text-[10px] text-zinc-400 font-normal">({Number((show as any).showHours || 2) + Math.round(((Number((show as any).travelTimeMinutes || 0) + Number((show as any).soundcheckTimeMinutes || 0)) / 60) * 10) / 10}h total)</span>
+                  </div>
+                  <div className="text-[9px] text-zinc-400">
+                    Show: {(show as any).showHours || 2}h • Desl/Mont: {Math.round((Number((show as any).travelTimeMinutes || 60) + Number((show as any).soundcheckTimeMinutes || 60)))} min
+                  </div>
+                </div>
+
+                {/* Reserva para Equipamentos */}
+                <div className="p-3 rounded-xl bg-[#0f0f11] border border-amber-500/20 space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black uppercase text-amber-400 block">Reserva Equipamento</span>
+                    <span className="text-xs font-black text-amber-400">{formatCurrency(Number((show as any).equipmentReserveAmount) || 0)}</span>
+                  </div>
+                  <div className="text-[9px] text-zinc-400">
+                    Retido p/ manutenção estrutural.
+                  </div>
+                  <div className="text-[9px] text-purple-300 font-bold">
+                    Lucro c/ Deprec: {formatCurrency(netProfit - (Number((show as any).equipmentReserveAmount) || 0))}
+                  </div>
+                </div>
+              </div>
+
               {/* Ação rápida para lançar sinal / parcela */}
               <div className="flex justify-end pt-1">
                 <button
@@ -808,7 +1187,7 @@ export const ShowDetailModal: React.FC<Props> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Users size={14} className="text-purple-400" />
-                  <span className="text-xs font-bold text-zinc-200">Músicos & Freelancers ({show.crewMembers?.length || 0})</span>
+                  <span className="text-xs font-bold text-zinc-200">Músicos & Freelancers ({normalizedCostBlocks.crew.length})</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-black text-purple-400">{formatCurrency(crewCost)}</span>
@@ -824,40 +1203,101 @@ export const ShowDetailModal: React.FC<Props> = ({
               </div>
 
               {/* Lista de Equipe Cadastrada no Show */}
-              {show.crewMembers && show.crewMembers.length > 0 ? (
+              {normalizedCostBlocks.crew.length > 0 ? (
                 <div className="space-y-1.5">
-                  {show.crewMembers.map((member, idx) => (
-                    <div key={member.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="font-bold text-zinc-200">{member.name}</span>
-                          <span className="text-[10px] text-zinc-400 bg-zinc-800 px-1.5 py-0.2 rounded font-medium">{member.role}</span>
+                  {normalizedCostBlocks.crew.map((member, idx) => {
+                    const isEditing = editingCrewIndex === idx;
+                    if (isEditing) {
+                      return (
+                        <div key={member.id} className="p-3 rounded-lg bg-zinc-900 border border-purple-500/50 space-y-2 animate-fadeIn text-xs">
+                          <span className="font-bold text-purple-300 block">Editar Músico / Equipe</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input
+                              type="text"
+                              value={editCrewName}
+                              onChange={e => setEditCrewName(e.target.value)}
+                              placeholder="Nome"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                            <input
+                              type="text"
+                              value={editCrewRole}
+                              onChange={e => setEditCrewRole(e.target.value)}
+                              placeholder="Função / Instrumento"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                            <input
+                              type="text"
+                              value={editCrewCache}
+                              onChange={e => setEditCrewCache(e.target.value)}
+                              placeholder="Cachê R$"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div className="flex justify-end space-x-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingCrewIndex(null)}
+                              className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-400 text-xs font-bold"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditCrewItem(member)}
+                              className="px-3 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+                            >
+                              Salvar Alteração
+                            </button>
+                          </div>
                         </div>
-                        {member.pixKey && (
-                          <span className="text-[10px] text-zinc-500 block">PIX: {member.pixKey}</span>
-                        )}
+                      );
+                    }
+
+                    return (
+                      <div key={member.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+                        <div className="space-y-0.5 min-w-0 pr-2">
+                          <div className="flex items-center space-x-1.5">
+                            <span className="font-bold text-zinc-200 truncate">{member.name}</span>
+                            <span className="text-[10px] text-zinc-400 bg-zinc-800 px-1.5 py-0.2 rounded font-medium shrink-0">{member.role}</span>
+                          </div>
+                          {member.pixKey && (
+                            <span className="text-[10px] text-zinc-500 block truncate">PIX: {member.pixKey}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <span className="font-black text-zinc-100">{formatCurrency(member.amount)}</span>
+                          {member.origType === 'crew' && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCrewStatus(member.origIndex)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
+                                member.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                              }`}
+                            >
+                              {member.status === 'paid' ? 'Pago' : 'A Pagar'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditCrew(idx, member)}
+                            className="text-zinc-500 hover:text-purple-400 p-1 transition"
+                            title="Editar Custo da Equipe"
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCrewItem(member)}
+                            className="text-zinc-500 hover:text-rose-400 p-1 transition"
+                            title="Excluir do Show e Extrato"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-black text-zinc-100">{formatCurrency(member.cacheAmount)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCrewStatus(idx)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
-                            member.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                          }`}
-                        >
-                          {member.status === 'paid' ? 'Pago' : 'A Pagar'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCrew(idx)}
-                          className="text-zinc-500 hover:text-rose-400 p-1 transition"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-2 text-xs text-zinc-500">
@@ -942,8 +1382,8 @@ export const ShowDetailModal: React.FC<Props> = ({
             <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Car size={14} className="text-sky-400" />
-                  <span className="text-xs font-bold text-zinc-200">Logística & Deslocamento ({show.logistics?.length || 0})</span>
+                  <Fuel size={14} className="text-sky-400" />
+                  <span className="text-xs font-bold text-zinc-200">Logística & Deslocamento ({normalizedCostBlocks.logistics.length})</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-black text-sky-400">{formatCurrency(logisticsCost)}</span>
@@ -959,37 +1399,98 @@ export const ShowDetailModal: React.FC<Props> = ({
               </div>
 
               {/* Lista de Logística */}
-              {show.logistics && show.logistics.length > 0 ? (
+              {normalizedCostBlocks.logistics.length > 0 ? (
                 <div className="space-y-1.5">
-                  {show.logistics.map((item, idx) => (
-                    <div key={item.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-zinc-200">{item.description}</span>
-                        {item.km && (
-                          <span className="text-[10px] text-zinc-500 block">{item.km} KM ({formatCurrency(item.pricePerKm || 1.2)}/KM)</span>
-                        )}
+                  {normalizedCostBlocks.logistics.map((item, idx) => {
+                    const isEditing = editingLogisticsIndex === idx;
+                    if (isEditing) {
+                      return (
+                        <div key={item.id} className="p-3 rounded-lg bg-zinc-900 border border-sky-500/50 space-y-2 animate-fadeIn text-xs">
+                          <span className="font-bold text-sky-300 block">Editar Deslocamento / Transporte</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input
+                              type="text"
+                              value={editLogDesc}
+                              onChange={e => setEditLogDesc(e.target.value)}
+                              placeholder="Descrição"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                            <input
+                              type="text"
+                              value={editLogAmount}
+                              onChange={e => setEditLogAmount(e.target.value)}
+                              placeholder="Valor R$"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                            <input
+                              type="text"
+                              value={editLogKm}
+                              onChange={e => setEditLogKm(e.target.value)}
+                              placeholder="KM (opcional)"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div className="flex justify-end space-x-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingLogisticsIndex(null)}
+                              className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-400 text-xs font-bold"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditLogisticsItem(item)}
+                              className="px-3 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs"
+                            >
+                              Salvar Alteração
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={item.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+                        <div className="space-y-0.5 min-w-0 pr-2">
+                          <span className="font-bold text-zinc-200 block truncate">{item.description}</span>
+                          {item.km && (
+                            <span className="text-[10px] text-zinc-500 block truncate">{item.km} KM ({formatCurrency(item.pricePerKm || 1.2)}/KM)</span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <span className="font-black text-zinc-100">{formatCurrency(item.amount)}</span>
+                          {item.origType === 'logistics' && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLogisticsStatus(item.origIndex)}
+                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
+                                item.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                              }`}
+                            >
+                              {item.status === 'paid' ? 'Pago' : 'A Pagar'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditLogistics(idx, item)}
+                            className="text-zinc-500 hover:text-sky-400 p-1 transition"
+                            title="Editar Custo de Logística"
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLogisticsItem(item)}
+                            className="text-zinc-500 hover:text-rose-400 p-1 transition"
+                            title="Excluir do Show e Extrato"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-black text-zinc-100">{formatCurrency(item.amount)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleLogisticsStatus(idx)}
-                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
-                            item.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                          }`}
-                        >
-                          {item.status === 'paid' ? 'Pago' : 'A Pagar'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLogistics(idx)}
-                          className="text-zinc-500 hover:text-rose-400 p-1 transition"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-2 text-xs text-zinc-500">
@@ -1075,8 +1576,8 @@ export const ShowDetailModal: React.FC<Props> = ({
             <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Fuel size={14} className="text-amber-400" />
-                  <span className="text-xs font-bold text-zinc-200">Outras Despesas do Show ({show.otherExpenses?.length || 0})</span>
+                  <Receipt size={14} className="text-amber-400" />
+                  <span className="text-xs font-bold text-zinc-200">Outras Despesas do Show ({normalizedCostBlocks.other.length})</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-black text-amber-400">{formatCurrency(otherCost)}</span>
@@ -1092,26 +1593,85 @@ export const ShowDetailModal: React.FC<Props> = ({
               </div>
 
               {/* Lista de Outras Despesas */}
-              {show.otherExpenses && show.otherExpenses.length > 0 ? (
+              {normalizedCostBlocks.other.length > 0 ? (
                 <div className="space-y-1.5">
-                  {show.otherExpenses.map((item, idx) => (
-                    <div key={item.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-zinc-200">{item.description}</span>
-                        <span className="text-[10px] text-zinc-500 block">{item.category}</span>
+                  {normalizedCostBlocks.other.map((item, idx) => {
+                    const isEditing = editingOtherIndex === idx;
+                    if (isEditing) {
+                      return (
+                        <div key={item.id} className="p-3 rounded-lg bg-zinc-900 border border-amber-500/50 space-y-2 animate-fadeIn text-xs">
+                          <span className="font-bold text-amber-300 block">Editar Despesa Extra</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input
+                              type="text"
+                              value={editOtherCat}
+                              onChange={e => setEditOtherCat(e.target.value)}
+                              placeholder="Categoria"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                            <input
+                              type="text"
+                              value={editOtherDesc}
+                              onChange={e => setEditOtherDesc(e.target.value)}
+                              placeholder="Descrição"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                            <input
+                              type="text"
+                              value={editOtherAmount}
+                              onChange={e => setEditOtherAmount(e.target.value)}
+                              placeholder="Valor R$"
+                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                            />
+                          </div>
+                          <div className="flex justify-end space-x-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingOtherIndex(null)}
+                              className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-400 text-xs font-bold"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditOtherItem(item)}
+                              className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs"
+                            >
+                              Salvar Alteração
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={item.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+                        <div className="space-y-0.5 min-w-0 pr-2">
+                          <span className="font-bold text-zinc-200 block truncate">{item.description}</span>
+                          <span className="text-[10px] text-zinc-500 block truncate">{item.category}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <span className="font-black text-zinc-100">{formatCurrency(item.amount)}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditOther(idx, item)}
+                            className="text-zinc-500 hover:text-amber-400 p-1 transition"
+                            title="Editar Despesa Extra"
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveOtherItem(item)}
+                            className="text-zinc-500 hover:text-rose-400 p-1 transition"
+                            title="Excluir do Show e Extrato"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-black text-zinc-100">{formatCurrency(item.amount)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveOther(idx)}
-                          className="text-zinc-500 hover:text-rose-400 p-1 transition"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-2 text-xs text-zinc-500">
@@ -1178,7 +1738,7 @@ export const ShowDetailModal: React.FC<Props> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-[#17171a] border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center space-x-1.5">
-                <MessageCircle size={14} className="text-emerald-400" />
+                <Phone size={14} className="text-emerald-400" />
                 <span>Contato & Observações Logísticas</span>
               </span>
               <button

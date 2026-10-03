@@ -189,6 +189,7 @@ export interface ShowCrewItem {
   status?: 'paid' | 'pending';
   pixKey?: string;
   notes?: string;
+  transactionId?: string;
 }
 
 export interface ShowLogisticsItem {
@@ -199,6 +200,7 @@ export interface ShowLogisticsItem {
   km?: number;
   pricePerKm?: number;
   status?: 'paid' | 'pending';
+  transactionId?: string;
 }
 
 export interface ShowOtherExpenseItem {
@@ -207,7 +209,10 @@ export interface ShowOtherExpenseItem {
   description: string;
   amount: number;
   status?: 'paid' | 'pending';
+  transactionId?: string;
 }
+
+export type RevenueModelType = 'fixed' | 'couvert' | 'hybrid';
 
 export interface Show {
   id: string;
@@ -222,6 +227,31 @@ export interface Show {
   endTime?: string;       // Horário de término
   duration?: string;      // Duração estimada (ex: 3h)
   totalCache: number;     // Valor total do cachê contratado
+  
+  // Modelo Flexível de Receita (Entrada do Show)
+  revenueModel?: RevenueModelType;
+  estimatedPeople?: number;      // Pessoas estimadas para Couvert
+  couvertPrice?: number;         // Valor por pessoa no Couvert
+  guaranteedMinCache?: number;   // Cachê mínimo garantido no Híbrido
+  couvertPercentage?: number;    // % do Couvert repassado no Híbrido
+
+  // Calculadora Inteligente de Logística (Veículo Próprio)
+  totalKm?: number;              // Distância total ida/volta (KM)
+  transportDistanceKm?: number;  // Distância total ida/volta (KM)
+  carKmPerLiter?: number;        // Consumo do carro (KM/L)
+  fuelPricePerLiter?: number;    // Preço do litro do combustível (R$)
+  tollAmount?: number;           // Valor total de pedágios (R$)
+  tollCost?: number;             // Valor total de pedágios (R$)
+
+  // Fundo de Depreciação / Manutenção (Reserva de Equipamento)
+  equipmentReserveAmount?: number; // Valor fixo de reserva p/ equipamento por show (ex: R$ 20.00)
+
+  // Métrica de Hora Trabalhada (Tempo Total Dedicado)
+  travelTimeMinutes?: number;    // Tempo de deslocamento ida/volta em minutos
+  soundcheckTimeMinutes?: number;// Tempo de montagem / passagem de som em minutos
+  showDurationHours?: number;    // Duração do show em horas
+  showHours?: number;            // Duração do show em horas
+
   extraAmount?: number;   // Valor de extras adicionados à contratação
   cacheCombined?: number; // Cachê combinado (para compatibilidade anterior)
   cacheReceived?: number; // Cachê recebido totalizado (para compatibilidade anterior)

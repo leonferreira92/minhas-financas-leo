@@ -15,9 +15,11 @@ interface Props {
 export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
   const { 
     musicCostItems, 
+    transactions,
     addMusicCostItem, 
     updateMusicCostItem, 
     deleteMusicCostItem, 
+    deleteTransaction,
     isBlurred 
   } = useFinance();
 
@@ -49,6 +51,81 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
     rehearsal: { label: 'Ensaios & Estúdio', icon: Disc, color: '#818cf8', bgClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' },
     other: { label: 'Outros Custos', icon: Briefcase, color: '#94a3b8', bgClass: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30' }
   };
+
+  const inferMusicCategory = (t: any): MusicCostCategory => {
+    const desc = (t.description || '').toLowerCase();
+    const orig = (t.originalBankDescription || '').toLowerCase();
+    const txt = `${desc} ${orig}`;
+
+    if (
+      t.categoryId === 'cat_equipamentos' ||
+      txt.includes('mesa') || txt.includes('som') || txt.includes('caixa') || 
+      txt.includes('pedal') || txt.includes('ampli') || txt.includes('instrumento') || 
+      txt.includes('violao') || txt.includes('violão') || txt.includes('guitarra') || 
+      txt.includes('baixo') || txt.includes('bateria') || txt.includes('microfone') || 
+      txt.includes('fone') || txt.includes('in-ear') || txt.includes('equipamento') || 
+      txt.includes('teclado') || txt.includes('cabo') || txt.includes('estante') || 
+      txt.includes('bag') || txt.includes('case')
+    ) {
+      return 'equipment';
+    }
+    if (
+      t.categoryId === 'cat_marketing' || 
+      txt.includes('marketing') || txt.includes('anuncio') || txt.includes('instagram') || 
+      txt.includes('facebook') || txt.includes('ads') || txt.includes('trafego') || txt.includes('mkt')
+    ) {
+      return 'marketing';
+    }
+    if (txt.includes('luthier') || txt.includes('regulagem') || txt.includes('manutencao') || txt.includes('conserto') || txt.includes('reparo')) {
+      return 'maintenance';
+    }
+    if (txt.includes('corda') || txt.includes('palheta') || txt.includes('acessorio') || txt.includes('capo') || txt.includes('correia')) {
+      return 'accessories';
+    }
+    if (txt.includes('figurino') || txt.includes('roupa') || txt.includes('vestuario') || txt.includes('traje') || txt.includes('camisa')) {
+      return 'costume';
+    }
+    if (txt.includes('software') || txt.includes('plugin') || txt.includes('daw') || txt.includes('reaper') || txt.includes('logic') || txt.includes('ableton')) {
+      return 'software';
+    }
+    if (txt.includes('ensaio') || txt.includes('estudio') || txt.includes('gravacao')) {
+      return 'rehearsal';
+    }
+    return 'equipment';
+  };
+
+  // Unifica musicCostItems e transações com escopo BUSINESS
+  const allUnifiedCostItems = useMemo<MusicCostItem[]>(() => {
+    const list: MusicCostItem[] = [...musicCostItems];
+    const processedTxIds = new Set(musicCostItems.map(i => i.transactionId).filter(Boolean));
+
+    transactions.forEach(t => {
+      if (t.type !== 'expense' || t.status === 'cancelled') return;
+      if (processedTxIds.has(t.id)) return;
+
+      const isBusinessCost = t.scope === 'BUSINESS' || 
+                             t.categoryId === 'cat_equipamentos' || 
+                             t.categoryId === 'cat_marketing' || 
+                             t.categoryId === 'cat_producao_shows' || 
+                             !!t.showId;
+
+      if (isBusinessCost) {
+        list.push({
+          id: `mcost_tx_${t.id}`,
+          title: t.description || 'Despesa de Estrutura',
+          amount: Number(t.amount) || 0,
+          date: t.date || getLocalDateString(),
+          category: inferMusicCategory(t),
+          showId: t.showId,
+          transactionId: t.id,
+          notes: t.originalBankDescription || undefined,
+          createdAt: t.createdAt
+        });
+      }
+    });
+
+    return list;
+  }, [musicCostItems, transactions]);
 
   const handleOpenModal = (item?: MusicCostItem) => {
     if (item) {
@@ -97,18 +174,27 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string, title: string) => {
+  const handleDelete = (id: string, title: string, transactionId?: string) => {
     if (window.confirm(`Deseja excluir a despesa "${title}" e remover o lançamento financeiro?`)) {
+      if (transactionId) {
+        deleteTransaction(transactionId);
+      }
       deleteMusicCostItem(id, true);
     }
   };
+
+  const totalEquipmentReserve = useMemo(() => {
+    return (shows || []).filter(s => s && s.status !== 'Cancelado').reduce((sum, s) => {
+      return sum + (Number(s.equipmentReserveAmount) || 0);
+    }, 0);
+  }, [shows]);
 
   // Metrics by Category
   const categoryTotals = useMemo(() => {
     const map = new Map<MusicCostCategory, number>();
     let grandTotal = 0;
 
-    musicCostItems.forEach(item => {
+    allUnifiedCostItems.forEach(item => {
       const amt = Number(item.amount) || 0;
       grandTotal += amt;
       map.set(item.category, (map.get(item.category) || 0) + amt);
@@ -130,17 +216,17 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
       list,
       grandTotal
     };
-  }, [musicCostItems]);
+  }, [allUnifiedCostItems]);
 
   const filteredItems = useMemo(() => {
-    return musicCostItems
+    return allUnifiedCostItems
       .filter(item => {
         const matchCat = selectedCategoryFilter === 'all' || item.category === selectedCategoryFilter;
         const matchSearch = searchTerm === '' || item.title.toLowerCase().includes(searchTerm.toLowerCase());
         return matchCat && matchSearch;
       })
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [musicCostItems, selectedCategoryFilter, searchTerm]);
+  }, [allUnifiedCostItems, selectedCategoryFilter, searchTerm]);
 
   return (
     <div className="space-y-5">
@@ -168,16 +254,30 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
 
       {/* PAINEL DE DISTRIBUIÇÃO DE CUSTOS ESTATÍSTICOS */}
       <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Total Investido em Estrutura</span>
-            <h3 className="text-2xl font-black text-white tabular-nums">
-              {formatCurrency(categoryTotals.grandTotal)}
-            </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl bg-[#0f0f11] border border-zinc-800 flex justify-between items-center">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-0.5">Total Investido em Estrutura</span>
+              <h3 className="text-xl sm:text-2xl font-black text-white tabular-nums">
+                {formatCurrency(categoryTotals.grandTotal)}
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1 rounded-xl border border-purple-500/20">
+              {allUnifiedCostItems.length} despesas
+            </span>
           </div>
-          <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1 rounded-xl border border-purple-500/20">
-            {musicCostItems.length} despesas registradas
-          </span>
+
+          <div className="p-4 rounded-2xl bg-[#0f0f11] border border-amber-500/20 flex justify-between items-center">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block mb-0.5">Reserva para Equipamentos (Shows)</span>
+              <h3 className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">
+                {formatCurrency(totalEquipmentReserve)}
+              </h3>
+            </div>
+            <span className="text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 px-3 py-1 rounded-xl border border-amber-500/20">
+              Fundo Acumulado
+            </span>
+          </div>
         </div>
 
         {/* BARRAS DE DISTRIBUIÇÃO */}
@@ -325,7 +425,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
                       <Edit3 size={13} />
                     </button>
                     <button
-                      onClick={() => handleDelete(item.id, item.title)}
+                      onClick={() => handleDelete(item.id, item.title, item.transactionId)}
                       className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-rose-400 transition"
                     >
                       <Trash2 size={13} />
@@ -412,7 +512,16 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
                 <label className="text-zinc-400 font-bold block mb-1">Vincular a um Show (Opcional)</label>
                 <select
                   value={formShowId}
-                  onChange={(e) => setFormShowId(e.target.value)}
+                  onChange={(e) => {
+                    const sid = e.target.value;
+                    setFormShowId(sid);
+                    if (sid) {
+                      const selectedShow = shows.find(s => s.id === sid);
+                      if (selectedShow && selectedShow.date) {
+                        setFormDate(selectedShow.date);
+                      }
+                    }
+                  }}
                   className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
                 >
                   <option value="">Gasto Geral de Carreira / Estrutura</option>

@@ -1,4 +1,4 @@
-import { Show, ShowPayment, ShowExpenseItem, Transaction, Category } from '../types';
+import { Show, ShowPayment, ShowExpenseItem, Transaction, Category, TransactionStatus } from '../types';
 import { generateUUID } from './uuidHelper';
 
 export interface ShowFinancialSummary {
@@ -16,6 +16,12 @@ export interface ShowFinancialSummary {
   totalExpenses: number;       // Total de despesas registradas
   netProfit: number;           // Lucro líquido = Total recebido - Total de despesas pagas
   projectedProfit: number;     // Lucro líquido projetado = Total previsto - Total de despesas
+  equipmentReserveAmount: number; // Fundo de reserva / depreciação do equipamento
+  netProfitAfterReserve: number;  // Lucro líquido real após dedução do fundo de reserva
+  projectedProfitAfterReserve: number; // Lucro projetado após fundo de reserva
+  totalTimeHours: number;      // Tempo total dedicado (deslocamento + passagem de som + show)
+  profitPerHour: number;       // Lucro projetado por hora trabalhada
+  netProfitPerHour: number;    // Lucro realizado por hora trabalhada
   remainingToSchedule: number; // Valor previsto ainda não parcelado/agendado
   isOverTotal: boolean;        // Se a soma dos pagamentos excede o total previsto
   excessAmount: number;        // Valor excedente se houver
@@ -142,6 +148,12 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
       totalExpenses: 0,
       netProfit: 0,
       projectedProfit: 0,
+      equipmentReserveAmount: 0,
+      netProfitAfterReserve: 0,
+      projectedProfitAfterReserve: 0,
+      totalTimeHours: 0,
+      profitPerHour: 0,
+      netProfitPerHour: 0,
       remainingToSchedule: 0,
       isOverTotal: false,
       excessAmount: 0
@@ -358,6 +370,20 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
   // Lucro projetado = Total previsto - Todas as despesas
   const projectedProfit = Math.round((totalPredicted - totalExpenses) * 100) / 100;
 
+  // Fundo de Reserva / Depreciação de Equipamentos
+  const equipmentReserveAmount = Math.max(0, Number(show.equipmentReserveAmount) || 0);
+  const netProfitAfterReserve = Math.round((netProfit - equipmentReserveAmount) * 100) / 100;
+  const projectedProfitAfterReserve = Math.round((projectedProfit - equipmentReserveAmount) * 100) / 100;
+
+  // Tempo Dedicado Total e Métrica de Hora Trabalhada (Horas)
+  const showDuration = Number(show.showDurationHours) || parseFloat(show.duration || '3') || 3;
+  const travelHours = (Number(show.travelTimeMinutes) || 0) / 60;
+  const soundcheckHours = (Number(show.soundcheckTimeMinutes) || 0) / 60;
+  const totalTimeHours = Math.max(0.5, Math.round((showDuration + travelHours + soundcheckHours) * 10) / 10);
+
+  const profitPerHour = Math.round((projectedProfitAfterReserve / totalTimeHours) * 100) / 100;
+  const netProfitPerHour = Math.round((netProfitAfterReserve / totalTimeHours) * 100) / 100;
+
   const totalPaymentsSum = totalReceived + totalScheduled;
   const rawRemaining = totalPredicted - totalPaymentsSum;
   const remainingToSchedule = rawRemaining > 0 ? Math.round(rawRemaining * 100) / 100 : 0;
@@ -377,6 +403,12 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
     totalExpenses,
     netProfit,
     projectedProfit,
+    equipmentReserveAmount,
+    netProfitAfterReserve,
+    projectedProfitAfterReserve,
+    totalTimeHours,
+    profitPerHour,
+    netProfitPerHour,
     remainingToSchedule: isNaN(remainingToSchedule) ? 0 : remainingToSchedule,
     isOverTotal: false,
     excessAmount: 0
@@ -401,8 +433,30 @@ function resolveIncomeCategoryId(categories: Category[]): string {
   return anyIncome ? anyIncome.id : 'cat_33';
 }
 
+function resolveExpenseCategoryId(categories: Category[], hint: string): string {
+  if (!categories || categories.length === 0) return 'cat_producao_shows';
+  const h = (hint || '').toLowerCase();
+  
+  if (h.includes('combustiv') || h.includes('gasolina') || h.includes('pedagio') || h.includes('uber') || h.includes('transporte') || h.includes('logist')) {
+    const cat = categories.find(c => c.type === 'expense' && (c.name.toLowerCase().includes('combust') || c.name.toLowerCase().includes('transporte') || c.name.toLowerCase().includes('viagem')));
+    if (cat) return cat.id;
+  }
+  
+  if (h.includes('musico') || h.includes('equipe') || h.includes('bateria') || h.includes('baixo') || h.includes('freelance') || h.includes('sanfona') || h.includes('teclado')) {
+    const cat = categories.find(c => c.type === 'expense' && (c.name.toLowerCase().includes('equipe') || c.name.toLowerCase().includes('produção') || c.name.toLowerCase().includes('músico')));
+    if (cat) return cat.id;
+  }
+
+  const showExpCat = categories.find(c => c.type === 'expense' && (c.id === 'cat_producao_shows' || c.name.toLowerCase().includes('show') || c.scope === 'BUSINESS'));
+  if (showExpCat) return showExpCat.id;
+
+  const anyExp = categories.find(c => c.type === 'expense');
+  return anyExp ? anyExp.id : 'cat_producao_shows';
+}
+
 /**
  * Sincroniza um Show com a lista de movimentações financeiras sem criar duplicações.
+ * Sincroniza tanto Pagamentos (Receitas) quanto Custos Diretos (Despesas de Equipe, Logística e Extras).
  */
 export function syncShowWithTransactions(
   show: Show,
@@ -416,8 +470,16 @@ export function syncShowWithTransactions(
   let txs = Array.isArray(existingTransactions) ? [...existingTransactions] : [];
 
   const incomeCatId = resolveIncomeCategoryId(categories);
-  const showTitle = show.contractorName || show.name || 'Show';
-  const isShowCancelled = show.status === 'Cancelado';
+  const showTitle = (updatedShow.contractorName || updatedShow.name || 'Show').trim();
+  const isShowCancelled = updatedShow.status === 'Cancelado';
+  const showDate = updatedShow.date || new Date().toISOString().slice(0, 10);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  
+  // Status padrão para despesas do show: 'pending' (Pendente) se o show for futuro, ou 'paid' (Concluído) se já ocorreu ou foi realizado
+  const defaultExpenseStatus: TransactionStatus = (showDate > todayStr && updatedShow.status !== 'Realizado') ? 'pending' : 'paid';
+
+  // Set para acompanhar os IDs de transação ativos para este show
+  const activeShowExpenseTxIds = new Set<string>();
 
   // 1. SINCRONIZAR PAGAMENTOS (RECEITAS)
   const currentPayments = Array.isArray(updatedShow.payments) ? updatedShow.payments : [];
@@ -425,8 +487,8 @@ export function syncShowWithTransactions(
   const updatedPayments = currentPayments.map(payment => {
     const p = { ...payment };
     const isReceived = p.status === 'Recebido';
-    const txDate = (isReceived && p.effectiveDate) ? p.effectiveDate : (p.expectedDate || show.date);
-    const txStatus = isReceived ? 'paid' : (isShowCancelled ? ('cancelled' as const) : 'pending');
+    const txDate = (isReceived && p.effectiveDate) ? p.effectiveDate : (p.expectedDate || showDate);
+    const txStatus: TransactionStatus = isReceived ? 'paid' : (isShowCancelled ? 'cancelled' : 'pending');
     const baseDesc = `Show: ${showTitle} (${p.type || 'Parcela'})`;
     const txDescription = (isShowCancelled && !isReceived)
       ? (baseDesc.startsWith('[CANCELADO]') ? baseDesc : `[CANCELADO] ${baseDesc}`)
@@ -440,21 +502,286 @@ export function syncShowWithTransactions(
           ...txs[txIndex],
           amount: txAmount,
           date: txDate,
-          accountId: p.accountId,
+          accountId: p.accountId || txs[txIndex].accountId || 'acc_bank',
           status: txStatus,
           description: txDescription,
-          showId: show.id,
+          showId: updatedShow.id,
           showPaymentType: p.type,
           scope: 'BUSINESS',
           categoryId: incomeCatId
         };
       }
+    } else if (p.amount > 0 && !isShowCancelled) {
+      const newTxId = generateUUID();
+      p.transactionId = newTxId;
+      txs.push({
+        id: newTxId,
+        amount: p.amount,
+        date: txDate,
+        type: 'income',
+        status: txStatus,
+        description: txDescription,
+        showId: updatedShow.id,
+        showPaymentType: p.type,
+        showPaymentId: p.id,
+        scope: 'BUSINESS',
+        categoryId: incomeCatId,
+        accountId: p.accountId || 'acc_bank',
+        createdAt: Date.now()
+      });
     }
 
     return p;
   });
 
   updatedShow.payments = updatedPayments;
+
+  // 2. SINCRONIZAR CUSTOS DIRETOS (EQUIPE / MÚSICOS)
+  if (Array.isArray(updatedShow.crewMembers)) {
+    updatedShow.crewMembers = updatedShow.crewMembers.map(member => {
+      const m = { ...member };
+      if (!m.id) m.id = generateUUID();
+      const amt = Number(m.cacheAmount) || 0;
+
+      if (amt > 0 && !isShowCancelled) {
+        const itemDesc = `${m.name}${m.role ? ' - ' + m.role : ''} (${showTitle})`;
+        const itemStatus: TransactionStatus = m.status === 'paid' ? 'paid' : defaultExpenseStatus;
+        const catId = resolveExpenseCategoryId(categories, m.role || 'Músicos');
+
+        let txIdx = m.transactionId ? txs.findIndex(t => t.id === m.transactionId) : -1;
+        if (txIdx < 0) {
+          txIdx = txs.findIndex(t => t.showId === updatedShow.id && t.showExpenseId === m.id);
+        }
+
+        if (txIdx >= 0) {
+          const existingTxId = txs[txIdx].id;
+          m.transactionId = existingTxId;
+          activeShowExpenseTxIds.add(existingTxId);
+          txs[txIdx] = {
+            ...txs[txIdx],
+            amount: amt,
+            description: itemDesc,
+            date: showDate,
+            status: itemStatus,
+            type: 'expense',
+            scope: 'BUSINESS',
+            showId: updatedShow.id,
+            showExpenseId: m.id,
+            categoryId: catId
+          };
+        } else {
+          const newTxId = generateUUID();
+          m.transactionId = newTxId;
+          activeShowExpenseTxIds.add(newTxId);
+          txs.push({
+            id: newTxId,
+            amount: amt,
+            date: showDate,
+            type: 'expense',
+            status: itemStatus,
+            description: itemDesc,
+            showId: updatedShow.id,
+            showExpenseId: m.id,
+            scope: 'BUSINESS',
+            categoryId: catId,
+            accountId: updatedShow.expenseAccountId || 'acc_bank',
+            createdAt: Date.now()
+          });
+        }
+      } else if (m.transactionId) {
+        activeShowExpenseTxIds.add(m.transactionId);
+      }
+      return m;
+    });
+  }
+
+  // 3. SINCRONIZAR LOGÍSTICA & DESLOCAMENTO
+  if (Array.isArray(updatedShow.logistics)) {
+    updatedShow.logistics = updatedShow.logistics.map(item => {
+      const l = { ...item };
+      if (!l.id) l.id = generateUUID();
+      const amt = Number(l.amount) || 0;
+
+      if (amt > 0 && !isShowCancelled) {
+        const itemDesc = `${l.description || 'Deslocamento'} (${showTitle})`;
+        const itemStatus: TransactionStatus = l.status === 'paid' ? 'paid' : defaultExpenseStatus;
+        const catId = resolveExpenseCategoryId(categories, l.type || 'combustivel');
+
+        let txIdx = l.transactionId ? txs.findIndex(t => t.id === l.transactionId) : -1;
+        if (txIdx < 0) {
+          txIdx = txs.findIndex(t => t.showId === updatedShow.id && t.showExpenseId === l.id);
+        }
+
+        if (txIdx >= 0) {
+          const existingTxId = txs[txIdx].id;
+          l.transactionId = existingTxId;
+          activeShowExpenseTxIds.add(existingTxId);
+          txs[txIdx] = {
+            ...txs[txIdx],
+            amount: amt,
+            description: itemDesc,
+            date: showDate,
+            status: itemStatus,
+            type: 'expense',
+            scope: 'BUSINESS',
+            showId: updatedShow.id,
+            showExpenseId: l.id,
+            categoryId: catId
+          };
+        } else {
+          const newTxId = generateUUID();
+          l.transactionId = newTxId;
+          activeShowExpenseTxIds.add(newTxId);
+          txs.push({
+            id: newTxId,
+            amount: amt,
+            date: showDate,
+            type: 'expense',
+            status: itemStatus,
+            description: itemDesc,
+            showId: updatedShow.id,
+            showExpenseId: l.id,
+            scope: 'BUSINESS',
+            categoryId: catId,
+            accountId: updatedShow.expenseAccountId || 'acc_bank',
+            createdAt: Date.now()
+          });
+        }
+      } else if (l.transactionId) {
+        activeShowExpenseTxIds.add(l.transactionId);
+      }
+      return l;
+    });
+  }
+
+  // 4. SINCRONIZAR OUTRAS DESPESAS
+  if (Array.isArray(updatedShow.otherExpenses)) {
+    updatedShow.otherExpenses = updatedShow.otherExpenses.map(item => {
+      const o = { ...item };
+      if (!o.id) o.id = generateUUID();
+      const amt = Number(o.amount) || 0;
+
+      if (amt > 0 && !isShowCancelled) {
+        const itemDesc = `${o.description || o.category || 'Despesa Extra'} (${showTitle})`;
+        const itemStatus: TransactionStatus = o.status === 'paid' ? 'paid' : defaultExpenseStatus;
+        const catId = resolveExpenseCategoryId(categories, o.category || 'Outros');
+
+        let txIdx = o.transactionId ? txs.findIndex(t => t.id === o.transactionId) : -1;
+        if (txIdx < 0) {
+          txIdx = txs.findIndex(t => t.showId === updatedShow.id && t.showExpenseId === o.id);
+        }
+
+        if (txIdx >= 0) {
+          const existingTxId = txs[txIdx].id;
+          o.transactionId = existingTxId;
+          activeShowExpenseTxIds.add(existingTxId);
+          txs[txIdx] = {
+            ...txs[txIdx],
+            amount: amt,
+            description: itemDesc,
+            date: showDate,
+            status: itemStatus,
+            type: 'expense',
+            scope: 'BUSINESS',
+            showId: updatedShow.id,
+            showExpenseId: o.id,
+            categoryId: catId
+          };
+        } else {
+          const newTxId = generateUUID();
+          o.transactionId = newTxId;
+          activeShowExpenseTxIds.add(newTxId);
+          txs.push({
+            id: newTxId,
+            amount: amt,
+            date: showDate,
+            type: 'expense',
+            status: itemStatus,
+            description: itemDesc,
+            showId: updatedShow.id,
+            showExpenseId: o.id,
+            scope: 'BUSINESS',
+            categoryId: catId,
+            accountId: updatedShow.expenseAccountId || 'acc_bank',
+            createdAt: Date.now()
+          });
+        }
+      } else if (o.transactionId) {
+        activeShowExpenseTxIds.add(o.transactionId);
+      }
+      return o;
+    });
+  }
+
+  // 5. SINCRONIZAR EXPENSEITEMS (COMPATIBILIDADE LEGADA)
+  if (Array.isArray(updatedShow.expenseItems)) {
+    updatedShow.expenseItems = updatedShow.expenseItems.map(item => {
+      const e = { ...item };
+      if (!e.id) e.id = generateUUID();
+      const amt = Number(e.amount) || 0;
+
+      if (amt > 0 && !isShowCancelled) {
+        const itemDesc = `${e.notes || e.category || 'Despesa'} (${showTitle})`;
+        const itemStatus: TransactionStatus = defaultExpenseStatus;
+        const catId = resolveExpenseCategoryId(categories, e.category || 'Outros');
+
+        let txIdx = e.transactionId ? txs.findIndex(t => t.id === e.transactionId) : -1;
+        if (txIdx < 0) {
+          txIdx = txs.findIndex(t => t.showId === updatedShow.id && t.showExpenseId === e.id);
+        }
+
+        if (txIdx >= 0) {
+          const existingTxId = txs[txIdx].id;
+          e.transactionId = existingTxId;
+          activeShowExpenseTxIds.add(existingTxId);
+          txs[txIdx] = {
+            ...txs[txIdx],
+            amount: amt,
+            description: itemDesc,
+            date: e.date || showDate,
+            status: itemStatus,
+            type: 'expense',
+            scope: 'BUSINESS',
+            showId: updatedShow.id,
+            showExpenseId: e.id,
+            categoryId: catId
+          };
+        } else {
+          const newTxId = generateUUID();
+          e.transactionId = newTxId;
+          activeShowExpenseTxIds.add(newTxId);
+          txs.push({
+            id: newTxId,
+            amount: amt,
+            date: e.date || showDate,
+            type: 'expense',
+            status: itemStatus,
+            description: itemDesc,
+            showId: updatedShow.id,
+            showExpenseId: e.id,
+            scope: 'BUSINESS',
+            categoryId: catId,
+            accountId: e.accountId || updatedShow.expenseAccountId || 'acc_bank',
+            createdAt: Date.now()
+          });
+        }
+      } else if (e.transactionId) {
+        activeShowExpenseTxIds.add(e.transactionId);
+      }
+      return e;
+    });
+  }
+
+  // 6. LIMPEZA AUTOMÁTICA DE TRANSAÇÕES ÓRFÃS DE DESPESA DO SHOW
+  // Se o custo foi excluído da Ficha do Show, remove do Extrato de Transações
+  txs = txs.filter(t => {
+    if (t.showId === updatedShow.id && t.type === 'expense') {
+      if (t.showExpenseId && !activeShowExpenseTxIds.has(t.id) && !activeShowExpenseTxIds.has(t.showExpenseId)) {
+        return false; // Remove transação órfã
+      }
+    }
+    return true;
+  });
 
   return {
     updatedShow,

@@ -81,10 +81,27 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
   // --- CALCULATOR INPUTS ---
   const [selectedFormat, setSelectedFormat] = useState<string>('Voz e Violão');
   const [showHoursInput, setShowHoursInput] = useState<string>('2');
-  
-  // Deslocamento & Combustível
+
+  // Tempo Dedicado
+  const [travelTimeMinutesInput, setTravelTimeMinutesInput] = useState<string>('60');
+  const [soundcheckTimeMinutesInput, setSoundcheckTimeMinutesInput] = useState<string>('60');
+
+  // Modelo Flexível de Receita
+  const [revenueModel, setRevenueModel] = useState<'fixed' | 'couvert' | 'hybrid'>('fixed');
+  const [estimatedPeopleInput, setEstimatedPeopleInput] = useState<string>('80');
+  const [couvertPriceInput, setCouvertPriceInput] = useState<string>('15');
+  const [guaranteedMinCacheInput, setGuaranteedMinCacheInput] = useState<string>('500');
+  const [couvertPercentageInput, setCouvertPercentageInput] = useState<string>('100');
+
+  // Deslocamento & Combustível (Veículo Próprio)
   const [totalKmInput, setTotalKmInput] = useState<string>('40');
+  const [carKmPerLiterInput, setCarKmPerLiterInput] = useState<string>('10');
+  const [fuelPricePerLiterInput, setFuelPricePerLiterInput] = useState<string>('6.00');
+  const [tollAmountInput, setTollAmountInput] = useState<string>('15');
   const [costPerKmInput, setCostPerKmInput] = useState<string>(String(presets.kmCost));
+
+  // Fundo de Depreciação / Reserva para Equipamento
+  const [equipmentReserveFixedInput, setEquipmentReserveFixedInput] = useState<string>('20');
 
   // Custos Diretos
   const [foodCostInput, setFoodCostInput] = useState<string>('50');
@@ -150,20 +167,31 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
     setSupportMusicians(prev => prev.filter(m => m.id !== id));
   };
 
-  // --- FINANCIAL FORMULA (CÁLCULO REVERSO) ---
+  // --- FINANCIAL FORMULA (CÁLCULO REVERSO E MÉTRICAS INTEGRADAS) ---
   const calculations = useMemo(() => {
     const showHours = Math.max(0.5, parseFloat(showHoursInput) || 0);
+    const travelMins = Math.max(0, parseFloat(travelTimeMinutesInput) || 0);
+    const soundcheckMins = Math.max(0, parseFloat(soundcheckTimeMinutesInput) || 0);
+    const totalTimeHours = Math.max(0.5, Math.round((showHours + (travelMins / 60) + (soundcheckMins / 60)) * 10) / 10);
+
+    // Logística Veículo Próprio
     const totalKm = Math.max(0, parseFloat(totalKmInput) || 0);
-    const costPerKm = Math.max(0, parseCurrencyInput(costPerKmInput));
-    
+    const kmPerLiter = Math.max(0.1, parseFloat(carKmPerLiterInput) || 10);
+    const fuelPrice = Math.max(0, parseCurrencyInput(fuelPricePerLiterInput));
+    const tollVal = Math.max(0, parseCurrencyInput(tollAmountInput));
+    const calculatedFuelCost = (totalKm / kmPerLiter) * fuelPrice;
+    const kmTotalCost = calculatedFuelCost + tollVal;
+
+    // Fundo de Depreciação / Reserva de Equipamento
+    const equipmentReserveVal = Math.max(0, parseCurrencyInput(equipmentReserveFixedInput));
+
     // Direct Costs
-    const kmTotalCost = totalKm * costPerKm;
     const foodCost = Math.max(0, parseCurrencyInput(foodCostInput));
     const otherCosts = Math.max(0, parseCurrencyInput(otherCostsInput));
     const musiciansTotalCost = supportMusicians.reduce((acc, m) => acc + m.amount, 0);
 
     // 1. Custo Operacional
-    const operationalCost = kmTotalCost + foodCost + otherCosts + musiciansTotalCost;
+    const operationalCost = kmTotalCost + foodCost + otherCosts + musiciansTotalCost + equipmentReserveVal;
 
     // 2. Mão de Obra Artista
     const hourlyRate = Math.max(0, parseCurrencyInput(hourlyRateInput));
@@ -172,29 +200,54 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
     // 3. Subtotal
     const subtotal = operationalCost + artistLaborCost;
 
-    // 4. Valor com Reserva
+    // 4. Valor com Reserva de Segurança
     const reserveRatio = Math.max(0, reservePercent) / 100;
     const valueWithReserve = subtotal * (1 + reserveRatio);
     const reserveValue = valueWithReserve - subtotal;
 
-    // 5. CACHÊ FINAL RECOMENDADO (Ajuste por comissão de agência/casa)
+    // 5. CACHÊ BASE CALCULADO
     const commPercentNum = Math.min(90, Math.max(0, parseCurrencyInput(commissionPercentInput)));
     const commRatio = commPercentNum / 100;
-    const recommendedCache = commRatio < 1 ? valueWithReserve / (1 - commRatio) : valueWithReserve;
+    const calculatedBaseCache = commRatio < 1 ? valueWithReserve / (1 - commRatio) : valueWithReserve;
 
-    const commissionValue = recommendedCache - valueWithReserve;
+    // Cálculo por Modelo de Receita
+    const people = Math.max(0, parseFloat(estimatedPeopleInput) || 0);
+    const cPrice = Math.max(0, parseCurrencyInput(couvertPriceInput));
+    const minCache = Math.max(0, parseCurrencyInput(guaranteedMinCacheInput));
+    const cPct = Math.max(0, parseFloat(couvertPercentageInput) || 100) / 100;
 
-    // Lucro Líquido no Bolso
-    const netProfitInPocket = artistLaborCost + reserveValue;
+    let finalRevenue = calculatedBaseCache;
+    if (revenueModel === 'couvert') {
+      finalRevenue = people * cPrice;
+    } else if (revenueModel === 'hybrid') {
+      finalRevenue = minCache + (people * cPrice * cPct);
+    }
+
+    const recommendedCache = Math.max(1, Math.round(finalRevenue * 100) / 100);
+    const commissionValue = recommendedCache > valueWithReserve ? recommendedCache - valueWithReserve : 0;
+
+    // Lucro Líquido no Bolso (após todas as despesas e reserva de equipamento)
+    const netProfitInPocket = Math.round((recommendedCache - operationalCost) * 100) / 100;
+    const netProfitAfterEquipmentReserve = Math.round((netProfitInPocket - equipmentReserveVal) * 100) / 100;
+
+    // Lucro por Hora Trabalhada
+    const profitPerHour = Math.round((netProfitInPocket / totalTimeHours) * 100) / 100;
 
     return {
       showHours,
+      travelMins,
+      soundcheckMins,
+      totalTimeHours,
       totalKm,
-      costPerKm,
+      kmPerLiter,
+      fuelPrice,
+      tollVal,
+      calculatedFuelCost,
       kmTotalCost,
       foodCost,
       otherCosts,
       musiciansTotalCost,
+      equipmentReserveVal,
       operationalCost,
       hourlyRate,
       artistLaborCost,
@@ -204,13 +257,21 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
       valueWithReserve,
       commPercentNum,
       commissionValue,
-      recommendedCache: Math.round(recommendedCache * 100) / 100,
-      netProfitInPocket: Math.round(netProfitInPocket * 100) / 100
+      people,
+      cPrice,
+      minCache,
+      cPct,
+      recommendedCache,
+      netProfitInPocket,
+      netProfitAfterEquipmentReserve,
+      profitPerHour
     };
   }, [
-    showHoursInput, totalKmInput, costPerKmInput, foodCostInput,
-    otherCostsInput, supportMusicians, hourlyRateInput,
-    reservePercent, commissionPercentInput
+    showHoursInput, travelTimeMinutesInput, soundcheckTimeMinutesInput,
+    totalKmInput, carKmPerLiterInput, fuelPricePerLiterInput, tollAmountInput,
+    foodCostInput, otherCostsInput, supportMusicians, hourlyRateInput,
+    reservePercent, commissionPercentInput, revenueModel, estimatedPeopleInput,
+    couvertPriceInput, guaranteedMinCacheInput, couvertPercentageInput, equipmentReserveFixedInput
   ]);
 
   const formatCurrency = (val: number) => {
@@ -480,7 +541,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
           </div>
         ) : (
           <>
-            {/* HERO SUMMARY CARD (O CACHÊ RECOMENDADO EM DESTAQUE SPOTIFY) */}
+            {/* HERO SUMMARY CARD (O CACHÊ RECOMENDADO EM DESTAQUE SPOTIFY + MÉTRICA POR HORA) */}
             <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-[#121212] via-[#152e1b] to-[#121212] border border-[#22c55e]/40 shadow-xl space-y-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none text-[#1ed760]">
                 <Music size={120} />
@@ -488,14 +549,21 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#1ed760] block">
-                    Cachê Final Recomendado
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#1ed760] block">
+                      Cachê Final Recomendado
+                    </span>
+                    <span className="text-[9px] font-black uppercase bg-[#1ed760]/20 text-[#1ed760] px-2 py-0.5 rounded-full border border-[#1ed760]/30">
+                      {revenueModel === 'fixed' ? 'Cachê Fixo' : revenueModel === 'couvert' ? 'Couvert Artístico' : 'Híbrido'}
+                    </span>
+                  </div>
+
                   <div className="text-3xl sm:text-4xl font-black text-white tabular-nums tracking-tight mt-1">
                     {formatCurrency(calculations.recommendedCache)}
                   </div>
+
                   <p className="text-[11px] text-slate-300 mt-1">
-                    Garante <strong className="text-[#1ed760] font-black">{formatCurrency(calculations.netProfitInPocket)}</strong> no seu bolso + cobre todos os custos operacionais e reservas.
+                    Garante <strong className="text-[#1ed760] font-black">{formatCurrency(calculations.netProfitInPocket)}</strong> no seu bolso (<strong>{formatCurrency(calculations.profitPerHour)}/hora</strong> para {calculations.totalTimeHours}h dedicadas).
                   </p>
                 </div>
 
@@ -505,12 +573,12 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   className="px-5 py-3 rounded-2xl bg-[#1ed760] hover:bg-[#22c55e] text-black text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-lg shadow-[#1ed760]/20 flex items-center justify-center space-x-2 shrink-0"
                 >
                   <MessageSquare size={16} strokeWidth={2.5} />
-                  <span>{showProposalSection ? 'Ocultar Proposta' : 'Gerar Texto p/ WhatsApp'}</span>
+                  <span>{showProposalSection ? 'Ocultar Proposta' : 'Gerar Proposta p/ WhatsApp'}</span>
                 </button>
               </div>
 
-              {/* DETALHAMENTO EM MINI BADGES */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-[#27272a] text-[11px] relative z-10">
+              {/* DETALHAMENTO EM MINI BADGES INCLUINDO MÉTRICA DE LUCRO POR HORA */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 border-t border-[#27272a] text-[11px] relative z-10">
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
                   <span className="text-[9px] font-black uppercase text-slate-400 block">Custos Operacionais</span>
                   <span className="text-xs font-black text-rose-400 tabular-nums">{formatCurrency(calculations.operationalCost)}</span>
@@ -522,30 +590,150 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">Fundo Reserva ({reservePercent}%)</span>
-                  <span className="text-xs font-black text-amber-400 tabular-nums">{formatCurrency(calculations.reserveValue)}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">Reserva Equip.</span>
+                  <span className="text-xs font-black text-amber-400 tabular-nums">{formatCurrency(calculations.equipmentReserveVal)}</span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">Comissão ({calculations.commPercentNum}%)</span>
-                  <span className="text-xs font-black text-purple-400 tabular-nums">{formatCurrency(calculations.commissionValue)}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">Tempo Total</span>
+                  <span className="text-xs font-black text-purple-300 tabular-nums">{calculations.totalTimeHours}h dedicadas</span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-[#1ed760]/10 border border-[#1ed760]/30 space-y-0.5 col-span-2 sm:col-span-1">
+                  <span className="text-[9px] font-black uppercase text-[#1ed760] block">Lucro / Hora</span>
+                  <span className="text-xs font-black text-[#1ed760] tabular-nums">{formatCurrency(calculations.profitPerHour)}/h</span>
                 </div>
               </div>
             </div>
 
-            {/* FORMULÁRIO DE ENTRADAS INTELIGENTES */}
+            {/* SEÇÃO DE ENTRADAS INTELIGENTES E CONFIGURAÇÃO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
-              {/* BLOCO 1: FORMATO E TEMPO */}
+              {/* BLOCO 1: MODELO DE RECEITA & TEMPO DEDICADO */}
               <div className="p-4 rounded-2xl bg-[#181818] border border-[#27272a] space-y-3.5">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center space-x-2">
                   <Sparkles size={15} className="text-[#1ed760]" />
-                  <span>1. Formato & Apresentação</span>
+                  <span>1. Modelo de Receita & Tempo Dedicado</span>
                 </h4>
 
+                {/* Seleção do Modelo de Receita */}
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                    Formato da Apresentação
+                    Formato de Recebimento
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'fixed', label: 'Cachê Fixo' },
+                      { id: 'couvert', label: 'Couvert Artístico' },
+                      { id: 'hybrid', label: 'Híbrido' }
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setRevenueModel(m.id as any)}
+                        className={`py-2 px-1.5 rounded-xl text-xs font-black transition border ${
+                          revenueModel === m.id
+                            ? 'bg-[#1ed760] text-black border-[#1ed760]'
+                            : 'bg-[#121212] text-slate-300 border-[#27272a] hover:border-[#3f3f46]'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Parâmetros Específicos do Modelo de Receita */}
+                {revenueModel === 'couvert' && (
+                  <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] grid grid-cols-2 gap-2 animate-fade-in">
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        Pessoas Estimadas
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={estimatedPeopleInput}
+                        onChange={e => setEstimatedPeopleInput(e.target.value)}
+                        placeholder="Ex: 80"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        Valor Couvert (R$/pessoa)
+                      </label>
+                      <input
+                        type="text"
+                        value={couvertPriceInput}
+                        onChange={e => setCouvertPriceInput(e.target.value)}
+                        placeholder="Ex: 15,00"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-[#1ed760] outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {revenueModel === 'hybrid' && (
+                  <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] grid grid-cols-2 gap-2 animate-fade-in">
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        Cachê Mínimo Garantido (R$)
+                      </label>
+                      <input
+                        type="text"
+                        value={guaranteedMinCacheInput}
+                        onChange={e => setGuaranteedMinCacheInput(e.target.value)}
+                        placeholder="Ex: 500,00"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-[#1ed760] outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        Couvert p/ Pessoa (R$)
+                      </label>
+                      <input
+                        type="text"
+                        value={couvertPriceInput}
+                        onChange={e => setCouvertPriceInput(e.target.value)}
+                        placeholder="Ex: 15,00"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        Pessoas Estimadas
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={estimatedPeopleInput}
+                        onChange={e => setEstimatedPeopleInput(e.target.value)}
+                        placeholder="Ex: 80"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        % Repasse do Couvert
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={couvertPercentageInput}
+                        onChange={e => setCouvertPercentageInput(e.target.value)}
+                        placeholder="Ex: 100%"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Formato do Show (Voz e Violão, Duo, Banda) */}
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                    Formato Artístico
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {['Voz e Violão', 'Duo', 'Banda'].map(fmt => (
@@ -553,10 +741,10 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         key={fmt}
                         type="button"
                         onClick={() => handleFormatChange(fmt)}
-                        className={`py-2 px-2 rounded-xl text-xs font-black transition border ${
+                        className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition border ${
                           selectedFormat === fmt
-                            ? 'bg-[#1ed760] text-black border-[#1ed760]'
-                            : 'bg-[#121212] text-slate-300 border-[#27272a] hover:border-[#3f3f46]'
+                            ? 'bg-purple-600 text-white border-purple-500'
+                            : 'bg-[#121212] text-slate-400 border-[#27272a]'
                         }`}
                       >
                         {fmt}
@@ -565,42 +753,69 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                      Tempo de Show (Horas)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0.5"
-                      value={showHoursInput}
-                      onChange={e => setShowHoursInput(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
-                    />
+                {/* Tempo Dedicado (Deslocamento, Passagem de Som, Show) */}
+                <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] space-y-2">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block">
+                    Métrica de Tempo Dedicado
+                  </span>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                        Deslocamento (min)
+                      </label>
+                      <input
+                        type="number"
+                        step="10"
+                        min="0"
+                        value={travelTimeMinutesInput}
+                        onChange={e => setTravelTimeMinutesInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                        Montagem (min)
+                      </label>
+                      <input
+                        type="number"
+                        step="10"
+                        min="0"
+                        value={soundcheckTimeMinutesInput}
+                        onChange={e => setSoundcheckTimeMinutesInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 mb-0.5">
+                        Show (Horas)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={showHoursInput}
+                        onChange={e => setShowHoursInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                      Sua Hora Técnica (R$)
-                    </label>
-                    <input
-                      type="text"
-                      value={hourlyRateInput}
-                      onChange={e => setHourlyRateInput(e.target.value)}
-                      placeholder="Ex: 80"
-                      className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-[#1ed760] outline-none focus:border-[#1ed760]"
-                    />
+                  <div className="flex items-center justify-between text-[11px] pt-1 text-slate-300">
+                    <span>Tempo Total Dedicado: <strong className="text-purple-300">{calculations.totalTimeHours} horas</strong></span>
+                    <span className="font-bold text-[#1ed760]">{formatCurrency(calculations.profitPerHour)} / hora</span>
                   </div>
                 </div>
               </div>
 
-              {/* BLOCO 2: LOGÍSTICA & DESLOCAMENTO */}
+              {/* BLOCO 2: LOGÍSTICA INTELIGENTE (VEÍCULO PRÓPRIO) */}
               <div className="p-4 rounded-2xl bg-[#181818] border border-[#27272a] space-y-3.5">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center space-x-2">
                     <Truck size={15} className="text-sky-400" />
-                    <span>2. Deslocamento & Combustível</span>
+                    <span>2. Logística (Veículo Próprio)</span>
                   </h4>
                   <span className="text-xs font-black text-sky-400 tabular-nums">
                     Total: {formatCurrency(calculations.kmTotalCost)}
@@ -610,37 +825,91 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                      KM Total (Ida + Volta)
+                      Distância Total (KM Ida/Volta)
                     </label>
                     <input
                       type="number"
                       min="0"
                       value={totalKmInput}
                       onChange={e => setTotalKmInput(e.target.value)}
-                      placeholder="Ex: 50"
+                      placeholder="Ex: 80"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
-                      Custo / KM (R$)
+                      Consumo Carro (KM/L)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      value={carKmPerLiterInput}
+                      onChange={e => setCarKmPerLiterInput(e.target.value)}
+                      placeholder="Ex: 10"
+                      className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                      Preço Litro Combustível (R$)
                     </label>
                     <input
                       type="text"
-                      value={costPerKmInput}
-                      onChange={e => setCostPerKmInput(e.target.value)}
-                      placeholder="1,50"
+                      value={fuelPricePerLiterInput}
+                      onChange={e => setFuelPricePerLiterInput(e.target.value)}
+                      placeholder="Ex: 6.00"
+                      className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                      Pedágios Totais (R$)
+                    </label>
+                    <input
+                      type="text"
+                      value={tollAmountInput}
+                      onChange={e => setTollAmountInput(e.target.value)}
+                      placeholder="Ex: 15.00"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-[#121212] border border-[#27272a] flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Cálculo em Tempo Real:</span>
-                  <span className="font-bold text-white tabular-nums">
-                    {calculations.totalKm} km × {formatCurrency(calculations.costPerKm)}/km = <strong className="text-sky-400">{formatCurrency(calculations.kmTotalCost)}</strong>
-                  </span>
+                <div className="p-2.5 rounded-xl bg-[#121212] border border-[#27272a] space-y-1 text-xs">
+                  <div className="flex justify-between text-slate-400 text-[11px]">
+                    <span>Fórmula Combustível:</span>
+                    <span>({calculations.totalKm} km / {calculations.kmPerLiter} km/l) × {formatCurrency(calculations.fuelPrice)} = <strong className="text-white">{formatCurrency(calculations.calculatedFuelCost)}</strong></span>
+                  </div>
+                  <div className="flex justify-between text-sky-400 font-bold border-t border-[#27272a] pt-1">
+                    <span>Combustível + Pedágio:</span>
+                    <span className="tabular-nums">{formatCurrency(calculations.kmTotalCost)}</span>
+                  </div>
+                </div>
+
+                {/* FUNDO DE DEPRECIAÇÃO / RESERVA PARA EQUIPAMENTO */}
+                <div className="p-3 rounded-xl bg-[#121212] border border-amber-500/30 space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase text-amber-400">
+                      Fundo de Reserva / Depreciação (Equipamento)
+                    </label>
+                    <span className="text-xs font-black text-amber-400 tabular-nums">
+                      {formatCurrency(calculations.equipmentReserveVal)}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={equipmentReserveFixedInput}
+                    onChange={e => setEquipmentReserveFixedInput(e.target.value)}
+                    placeholder="Ex: 20.00"
+                    className="w-full px-3 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-amber-300 outline-none focus:border-amber-400"
+                  />
+                  <p className="text-[9px] text-slate-400">
+                    Valor acumulado para substituição e manutenção de instrumentos e cabos.
+                  </p>
                 </div>
               </div>
 

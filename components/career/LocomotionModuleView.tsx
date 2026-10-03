@@ -451,7 +451,16 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
                 <label className="text-zinc-400 font-bold block mb-1">Vincular a um Show (Opcional)</label>
                 <select
                   value={formShowId}
-                  onChange={(e) => setFormShowId(e.target.value)}
+                  onChange={(e) => {
+                    const sid = e.target.value;
+                    setFormShowId(sid);
+                    if (sid) {
+                      const selectedShow = shows.find(s => s.id === sid);
+                      if (selectedShow && selectedShow.date) {
+                        setFormDate(selectedShow.date);
+                      }
+                    }
+                  }}
                   className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
                 >
                   <option value="">Gasto Geral de Transporte da Carreira</option>

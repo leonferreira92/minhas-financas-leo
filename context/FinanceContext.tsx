@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, DashboardWidgetConfig, Show, ShowPayment, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
@@ -482,7 +482,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Transações de Equipamentos -> registrar como Saída da Empresa (Módulo Música)
-      if (t.categoryId === 'cat_equipamentos' || descLower.includes('equipamento') || descLower.includes('pedal') || descLower.includes('amplificador') || descLower.includes('instrumento')) {
+      if (
+        t.categoryId === 'cat_equipamentos' || 
+        descLower.includes('equipamento') || 
+        descLower.includes('pedal') || 
+        descLower.includes('amplificador') || 
+        descLower.includes('instrumento') || 
+        descLower.includes('mesa de som') || 
+        descLower.includes('mesa') || 
+        descLower.includes('luthier') || 
+        descLower.includes('violao') || 
+        descLower.includes('violão') || 
+        descLower.includes('guitarra')
+      ) {
         if (t.type === 'expense') {
           if (newCatId !== 'cat_equipamentos' && !finalCategories.some(c => c.id === newCatId && c.scope === 'BUSINESS')) {
             newCatId = 'cat_equipamentos';
@@ -697,10 +709,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const cleanAmount = Number(t.amount) || 0;
     const cleanScope: ScopeType = t.scope || ((t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || !!t.showId) ? 'BUSINESS' : (activeScope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL'));
 
+    let finalTxDate = t.date;
+    let finalTxStatus = t.status || 'paid';
+    if (t.showId) {
+      const targetShow = shows.find(s => s.id === t.showId);
+      if (targetShow) {
+        if (targetShow.date) {
+          finalTxDate = targetShow.date;
+        }
+        if (t.type === 'expense' && targetShow.status !== 'Realizado') {
+          finalTxStatus = 'pending';
+        }
+      }
+    }
+
     const fullTx: Transaction = {
       ...t,
       id: tid,
       amount: cleanAmount,
+      date: finalTxDate,
+      status: finalTxStatus,
       scope: cleanScope,
       createdAt: Date.now(),
       fixedGroupId
@@ -1416,6 +1444,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (createTransaction && l.amount > 0) {
       txId = `tx_loco_${generateUUID()}`;
       const defaultAcc = getDefaultAccountForScope('BUSINESS');
+
+      let txDate = l.date || getLocalDateString();
+      let txStatus: TransactionStatus = 'paid';
+      if (l.showId) {
+        const targetShow = shows.find(s => s.id === l.showId);
+        if (targetShow) {
+          if (targetShow.date) txDate = targetShow.date;
+          if (targetShow.status !== 'Realizado') txStatus = 'pending';
+        }
+      }
+
       addTransaction({
         id: txId,
         description: `Locomoção (${l.type.toUpperCase()}): ${l.title || 'Deslocamento'}`,
@@ -1423,8 +1462,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         type: 'expense',
         categoryId: 'cat_producao_shows',
         accountId: l.accountId || defaultAcc,
-        date: l.date || getLocalDateString(),
-        status: 'paid',
+        date: txDate,
+        status: txStatus,
         scope: 'BUSINESS',
         showId: l.showId
       });
@@ -1490,6 +1529,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         ? 'cat_marketing'
         : 'cat_producao_shows';
 
+      let txDate = c.date || getLocalDateString();
+      let txStatus: TransactionStatus = 'paid';
+      if (c.showId) {
+        const targetShow = shows.find(s => s.id === c.showId);
+        if (targetShow) {
+          if (targetShow.date) txDate = targetShow.date;
+          if (targetShow.status !== 'Realizado') txStatus = 'pending';
+        }
+      }
+
       addTransaction({
         id: txId,
         description: `Música (${c.category.toUpperCase()}): ${c.title || 'Despesa'}`,
@@ -1497,8 +1546,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         type: 'expense',
         categoryId: catId,
         accountId: c.accountId || defaultAcc,
-        date: c.date || getLocalDateString(),
-        status: 'paid',
+        date: txDate,
+        status: txStatus,
         scope: 'BUSINESS',
         showId: c.showId
       });
