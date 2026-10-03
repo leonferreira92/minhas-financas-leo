@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getStatusConfig } from './types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
+import { getLocalDateString } from '../../services/dateUtils';
 
 interface Props {
   shows: Show[];
@@ -34,7 +35,7 @@ export const ShowCalendarView: React.FC<Props> = ({
   const [internalDate, setInternalDate] = useState(() => new Date());
   const currentDate = externalDate || internalDate;
 
-  const [selectedDateStr, setSelectedDateStr] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDateStr, setSelectedDateStr] = useState(() => getLocalDateString());
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
@@ -67,7 +68,7 @@ export const ShowCalendarView: React.FC<Props> = ({
     } else {
       setInternalDate(today);
     }
-    setSelectedDateStr(today.toISOString().slice(0, 10));
+    setSelectedDateStr(getLocalDateString(today));
   };
 
   // Build calendar matrix
@@ -388,15 +389,18 @@ export const ShowCalendarView: React.FC<Props> = ({
                 <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 flex items-start space-x-2.5 text-xs">
                   <AlertCircle size={16} className="text-rose-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="font-black text-rose-200 block">⚠️ Conflito de Horário Detectado!</strong>
-                    <span className="text-[11px] opacity-90">{conflictDetail}. Verifique os horários de início e término e o tempo de deslocamento.</span>
+                    <div className="flex items-center space-x-1 font-black text-rose-200">
+                      <AlertTriangle size={13} className="text-rose-400 shrink-0" />
+                      <span>Conflito de Horário Detectado</span>
+                    </div>
+                    <span className="text-[11px] opacity-90 block mt-0.5">{conflictDetail}. Verifique os horários de início e término e o tempo de deslocamento.</span>
                   </div>
                 </div>
               ) : (
                 <div className="p-3 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 flex items-center space-x-2 text-xs">
                   <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
                   <span className="font-bold text-[11px]">
-                    ✅ Múltiplos shows no mesmo dia: Horários compatíveis sem sobreposição!
+                    Múltiplos shows no mesmo dia: Horários compatíveis sem sobreposição!
                   </span>
                 </div>
               );

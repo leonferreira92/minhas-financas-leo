@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { TransactionForm } from '../TransactionForm';
 import { syncShowToGoogleCalendar, googleSignIn, getAccessToken } from '../../services/googleCalendarService';
 import { ReciboModal } from './ReciboModal';
+import { getLocalDateString } from '../../services/dateUtils';
 
 interface Props {
   show: Show | null;
@@ -111,8 +112,8 @@ export const ShowDetailModal: React.FC<Props> = ({
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   }, [transactions, show?.id]);
 
-  const getTodayISO = () => new Date().toISOString().slice(0, 10);
-  const todayStr = useMemo(() => getTodayISO(), []);
+  const getTodayISO = () => getLocalDateString();
+  const todayStr = useMemo(() => getLocalDateString(), []);
   
   // O show é hoje ou já passou?
   const isDateTodayOrPast = show ? (show.date || '') <= todayStr : false;
@@ -122,7 +123,7 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [payStatus, setPayStatus] = useState<'Recebido' | 'Agendado'>('Recebido');
   const [payType, setPayType] = useState<ShowPaymentType>('Sinal');
   const [payAmount, setPayAmount] = useState('');
-  const [payDate, setPayDate] = useState(() => getTodayISO());
+  const [payDate, setPayDate] = useState(() => getLocalDateString());
   const [payAccountId, setPayAccountId] = useState(defaultAccountId);
   const [payNotes, setPayNotes] = useState('');
 
@@ -130,7 +131,7 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [expCategory, setExpCategory] = useState(EXPENSE_CATEGORIES[0]);
   const [expAmount, setExpAmount] = useState('');
-  const [expDate, setExpDate] = useState(() => getTodayISO());
+  const [expDate, setExpDate] = useState(() => getLocalDateString());
   const [expStatus, setExpStatus] = useState<'paid' | 'pending'>('paid');
   const [expAccountId, setExpAccountId] = useState(defaultAccountId);
   const [expNotes, setExpNotes] = useState('');

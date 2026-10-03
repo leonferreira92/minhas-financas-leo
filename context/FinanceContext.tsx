@@ -1,11 +1,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, DashboardWidgetConfig, Show, ShowPayment, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, Budget, DashboardWidgetConfig, Show, ShowPayment, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
 import { normalizeShowFinancials, syncShowWithTransactions, cancelShowFutureTransactions } from '../services/showFinanceSyncService';
 import { generateUUID } from '../services/uuidHelper';
+import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { User } from 'firebase/auth';
 import { 
   subscribeToAuth, 
@@ -51,6 +52,10 @@ interface FinanceContextType {
   accounts: Account[];
   budgets: Budget[];
   shows: Show[];
+  venues: Venue[];
+  crew: MusicianCrewMember[];
+  locomotionExpenses: MusicLocomotionExpense[];
+  musicCostItems: MusicCostItem[];
   settings: AppSettings;
   isBlurred: boolean;
   toggleBlur: () => void;
@@ -91,6 +96,23 @@ interface FinanceContextType {
   deleteShow: (id: string, deleteTransactions?: boolean) => void;
   cancelShowFutureFinancials: (showId: string) => void;
 
+  // Career Sou Artista CRUD
+  addVenue: (v: Omit<Venue, 'id' | 'createdAt'> & { id?: string }) => void;
+  updateVenue: (v: Venue) => void;
+  deleteVenue: (id: string) => void;
+
+  addCrewMember: (m: Omit<MusicianCrewMember, 'id' | 'createdAt'> & { id?: string }) => void;
+  updateCrewMember: (m: MusicianCrewMember) => void;
+  deleteCrewMember: (id: string) => void;
+
+  addLocomotionExpense: (l: Omit<MusicLocomotionExpense, 'id' | 'createdAt'> & { id?: string }, createTransaction?: boolean) => void;
+  updateLocomotionExpense: (l: MusicLocomotionExpense) => void;
+  deleteLocomotionExpense: (id: string, deleteTransaction?: boolean) => void;
+
+  addMusicCostItem: (c: Omit<MusicCostItem, 'id' | 'createdAt'> & { id?: string }, createTransaction?: boolean) => void;
+  updateMusicCostItem: (c: MusicCostItem) => void;
+  deleteMusicCostItem: (id: string, deleteTransaction?: boolean) => void;
+
   getSystemAlerts: () => SystemAlert[];
   updateSettings: (s: Partial<AppSettings>) => void;
   updateFinancialSettings: (fs: Partial<FinancialSettings>) => void;
@@ -128,6 +150,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [crew, setCrew] = useState<MusicianCrewMember[]>([]);
+  const [locomotionExpenses, setLocomotionExpenses] = useState<MusicLocomotionExpense[]>([]);
+  const [musicCostItems, setMusicCostItems] = useState<MusicCostItem[]>([]);
 
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
@@ -505,6 +531,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setTransactions(storedTransactions);
     setShows(storedShows);
+    setVenues(StorageService.getVenues());
+    setCrew(StorageService.getCrew());
+    setLocomotionExpenses(StorageService.getLocomotionExpenses());
+    setMusicCostItems(StorageService.getMusicCostItems());
     
     const finalFinancialSettings: FinancialSettings = storedSettings.financialSettings ? {
       ...DEFAULT_FINANCIAL_SETTINGS,
@@ -654,7 +684,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       amount: Number(diff.toFixed(2)),
       type: 'adjustment',
       description: 'Ajuste de Saldo',
-      date: new Date().toISOString().slice(0, 10),
+      date: getLocalDateString(),
       status: 'paid',
       accountId,
       categoryId: cat ? cat.id : 'cat_adjustment'
@@ -680,8 +710,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       const txs = [...prev, fullTx];
       if (t.isFixed && fixedGroupId) {
         for (let i = 1; i < 12; i++) {
-          const d = new Date(t.date); d.setMonth(d.getMonth() + i);
-          const recurTx: Transaction = { ...t, id: generateUUID(), date: d.toISOString().slice(0, 10), status: 'pending', createdAt: Date.now() + i, fixedGroupId, amount: cleanAmount, scope: cleanScope };
+          const d = new Date(t.date + 'T12:00:00'); d.setMonth(d.getMonth() + i);
+          const recurTx: Transaction = { ...t, id: generateUUID(), date: getLocalDateString(d), status: 'pending', createdAt: Date.now() + i, fixedGroupId, amount: cleanAmount, scope: cleanScope };
           txs.push(recurTx);
           if (currentUser) {
             saveTransactionToFirestore(currentUser.uid, recurTx);
@@ -1318,6 +1348,208 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
+  // --- CRUD: LOCAIS E BARES ---
+  const addVenue = (v: Omit<Venue, 'id' | 'createdAt'> & { id?: string }) => {
+    const newVenue: Venue = {
+      ...v,
+      id: v.id || `ven_${generateUUID()}`,
+      createdAt: Date.now()
+    };
+    setVenues(prev => {
+      const updated = [newVenue, ...prev];
+      StorageService.saveVenues(updated);
+      return updated;
+    });
+  };
+
+  const updateVenue = (v: Venue) => {
+    setVenues(prev => {
+      const updated = prev.map(item => item.id === v.id ? v : item);
+      StorageService.saveVenues(updated);
+      return updated;
+    });
+  };
+
+  const deleteVenue = (id: string) => {
+    setVenues(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      StorageService.saveVenues(updated);
+      return updated;
+    });
+  };
+
+  // --- CRUD: MÚSICOS E EQUIPE (FREELANCERS) ---
+  const addCrewMember = (m: Omit<MusicianCrewMember, 'id' | 'createdAt'> & { id?: string }) => {
+    const newCrew: MusicianCrewMember = {
+      ...m,
+      id: m.id || `crew_${generateUUID()}`,
+      createdAt: Date.now()
+    };
+    setCrew(prev => {
+      const updated = [newCrew, ...prev];
+      StorageService.saveCrew(updated);
+      return updated;
+    });
+  };
+
+  const updateCrewMember = (m: MusicianCrewMember) => {
+    setCrew(prev => {
+      const updated = prev.map(item => item.id === m.id ? m : item);
+      StorageService.saveCrew(updated);
+      return updated;
+    });
+  };
+
+  const deleteCrewMember = (id: string) => {
+    setCrew(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      StorageService.saveCrew(updated);
+      return updated;
+    });
+  };
+
+  // --- CRUD: DESLOCAMENTO E LOCOMOÇÃO ---
+  const addLocomotionExpense = (l: Omit<MusicLocomotionExpense, 'id' | 'createdAt'> & { id?: string }, createTransaction: boolean = true) => {
+    const newId = l.id || `loco_${generateUUID()}`;
+    let txId = l.transactionId;
+
+    if (createTransaction && l.amount > 0) {
+      txId = `tx_loco_${generateUUID()}`;
+      const defaultAcc = getDefaultAccountForScope('BUSINESS');
+      addTransaction({
+        id: txId,
+        description: `Locomoção (${l.type.toUpperCase()}): ${l.title || 'Deslocamento'}`,
+        amount: l.amount,
+        type: 'expense',
+        categoryId: 'cat_producao_shows',
+        accountId: l.accountId || defaultAcc,
+        date: l.date || getLocalDateString(),
+        status: 'paid',
+        scope: 'BUSINESS',
+        showId: l.showId
+      });
+    }
+
+    const newLoco: MusicLocomotionExpense = {
+      ...l,
+      id: newId,
+      transactionId: txId,
+      createdAt: Date.now()
+    };
+
+    setLocomotionExpenses(prev => {
+      const updated = [newLoco, ...prev];
+      StorageService.saveLocomotionExpenses(updated);
+      return updated;
+    });
+  };
+
+  const updateLocomotionExpense = (l: MusicLocomotionExpense) => {
+    if (l.transactionId) {
+      const existingTx = transactions.find(t => t.id === l.transactionId);
+      if (existingTx) {
+        updateTransaction({
+          ...existingTx,
+          amount: l.amount,
+          date: l.date,
+          description: `Locomoção (${l.type.toUpperCase()}): ${l.title || 'Deslocamento'}`,
+          accountId: l.accountId || existingTx.accountId
+        });
+      }
+    }
+    setLocomotionExpenses(prev => {
+      const updated = prev.map(item => item.id === l.id ? l : item);
+      StorageService.saveLocomotionExpenses(updated);
+      return updated;
+    });
+  };
+
+  const deleteLocomotionExpense = (id: string, deleteTransactionRecord: boolean = true) => {
+    const item = locomotionExpenses.find(l => l.id === id);
+    if (item && item.transactionId && deleteTransactionRecord) {
+      deleteTransaction(item.transactionId);
+    }
+    setLocomotionExpenses(prev => {
+      const updated = prev.filter(l => l.id !== id);
+      StorageService.saveLocomotionExpenses(updated);
+      return updated;
+    });
+  };
+
+  // --- CRUD: CUSTOS GERAIS DA MÚSICA (EQUIPAMENTOS, MARKETING, FIGURINO, ETC) ---
+  const addMusicCostItem = (c: Omit<MusicCostItem, 'id' | 'createdAt'> & { id?: string }, createTransaction: boolean = true) => {
+    const newId = c.id || `mcost_${generateUUID()}`;
+    let txId = c.transactionId;
+
+    if (createTransaction && c.amount > 0) {
+      txId = `tx_mcost_${generateUUID()}`;
+      const defaultAcc = getDefaultAccountForScope('BUSINESS');
+      const catId = c.category === 'equipment' || c.category === 'accessories' || c.category === 'maintenance'
+        ? 'cat_equipamentos'
+        : c.category === 'marketing'
+        ? 'cat_marketing'
+        : 'cat_producao_shows';
+
+      addTransaction({
+        id: txId,
+        description: `Música (${c.category.toUpperCase()}): ${c.title || 'Despesa'}`,
+        amount: c.amount,
+        type: 'expense',
+        categoryId: catId,
+        accountId: c.accountId || defaultAcc,
+        date: c.date || getLocalDateString(),
+        status: 'paid',
+        scope: 'BUSINESS',
+        showId: c.showId
+      });
+    }
+
+    const newCost: MusicCostItem = {
+      ...c,
+      id: newId,
+      transactionId: txId,
+      createdAt: Date.now()
+    };
+
+    setMusicCostItems(prev => {
+      const updated = [newCost, ...prev];
+      StorageService.saveMusicCostItems(updated);
+      return updated;
+    });
+  };
+
+  const updateMusicCostItem = (c: MusicCostItem) => {
+    if (c.transactionId) {
+      const existingTx = transactions.find(t => t.id === c.transactionId);
+      if (existingTx) {
+        updateTransaction({
+          ...existingTx,
+          amount: c.amount,
+          date: c.date,
+          description: `Música (${c.category.toUpperCase()}): ${c.title || 'Despesa'}`,
+          accountId: c.accountId || existingTx.accountId
+        });
+      }
+    }
+    setMusicCostItems(prev => {
+      const updated = prev.map(item => item.id === c.id ? c : item);
+      StorageService.saveMusicCostItems(updated);
+      return updated;
+    });
+  };
+
+  const deleteMusicCostItem = (id: string, deleteTransactionRecord: boolean = true) => {
+    const item = musicCostItems.find(c => c.id === id);
+    if (item && item.transactionId && deleteTransactionRecord) {
+      deleteTransaction(item.transactionId);
+    }
+    setMusicCostItems(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      StorageService.saveMusicCostItems(updated);
+      return updated;
+    });
+  };
+
   const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string, scopeOverride?: ActiveScopeFilter): ExtendedSummary => {
     const projLimit = new Date(projectionDateStr + 'T23:59:59').getTime();
     const today = new Date();
@@ -1394,7 +1626,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const getSystemAlerts = useCallback((): SystemAlert[] => {
     const alerts: SystemAlert[] = [];
     const today = new Date(); today.setHours(0,0,0,0);
-    const sum = getBalanceSummary(today.toISOString().slice(0,7), today.toISOString().slice(0,10));
+    const sum = getBalanceSummary(getCurrentMonthPrefix(today), getLocalDateString(today));
     transactions.forEach(t => {
       if (t.status === 'pending' && t.type === 'expense') {
         const d = new Date(t.date + 'T12:00:00'); d.setHours(0,0,0,0);
@@ -1417,7 +1649,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   return (
     <FinanceContext.Provider value={{
-      transactions, categories, debts, accounts, budgets, shows, settings, isBlurred, toggleBlur,
+      transactions, categories, debts, accounts, budgets, shows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
       activeScope, setActiveScope, getDefaultAccountForScope,
       addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
@@ -1425,6 +1657,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addDebt, updateDebt, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget,
       addShow, updateShow, deleteShow, cancelShowFutureFinancials,
+      addVenue, updateVenue, deleteVenue,
+      addCrewMember, updateCrewMember, deleteCrewMember,
+      addLocomotionExpense, updateLocomotionExpense, deleteLocomotionExpense,
+      addMusicCostItem, updateMusicCostItem, deleteMusicCostItem,
       getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission,
       currentUser, isAuthLoading, signInWithGoogle: handleSignInWithGoogle, logoutUser

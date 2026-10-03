@@ -1,35 +1,55 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
-import { Show, ShowStatus } from '../types';
+import { Show, ShowStatus, Venue, MusicianCrewMember } from '../types';
 import { 
-  Calendar as CalendarIcon, ListOrdered, FileText, 
-  Archive, Plus, Music, Sparkles, AlertTriangle, 
-  Bell, CheckCircle2, ChevronRight, X, Clock, FilePlus,
-  TrendingUp, DollarSign, ArrowUpRight, ChevronLeft, Calendar,
-  Calculator
+  Music, Calendar as CalendarIcon, ListOrdered, FileText, 
+  Archive, Plus, Sparkles, AlertTriangle, Bell, CheckCircle2, 
+  ChevronRight, X, Clock, FilePlus, TrendingUp, DollarSign, 
+  ArrowUpRight, ChevronLeft, Calculator, Building2, Users, 
+  Car, Hammer, Layers, BarChart3
 } from 'lucide-react';
-import { ShowCalendarView } from './shows/ShowCalendarView';
-import { UpcomingShowsList } from './shows/UpcomingShowsList';
+import { PerformanceDashboard } from './career/PerformanceDashboard';
+import { CalendarWithDrawer } from './career/CalendarWithDrawer';
+import { ShowsManagementView } from './career/ShowsManagementView';
+import { VenuesManagementView } from './career/VenuesManagementView';
+import { CrewManagementView } from './career/CrewManagementView';
+import { LocomotionModuleView } from './career/LocomotionModuleView';
+import { GearAndCostsView } from './career/GearAndCostsView';
 import { ShowQuotesView } from './shows/ShowQuotesView';
-import { ShowHistoryView } from './shows/ShowHistoryView';
 import { ShowDetailModal } from './shows/ShowDetailModal';
 import { ShowFormModal } from './shows/ShowFormModal';
-import { checkScheduleConflict } from './shows/conflictHelper';
-import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
-import { getShowFinancialSummary } from '../services/showFinanceSyncService';
 import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
 import { GoogleCalendarSyncModal } from './shows/GoogleCalendarSyncModal';
+import { checkScheduleConflict } from './shows/conflictHelper';
+import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
 import { generateUUID } from '../services/uuidHelper';
 
-export type ShowScreenTab = 'agenda' | 'upcoming' | 'quotes' | 'history';
+export type CareerTab = 
+  | 'performance' 
+  | 'agenda' 
+  | 'shows' 
+  | 'locomocao' 
+  | 'custos' 
+  | 'equipe' 
+  | 'locais' 
+  | 'orcamentos';
 
 export const MusicianShowScreen: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  const { shows, transactions, addShow, updateShow, deleteShow, addTransaction } = useFinance();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { 
+    shows, 
+    transactions, 
+    settings, 
+    addShow, 
+    updateShow, 
+    deleteShow, 
+    addTransaction 
+  } = useFinance();
 
-  const [activeTab, setActiveTab] = useState<ShowScreenTab>('agenda');
-  
+  const initialTabParam = searchParams.get('tab') as CareerTab;
+  const [activeTab, setActiveTab] = useState<CareerTab>(initialTabParam || 'performance');
+
   // Modals & Drawer state
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
   const [openPaymentDirectly, setOpenPaymentDirectly] = useState(false);
@@ -39,37 +59,18 @@ export const MusicianShowScreen: React.FC = () => {
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
   const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
   const [initialStatusForNewShow, setInitialStatusForNewShow] = useState<ShowStatus>('Confirmado');
+  const [prefilledVenueData, setPrefilledVenueData] = useState<{ location?: string; city?: string; totalCache?: number } | undefined>();
   
   // Smart Alerts toggle
   const [showAlertsExpanded, setShowAlertsExpanded] = useState(false);
 
-  // Month navigation for Monthly Metrics Dashboard
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const selectedYear = currentDate.getFullYear();
-  const selectedMonth = currentDate.getMonth(); // 0-indexed
-  const selectedMonthPrefix = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
-
-  const monthLabel = useMemo(() => {
-    return currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  }, [currentDate]);
-
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(selectedYear, selectedMonth - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(selectedYear, selectedMonth + 1, 1));
-  };
-
-  const handleGoCurrentMonth = () => {
-    setCurrentDate(new Date());
-  };
-
-  // Derive active selected show reactively from context
-  const selectedShowForDetail = useMemo(() => {
-    if (!selectedShowId) return null;
-    return shows.find(s => s.id === selectedShowId) || null;
-  }, [shows, selectedShowId]);
+  // Sync tab with URL search params if needed
+  useEffect(() => {
+    const tab = searchParams.get('tab') as CareerTab;
+    if (tab && ['performance', 'agenda', 'shows', 'locomocao', 'custos', 'equipe', 'locais', 'orcamentos'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Deep-link from Financeiro/Extrato via ?showId=...
   useEffect(() => {
@@ -79,111 +80,36 @@ export const MusicianShowScreen: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Selected Show
+  const selectedShowForDetail = useMemo(() => {
+    if (!selectedShowId) return null;
+    return shows.find(s => s.id === selectedShowId) || null;
+  }, [shows, selectedShowId]);
+
   // Compute smart alerts
   const smartAlerts = useMemo(() => {
     return generateShowSmartAlerts(shows);
   }, [shows]);
 
-  // Count pending quotes for tab badge
+  // Pending quotes count
   const pendingQuotesCount = useMemo(() => {
     return shows.filter(
       s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado'
     ).length;
   }, [shows]);
 
-  const getDeviceToday = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const todayStr = useMemo(() => getDeviceToday(), []);
-  
-  const upcomingConfirmedCount = useMemo(() => {
-    return shows.filter(s => s.status === 'Confirmado' && (s.date || '') >= todayStr).length;
-  }, [shows, todayStr]);
-
-  // =========================================================================
-  // 2. MÉTRICAS E DASHBOARD DO MÊS SELECIONADO (CONFORME REGRAS DE NEGÓCIO)
-  // =========================================================================
-  const monthlyMetrics = useMemo(() => {
-    const monthShows = shows.filter(s => s.date && s.date.startsWith(selectedMonthPrefix) && s.status !== 'Cancelado');
-
-    const completedShows = monthShows.filter(s => s.status === 'Realizado');
-    const confirmedShows = monthShows.filter(s => s.status === 'Confirmado');
-    const completedCount = completedShows.length;
-    const confirmedCount = confirmedShows.length;
-    const totalShowsCount = monthShows.length;
-
-    // 2. Faturamento do Mês (Regime de Caixa / Entradas Reais no Mês)
-    // Computa TODOS os valores que entraram (status 'paid') SOMENTE NAQUELE MÊS,
-    // independente se o evento acontece em data futura!
-    const monthIncomeTxs = transactions.filter(t => {
-      if (!t.date || !t.date.startsWith(selectedMonthPrefix)) return false;
-      if (t.type !== 'income' || t.status !== 'paid') return false;
-      const desc = (t.description || '').toLowerCase();
-      if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
-
-      return (
-        t.scope === 'BUSINESS' ||
-        t.categoryId === 'cat_33' ||
-        !!t.showId ||
-        desc.includes('cachê') ||
-        desc.includes('cache') ||
-        desc.includes('show')
-      );
-    });
-    const cashInflowsMonth = monthIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    // 3. A Receber dos Shows DESTE MÊS: Soma o que ainda falta receber de todos os shows agendados neste mês
-    const pendingToReceiveMonth = monthShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalPending;
-    }, 0);
-
-    // 4. Despesas de shows no mês
-    const monthExpenseTxs = transactions.filter(t => {
-      if (!t.date || !t.date.startsWith(selectedMonthPrefix)) return false;
-      if (t.type !== 'expense' || t.status !== 'paid') return false;
-      return !!t.showId || t.categoryId === 'cat_producao_shows';
-    });
-    const cashOutflowsMonth = monthExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    const netProfitMonth = Math.round((cashInflowsMonth - cashOutflowsMonth) * 100) / 100;
-
-    // 5. Cachê Total Contratado dos shows deste mês
-    const contractedRevenueMonth = monthShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalContracted;
-    }, 0);
-
-    return {
-      completedCount,
-      confirmedCount,
-      totalShowsCount,
-      cashInflowsMonth: Math.round(cashInflowsMonth * 100) / 100,
-      cashOutflowsMonth: Math.round(cashOutflowsMonth * 100) / 100,
-      netProfitMonth,
-      pendingToReceiveMonth: Math.round(pendingToReceiveMonth * 100) / 100,
-      contractedRevenueMonth: Math.round(contractedRevenueMonth * 100) / 100
-    };
-  }, [shows, transactions, selectedMonthPrefix]);
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  };
-
-  const handleOpenCreateModal = (date?: string, status: ShowStatus = 'Confirmado') => {
+  const handleOpenCreateModal = (date?: string, status: ShowStatus = 'Confirmado', venueData?: { location?: string; city?: string; totalCache?: number }) => {
     setShowToEdit(null);
     setPrefilledDateForNewShow(date);
     setInitialStatusForNewShow(status);
+    setPrefilledVenueData(venueData);
     setIsFormModalOpen(true);
   };
 
   const handleOpenEditModal = (show: Show) => {
     setSelectedShowId(null);
     setShowToEdit(show);
+    setPrefilledVenueData(undefined);
     setIsFormModalOpen(true);
   };
 
@@ -252,313 +178,127 @@ export const MusicianShowScreen: React.FC = () => {
     }
   };
 
-  const tabs = [
-    { id: 'agenda', label: 'Agenda', icon: CalendarIcon },
+  // 8 ABAS DO MÓDULO EMPRESA / MÚSICO DEDICADO
+  const careerTabs: { id: CareerTab; label: string; icon: any; badge?: number; badgeColor?: string }[] = [
+    { id: 'performance', label: 'Performance', icon: TrendingUp },
+    { id: 'agenda', label: 'Agenda & Drawer', icon: CalendarIcon },
+    { id: 'shows', label: 'Shows & Fichas', icon: Music },
+    { id: 'locomocao', label: 'Locomoção & KM', icon: Car },
+    { id: 'custos', label: 'Custos da Música', icon: Hammer },
+    { id: 'equipe', label: 'Músicos & Equipe', icon: Users },
+    { id: 'locais', label: 'Locais & Bares', icon: Building2 },
     { 
-      id: 'upcoming', 
-      label: 'Próximos', 
-      icon: ListOrdered, 
-      badge: upcomingConfirmedCount > 0 ? upcomingConfirmedCount : undefined,
-      badgeColor: 'bg-emerald-500 text-white'
-    },
-    { 
-      id: 'quotes', 
+      id: 'orcamentos', 
       label: 'Orçamentos', 
-      icon: FileText, 
+      icon: FileText,
       badge: pendingQuotesCount > 0 ? pendingQuotesCount : undefined,
       badgeColor: 'bg-amber-500 text-white'
-    },
-    { id: 'history', label: 'Histórico', icon: Archive }
+    }
   ];
 
   return (
-    <div className="space-y-4 pb-20 animate-fade-in max-w-full">
-      {/* 1. HEADER PRINCIPAL COM AÇÕES DIRETAS (NOVO SHOW / NOVO ORÇAMENTO) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-0.5 rounded-full border border-purple-100 dark:border-purple-900/50 flex items-center space-x-1">
-              <Music size={11} className="mr-1 inline" /> Gestão de Carreira
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
-            Agenda & Financeiro de Shows
-          </h1>
-        </div>
-
-        {/* BOTÕES DE ACESSO RÁPIDO */}
-        <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
-          <button
-            onClick={() => setIsGoogleCalendarOpen(true)}
-            className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-[#1ed760] text-xs font-black uppercase tracking-wider transition active:scale-95 border border-emerald-500/30 flex items-center space-x-1.5 shadow-sm"
-            title="Sincronizar Agenda com Google Calendar"
-          >
-            <CalendarIcon size={15} strokeWidth={2.5} />
-            <span>Google Calendar</span>
-          </button>
-
-          <button
-            onClick={() => setIsCalculatorOpen(true)}
-            className="px-3.5 py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-300/60 dark:border-purple-700/60 flex items-center space-x-1.5"
-            title="Calculadora de Precificação de Cachê"
-          >
-            <Calculator size={15} strokeWidth={2.5} />
-            <span>Calculadora Cachê</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenCreateModal(undefined, 'Orçamento')}
-            className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-amber-300/60 dark:border-amber-700/60 flex items-center space-x-1.5"
-          >
-            <FilePlus size={15} strokeWidth={2.5} />
-            <span>Novo Orçamento</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenCreateModal(undefined, 'Confirmado')}
-            className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md shadow-purple-500/20 flex items-center space-x-1.5"
-          >
-            <Plus size={16} strokeWidth={3} />
-            <span>Novo Show</span>
-          </button>
-        </div>
-      </div>
-
+    <div className="space-y-5 animate-fade-in w-full max-w-full">
+      
       {/* ========================================================================= */}
-      {/* 2. DASHBOARD & MÉTRICAS DO MÊS (APRESENTAÇÕES, FATURAMENTO, A RECEBER) */}
+      {/* 1. HEADER EXCLUSIVO "SOU ARTISTA" / GESTÃO DE CARREIRA                    */}
       {/* ========================================================================= */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        {/* Barra de Navegação do Mês */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Desempenho em
-            </span>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white capitalize tracking-tight">
-              {monthLabel}
-            </h2>
-            <button
-              onClick={handleGoCurrentMonth}
-              className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider transition active:scale-95"
-            >
-              Mês Atual
-            </button>
+      <div className="bg-gradient-to-r from-[#1c122c] via-[#16131f] to-[#121214] p-4 sm:p-6 rounded-3xl border border-purple-500/30 shadow-xl space-y-4">
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30 flex items-center space-x-1.5 shadow-sm">
+                <Music size={11} />
+                <span>Módulo Sou Artista • Gestão de Carreira</span>
+              </span>
+            </div>
+            
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {settings.careerProjectName || settings.musicianArtisticName || 'Leo Ferreira • Carreira Musical'}
+            </h1>
+            <p className="text-xs text-zinc-400">
+              Controle completo de cachês, equipe, logística, locomoção e lucratividade real.
+            </p>
           </div>
 
-          <div className="flex items-center space-x-1">
+          {/* BOTÕES DE AÇÃO RÁPIDA */}
+          <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
             <button
-              onClick={handlePrevMonth}
-              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition active:scale-95 border border-slate-200/60 dark:border-slate-700"
-              title="Mês Anterior"
+              onClick={() => setIsGoogleCalendarOpen(true)}
+              className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-[#1ed760] text-xs font-black uppercase tracking-wider transition active:scale-95 border border-emerald-500/30 flex items-center space-x-1.5 shadow-sm"
+              title="Sincronizar Agenda com Google Calendar"
             >
-              <ChevronLeft size={16} />
+              <CalendarIcon size={15} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Google Calendar</span>
             </button>
+
             <button
-              onClick={handleNextMonth}
-              className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition active:scale-95 border border-slate-200/60 dark:border-slate-700"
-              title="Próximo Mês"
+              onClick={() => setIsCalculatorOpen(true)}
+              className="px-3.5 py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/30 flex items-center space-x-1.5"
+              title="Calculadora Smart Cachê 360"
             >
-              <ChevronRight size={16} />
+              <Calculator size={15} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Calculadora Cachê</span>
+            </button>
+
+            <button
+              onClick={() => handleOpenCreateModal(undefined, 'Confirmado')}
+              className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md shadow-purple-500/25 flex items-center space-x-1.5"
+            >
+              <Plus size={16} strokeWidth={3} />
+              <span>Novo Show</span>
             </button>
           </div>
         </div>
 
-        {/* 4 KPI Cards Principais de Desempenho do Mês */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-          
-          {/* KPI 1: Shows do Mês */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/40 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300">
-                Shows no Mês
-              </span>
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Music size={13} />
-              </div>
-            </div>
-            <div className="flex items-baseline space-x-1.5">
-              <span className="text-xl sm:text-2xl font-black text-purple-900 dark:text-purple-100 tabular-nums">
-                {monthlyMetrics.totalShowsCount}
-              </span>
-              <span className="text-[11px] text-purple-600 dark:text-purple-400 font-bold hidden sm:inline">
-                {monthlyMetrics.totalShowsCount === 1 ? 'show' : 'shows'}
+        {/* ALERTAS INTELIGENTES (SE HOUVER CONFLITOS OU SHOWS PRÓXIMOS) */}
+        {smartAlerts.length > 0 && (
+          <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-900/60 text-xs flex items-center justify-between">
+            <div className="flex items-center space-x-2 truncate">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span className="font-bold text-zinc-200 truncate">
+                {smartAlerts[0].title}: {smartAlerts[0].description}
               </span>
             </div>
-            <p className="text-[9px] sm:text-[10px] text-purple-500/80 dark:text-purple-400/70 font-medium truncate">
-              {monthlyMetrics.confirmedCount} confirmados • {monthlyMetrics.completedCount} realizados
-            </p>
-          </div>
-
-          {/* KPI 2: Faturamento do Mês (Entradas Reais no Mês) */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                Entradas no Caixa
-              </span>
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <DollarSign size={13} />
-              </div>
-            </div>
-            <div className="flex items-baseline space-x-1.5">
-              <span className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums truncate">
-                {formatCurrency(monthlyMetrics.cashInflowsMonth)}
-              </span>
-            </div>
-            <p className="text-[9px] sm:text-[10px] text-emerald-600/80 dark:text-emerald-400/70 font-medium truncate">
-              Recebidos em {monthLabel}
-            </p>
-          </div>
-
-          {/* KPI 3: A Receber (Shows deste Mês) */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                A Receber (Mês)
-              </span>
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <Clock size={13} />
-              </div>
-            </div>
-            <div className="flex items-baseline space-x-1.5">
-              <span className={`text-lg sm:text-2xl font-black tabular-nums truncate ${
-                monthlyMetrics.pendingToReceiveMonth > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'
-              }`}>
-                {formatCurrency(monthlyMetrics.pendingToReceiveMonth)}
-              </span>
-            </div>
-            <p className="text-[9px] sm:text-[10px] text-amber-600/80 dark:text-amber-400/70 font-medium truncate">
-              {monthlyMetrics.pendingToReceiveMonth === 0 
-                ? '✓ 100% quitados' 
-                : `Falta receber dos shows do mês`}
-            </p>
-          </div>
-
-          {/* KPI 4: Lucro Líquido dos Shows do Mês */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                Lucro Líquido
-              </span>
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                <TrendingUp size={13} />
-              </div>
-            </div>
-            <div className="flex items-baseline space-x-1.5">
-              <span className={`text-lg sm:text-2xl font-black tabular-nums truncate ${
-                monthlyMetrics.netProfitMonth >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-500'
-              }`}>
-                {formatCurrency(monthlyMetrics.netProfitMonth)}
-              </span>
-            </div>
-            <p className="text-[9px] sm:text-[10px] text-blue-500/80 dark:text-blue-400/70 font-medium truncate">
-              {monthlyMetrics.cashOutflowsMonth > 0 ? `Custos: -${formatCurrency(monthlyMetrics.cashOutflowsMonth)}` : 'Sem custos pagos no mês'}
-            </p>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 4. ALERTAS INTELIGENTES (CONFLITOS, PRÓXIMOS, RECEBIMENTOS) */}
-      {smartAlerts.length > 0 && (
-        <div className="rounded-2xl bg-slate-900 text-white p-3.5 shadow-md border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setShowAlertsExpanded(!showAlertsExpanded)}
-              className="flex items-center space-x-2 text-left"
-            >
-              <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
-                <Bell size={13} strokeWidth={2.5} />
-              </div>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-black text-white">
-                    {smartAlerts.length} {smartAlerts.length === 1 ? 'Alerta Importante' : 'Alertas Importantes'}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    (clique para {showAlertsExpanded ? 'recolher' : 'expandir'})
-                  </span>
-                </div>
-              </div>
-            </button>
 
             <button
-              onClick={() => setShowAlertsExpanded(!showAlertsExpanded)}
-              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 px-2 py-1 rounded-lg bg-slate-800"
-            >
-              {showAlertsExpanded ? 'Ocultar' : 'Ver Todos'}
-            </button>
-          </div>
-
-          {!showAlertsExpanded && smartAlerts[0] && (
-            <div 
               onClick={() => handleAlertClick(smartAlerts[0])}
-              className="flex items-center justify-between p-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 cursor-pointer text-xs transition border border-slate-700/60"
+              className="px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-wider shrink-0 transition ml-2"
             >
-              <div className="flex items-center space-x-2 truncate">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${
-                  smartAlerts[0].severity === 'high' ? 'bg-rose-500 animate-pulse' : 'bg-amber-400'
-                }`} />
-                <span className="font-bold text-slate-200 truncate">{smartAlerts[0].title}</span>
-                <span className="text-slate-400 text-[11px] truncate hidden sm:inline">{smartAlerts[0].description}</span>
-              </div>
-              <span className="text-[11px] font-bold text-indigo-400 shrink-0 ml-2 flex items-center space-x-0.5">
-                <span>{smartAlerts[0].actionLabel || 'Ver'}</span>
-                <ChevronRight size={12} />
-              </span>
-            </div>
-          )}
+              Ver
+            </button>
+          </div>
+        )}
 
-          {showAlertsExpanded && (
-            <div className="space-y-1.5 pt-1">
-              {smartAlerts.map(alert => (
-                <div
-                  key={alert.id}
-                  onClick={() => handleAlertClick(alert)}
-                  className="p-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 cursor-pointer transition border border-slate-700/80 flex items-start justify-between gap-2"
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center space-x-1.5">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${
-                        alert.severity === 'high' ? 'bg-rose-500 animate-pulse' : 'bg-amber-400'
-                      }`} />
-                      <span className="text-xs font-black text-white">{alert.title}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-300 font-medium pl-3.5">
-                      {alert.description}
-                    </p>
-                  </div>
+      </div>
 
-                  <button className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wider shrink-0 transition">
-                    {alert.actionLabel || 'Abrir'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 5. NAVEGAÇÃO ENTRE AS 4 ABAS: AGENDA / PRÓXIMOS / ORÇAMENTOS / HISTÓRICO */}
-      <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex space-x-2 border-b border-slate-200/80 dark:border-slate-800 pb-2 min-w-max">
-          {tabs.map(tab => {
+      {/* ========================================================================= */}
+      {/* 2. BARRA DE NAVEGAÇÃO DE ABAS SUPERIORES LIMPAS (RESPONSIVA)              */}
+      {/* ========================================================================= */}
+      <div className="overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
+        <div className="flex items-center space-x-2 border-b border-zinc-800/80 pb-2 min-w-max">
+          {careerTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as ShowScreenTab)}
-                className={`flex items-center space-x-1.5 px-4 py-2.5 rounded-2xl text-xs font-black tracking-wide transition-all active:scale-95 ${
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSearchParams({ tab: tab.id });
+                }}
+                className={`flex items-center space-x-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-black tracking-wide transition-all active:scale-95 ${
                   isActive
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/70 dark:border-slate-800'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
+                    : 'bg-[#121214] text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-700'
                 }`}
               >
                 <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && (
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                    isActive ? 'bg-purple-900 text-white' : tab.badgeColor || 'bg-amber-100 text-amber-700'
+                    isActive ? 'bg-purple-900 text-white' : tab.badgeColor || 'bg-amber-500 text-white'
                   }`}>
                     {tab.badge}
                   </span>
@@ -569,63 +309,84 @@ export const MusicianShowScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* CONTEÚDO DA ABA SELECIONADA */}
-
-      {/* 1. AGENDA (CALENDÁRIO MENSAL + VISÃO DO DIA) */}
-      {activeTab === 'agenda' && (
-        <ShowCalendarView
+      {/* ========================================================================= */}
+      {/* 3. CONTEÚDO DINÂMICO DA ABA ATIVA DO MÓDULO SOU ARTISTA                   */}
+      {/* ========================================================================= */}
+      
+      {/* ABA 1: PERFORMANCE DASHBOARD */}
+      {activeTab === 'performance' && (
+        <PerformanceDashboard
           shows={shows}
-          currentDate={currentDate}
-          onPrevMonth={handlePrevMonth}
-          onNextMonth={handleNextMonth}
-          onGoToday={handleGoCurrentMonth}
-          onSelectShow={(show) => {
-            setOpenPaymentDirectly(false);
-            setSelectedShowId(show.id);
-          }}
-          onOpenCreateModal={date => handleOpenCreateModal(date, 'Confirmado')}
+          transactions={transactions}
+          onSelectShow={show => setSelectedShowId(show.id)}
+          onOpenCreateShow={() => handleOpenCreateModal(undefined, 'Confirmado')}
         />
       )}
 
-      {/* 2. PRÓXIMOS SHOWS (CRONOLÓGICO) */}
-      {activeTab === 'upcoming' && (
-        <div className="space-y-4">
-          <UpcomingShowsList
-            shows={shows}
-            onSelectShow={show => {
-              setOpenPaymentDirectly(false);
-              setSelectedShowId(show.id);
-            }}
-            onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Confirmado')}
-          />
-        </div>
+      {/* ABA 2: CALENDÁRIO COM GAVETA LATERAL (DRAWER) */}
+      {activeTab === 'agenda' && (
+        <CalendarWithDrawer
+          shows={shows}
+          onSelectShow={show => setSelectedShowId(show.id)}
+          onOpenCreateShow={date => handleOpenCreateModal(date, 'Confirmado')}
+        />
       )}
 
-      {/* 3. ORÇAMENTOS (OPORTUNIDADES EM NEGOCIAÇÃO) */}
-      {activeTab === 'quotes' && (
+      {/* ABA 3: GESTÃO DETALHADA DE SHOWS & FICHAS */}
+      {activeTab === 'shows' && (
+        <ShowsManagementView
+          shows={shows}
+          onSelectShow={show => setSelectedShowId(show.id)}
+          onOpenCreateShow={status => handleOpenCreateModal(undefined, status || 'Confirmado')}
+        />
+      )}
+
+      {/* ABA 4: LOCOMOÇÃO (UBER, COMBUSTÍVEL & KM RODADO) */}
+      {activeTab === 'locomocao' && (
+        <LocomotionModuleView
+          shows={shows}
+          onOpenCreateShow={() => handleOpenCreateModal(undefined, 'Confirmado')}
+        />
+      )}
+
+      {/* ABA 5: CUSTOS DA MÚSICA & EQUIPAMENTOS */}
+      {activeTab === 'custos' && (
+        <GearAndCostsView
+          shows={shows}
+        />
+      )}
+
+      {/* ABA 6: MÚSICOS & EQUIPE (FREELANCERS) */}
+      {activeTab === 'equipe' && (
+        <CrewManagementView />
+      )}
+
+      {/* ABA 7: LOCAIS & BARES */}
+      {activeTab === 'locais' && (
+        <VenuesManagementView
+          onOpenCreateShowWithVenue={(venueName, address, city, defaultCache) => {
+            handleOpenCreateModal(undefined, 'Confirmado', {
+              location: address || venueName,
+              city,
+              totalCache: defaultCache
+            });
+          }}
+        />
+      )}
+
+      {/* ABA 8: ORÇAMENTOS & COTAÇÕES */}
+      {activeTab === 'orcamentos' && (
         <ShowQuotesView
           shows={shows}
-          onSelectShow={show => {
-            setOpenPaymentDirectly(false);
-            setSelectedShowId(show.id);
-          }}
+          onSelectShow={show => setSelectedShowId(show.id)}
           onConfirmQuote={handleConfirmQuote}
           onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Orçamento')}
         />
       )}
 
-      {/* 4. HISTÓRICO (SHOWS REALIZADOS E CANCELADOS) */}
-      {activeTab === 'history' && (
-        <ShowHistoryView
-          shows={shows}
-          onSelectShow={show => {
-            setOpenPaymentDirectly(false);
-            setSelectedShowId(show.id);
-          }}
-        />
-      )}
-
-      {/* DRAWER LATERAL / SLIDE-OVER: DETALHES DO SHOW & GESTÃO FINANCEIRA */}
+      {/* ========================================================================= */}
+      {/* MODAL / DRAWER LATERAL: FICHA COMPLETA & LANÇAMENTOS DO SHOW              */}
+      {/* ========================================================================= */}
       {selectedShowForDetail && (
         <ShowDetailModal
           show={selectedShowForDetail}
@@ -644,13 +405,14 @@ export const MusicianShowScreen: React.FC = () => {
         />
       )}
 
-      {/* MODAL: CADASTRO / EDIÇÃO DO SHOW */}
+      {/* MODAL: CADASTRO / EDIÇÃO DE SHOW */}
       <ShowFormModal
         isOpen={isFormModalOpen}
         onClose={() => {
           setIsFormModalOpen(false);
           setShowToEdit(null);
           setPrefilledDateForNewShow(undefined);
+          setPrefilledVenueData(undefined);
         }}
         onSave={handleSaveShow}
         existingShow={showToEdit}
@@ -667,6 +429,10 @@ export const MusicianShowScreen: React.FC = () => {
           setShowToEdit(null);
           setPrefilledDateForNewShow(date);
           setInitialStatusForNewShow('Orçamento');
+          setPrefilledVenueData({
+            location,
+            totalCache: calculatedCache
+          });
           setIsFormModalOpen(true);
         }}
       />
@@ -678,6 +444,7 @@ export const MusicianShowScreen: React.FC = () => {
         shows={shows}
         onUpdateShow={updateShow}
       />
+
     </div>
   );
 };

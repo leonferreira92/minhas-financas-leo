@@ -14,6 +14,7 @@ import { parseCurrencyInput } from '../services/financeAggregator';
 import { GeminiService } from '../services/geminiService';
 import { CalendarModal } from './CalendarModal';
 import { generateUUID } from '../services/uuidHelper';
+import { getLocalDateString } from '../services/dateUtils';
 
 interface Props {
   onClose: () => void;
@@ -36,7 +37,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [categoryId, setCategoryId] = useState(initialCategoryId || '');
   const [accountId, setAccountId] = useState('');
   const [destinationAccountId, setDestinationAccountId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => transaction?.date || getLocalDateString());
   const [status, setStatus] = useState<TransactionStatus>('paid');
   const [hasReminder, setHasReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');

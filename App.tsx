@@ -3,8 +3,11 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FinanceProvider } from './context/FinanceContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
-import { FinancialHubScreen } from './components/FinancialHubScreen';
+import { ExtratoScreen } from './components/ExtratoScreen';
 import { MusicianShowScreen } from './components/MusicianShowScreen';
+import { DebtsScreen } from './components/DebtsScreen';
+import { ExpenseAnalysisScreen } from './components/ExpenseAnalysisScreen';
+import { AccountsScreen } from './components/AccountsScreen';
 import { ReportsHubScreen } from './components/ReportsHubScreen';
 import { MoreHubScreen } from './components/MoreHubScreen';
 import { TransactionForm } from './components/TransactionForm';
@@ -21,35 +24,41 @@ const AppContent = () => {
   return (
     <Layout onOpenAdd={handleOpenAddWithType}>
       <Routes>
-        {/* AS 5 ÁREAS PRINCIPAIS */}
-        {/* 1. Home */}
+        {/* AS 5 ABAS PRINCIPAIS - ESTILO BANCO DO BRASIL */}
+        {/* 1. Início */}
         <Route path="/" element={<Dashboard />} />
         
-        {/* 2. Financeiro */}
-        <Route path="/financeiro" element={<FinancialHubScreen />} />
+        {/* 2. Lançamentos / Extrato */}
+        <Route path="/lancamentos" element={<ExtratoScreen />} />
+        <Route path="/extrato" element={<ExtratoScreen />} />
+        <Route path="/financeiro" element={<ExtratoScreen />} />
+        <Route path="/transactions" element={<ExtratoScreen />} />
         
         {/* 3. Shows */}
         <Route path="/shows" element={<MusicianShowScreen />} />
         
-        {/* 4. Relatórios */}
-        <Route path="/relatorios" element={<ReportsHubScreen />} />
+        {/* 4. Dívidas */}
+        <Route path="/dividas" element={<DebtsScreen />} />
+        <Route path="/debts" element={<DebtsScreen />} />
         
-        {/* 5. Mais */}
+        {/* 5. Menu / Mais */}
         <Route path="/mais" element={<MoreHubScreen />} />
 
-        {/* ROTAS LEGADAS / ACESSOS DIRETOS PRESERVADOS (REDIRECIONAMENTO OU ACESSO TRANSPARENTE) */}
-        <Route path="/transactions" element={<FinancialHubScreen initialTab="movimentacoes" />} />
-        <Route path="/debts" element={<FinancialHubScreen initialTab="dividas" />} />
-        <Route path="/planning" element={<FinancialHubScreen initialTab="projecoes" />} />
+        {/* TELAS DEDICADAS DO ECOSSISTEMA */}
+        <Route path="/gastos" element={<ExpenseAnalysisScreen />} />
+        <Route path="/analise-gastos" element={<ExpenseAnalysisScreen />} />
+        <Route path="/contas" element={<AccountsScreen />} />
+        <Route path="/relatorios" element={<ReportsHubScreen />} />
+
+        {/* ROTAS LEGADAS PRESERVADAS COM DIRECIONAMENTO TRANSPARENTE */}
         <Route path="/flow" element={<ReportsHubScreen initialTab="flow" />} />
-        <Route path="/insights" element={<FinancialHubScreen initialTab="insights" />} />
         <Route path="/summary" element={<ReportsHubScreen initialTab="summary" />} />
         <Route path="/ai-report" element={<ReportsHubScreen initialTab="ai" />} />
         <Route path="/calendar" element={<ReportsHubScreen initialTab="calendar" />} />
-        <Route path="/financial-settings" element={<MoreHubScreen initialTab="financial" />} />
-        <Route path="/settings" element={<MoreHubScreen initialTab="settings" />} />
-        <Route path="/categories" element={<MoreHubScreen initialTab="categories" />} />
-        <Route path="/alerts" element={<MoreHubScreen initialTab="alerts" />} />
+        <Route path="/financial-settings" element={<MoreHubScreen />} />
+        <Route path="/settings" element={<MoreHubScreen />} />
+        <Route path="/categories" element={<MoreHubScreen />} />
+        <Route path="/alerts" element={<MoreHubScreen />} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

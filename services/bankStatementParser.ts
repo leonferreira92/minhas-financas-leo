@@ -1,4 +1,5 @@
 import { Category, ScopeType } from '../types';
+import { getLocalDateString } from './dateUtils';
 
 export interface ParsedBankTransaction {
   tempId: string;
@@ -314,7 +315,7 @@ export function parseOFX(content: string, categories: Category[]): ParsedBankTra
     if (dateParsed) {
       date = `${dateParsed[1]}-${dateParsed[2]}-${dateParsed[3]}`;
     } else {
-      date = new Date().toISOString().slice(0, 10);
+      date = getLocalDateString();
     }
 
     // Processa Valor

@@ -1,5 +1,6 @@
 import { Show } from '../../types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
+import { getLocalDateString } from '../../services/dateUtils';
 
 export interface ShowSmartAlert {
   id: string;
@@ -18,7 +19,7 @@ export interface ShowSmartAlert {
  */
 export function generateShowSmartAlerts(shows: Show[]): ShowSmartAlert[] {
   const alerts: ShowSmartAlert[] = [];
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getLocalDateString();
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);

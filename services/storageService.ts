@@ -1,4 +1,4 @@
-import { Transaction, Category, AppSettings, Debt, Account, Budget, Show } from '../types';
+import { Transaction, Category, AppSettings, Debt, Account, Budget, Show, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 
 const KEYS = {
@@ -9,9 +9,14 @@ const KEYS = {
   ACCOUNTS: 'fin_app_accounts',
   BUDGETS: 'fin_app_budgets',
   SHOWS: 'fin_app_shows',
+  VENUES: 'fin_app_venues',
+  CREW: 'fin_app_crew',
+  LOCOMOTION: 'fin_app_locomotion',
+  MUSIC_COSTS: 'fin_app_music_costs',
   AUTO_BACKUP: 'fin_app_auto_backup',
   LAST_BACKUP_TIME: 'fin_app_last_backup_time'
 };
+
 
 const safeSetItem = (key: string, value: string): boolean => {
   try {
@@ -161,6 +166,73 @@ export const StorageService = {
 
   saveShows: (shows: Show[]) => {
     safeSetItem(KEYS.SHOWS, JSON.stringify(shows));
+  },
+
+  getVenues: (): Venue[] => {
+    try {
+      const data = safeGetItem(KEYS.VENUES);
+      if (data) return JSON.parse(data);
+      const defaultVenues: Venue[] = [
+        { id: 'ven_1', name: 'Bar do Zé Pub', contactName: 'Zé Carlos', phone: '(11) 98765-4321', city: 'São Paulo - SP', address: 'Vila Madalena, 120', defaultCache: 1200, category: 'Bar / Pub', notes: 'Som próprio no local. Horário de início 21h.' },
+        { id: 'ven_2', name: 'Villa Country Hall', contactName: 'Marcos Gerente', phone: '(11) 97654-3210', city: 'São Paulo - SP', address: 'Av. das Américas, 400', defaultCache: 2500, category: 'Casa de Show', notes: 'Passagem de som às 18h pontual. 2h de show.' },
+        { id: 'ven_3', name: 'Espaço Jardim Festas', contactName: 'Camila Cerimonial', phone: '(11) 99123-4567', city: 'Campinas - SP', address: 'Rodovia Campinas, Km 12', defaultCache: 3500, category: 'Casamento / Privado', notes: 'Casamentos e eventos corporativos. Pontualidade rigorosa.' }
+      ];
+      safeSetItem(KEYS.VENUES, JSON.stringify(defaultVenues));
+      return defaultVenues;
+    } catch {
+      return [];
+    }
+  },
+
+  saveVenues: (venues: Venue[]) => {
+    safeSetItem(KEYS.VENUES, JSON.stringify(venues));
+  },
+
+  getCrew: (): MusicianCrewMember[] => {
+    try {
+      const data = safeGetItem(KEYS.CREW);
+      if (data) return JSON.parse(data);
+      const defaultCrew: MusicianCrewMember[] = [
+        { id: 'crew_1', name: 'Rodrigo Bateria', role: 'Bateria', defaultCache: 350, phone: '(11) 98111-2233', pixKey: 'rodrigo.batera@email.com', pixKeyType: 'Email', notes: 'Traz bateria e microfones próprios' },
+        { id: 'crew_2', name: 'Mateus Baixo', role: 'Contrabaixo', defaultCache: 300, phone: '(11) 98222-3344', pixKey: '123.456.789-00', pixKeyType: 'CPF', notes: 'Baixo 5 cordas + In-Ear' },
+        { id: 'crew_3', name: 'Lucas Sanfona & Teclado', role: 'Teclado / Sanfona', defaultCache: 400, phone: '(11) 98333-4455', pixKey: '(11) 98333-4455', pixKeyType: 'Telefone', notes: 'Nord Stage + Acordeon 120 baixos' },
+        { id: 'crew_4', name: 'Danilo Som & Roadie', role: 'Técnico de Som & Roadie', defaultCache: 250, phone: '(11) 98444-5566', pixKey: 'danilo.audio@pix.me', pixKeyType: 'Aleatória', notes: 'Mesa digital Behringer X32' }
+      ];
+      safeSetItem(KEYS.CREW, JSON.stringify(defaultCrew));
+      return defaultCrew;
+    } catch {
+      return [];
+    }
+  },
+
+  saveCrew: (crew: MusicianCrewMember[]) => {
+    safeSetItem(KEYS.CREW, JSON.stringify(crew));
+  },
+
+  getLocomotionExpenses: (): MusicLocomotionExpense[] => {
+    try {
+      const data = safeGetItem(KEYS.LOCOMOTION);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveLocomotionExpenses: (expenses: MusicLocomotionExpense[]) => {
+    safeSetItem(KEYS.LOCOMOTION, JSON.stringify(expenses));
+  },
+
+  getMusicCostItems: (): MusicCostItem[] => {
+    try {
+      const data = safeGetItem(KEYS.MUSIC_COSTS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveMusicCostItems: (items: MusicCostItem[]) => {
+    safeSetItem(KEYS.MUSIC_COSTS, JSON.stringify(items));
   },
   
   clearData: () => {

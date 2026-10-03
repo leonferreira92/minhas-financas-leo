@@ -218,6 +218,63 @@ export interface Show {
   googleCalendarEventId?: string;
 }
 
+export interface Venue {
+  id: string;
+  name: string;
+  contactName?: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  defaultCache?: number;
+  notes?: string;
+  category?: 'Bar / Pub' | 'Casa de Show' | 'Restaurante' | 'Espaço de Eventos' | 'Prefeitura / Festival' | 'Casamento / Privado' | 'Outro';
+  createdAt?: number;
+}
+
+export interface MusicianCrewMember {
+  id: string;
+  name: string;
+  role: string; // ex: Bateria, Baixo, Teclado, Guitarra, Sanfona, Roadie, Técnico de Som
+  defaultCache: number;
+  phone?: string;
+  pixKey?: string;
+  pixKeyType?: 'CPF' | 'CNPJ' | 'Email' | 'Telefone' | 'Aleatória';
+  notes?: string;
+  createdAt?: number;
+}
+
+export interface MusicLocomotionExpense {
+  id: string;
+  date: string;
+  type: 'uber' | 'fuel' | 'mileage' | 'toll' | 'parking';
+  title: string;
+  amount: number;
+  km?: number;
+  pricePerKm?: number;
+  origin?: string;
+  destination?: string;
+  showId?: string;
+  accountId?: string;
+  transactionId?: string;
+  notes?: string;
+  createdAt?: number;
+}
+
+export type MusicCostCategory = 'equipment' | 'accessories' | 'maintenance' | 'costume' | 'marketing' | 'software' | 'rehearsal' | 'other';
+
+export interface MusicCostItem {
+  id: string;
+  date: string;
+  category: MusicCostCategory;
+  title: string;
+  amount: number;
+  accountId?: string;
+  showId?: string;
+  transactionId?: string;
+  notes?: string;
+  createdAt?: number;
+}
+
 /**
  * Função utilitária de compatibilidade para Módulo:
  * O app opera exclusivamente nos módulos PESSOAL e MÚSICA / EMPRESA.
@@ -228,4 +285,5 @@ export function matchesScope(itemScope?: ScopeType | null, activeScope: ActiveSc
   if (activeScope === 'PERSONAL') return itemScope !== 'BUSINESS';
   return true;
 }
+
 

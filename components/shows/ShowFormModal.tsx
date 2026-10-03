@@ -9,6 +9,7 @@ import {
 import { EVENT_TYPES, SHOW_STATUSES } from './types';
 import { checkScheduleConflict, ConflictResult } from './conflictHelper';
 import { generateUUID } from '../../services/uuidHelper';
+import { getLocalDateString } from '../../services/dateUtils';
 
 interface Props {
   isOpen: boolean;
@@ -35,7 +36,7 @@ export const ShowFormModal: React.FC<Props> = ({
   const [contractorName, setContractorName] = useState('');
   const [contractorPhone, setContractorPhone] = useState('');
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
-  const [date, setDate] = useState(() => prefilledDate || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => prefilledDate || getLocalDateString());
   const [time, setTime] = useState('20:00');
   const [endTime, setEndTime] = useState('23:00');
   const [city, setCity] = useState('');
@@ -48,7 +49,7 @@ export const ShowFormModal: React.FC<Props> = ({
   const [hasImmediateDeposit, setHasImmediateDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositAccountId, setDepositAccountId] = useState(defaultAccountId);
-  const [depositDate, setDepositDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [depositDate, setDepositDate] = useState(() => getLocalDateString());
 
   // Conflict warning state
   const [conflictPrompt, setConflictPrompt] = useState<ConflictResult | null>(null);
@@ -64,7 +65,7 @@ export const ShowFormModal: React.FC<Props> = ({
       setContractorName(existingShow.contractorName || existingShow.name || '');
       setContractorPhone(existingShow.contractorPhone || '');
       setEventType(existingShow.eventType || EVENT_TYPES[0]);
-      setDate(existingShow.date || new Date().toISOString().slice(0, 10));
+      setDate(existingShow.date || getLocalDateString());
       setTime(existingShow.time || '20:00');
       setEndTime(existingShow.endTime || '');
       setCity(existingShow.city || '');

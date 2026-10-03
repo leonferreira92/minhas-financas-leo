@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth, app } from '../src/firebase/config';
 import { Show } from '../types';
+import { getLocalDateString } from './dateUtils';
 
 export { auth };
 
@@ -98,7 +99,7 @@ export const syncShowToGoogleCalendar = async (show: Show): Promise<string> => {
   if (!token) throw new Error('Conecte sua conta do Google para sincronizar com a agenda');
 
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
-  const showDate = show.date || new Date().toISOString().split('T')[0];
+  const showDate = show.date || getLocalDateString();
   const startTimeStr = show.time || '20:00';
   const endTimeStr = show.endTime || '23:00';
 
@@ -106,7 +107,7 @@ export const syncShowToGoogleCalendar = async (show: Show): Promise<string> => {
   const endDateTime = `${showDate}T${endTimeStr.length === 5 ? endTimeStr + ':00' : endTimeStr}`;
 
   const eventPayload = {
-    summary: `🎵 Show: ${show.name || 'Apresentação'}`,
+    summary: `Show: ${show.name || 'Apresentação'}`,
     location: show.location || show.city || '',
     description: `Contratante: ${show.contractorName || 'Não especificado'}\nTelefone: ${show.contractorPhone || 'N/A'}\nCachê Total: R$ ${show.totalCache || 0}\nStatus: ${show.status}\nObservações: ${show.notes || ''}`,
     start: {

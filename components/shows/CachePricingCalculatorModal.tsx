@@ -8,6 +8,7 @@ import {
 import { parseCurrencyInput } from '../../services/financeAggregator';
 import { useFinance } from '../../context/FinanceContext';
 import { ShowStatus } from '../../types';
+import { getLocalDateString } from '../../services/dateUtils';
 
 interface Props {
   isOpen: boolean;
@@ -111,7 +112,7 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
   const [eventDate, setEventDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
-    return d.toISOString().split('T')[0];
+    return getLocalDateString(d);
   });
   const [eventTime, setEventTime] = useState('20:00');
   const [paymentTerms, setPaymentTerms] = useState('50% na reserva via PIX e 50% após o show');

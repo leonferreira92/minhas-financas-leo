@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { CalendarModal } from './CalendarModal';
 import { parseCurrencyInput } from '../constants';
+import { getLocalDateString } from '../services/dateUtils';
 
 interface Props {
   onClose: () => void;
@@ -28,7 +29,7 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
   
   const [downPayment, setDownPayment] = useState('');
   const [installments, setInstallments] = useState('12');
-  const [firstDate, setFirstDate] = useState(new Date().toISOString().slice(0, 10));
+  const [firstDate, setFirstDate] = useState(() => getLocalDateString());
   
   const [installmentValue, setInstallmentValue] = useState('');
   const [isManualInstallment, setIsManualInstallment] = useState(false);
@@ -44,7 +45,7 @@ export const DebtForm: React.FC<Props> = ({ onClose }) => {
   }, [accounts]);
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateString();
     setIsRetroactive(firstDate < today);
   }, [firstDate]);
 
