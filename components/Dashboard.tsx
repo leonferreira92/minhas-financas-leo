@@ -16,6 +16,7 @@ import { BankImportModal } from './BankImportModal';
 import { ShowFormModal } from './shows/ShowFormModal';
 import { getAccountVinculo, getMonthlyCareerMetrics } from '../services/financeAggregator';
 import { getIcon } from '../constants';
+import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -46,7 +47,7 @@ export const Dashboard: React.FC = () => {
     activeScope === 'BUSINESS' ? 1 : 0
   );
 
-  const carouselRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.4 });
 
   // Modals state
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
@@ -275,7 +276,7 @@ export const Dashboard: React.FC = () => {
           <div 
             ref={carouselRef}
             onScroll={handleScrollCarousel}
-            className="overflow-x-auto no-scrollbar flex snap-x snap-mandatory gap-3 pb-1"
+            className="overflow-x-auto no-scrollbar flex snap-x snap-mandatory gap-3 pb-1 cursor-grab active:cursor-grabbing select-none"
           >
             {/* CARD 1 (VISÃO CONSOLIDADA / PESSOAL) */}
             <div 

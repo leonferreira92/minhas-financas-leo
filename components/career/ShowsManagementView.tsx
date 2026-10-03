@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getStatusConfig } from '../shows/types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
+import { useDraggableScroll } from '../../hooks/useDraggableScroll';
 
 interface Props {
   shows: Show[];
@@ -24,6 +25,8 @@ export const ShowsManagementView: React.FC<Props> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'cache_desc' | 'profit_desc'>('date_desc');
+
+  const filtersRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
@@ -46,7 +49,11 @@ export const ShowsManagementView: React.FC<Props> = ({
       .sort((a, b) => {
         if (sortBy === 'date_desc') return (b.date || '').localeCompare(a.date || '');
         if (sortBy === 'date_asc') return (a.date || '').localeCompare(b.date || '');
-        if (sortBy === 'cache_desc') return (b.totalCache || 0) - (a.totalCache || 0);
+        if (sortBy === 'cache_desc') {
+          const cacheA = a.totalCache || (a as any).cache || (a as any).price || 0;
+          const cacheB = b.totalCache || (b as any).cache || (b as any).price || 0;
+          return cacheB - cacheA;
+        }
         if (sortBy === 'profit_desc') {
           const profA = getShowFinancialSummary(a, transactions).netProfit;
           const profB = getShowFinancialSummary(b, transactions).netProfit;
@@ -103,7 +110,10 @@ export const ShowsManagementView: React.FC<Props> = ({
           />
         </div>
 
-        <div className="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+        <div 
+          ref={filtersRef}
+          className="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 cursor-grab active:cursor-grabbing select-none"
+        >
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}

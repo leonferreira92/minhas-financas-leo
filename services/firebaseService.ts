@@ -18,7 +18,7 @@ import {
   query,
   writeBatch
 } from 'firebase/firestore';
-import { Account, Transaction, Show, Category, Debt, Budget, AppSettings } from '../types';
+import { Account, Transaction, Show, ShowStatus, Category, Debt, Budget, AppSettings } from '../types';
 import { app, auth, db, googleProvider, firebaseConfig } from '../src/firebase/config';
 
 export { app, auth, db, googleProvider, firebaseConfig };
@@ -197,6 +197,84 @@ export const subscribeToUserTransactions = (
   }
 };
 
+// Helper para normalizar documentos de Shows vindos do Firestore ou Storage
+export function normalizeShowDoc(docId: string, raw: any): Show {
+  const data = raw || {};
+  
+  // Extração segura da data (garante YYYY-MM-DD sem undefined)
+  let dateStr = data.date || data.eventDate || data.data || '';
+  if (!dateStr || typeof dateStr !== 'string') {
+    if (data.createdAt && typeof data.createdAt === 'number') {
+      dateStr = new Date(data.createdAt).toISOString().slice(0, 10);
+    } else {
+      dateStr = new Date().toISOString().slice(0, 10);
+    }
+  } else if (dateStr.includes('T')) {
+    dateStr = dateStr.split('T')[0];
+  }
+
+  // Extração segura de cachê / valor contratado
+  const cacheVal = Number(
+    data.totalCache !== undefined && data.totalCache !== null
+      ? data.totalCache
+      : data.cache !== undefined && data.cache !== null
+      ? data.cache
+      : data.price !== undefined && data.price !== null
+      ? data.price
+      : data.cacheCombined !== undefined && data.cacheCombined !== null
+      ? data.cacheCombined
+      : data.amount !== undefined && data.amount !== null
+      ? data.amount
+      : 0
+  ) || 0;
+
+  // Extração segura de custos
+  const costsVal = Number(
+    data.costs !== undefined && data.costs !== null
+      ? data.costs
+      : data.totalCosts !== undefined && data.totalCosts !== null
+      ? data.totalCosts
+      : 0
+  ) || 0;
+
+  // Extração segura de status
+  let status: ShowStatus = data.status || 'Confirmado';
+  if ((status as any) === 'Agendado') {
+    status = 'Aguardando confirmação';
+  }
+
+  const contractor = (data.contractorName || data.name || data.title || 'Apresentação').trim();
+  const showName = (data.name || data.title || contractor).trim();
+
+  const showObj: Show & { cache?: number; price?: number; costs?: number } = {
+    ...data,
+    id: docId || data.id || `show_${Date.now()}`,
+    name: showName,
+    contractorName: contractor,
+    date: dateStr,
+    time: data.time || '20:00',
+    location: data.location || data.venue || '',
+    city: data.city || '',
+    totalCache: cacheVal,
+    cacheCombined: cacheVal,
+    cache: cacheVal,
+    price: cacheVal,
+    costs: costsVal,
+    extraAmount: Number(data.extraAmount) || 0,
+    status: status,
+    payments: Array.isArray(data.payments) ? data.payments : [],
+    expenseItems: Array.isArray(data.expenseItems) ? data.expenseItems : [],
+    crewMembers: Array.isArray(data.crewMembers) ? data.crewMembers : [],
+    logistics: Array.isArray(data.logistics) ? data.logistics : [],
+    otherExpenses: Array.isArray(data.otherExpenses) ? data.otherExpenses : [],
+    receipts: Array.isArray(data.receipts) ? data.receipts : [],
+    createdAt: Number(data.createdAt) || Date.now(),
+    scope: data.scope || 'BUSINESS'
+  };
+
+  return showObj;
+}
+
 // 3. Shows / Apresentações
 export const subscribeToUserShows = (
   userId: string, 
@@ -209,7 +287,7 @@ export const subscribeToUserShows = (
     return onSnapshot(q, (snapshot) => {
       const items: Show[] = [];
       snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as Show);
+        items.push(normalizeShowDoc(docSnap.id, docSnap.data()));
       });
       onData(items);
     }, (err) => {

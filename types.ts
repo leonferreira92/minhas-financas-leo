@@ -180,6 +180,35 @@ export interface Receipt {
 
 export type ShowStatus = 'Orçamento' | 'Aguardando confirmação' | 'Confirmado' | 'Realizado' | 'Cancelado' | 'Agendado';
 
+export interface ShowCrewItem {
+  id?: string;
+  memberId?: string; // ID do músico no cadastro geral se houver
+  name: string;
+  role: string;      // Bateria, Baixo, Teclado, Roadie, Técnico, etc.
+  cacheAmount: number;
+  status?: 'paid' | 'pending';
+  pixKey?: string;
+  notes?: string;
+}
+
+export interface ShowLogisticsItem {
+  id?: string;
+  type: 'uber' | 'car_km' | 'toll' | 'van' | 'fuel' | 'parking' | 'other';
+  description: string;
+  amount: number;
+  km?: number;
+  pricePerKm?: number;
+  status?: 'paid' | 'pending';
+}
+
+export interface ShowOtherExpenseItem {
+  id?: string;
+  category: string;  // Alimentação, Camarim, Aluguel de Equipamentos, Hospedagem, etc.
+  description: string;
+  amount: number;
+  status?: 'paid' | 'pending';
+}
+
 export interface Show {
   id: string;
   name: string;           // Nome do evento / Show
@@ -200,6 +229,9 @@ export interface Show {
   notes?: string;         // Observações
   status: ShowStatus;     // Status do show
   payments?: ShowPayment[]; // Lista de pagamentos/parcelas vinculados
+  crewMembers?: ShowCrewItem[]; // Tabela de Músicos & Equipe vinculados ao show
+  logistics?: ShowLogisticsItem[]; // Logística & Deslocamento associado a este show
+  otherExpenses?: ShowOtherExpenseItem[]; // Outras Despesas do Show (camarim, alimentação, aluguel de equipamentos)
   expenseItems?: ShowExpenseItem[]; // Lista detalhada de despesas vinculadas
   receipts?: Receipt[];   // Lista de recebimentos vinculados (compatibilidade com dados legados)
   expensesLaunched?: boolean; // Se já lançou despesas

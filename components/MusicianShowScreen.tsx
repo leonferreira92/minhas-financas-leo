@@ -24,6 +24,7 @@ import { GoogleCalendarSyncModal } from './shows/GoogleCalendarSyncModal';
 import { checkScheduleConflict } from './shows/conflictHelper';
 import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
 import { generateUUID } from '../services/uuidHelper';
+import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 export type CareerTab = 
   | 'performance' 
@@ -49,6 +50,7 @@ export const MusicianShowScreen: React.FC = () => {
 
   const initialTabParam = searchParams.get('tab') as CareerTab;
   const [activeTab, setActiveTab] = useState<CareerTab>(initialTabParam || 'performance');
+  const tabsScrollRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
 
   // Modals & Drawer state
   const [selectedShowId, setSelectedShowId] = useState<string | null>(null);
@@ -275,7 +277,10 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. BARRA DE NAVEGAÇÃO DE ABAS SUPERIORES LIMPAS (RESPONSIVA)              */}
       {/* ========================================================================= */}
-      <div className="overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
+      <div 
+        ref={tabsScrollRef}
+        className="overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 cursor-grab active:cursor-grabbing select-none"
+      >
         <div className="flex items-center space-x-2 border-b border-zinc-800/80 pb-2 min-w-max">
           {careerTabs.map(tab => {
             const Icon = tab.icon;

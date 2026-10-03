@@ -22,7 +22,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
   onOpenCreateShow
 }) => {
   const { isBlurred } = useFinance();
-  const [timeRange, setTimeRange] = useState<'3m' | '6m' | '12m' | 'year' | 'all'>('6m');
+  const [timeRange, setTimeRange] = useState<'all' | '3m' | '6m' | '12m'>('all');
   const [activeChartPoint, setActiveChartPoint] = useState<number | null>(null);
 
   const formatCurrency = (val: number) => {
@@ -36,7 +36,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
   // Generate Month list based on selected time range
   const monthsData = useMemo(() => {
-    const count = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : timeRange === '12m' ? 12 : timeRange === 'year' ? 12 : 12;
+    const count = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : 12;
     const list: { monthKey: string; label: string; year: number; month: number }[] = [];
 
     for (let i = count - 1; i >= 0; i--) {
@@ -53,25 +53,42 @@ export const PerformanceDashboard: React.FC<Props> = ({
   // Calculate monthly metrics for chart
   const chartSeries = useMemo(() => {
     return monthsData.map(m => {
-      const monthShows = shows.filter(s => s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
+      const monthShows = shows.filter(s => s && s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
       
-      // Receitas do Mês (Entradas Reais via transações de shows/música ou cachê contratado de shows realizados)
-      const incomeTxs = transactions.filter(t => {
-        if (!t.date || !t.date.startsWith(m.monthKey)) return false;
-        if (t.type !== 'income' || t.status !== 'paid') return false;
-        const desc = (t.description || '').toLowerCase();
-        if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
-        return t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId || desc.includes('cachê') || desc.includes('show');
-      });
-      const revenue = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      // Receitas do Mês a partir dos shows
+      let revenue = monthShows.reduce((sum, s) => {
+        const fin = getShowFinancialSummary(s, transactions);
+        const amt = fin.totalPredicted || s.totalCache || (s as any).cache || (s as any).price || 0;
+        return sum + amt;
+      }, 0);
 
-      // Despesas do Mês (Custos de equipe, equipamentos, combustível, marketing, etc.)
-      const expenseTxs = transactions.filter(t => {
-        if (!t.date || !t.date.startsWith(m.monthKey)) return false;
-        if (t.type !== 'expense' || t.status !== 'paid') return false;
-        return t.scope === 'BUSINESS' || !!t.showId || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_marketing';
-      });
-      const expenses = expenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      if (revenue === 0) {
+        const incomeTxs = transactions.filter(t => {
+          if (!t.date || !t.date.startsWith(m.monthKey)) return false;
+          if (t.type !== 'income' || t.status === 'cancelled') return false;
+          const desc = (t.description || '').toLowerCase();
+          if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
+          return t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId || desc.includes('cachê') || desc.includes('show');
+        });
+        revenue = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      }
+
+      // Despesas do Mês a partir dos shows
+      let expenses = monthShows.reduce((sum, s) => {
+        const fin = getShowFinancialSummary(s, transactions);
+        const cost = fin.totalExpenses || (s as any).costs || 0;
+        return sum + cost;
+      }, 0);
+
+      if (expenses === 0) {
+        const expenseTxs = transactions.filter(t => {
+          if (!t.date || !t.date.startsWith(m.monthKey)) return false;
+          if (t.type !== 'expense' || t.status === 'cancelled') return false;
+          return t.scope === 'BUSINESS' || !!t.showId || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_marketing';
+        });
+        expenses = expenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      }
+
       const profit = Math.round((revenue - expenses) * 100) / 100;
       const showsCount = monthShows.length;
 
@@ -86,56 +103,60 @@ export const PerformanceDashboard: React.FC<Props> = ({
     });
   }, [monthsData, shows, transactions]);
 
-  // Overall Global Career Performance Metrics
+  // Overall Global Career Performance Metrics (Reconciliado somando diretamente todos os shows válidos)
   const globalMetrics = useMemo(() => {
-    const validShows = shows.filter(s => s.status !== 'Cancelado');
+    const validShows = shows.filter(s => {
+      if (!s || s.status === 'Cancelado') return false;
+      if (timeRange === 'all') return true;
+      if (!s.date) return true;
+      if (monthsData.length > 0) {
+        const minMonth = monthsData[0].monthKey;
+        const maxMonth = monthsData[monthsData.length - 1].monthKey;
+        const showMonth = s.date.slice(0, 7);
+        return showMonth >= minMonth && showMonth <= maxMonth;
+      }
+      return true;
+    });
+
     const totalShowsCount = validShows.length;
     const completedShowsCount = validShows.filter(s => s.status === 'Realizado').length;
     const confirmedShowsCount = validShows.filter(s => s.status === 'Confirmado').length;
     const quotesShowsCount = validShows.filter(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação').length;
 
-    // Receita Total Bruta de Cachês
+    // Receita Total Bruta de Cachês (somando diretamente todos os shows válidos)
     const totalGrossRevenue = validShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalContracted;
+      const gross = fin.totalPredicted || s.totalCache || (s as any).cache || (s as any).price || 0;
+      return sum + gross;
     }, 0);
 
-    // Custos Totais da Música
-    const totalMusicExpenses = transactions
-      .filter(t => t.status === 'paid' && t.type === 'expense' && (
-        t.scope === 'BUSINESS' || 
-        !!t.showId || 
-        t.categoryId === 'cat_producao_shows' || 
-        t.categoryId === 'cat_equipamentos' || 
-        t.categoryId === 'cat_marketing'
-      ))
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    // Custos Totais da Música (somando diretamente todas as despesas/equipe/logística dos shows)
+    const totalMusicExpenses = validShows.reduce((sum, s) => {
+      const fin = getShowFinancialSummary(s, transactions);
+      const cost = fin.totalExpenses || (s as any).costs || 0;
+      return sum + cost;
+    }, 0);
 
     // Total Efetivamente Recebido em Caixa
-    const totalReceivedInCash = transactions
-      .filter(t => t.status === 'paid' && t.type === 'income' && (
-        t.scope === 'BUSINESS' || 
-        t.categoryId === 'cat_33' || 
-        !!t.showId
-      ))
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const totalReceivedInCash = validShows.reduce((sum, s) => {
+      const fin = getShowFinancialSummary(s, transactions);
+      return sum + fin.totalReceived;
+    }, 0);
 
-    // Lucro Líquido Real
+    // Lucro Líquido Real = Receita Bruta - Custos Totais
     const netRealProfit = totalGrossRevenue - totalMusicExpenses;
     const netCashProfit = totalReceivedInCash - totalMusicExpenses;
 
     // Margem de Lucro Real (%)
     const profitMargin = totalGrossRevenue > 0 ? (netRealProfit / totalGrossRevenue) * 100 : 0;
 
-    // Ticket Médio por Show (Receita Média e Lucro Médio)
+    // Ticket Médio por Show
     const averageTicketPerShow = totalShowsCount > 0 ? totalGrossRevenue / totalShowsCount : 0;
     const averageProfitPerShow = totalShowsCount > 0 ? netRealProfit / totalShowsCount : 0;
 
-    // Média de Lucro Mensal (com base nos meses do período analisado)
-    const activeMonthsWithActivity = chartSeries.filter(m => m.revenue > 0 || m.showsCount > 0);
-    const monthsDivisor = Math.max(1, activeMonthsWithActivity.length || chartSeries.length);
-    const totalPeriodProfit = chartSeries.reduce((s, m) => s + m.profit, 0);
-    const averageMonthlyProfit = totalPeriodProfit / monthsDivisor;
+    // Média de Lucro Mensal
+    const monthsDivisor = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : timeRange === '12m' ? 12 : Math.max(1, chartSeries.length || 1);
+    const averageMonthlyProfit = netRealProfit / monthsDivisor;
 
     return {
       totalShowsCount,
@@ -152,7 +173,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       averageProfitPerShow,
       averageMonthlyProfit
     };
-  }, [shows, transactions, chartSeries]);
+  }, [shows, transactions, timeRange, monthsData, chartSeries]);
 
   // Breakdown by Event Type
   const eventTypesBreakdown = useMemo(() => {
@@ -219,7 +240,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center space-x-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 self-start sm:self-auto">
-          {(['3m', '6m', '12m'] as const).map(range => (
+          {(['all', '3m', '6m', '12m'] as const).map(range => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
@@ -229,7 +250,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              {range === '3m' ? '3 Meses' : range === '6m' ? '6 Meses' : '12 Meses'}
+              {range === 'all' ? 'Geral (Todos)' : range === '3m' ? '3 Meses' : range === '6m' ? '6 Meses' : '12 Meses'}
             </button>
           ))}
         </div>

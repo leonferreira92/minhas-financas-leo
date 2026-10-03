@@ -2,6 +2,7 @@ import React from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { ActiveScopeFilter } from '../types';
 import { RefreshCw, User, Music } from 'lucide-react';
+import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 interface Props {
   className?: string;
@@ -11,6 +12,7 @@ interface Props {
 
 export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fullWidth = false }) => {
   const { activeScope, setActiveScope } = useFinance();
+  const scrollRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
 
   const options: { id: ActiveScopeFilter; label: string; icon: React.ReactNode; activeClass: string }[] = [
     { 
@@ -34,9 +36,12 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fu
   ];
 
   return (
-    <div className={`p-1 bg-[#18181b] rounded-2xl border border-zinc-800/80 shadow-xs ${
-      fullWidth ? 'w-full grid grid-cols-3 gap-1' : 'inline-flex items-center space-x-0.5 max-w-full overflow-x-auto no-scrollbar'
-    } ${className}`}>
+    <div 
+      ref={!fullWidth ? scrollRef : undefined}
+      className={`p-1 bg-[#18181b] rounded-2xl border border-zinc-800/80 shadow-xs ${
+        fullWidth ? 'w-full grid grid-cols-3 gap-1' : 'inline-flex items-center space-x-0.5 max-w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none'
+      } ${className}`}
+    >
       {options.map((opt) => {
         const isActive = activeScope === opt.id;
         return (

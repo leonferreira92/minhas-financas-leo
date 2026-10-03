@@ -14,6 +14,7 @@ import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
 import { ScopeSelector } from './ScopeSelector';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
+import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 
@@ -30,6 +31,12 @@ export const ExtratoScreen: React.FC = () => {
     deleteTransaction,
     getAccountBalance
   } = useFinance();
+
+  // Drag-to-scroll refs for all carousels
+  const summaryCarouselRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.4 });
+  const quickActionsRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
+  const monthsRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
+  const statusPillsRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
 
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -250,7 +257,10 @@ export const ExtratoScreen: React.FC = () => {
       {/* 1. CARROSSEL DESLIZÁVEL NO TOPO DO EXTRATO (3 CARDS)                      */}
       {/* ========================================================================= */}
       <div className="relative">
-        <div className="overflow-x-auto no-scrollbar flex snap-x snap-mandatory gap-3 -mx-3.5 px-3.5 sm:mx-0 sm:px-0">
+        <div 
+          ref={summaryCarouselRef}
+          className="overflow-x-auto no-scrollbar flex snap-x snap-mandatory gap-3 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 cursor-grab active:cursor-grabbing select-none"
+        >
           
           {/* CARD 1: SALDO ATUAL / REALIZADO */}
           <div 
@@ -357,7 +367,10 @@ export const ExtratoScreen: React.FC = () => {
       {/* ========================================================================= */}
       {/* 2. AÇÕES RÁPIDAS DO EXTRATO (BOTÕES EM PÍLULA)                            */}
       {/* ========================================================================= */}
-      <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1">
+      <div 
+        ref={quickActionsRef}
+        className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1 cursor-grab active:cursor-grabbing select-none"
+      >
         <button
           onClick={() => { setEditingTransaction(null); setIsFormOpen(true); }}
           className="px-3.5 py-2 rounded-2xl bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] font-black text-xs transition active:scale-95 shadow-md flex items-center space-x-1.5 shrink-0 border border-blue-500/40"
@@ -441,7 +454,10 @@ export const ExtratoScreen: React.FC = () => {
       {/* ========================================================================= */}
       
       {/* Seletor Horizontal de Meses */}
-      <div className="overflow-x-auto no-scrollbar flex items-center space-x-1.5 py-1 border-b border-zinc-800/80 pb-2.5">
+      <div 
+        ref={monthsRef}
+        className="overflow-x-auto no-scrollbar flex items-center space-x-1.5 py-1 border-b border-zinc-800/80 pb-2.5 cursor-grab active:cursor-grabbing select-none"
+      >
         {monthList.map(item => {
           const isSelected = !isFutureOnly && selectedMonth === item.value;
           return (
@@ -479,7 +495,10 @@ export const ExtratoScreen: React.FC = () => {
       </div>
 
       {/* Pílulas de Seleção de Tipo / Status */}
-      <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
+      <div 
+        ref={statusPillsRef}
+        className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none"
+      >
         {[
           { id: 'all', label: 'Tudo' },
           { id: 'paid', label: 'Realizado / Efetivado' },

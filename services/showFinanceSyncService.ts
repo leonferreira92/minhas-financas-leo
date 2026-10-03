@@ -272,7 +272,71 @@ export function getShowFinancialSummary(show: Show | null | undefined, transacti
         }
       });
     }
+    // Processa também arrays estruturados vinculados ao show (Equipe, Logística, Outras Despesas)
+    if (Array.isArray(show.crewMembers)) {
+      show.crewMembers.forEach(c => {
+        if (!c) return;
+        const amt = Number(c.cacheAmount) || 0;
+        if (c.status === 'paid') {
+          paidExpenses += amt;
+        } else {
+          pendingExpenses += amt;
+        }
+      });
+    }
+
+    if (Array.isArray(show.logistics)) {
+      show.logistics.forEach(l => {
+        if (!l) return;
+        const amt = Number(l.amount) || 0;
+        if (l.status === 'paid') {
+          paidExpenses += amt;
+        } else {
+          pendingExpenses += amt;
+        }
+      });
+    }
+
+    if (Array.isArray(show.otherExpenses)) {
+      show.otherExpenses.forEach(o => {
+        if (!o) return;
+        const amt = Number(o.amount) || 0;
+        if (o.status === 'paid') {
+          paidExpenses += amt;
+        } else {
+          pendingExpenses += amt;
+        }
+      });
+    }
   } else {
+    // Sem transações de ledger, soma diretamente dos arrays do show
+    if (Array.isArray(show.crewMembers)) {
+      show.crewMembers.forEach(c => {
+        if (!c) return;
+        const amt = Number(c.cacheAmount) || 0;
+        if (c.status === 'paid') paidExpenses += amt;
+        else pendingExpenses += amt;
+      });
+    }
+
+    if (Array.isArray(show.logistics)) {
+      show.logistics.forEach(l => {
+        if (!l) return;
+        const amt = Number(l.amount) || 0;
+        if (l.status === 'paid') paidExpenses += amt;
+        else pendingExpenses += amt;
+      });
+    }
+
+    if (Array.isArray(show.otherExpenses)) {
+      show.otherExpenses.forEach(o => {
+        if (!o) return;
+        const amt = Number(o.amount) || 0;
+        if (o.status === 'paid') paidExpenses += amt;
+        else pendingExpenses += amt;
+      });
+    }
+
     if (Array.isArray(show.expenseItems) && show.expenseItems.length > 0) {
       show.expenseItems.forEach(e => {
         if (!e) return;

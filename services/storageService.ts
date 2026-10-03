@@ -158,7 +158,48 @@ export const StorageService = {
   getShows: (): Show[] => {
     try {
       const data = safeGetItem(KEYS.SHOWS);
-      return data ? JSON.parse(data) : [];
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((s: any) => {
+        const id = s.id || `show_${Date.now()}`;
+        let dateStr = s.date || s.eventDate || s.data || '';
+        if (!dateStr || typeof dateStr !== 'string') {
+          dateStr = s.createdAt ? new Date(s.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+        } else if (dateStr.includes('T')) {
+          dateStr = dateStr.split('T')[0];
+        }
+        const cacheVal = Number(s.totalCache ?? s.cache ?? s.price ?? s.cacheCombined ?? s.amount ?? 0) || 0;
+        const costsVal = Number(s.costs ?? s.totalCosts ?? 0) || 0;
+        const contractor = (s.contractorName || s.name || s.title || 'Apresentação').trim();
+        const showName = (s.name || s.title || contractor).trim();
+
+        return {
+          ...s,
+          id,
+          name: showName,
+          contractorName: contractor,
+          date: dateStr,
+          time: s.time || '20:00',
+          location: s.location || s.venue || '',
+          city: s.city || '',
+          totalCache: cacheVal,
+          cacheCombined: cacheVal,
+          cache: cacheVal,
+          price: cacheVal,
+          costs: costsVal,
+          extraAmount: Number(s.extraAmount) || 0,
+          status: s.status || 'Confirmado',
+          payments: Array.isArray(s.payments) ? s.payments : [],
+          expenseItems: Array.isArray(s.expenseItems) ? s.expenseItems : [],
+          crewMembers: Array.isArray(s.crewMembers) ? s.crewMembers : [],
+          logistics: Array.isArray(s.logistics) ? s.logistics : [],
+          otherExpenses: Array.isArray(s.otherExpenses) ? s.otherExpenses : [],
+          receipts: Array.isArray(s.receipts) ? s.receipts : [],
+          createdAt: Number(s.createdAt) || Date.now(),
+          scope: s.scope || 'BUSINESS'
+        } as Show;
+      });
     } catch {
       return [];
     }

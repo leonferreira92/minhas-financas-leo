@@ -94,13 +94,19 @@ export const ShowCalendarView: React.FC<Props> = ({
     return days;
   }, [year, month]);
 
-  // Shows mapped by date
+  // Shows mapped by date (com tratamento de data super seguro)
   const showsByDate = useMemo(() => {
     const map: Record<string, Show[]> = {};
     shows.forEach(s => {
-      if (!s.date) return;
-      if (!map[s.date]) map[s.date] = [];
-      map[s.date].push(s);
+      if (!s) return;
+      let d = s.date;
+      if (!d || typeof d !== 'string') {
+        d = s.createdAt ? new Date(s.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+      } else if (d.includes('T')) {
+        d = d.split('T')[0];
+      }
+      if (!map[d]) map[d] = [];
+      map[d].push(s);
     });
     return map;
   }, [shows]);
