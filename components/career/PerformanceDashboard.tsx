@@ -52,18 +52,20 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
   // Calculate monthly metrics for chart
   const chartSeries = useMemo(() => {
+    const safeShows = Array.isArray(shows) ? shows : [];
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
     return monthsData.map(m => {
-      const monthShows = shows.filter(s => s && s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
+      const monthShows = safeShows.filter(s => s && s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
       
       // Receitas do Mês a partir dos shows
       let revenue = monthShows.reduce((sum, s) => {
-        const fin = getShowFinancialSummary(s, transactions);
+        const fin = getShowFinancialSummary(s, safeTransactions);
         const amt = fin.totalPredicted || s.totalCache || (s as any).cache || (s as any).price || 0;
         return sum + amt;
       }, 0);
 
       if (revenue === 0) {
-        const incomeTxs = transactions.filter(t => {
+        const incomeTxs = safeTransactions.filter(t => {
           if (!t.date || !t.date.startsWith(m.monthKey)) return false;
           if (t.type !== 'income' || t.status === 'cancelled') return false;
           const desc = (t.description || '').toLowerCase();
@@ -74,7 +76,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       }
 
       // Despesas do Mês: Soma TODAS as transações marcadas com escopo Músico/Carreira ('scope: BUSINESS' ou categorias de música/equipamentos), mais despesas de shows não vinculadas
-      const monthBusinessExpenseTxs = transactions.filter(t => {
+      const monthBusinessExpenseTxs = safeTransactions.filter(t => {
         if (!t.date || !t.date.startsWith(m.monthKey)) return false;
         if (t.type !== 'expense' || t.status === 'cancelled') return false;
         return t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_marketing' || !!t.showId;
@@ -111,7 +113,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
   // Overall Global Career Performance Metrics (Reconciliado somando diretamente todos os shows válidos)
   const globalMetrics = useMemo(() => {
-    const validShows = shows.filter(s => {
+    const safeShows = Array.isArray(shows) ? shows : [];
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
+    const validShows = safeShows.filter(s => {
       if (!s || s.status === 'Cancelado') return false;
       if (timeRange === 'all') return true;
       if (!s.date) return true;
@@ -125,19 +129,19 @@ export const PerformanceDashboard: React.FC<Props> = ({
     });
 
     const totalShowsCount = validShows.length;
-    const completedShowsCount = validShows.filter(s => s.status === 'Realizado').length;
-    const confirmedShowsCount = validShows.filter(s => s.status === 'Confirmado').length;
-    const quotesShowsCount = validShows.filter(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação').length;
+    const completedShowsCount = validShows.filter(s => s && s.status === 'Realizado').length;
+    const confirmedShowsCount = validShows.filter(s => s && s.status === 'Confirmado').length;
+    const quotesShowsCount = validShows.filter(s => s && (s.status === 'Orçamento' || s.status === 'Aguardando confirmação')).length;
 
     // Receita Total Bruta de Cachês (somando diretamente todos os shows válidos)
     const totalGrossRevenue = validShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
+      const fin = getShowFinancialSummary(s, safeTransactions);
       const gross = fin.totalPredicted || s.totalCache || (s as any).cache || (s as any).price || 0;
       return sum + gross;
     }, 0);
 
     // Custos Totais da Música (somando TODAS as despesas com escopo BUSINESS no período, com ou sem showId)
-    const periodBusinessExpenseTxs = transactions.filter(t => {
+    const periodBusinessExpenseTxs = safeTransactions.filter(t => {
       if (!t.date) return false;
       if (t.type !== 'expense' || t.status === 'cancelled') return false;
       if (timeRange !== 'all' && monthsData.length > 0) {

@@ -16,15 +16,16 @@ export const CareerLifeDiagnostic: React.FC = () => {
     let totalRevenueShows = 0;
     let logisticExpenses = 0;
 
-    shows.forEach(s => {
+    const safeShows = Array.isArray(shows) ? shows : [];
+    safeShows.forEach(s => {
       if (s.status === 'Cancelado') return;
       const fin = getShowFinancialSummary(s);
       totalGrossCache += fin.totalPredicted;
       totalShowExpenses += fin.totalExpenses;
       totalRevenueShows += fin.totalPredicted;
 
-      if (s.expenses) {
-        logisticExpenses += (Number(s.expenses.fuel) || 0) + (Number(s.expenses.toll) || 0) + (Number(s.expenses.commission) || 0);
+      if (s?.expenses && typeof s.expenses === 'object' && !Array.isArray(s.expenses)) {
+        logisticExpenses += (Number((s.expenses as any).fuel) || 0) + (Number((s.expenses as any).toll) || 0) + (Number((s.expenses as any).commission) || 0);
       }
       if (Array.isArray(s.expenseItems)) {
         s.expenseItems.forEach(item => {

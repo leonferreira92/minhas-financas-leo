@@ -43,7 +43,8 @@ export const ShowTargetSection: React.FC = () => {
   // ---------------------------------------------------------------------------
   const metrics = useMemo(() => {
     // 1. Filtrar eventos válidos (exclui cancelados)
-    const validShows = shows.filter(s => s.status !== 'Cancelado');
+    const safeShows = Array.isArray(shows) ? shows : [];
+    const validShows = safeShows.filter(s => s && s.status !== 'Cancelado');
     const totalShowsCount = validShows.length;
 
     // Calcular faturamento bruto, custos totais e lucro líquido de cada show

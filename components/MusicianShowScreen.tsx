@@ -48,6 +48,8 @@ export const MusicianShowScreen: React.FC = () => {
     addTransaction 
   } = useFinance();
 
+  const safeShows = useMemo(() => Array.isArray(shows) ? shows : [], [shows]);
+
   const initialTabParam = searchParams.get('tab') as CareerTab;
   const [activeTab, setActiveTab] = useState<CareerTab>(initialTabParam || 'performance');
   const tabsScrollRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
@@ -85,37 +87,37 @@ export const MusicianShowScreen: React.FC = () => {
   // Selected Show
   const selectedShowForDetail = useMemo(() => {
     if (!selectedShowId) return null;
-    return shows.find(s => s.id === selectedShowId) || null;
-  }, [shows, selectedShowId]);
+    return safeShows.find(s => s.id === selectedShowId) || null;
+  }, [safeShows, selectedShowId]);
 
   // Compute smart alerts
   const smartAlerts = useMemo(() => {
-    return generateShowSmartAlerts(shows);
-  }, [shows]);
+    return generateShowSmartAlerts(safeShows);
+  }, [safeShows]);
 
   // Pending quotes count
   const pendingQuotesCount = useMemo(() => {
-    return shows.filter(
+    return safeShows.filter(
       s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado'
     ).length;
-  }, [shows]);
+  }, [safeShows]);
 
-  const handleOpenCreateModal = useCallback((date?: string, status: ShowStatus = 'Confirmado', venueData?: { location?: string; city?: string; totalCache?: number }) => {
+  const handleOpenCreateModal = (date?: string, status: ShowStatus = 'Confirmado', venueData?: { location?: string; city?: string; totalCache?: number }) => {
     setShowToEdit(null);
     setPrefilledDateForNewShow(date);
     setInitialStatusForNewShow(status);
     setPrefilledVenueData(venueData);
     setIsFormModalOpen(true);
-  }, []);
+  };
 
-  const handleOpenEditModal = useCallback((show: Show) => {
+  const handleOpenEditModal = (show: Show) => {
     setSelectedShowId(null);
     setShowToEdit(show);
     setPrefilledVenueData(undefined);
     setIsFormModalOpen(true);
-  }, []);
+  };
 
-  const handleSaveShow = useCallback((showData: Partial<Show>, initialDepositTx?: any) => {
+  const handleSaveShow = (showData: Partial<Show>, initialDepositTx?: any) => {
     if (showToEdit) {
       updateShow({
         ...showToEdit,
@@ -153,17 +155,17 @@ export const MusicianShowScreen: React.FC = () => {
         });
       }
     }
-  }, [showToEdit, updateShow, addShow, addTransaction]);
+  };
 
-  const handleQuickUpdateStatus = useCallback((show: Show, newStatus: ShowStatus) => {
+  const handleQuickUpdateStatus = (show: Show, newStatus: ShowStatus) => {
     updateShow({
       ...show,
       status: newStatus
     });
-  }, [updateShow]);
+  };
 
-  const handleConfirmQuote = useCallback((show: Show) => {
-    const conflict = checkScheduleConflict(shows, show.date, show.time, show.endTime, show.id);
+  const handleConfirmQuote = (show: Show) => {
+    const conflict = checkScheduleConflict(safeShows, show.date, show.time, show.endTime, show.id);
     if (conflict.hasConflict) {
       setSelectedShowId(show.id);
     } else {
@@ -172,13 +174,13 @@ export const MusicianShowScreen: React.FC = () => {
         status: 'Confirmado'
       });
     }
-  }, [shows, updateShow]);
+  };
 
-  const handleAlertClick = useCallback((alert: ShowSmartAlert) => {
+  const handleAlertClick = (alert: ShowSmartAlert) => {
     if (alert.showId) {
       setSelectedShowId(alert.showId);
     }
-  }, []);
+  };
 
   // 8 ABAS DO MÓDULO EMPRESA / MÚSICO DEDICADO
   const careerTabs: { id: CareerTab; label: string; icon: any; badge?: number; badgeColor?: string }[] = [
@@ -321,7 +323,7 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ABA 1: PERFORMANCE DASHBOARD */}
       {activeTab === 'performance' && (
         <PerformanceDashboard
-          shows={shows}
+          shows={safeShows}
           transactions={transactions}
           onSelectShow={show => setSelectedShowId(show.id)}
           onOpenCreateShow={() => handleOpenCreateModal(undefined, 'Confirmado')}
@@ -331,7 +333,7 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ABA 2: CALENDÁRIO COM GAVETA LATERAL (DRAWER) */}
       {activeTab === 'agenda' && (
         <CalendarWithDrawer
-          shows={shows}
+          shows={safeShows}
           onSelectShow={show => setSelectedShowId(show.id)}
           onOpenCreateShow={date => handleOpenCreateModal(date, 'Confirmado')}
         />
@@ -340,7 +342,7 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ABA 3: GESTÃO DETALHADA DE SHOWS & FICHAS */}
       {activeTab === 'shows' && (
         <ShowsManagementView
-          shows={shows}
+          shows={safeShows}
           onSelectShow={show => setSelectedShowId(show.id)}
           onOpenCreateShow={status => handleOpenCreateModal(undefined, status || 'Confirmado')}
         />
@@ -349,7 +351,7 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ABA 4: LOCOMOÇÃO (UBER, COMBUSTÍVEL & KM RODADO) */}
       {activeTab === 'locomocao' && (
         <LocomotionModuleView
-          shows={shows}
+          shows={safeShows}
           onOpenCreateShow={() => handleOpenCreateModal(undefined, 'Confirmado')}
         />
       )}
@@ -357,7 +359,7 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ABA 5: CUSTOS DA MÚSICA & EQUIPAMENTOS */}
       {activeTab === 'custos' && (
         <GearAndCostsView
-          shows={shows}
+          shows={safeShows}
         />
       )}
 
@@ -382,7 +384,7 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ABA 8: ORÇAMENTOS & COTAÇÕES */}
       {activeTab === 'orcamentos' && (
         <ShowQuotesView
-          shows={shows}
+          shows={safeShows}
           onSelectShow={show => setSelectedShowId(show.id)}
           onConfirmQuote={handleConfirmQuote}
           onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Orçamento')}
@@ -421,7 +423,7 @@ export const MusicianShowScreen: React.FC = () => {
         }}
         onSave={handleSaveShow}
         existingShow={showToEdit}
-        existingShows={shows}
+        existingShows={safeShows}
         prefilledDate={prefilledDateForNewShow}
         initialStatus={initialStatusForNewShow}
       />
@@ -446,7 +448,7 @@ export const MusicianShowScreen: React.FC = () => {
       <GoogleCalendarSyncModal
         isOpen={isGoogleCalendarOpen}
         onClose={() => setIsGoogleCalendarOpen(false)}
-        shows={shows}
+        shows={safeShows}
         onUpdateShow={updateShow}
       />
 

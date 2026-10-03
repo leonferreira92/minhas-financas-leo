@@ -25,7 +25,8 @@ export const ShowHistoryView: React.FC<Props> = ({
 
   // Filter shows that are finished, cancelled, or passed
   const historyShows = useMemo(() => {
-    return shows
+    const safeShows = Array.isArray(shows) ? shows : [];
+    return safeShows
       .filter(s => {
         const isHistoricalStatus = s.status === 'Realizado' || s.status === 'Cancelado';
         const isPastDate = s.date < todayStr;

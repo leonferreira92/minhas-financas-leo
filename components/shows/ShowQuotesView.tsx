@@ -21,9 +21,10 @@ export const ShowQuotesView: React.FC<Props> = ({
 }) => {
   // Filter for unconfirmed quotes/opportunities
   const quotes = useMemo(() => {
-    return shows
-      .filter(s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado')
-      .sort((a, b) => a.date.localeCompare(b.date));
+    const safeShows = Array.isArray(shows) ? shows : [];
+    return safeShows
+      .filter(s => s && (s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado'))
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   }, [shows]);
 
   const formatCurrency = (val?: number | string | null) => {

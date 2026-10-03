@@ -26,7 +26,8 @@ export const UpcomingShowsList: React.FC<Props> = ({
   // Filter shows: future or today date, and status === 'Confirmado'
   // Sort strictly cronologically: date ASC, then time ASC
   const upcomingConfirmedShows = useMemo(() => {
-    return shows
+    const safeShows = Array.isArray(shows) ? shows : [];
+    return safeShows
       .filter(s => {
         const isConfirmed = s.status === 'Confirmado';
         const isFutureOrToday = (s.date || '') >= todayStr;

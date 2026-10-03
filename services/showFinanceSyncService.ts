@@ -566,8 +566,10 @@ export function syncShowWithTransactions(
             type: 'expense',
             scope: 'BUSINESS',
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: m.id,
-            categoryId: catId
+            categoryId: catId,
+            category: catId
           };
         } else {
           const newTxId = generateUUID();
@@ -581,9 +583,11 @@ export function syncShowWithTransactions(
             status: itemStatus,
             description: itemDesc,
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: m.id,
             scope: 'BUSINESS',
             categoryId: catId,
+            category: catId,
             accountId: updatedShow.expenseAccountId || 'acc_bank',
             createdAt: Date.now()
           });
@@ -625,8 +629,10 @@ export function syncShowWithTransactions(
             type: 'expense',
             scope: 'BUSINESS',
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: l.id,
-            categoryId: catId
+            categoryId: catId,
+            category: catId
           };
         } else {
           const newTxId = generateUUID();
@@ -640,9 +646,11 @@ export function syncShowWithTransactions(
             status: itemStatus,
             description: itemDesc,
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: l.id,
             scope: 'BUSINESS',
             categoryId: catId,
+            category: catId,
             accountId: updatedShow.expenseAccountId || 'acc_bank',
             createdAt: Date.now()
           });
@@ -684,8 +692,10 @@ export function syncShowWithTransactions(
             type: 'expense',
             scope: 'BUSINESS',
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: o.id,
-            categoryId: catId
+            categoryId: catId,
+            category: catId
           };
         } else {
           const newTxId = generateUUID();
@@ -699,9 +709,11 @@ export function syncShowWithTransactions(
             status: itemStatus,
             description: itemDesc,
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: o.id,
             scope: 'BUSINESS',
             categoryId: catId,
+            category: catId,
             accountId: updatedShow.expenseAccountId || 'acc_bank',
             createdAt: Date.now()
           });
@@ -743,8 +755,10 @@ export function syncShowWithTransactions(
             type: 'expense',
             scope: 'BUSINESS',
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: e.id,
-            categoryId: catId
+            categoryId: catId,
+            category: catId
           };
         } else {
           const newTxId = generateUUID();
@@ -758,9 +772,11 @@ export function syncShowWithTransactions(
             status: itemStatus,
             description: itemDesc,
             showId: updatedShow.id,
+            showName: showTitle,
             showExpenseId: e.id,
             scope: 'BUSINESS',
             categoryId: catId,
+            category: catId,
             accountId: e.accountId || updatedShow.expenseAccountId || 'acc_bank',
             createdAt: Date.now()
           });

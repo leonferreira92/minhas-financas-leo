@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { ExtratoScreen } from './components/ExtratoScreen';
 import { MusicianShowScreen } from './components/MusicianShowScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { DebtsScreen } from './components/DebtsScreen';
 import { ExpenseAnalysisScreen } from './components/ExpenseAnalysisScreen';
 import { AccountsScreen } from './components/AccountsScreen';
@@ -35,7 +36,11 @@ const AppContent = () => {
         <Route path="/transactions" element={<ExtratoScreen />} />
         
         {/* 3. Shows */}
-        <Route path="/shows" element={<MusicianShowScreen />} />
+        <Route path="/shows" element={
+          <ErrorBoundary>
+            <MusicianShowScreen />
+          </ErrorBoundary>
+        } />
         
         {/* 4. Dívidas */}
         <Route path="/dividas" element={<DebtsScreen />} />

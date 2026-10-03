@@ -34,7 +34,8 @@ export const ShowsManagementView: React.FC<Props> = ({
   };
 
   const filteredShows = useMemo(() => {
-    return shows
+    const safeShows = Array.isArray(shows) ? shows : [];
+    return safeShows
       .filter(s => {
         const matchSearch = searchTerm === '' ||
           (s.contractorName && s.contractorName.toLowerCase().includes(searchTerm.toLowerCase())) ||

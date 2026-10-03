@@ -55,6 +55,7 @@ export interface Transaction {
   amount: number;
   type: TransactionType;
   categoryId: string;
+  category?: string; // Para compatibilidade com base legada
   description: string;
   status: TransactionStatus;
   createdAt: number;
@@ -70,6 +71,7 @@ export interface Transaction {
   interest?: number; // Valor excedente pago considerado como juros
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   showId?: string; // ID do Show vinculado
+  showName?: string; // Nome/Contratante do Show vinculado (para fins de exibição no extrato)
   showPaymentId?: string; // ID do pagamento vinculado do show
   showPaymentType?: ShowPaymentType; // Natureza da parcela: Sinal | Parcela | Restante | Extra | Bônus
   showExpenseId?: string; // ID da despesa vinculada do show

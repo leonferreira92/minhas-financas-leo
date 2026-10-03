@@ -97,7 +97,8 @@ export const ShowCalendarView: React.FC<Props> = ({
   // Shows mapped by date (com tratamento de data super seguro)
   const showsByDate = useMemo(() => {
     const map: Record<string, Show[]> = {};
-    shows.forEach(s => {
+    const safeShows = Array.isArray(shows) ? shows : [];
+    safeShows.forEach(s => {
       if (!s) return;
       let d = s.date;
       if (!d || typeof d !== 'string') {
