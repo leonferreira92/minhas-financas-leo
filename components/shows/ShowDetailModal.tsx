@@ -77,6 +77,14 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [payDate, setPayDate] = useState(() => getLocalDateString());
   const [payAccountId, setPayAccountId] = useState(() => getDefaultAccountForScope('BUSINESS'));
 
+  // Adição explícita de Hora Extra / Gorjeta inline
+  const [isAddExtraOpen, setIsAddExtraOpen] = useState(false);
+  const [extraValInput, setExtraValInput] = useState('');
+  const [extraDescInput, setExtraDescInput] = useState('');
+  const [extraStatusInput, setExtraStatusInput] = useState<'Recebido' | 'Agendado'>('Recebido');
+  const [extraDateInput, setExtraDateInput] = useState(() => getLocalDateString());
+  const [extraAccountIdInput, setExtraAccountIdInput] = useState(() => getDefaultAccountForScope('BUSINESS'));
+
   // Adição de equipe inline
   const [isAddCrewOpen, setIsAddCrewOpen] = useState(false);
   const [selectedCrewId, setSelectedCrewId] = useState('');
@@ -199,20 +207,24 @@ export const ShowDetailModal: React.FC<Props> = ({
   const statusCfg = getStatusConfig(show.status);
 
   // =========================================================================
-  // CÁLCULO INSTANTÂNEO DE MÉTRICAS FINANCEIRAS DO SHOW
+  // CÁLCULO INSTANTÂNEO DE MÉTRICAS FINANCEIRAS DO SHOW (REGRA DE SOBRESCRITA & EXTRAS)
   // =========================================================================
-  const grossCache = Number(show.totalCache ?? show.cacheCombined) || 0;
+  const finSummary = useMemo(() => {
+    return getShowFinancialSummary(show, transactions);
+  }, [show, transactions]);
 
-  // 1. Recebimentos
-  const totalReceived = linkedIncomeTransactions
-    .filter(t => t.status === 'paid')
-    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0) +
-    (show.payments || [])
-      .filter(p => p.status === 'Recebido' && !linkedIncomeTransactions.some(t => t.id === p.transactionId))
-      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  // Cachê Base Contratado
+  const baseCache = finSummary.baseContracted ?? (Number(show.totalCache ?? show.cacheCombined) || 0);
+  // Extras (Hora Extra, Gorjeta)
+  const extraVal = finSummary.extraContracted ?? finSummary.extraAmount ?? (Number(show.extraAmount) || 0);
+  // O valor total do show deve ser exclusivamente: [Cachê Base Contratado] + [Extras / Hora Extra / Gorjeta]
+  const totalShowValue = finSummary.totalPredicted ?? (baseCache + extraVal);
+  const grossCache = totalShowValue;
 
-  const remainingToReceive = Math.max(0, grossCache - totalReceived);
-  const percentReceived = grossCache > 0 ? Math.min(100, Math.round((totalReceived / grossCache) * 100)) : 100;
+  // Recebimentos no Caixa (Regra de Sobrescrita: transação vinculada define/sobrescreve, nunca soma em duplicidade)
+  const totalReceived = finSummary.totalReceived;
+  const remainingToReceive = finSummary.totalPending;
+  const percentReceived = finSummary.percentReceived;
 
   // Normalização e Agrupamento de Custos Diretos com Compatibilidade Multichaves / Aliases
   const normalizedCostBlocks = useMemo(() => {
@@ -305,6 +317,28 @@ export const ShowDetailModal: React.FC<Props> = ({
         });
       }
     });
+
+    // 4.5. Processar transações avulsas de despesa do livro-razão vinculadas ao show (sem showExpenseId)
+    if (linkedExpenseTransactions && linkedExpenseTransactions.length > 0) {
+      linkedExpenseTransactions.forEach(t => {
+        if (!t) return;
+        const isAssociated = crewItems.some(c => c.id === t.showExpenseId) ||
+                             logisticsItems.some(l => l.id === t.showExpenseId) ||
+                             otherItems.some(o => o.id === t.showExpenseId);
+        
+        if (!isAssociated && !t.showExpenseId) {
+          otherItems.push({
+            id: t.id,
+            category: 'Outros Custos',
+            description: t.description || 'Despesa Avulsa',
+            amount: Number(t.amount) || 0,
+            status: t.status === 'paid' ? 'paid' : 'pending',
+            origType: 'other',
+            origIndex: -2
+          });
+        }
+      });
+    }
 
     // 5. Objeto de despesas legadas (fuel, toll, food, commission, others)
     if (show.expenses) {
@@ -662,10 +696,70 @@ export const ShowDetailModal: React.FC<Props> = ({
       transactionId: txId
     }];
 
-    updateShow({ ...show, payments: updatedPayments });
+    const extraTotal = updatedPayments.filter(p => p.type === 'Extra' || p.type === 'Bônus').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+    updateShow({ 
+      ...show, 
+      payments: updatedPayments,
+      extraAmount: extraTotal > 0 ? extraTotal : (show.extraAmount || undefined)
+    });
     setPayAmount('');
     setIsAddPaymentOpen(false);
     showToast(`${payType} de ${formatCurrency(amt)} registrado!`);
+  };
+
+  // Salvar Hora Extra / Gorjeta Inline
+  const handleSaveExtraPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    if (amt <= 0) return;
+
+    const txId = generateUUID();
+    const paymentId = generateUUID();
+    const isPaid = extraStatusInput === 'Recebido';
+
+    const newTx: any = {
+      id: txId,
+      type: 'income',
+      amount: amt,
+      description: `Hora Extra / Gorjeta: ${show.contractorName || show.name}${extraDescInput ? ` (${extraDescInput})` : ''}`,
+      categoryId: 'cat_33',
+      accountId: extraAccountIdInput,
+      date: extraDateInput || getLocalDateString(),
+      status: isPaid ? 'paid' : 'pending',
+      scope: 'BUSINESS',
+      showId: show.id,
+      showPaymentType: 'Extra',
+      showPaymentId: paymentId
+    };
+
+    addTransaction(newTx);
+
+    const updatedPayments: ShowPayment[] = [...(show.payments || []), {
+      id: paymentId,
+      type: 'Extra',
+      amount: amt,
+      expectedDate: extraDateInput || getLocalDateString(),
+      effectiveDate: isPaid ? (extraDateInput || getLocalDateString()) : undefined,
+      accountId: extraAccountIdInput,
+      status: isPaid ? 'Recebido' : 'Agendado',
+      transactionId: txId,
+      notes: extraDescInput.trim() || 'Hora Extra / Gorjeta'
+    }];
+
+    const extraTotal = updatedPayments.filter(p => p.type === 'Extra' || p.type === 'Bônus').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+    updateShow({
+      ...show,
+      extraAmount: extraTotal,
+      extraNote: extraDescInput.trim() || show.extraNote || 'Hora Extra / Gorjeta',
+      payments: updatedPayments
+    });
+
+    setExtraValInput('');
+    setExtraDescInput('');
+    setIsAddExtraOpen(false);
+    showToast(`Hora Extra / Gorjeta de ${formatCurrency(amt)} registrada com sucesso!`);
   };
 
   // Salvar Membro de Equipe Inline
@@ -969,22 +1063,29 @@ export const ShowDetailModal: React.FC<Props> = ({
 
             {/* Grid dos 4 Cards Financeiros */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* 1. Cachê Bruto */}
+              {/* 1. Cachê Bruto / Valor Final */}
               <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Cachê Bruto</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    {extraVal > 0 ? 'Valor Final do Show' : 'Cachê Bruto'}
+                  </span>
                   <button 
                     type="button" 
-                    onClick={() => { setNewContractedCache(String(grossCache)); setIsEditCacheModalOpen(true); }}
+                    onClick={() => { setNewContractedCache(String(baseCache)); setIsEditCacheModalOpen(true); }}
                     className="text-zinc-500 hover:text-emerald-400 transition"
+                    title="Editar Cachê Base"
                   >
                     <Edit3 size={11} />
                   </button>
                 </div>
                 <div className="text-base sm:text-lg font-black text-white tabular-nums">
-                  {formatCurrency(grossCache)}
+                  {formatCurrency(totalShowValue)}
                 </div>
-                <div className="text-[10px] text-zinc-500 truncate">Valor contratado</div>
+                <div className="text-[10px] text-zinc-500 truncate">
+                  {extraVal > 0 
+                    ? `Base ${formatCurrency(baseCache)} + Extra ${formatCurrency(extraVal)}` 
+                    : 'Valor contratado'}
+                </div>
               </div>
 
               {/* 2. Sinal / Recebido */}
@@ -1086,17 +1187,105 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Ação rápida para lançar sinal / parcela */}
-              <div className="flex justify-end pt-1">
+              {/* Ações rápidas para lançar sinal / parcela e hora extra / gorjeta */}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-zinc-800/60">
                 <button
                   type="button"
-                  onClick={() => setIsAddPaymentOpen(prev => !prev)}
-                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 transition"
+                  onClick={() => { setIsAddExtraOpen(prev => !prev); setIsAddPaymentOpen(false); }}
+                  className="text-xs font-bold text-purple-300 hover:text-purple-200 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/50 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 transition active:scale-95"
+                >
+                  <Sparkles size={13} className="text-purple-400" />
+                  <span>{isAddExtraOpen ? 'Fechar Hora Extra' : '+ Adicionar Hora Extra / Gorjeta'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setIsAddPaymentOpen(prev => !prev); setIsAddExtraOpen(false); }}
+                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/30 hover:bg-emerald-900/40 border border-emerald-800/40 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 transition active:scale-95"
                 >
                   <Plus size={13} />
-                  <span>{isAddPaymentOpen ? 'Fechar Lançamento' : 'Lançar Recebimento / Sinal'}</span>
+                  <span>{isAddPaymentOpen ? 'Fechar Lançamento' : '+ Lançar Recebimento / Sinal'}</span>
                 </button>
               </div>
+
+              {/* Form de Adicionar Hora Extra / Gorjeta */}
+              {isAddExtraOpen && (
+                <form onSubmit={handleSaveExtraPayment} className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-800/50 space-y-3 mt-2 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center space-x-1.5">
+                      <Sparkles size={14} className="text-purple-400" />
+                      <span>Registrar Hora Extra / Gorjeta no Evento</span>
+                    </span>
+                    <span className="text-[10px] text-zinc-400">
+                      Soma ao total do show sem duplicar
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 block mb-1">Valor Adicional (R$)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 200,00"
+                        value={extraValInput}
+                        onChange={e => setExtraValInput(e.target.value)}
+                        className="w-full bg-zinc-900 border border-purple-500/40 rounded-lg px-2.5 py-1.5 text-xs text-purple-300 font-bold"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 block mb-1">Motivo / Descrição</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 1h extra / Gorjeta"
+                        value={extraDescInput}
+                        onChange={e => setExtraDescInput(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 block mb-1">Data</label>
+                      <input
+                        type="date"
+                        value={extraDateInput}
+                        onChange={e => setExtraDateInput(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 block mb-1">Situação</label>
+                      <select
+                        value={extraStatusInput}
+                        onChange={e => setExtraStatusInput(e.target.value as any)}
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                      >
+                        <option value="Recebido">Já Recebido (Caixa)</option>
+                        <option value="Agendado">Previsto / Agendado</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <p className="text-[10px] text-zinc-400">
+                      Total pós-extra: <strong className="text-white">{formatCurrency(baseCache)}</strong> + <strong className="text-purple-300">{formatCurrency(parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0)}</strong> = <strong className="text-emerald-400">{formatCurrency(baseCache + (parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0))}</strong>
+                    </p>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddExtraOpen(false)}
+                        className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 text-xs font-bold"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider"
+                      >
+                        Salvar Extra
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
 
               {/* Form de Adicionar Recebimento */}
               {isAddPaymentOpen && (
@@ -1164,6 +1353,88 @@ export const ShowDetailModal: React.FC<Props> = ({
                     </button>
                   </div>
                 </form>
+              )}
+
+              {/* LISTAGEM TRANSPARENTE DE ENTRADAS REGISTRADAS NO SHOW */}
+              {((show.payments && show.payments.length > 0) || linkedIncomeTransactions.length > 0) && (
+                <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                      Entradas & Recebimentos Vinculados ({((show.payments || []).length) + (linkedIncomeTransactions.filter(t => !(show.payments || []).some(p => p.transactionId === t.id)).length)})
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      {remainingToReceive === 0 ? '✓ Todos quitados' : `Restam ${formatCurrency(remainingToReceive)}`}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {/* Pagamentos registrados no show */}
+                    {(show.payments || []).map((p, idx) => {
+                      const isExtra = p.type === 'Extra' || p.type === 'Bônus';
+                      return (
+                        <div key={p.id || idx} className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 text-xs">
+                          <div className="flex items-center space-x-2.5">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                              isExtra ? 'bg-purple-950/60 text-purple-300 border border-purple-800/50' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/50'
+                            }`}>
+                              {p.type}
+                            </span>
+                            <span className="text-zinc-200 font-bold truncate max-w-[200px]">
+                              {p.notes || (isExtra ? 'Hora Extra / Gorjeta' : 'Cachê')}
+                            </span>
+                            {p.effectiveDate && (
+                              <span className="text-[10px] text-zinc-500">({formatDateBR(p.effectiveDate)})</span>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2.5">
+                            <span className={`font-black ${isExtra ? 'text-purple-300' : 'text-emerald-400'}`}>
+                              {formatCurrency(p.amount)}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              p.status === 'Recebido' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            }`}>
+                              {p.status}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Transações avulsas vinculadas via Extrato (sem duplicar) */}
+                    {linkedIncomeTransactions
+                      .filter(t => !(show.payments || []).some(p => p.transactionId === t.id))
+                      .map(t => {
+                        const isExtra = t.showPaymentType === 'Extra' || (t.description || '').toLowerCase().includes('hora extra');
+                        return (
+                          <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f0f11] border border-sky-900/30 text-xs">
+                            <div className="flex items-center space-x-2.5">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                isExtra ? 'bg-purple-950/60 text-purple-300 border border-purple-800/50' : 'bg-sky-950/60 text-sky-300 border border-sky-800/50'
+                              }`}>
+                                {isExtra ? 'Extra (Extrato)' : 'Pix / Extrato'}
+                              </span>
+                              <span className="text-zinc-200 font-bold truncate max-w-[200px]">
+                                {t.description}
+                              </span>
+                              {t.date && (
+                                <span className="text-[10px] text-zinc-500">({formatDateBR(t.date)})</span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2.5">
+                              <span className={`font-black ${isExtra ? 'text-purple-300' : 'text-emerald-400'}`}>
+                                {formatCurrency(t.amount)}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                t.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              }`}>
+                                {t.status === 'paid' ? 'Recebido' : 'Pendente'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
               )}
             </div>
           </div>

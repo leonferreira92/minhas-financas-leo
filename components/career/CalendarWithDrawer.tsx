@@ -419,8 +419,11 @@ export const CalendarWithDrawer: React.FC<Props> = ({
                           </div>
 
                           <h4 className="text-sm font-black text-white mt-1.5 group-hover:text-purple-400 transition-colors">
-                            {show.contractorName || show.name}
+                            {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
                           </h4>
+                          <p className="text-xs text-zinc-500 font-medium mt-0.5">
+                            Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+                          </p>
                         </div>
 
                         <div className="text-right">
@@ -431,12 +434,6 @@ export const CalendarWithDrawer: React.FC<Props> = ({
                             Lucro: {formatCurrency(fin.netProfit)}
                           </span>
                         </div>
-                      </div>
-
-                      {/* Local e Endereço */}
-                      <div className="flex items-center space-x-1.5 text-xs text-zinc-400">
-                        <MapPin size={13} className="text-purple-400 shrink-0" />
-                        <span className="truncate">{show.city || show.location || 'Local a definir'}</span>
                       </div>
 
                       {/* Botão de abrir ficha */}

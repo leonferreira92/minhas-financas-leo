@@ -4,9 +4,10 @@ import { useFinance } from '../../context/FinanceContext';
 import { 
   Car, Fuel, Plus, Trash2, Edit3, Calculator, 
   MapPin, Calendar, Clock, DollarSign, ArrowUpRight, 
-  CheckCircle2, X, Search, Navigation
+  CheckCircle2, X, Search, Navigation, Music, Sparkles
 } from 'lucide-react';
 import { getLocalDateString } from '../../services/dateUtils';
+import { getShowDayFuelExpenses } from '../../services/showFinanceSyncService';
 
 interface Props {
   shows: Show[];
@@ -16,6 +17,7 @@ interface Props {
 export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
   const { 
     locomotionExpenses, 
+    transactions,
     addLocomotionExpense, 
     updateLocomotionExpense, 
     deleteLocomotionExpense,
@@ -136,13 +138,80 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
     }
   };
 
+  // REGRA: Identifica despesas de combustível em dia de shows (extrato e shows cadastrados)
+  const showDayFuel = useMemo(() => {
+    return getShowDayFuelExpenses(shows, transactions || []);
+  }, [shows, transactions]);
+
+  // Unifica despesas de locomoção manuais com combustíveis de shows
+  const allLocomotionItems = useMemo<MusicLocomotionExpense[]>(() => {
+    const list: MusicLocomotionExpense[] = [...locomotionExpenses];
+    const registeredTxIds = new Set(locomotionExpenses.map(l => l.transactionId).filter(Boolean));
+
+    // 1. Adicionar transações de combustível identificadas em dias de show
+    showDayFuel.forEach(item => {
+      const tx = item.transaction;
+      if (registeredTxIds.has(tx.id)) return;
+      registeredTxIds.add(tx.id);
+
+      list.push({
+        id: `loco_fuel_tx_${tx.id}`,
+        type: 'fuel',
+        title: tx.description || `Abastecimento (${item.showName})`,
+        amount: Number(tx.amount) || 0,
+        date: tx.date || getLocalDateString(),
+        showId: item.matchedShow?.id || tx.showId,
+        transactionId: tx.id,
+        notes: `⛽ Abastecimento no dia do show: ${item.showName}`,
+        createdAt: tx.createdAt
+      });
+    });
+
+    // 2. Adicionar itens de logística de shows com combustível
+    shows.forEach(show => {
+      if (show.status === 'Cancelado') return;
+      if (Array.isArray(show.logistics)) {
+        show.logistics.forEach(log => {
+          const desc = (log.description || '').toLowerCase();
+          if (log.type === 'fuel' || desc.includes('combust') || desc.includes('gasolina') || desc.includes('posto')) {
+            if (log.transactionId && registeredTxIds.has(log.transactionId)) return;
+            list.push({
+              id: `loco_show_log_${show.id}_${log.id || log.description}`,
+              type: 'fuel',
+              title: log.description || `Combustível - ${show.contractorName || show.name}`,
+              amount: Number(log.amount) || 0,
+              date: show.date,
+              showId: show.id,
+              transactionId: log.transactionId,
+              notes: `⛽ Logística do show: ${show.contractorName || show.name}`,
+              createdAt: show.createdAt
+            });
+          }
+        });
+      } else if (show.expenses && Number(show.expenses.fuel) > 0) {
+        list.push({
+          id: `loco_show_fuel_${show.id}`,
+          type: 'fuel',
+          title: `Combustível - ${show.contractorName || show.name}`,
+          amount: Number(show.expenses.fuel) || 0,
+          date: show.date,
+          showId: show.id,
+          notes: `⛽ Combustível lançado no show: ${show.contractorName || show.name}`,
+          createdAt: show.createdAt
+        });
+      }
+    });
+
+    return list;
+  }, [locomotionExpenses, showDayFuel, shows]);
+
   // Metrics
   const locomotionMetrics = useMemo(() => {
-    const totalAmount = locomotionExpenses.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const totalKm = locomotionExpenses.reduce((s, l) => s + (Number(l.km) || 0), 0);
-    const fuelAmount = locomotionExpenses.filter(l => l.type === 'fuel').reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const uberAmount = locomotionExpenses.filter(l => l.type === 'uber').reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const tollAndParking = locomotionExpenses.filter(l => l.type === 'toll' || l.type === 'parking').reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const totalAmount = allLocomotionItems.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const totalKm = allLocomotionItems.reduce((s, l) => s + (Number(l.km) || 0), 0);
+    const fuelAmount = allLocomotionItems.filter(l => l.type === 'fuel').reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const uberAmount = allLocomotionItems.filter(l => l.type === 'uber').reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const tollAndParking = allLocomotionItems.filter(l => l.type === 'toll' || l.type === 'parking').reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
     return {
       totalAmount,
@@ -151,13 +220,13 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
       uberAmount,
       tollAndParking
     };
-  }, [locomotionExpenses]);
+  }, [allLocomotionItems]);
 
   const filteredExpenses = useMemo(() => {
-    return locomotionExpenses
+    return allLocomotionItems
       .filter(l => selectedTypeFilter === 'all' || l.type === selectedTypeFilter)
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [locomotionExpenses, selectedTypeFilter]);
+  }, [allLocomotionItems, selectedTypeFilter]);
 
   return (
     <div className="space-y-5">

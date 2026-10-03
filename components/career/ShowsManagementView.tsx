@@ -185,19 +185,16 @@ export const ShowsManagementView: React.FC<Props> = ({
                       </div>
 
                       <h3 className="text-base font-black text-white mt-1.5 group-hover:text-purple-400 transition-colors">
-                        {show.contractorName || show.name}
+                        {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
                       </h3>
+                      <p className="text-xs text-zinc-400 font-medium mt-0.5">
+                        Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+                      </p>
                     </div>
 
                     <span className="text-xs font-black text-zinc-400 bg-zinc-900 px-2 py-1 rounded-xl border border-zinc-800">
                       {show.time || '20:00'}
                     </span>
-                  </div>
-
-                  {/* Local e Cidade */}
-                  <div className="flex items-center space-x-1.5 text-xs text-zinc-300">
-                    <MapPin size={13} className="text-purple-400 shrink-0" />
-                    <span className="truncate">{show.city || show.location || 'Local a definir'}</span>
                   </div>
 
                   {/* PAINEL DE METRICAS FINANCEIRAS DO SHOW (REQUISITO 2) */}

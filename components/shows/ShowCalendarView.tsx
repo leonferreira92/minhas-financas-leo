@@ -445,8 +445,11 @@ export const ShowCalendarView: React.FC<Props> = ({
                       </div>
 
                       <h4 className="text-sm font-black text-white mt-1.5 group-hover:text-emerald-400 transition-colors">
-                        {show.contractorName || show.name}
+                        {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
                       </h4>
+                      <p className="text-xs text-zinc-400 font-medium mt-0.5">
+                        Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+                      </p>
                     </div>
 
                     <div className="text-right">
@@ -489,7 +492,7 @@ export const ShowCalendarView: React.FC<Props> = ({
                     <div className="flex items-center space-x-1.5 min-w-0">
                       <MapPin size={13} className="text-zinc-500 shrink-0" />
                       <span className="font-semibold text-zinc-300 truncate">
-                        {show.city || show.location || 'Cidade a definir'}
+                        {show.city || 'Cidade a definir'}
                       </span>
                     </div>
 

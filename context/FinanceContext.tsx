@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, ShowPaymentType, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
@@ -763,8 +763,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
           modified = true;
           if (t.type === 'income') {
             let payments = Array.isArray(show.payments) ? [...show.payments] : [];
-            const existingIdx = payments.findIndex(p => p.transactionId === tid || (t.showPaymentId && p.id === t.showPaymentId));
-            const pType = t.showPaymentType || (t.description?.toLowerCase().includes('sinal') ? 'Sinal' : 'Parcela');
+            const descLower = (t.description || '').toLowerCase();
+            const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || descLower.includes('hora extra') || descLower.includes('gorjeta') || descLower.includes('adicional');
+            const pType: ShowPaymentType = isExtra ? 'Extra' : (t.showPaymentType || (descLower.includes('sinal') ? 'Sinal' : 'Parcela'));
+            
+            // REGRA DE SOBRESCRITA DE RECEITA DO SHOW:
+            // Quando uma transação do Extrato (Pix/Transferência) for vinculada a um show,
+            // o valor dessa transação deve DEFINIR/SOBRESCREVER o valor recebido do show, e NUNCA ser somado em duplicidade com o cachê previsto.
+            let existingIdx = payments.findIndex(p => p.transactionId === tid || (t.showPaymentId && p.id === t.showPaymentId));
+            if (existingIdx < 0 && !isExtra) {
+              // Procura pagamento prévio de base não vinculado para sobrescrever
+              existingIdx = payments.findIndex(p => !p.transactionId && p.type !== 'Extra' && p.type !== 'Bônus');
+            }
             
             const updatedPayment: ShowPayment = {
               id: (existingIdx >= 0 && payments[existingIdx].id) ? payments[existingIdx].id : (t.showPaymentId || generateUUID()),
@@ -782,7 +792,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
             } else {
               payments.push(updatedPayment);
             }
-            return normalizeShowFinancials({ ...show, payments }, defaultAccId);
+
+            let newExtraAmount = Number(show.extraAmount) || 0;
+            if (isExtra) {
+              newExtraAmount = Math.max(newExtraAmount, cleanAmount);
+            }
+
+            return normalizeShowFinancials({ ...show, payments, extraAmount: newExtraAmount }, defaultAccId);
           } else if (t.type === 'expense') {
             let expenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
             const existingIdx = expenses.findIndex(e => e.transactionId === tid || (t.showExpenseId && e.id === t.showExpenseId));
@@ -917,10 +933,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         if (paymentChanged || expenseChanged || isDirectMatch) {
           showsModified = true;
+          const descLower = (cleanT.description || '').toLowerCase();
+          const isExtra = cleanT.showPaymentType === 'Extra' || cleanT.showPaymentType === 'Bônus' || descLower.includes('hora extra') || descLower.includes('gorjeta');
+          let extraAmt = Number(show.extraAmount) || 0;
+          if (isExtra && cleanT.type === 'income') {
+            extraAmt = Math.max(extraAmt, cleanAmount);
+          }
+
           return normalizeShowFinancials({
             ...show,
             payments: newPayments,
-            expenseItems: newExpenses
+            expenseItems: newExpenses,
+            extraAmount: extraAmt
           }, defaultAccId);
         }
 

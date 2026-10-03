@@ -103,11 +103,25 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
       if (t.type !== 'expense' || t.status === 'cancelled') return;
       if (processedTxIds.has(t.id)) return;
 
-      const isBusinessCost = t.scope === 'BUSINESS' || 
-                             t.categoryId === 'cat_equipamentos' || 
+      const desc = `${t.description || ''} ${t.originalBankDescription || ''}`.toLowerCase();
+      // REGRA: Combustível e Locomoção vão EXCLUSIVAMENTE para a aba 'Locomoção'
+      const isFuelOrLocomotion = t.categoryId === 'cat_21' || 
+                                 t.categoryId === 'cat_3' || 
+                                 desc.includes('combustivel') || desc.includes('combustível') || 
+                                 desc.includes('posto ') || desc.includes('gasolina') || 
+                                 desc.includes('etanol') || desc.includes('ipiranga') || 
+                                 desc.includes('shell') || desc.includes('petrobras') || 
+                                 desc.includes('abastec') || desc.includes('uber') || 
+                                 desc.includes('99app') || desc.includes('pedágio') || 
+                                 desc.includes('pedagio');
+
+      if (isFuelOrLocomotion) return;
+
+      const isBusinessCost = t.categoryId === 'cat_equipamentos' || 
                              t.categoryId === 'cat_marketing' || 
                              t.categoryId === 'cat_producao_shows' || 
-                             !!t.showId;
+                             (t.scope === 'BUSINESS' && inferMusicCategory(t) !== 'other') ||
+                             (!!t.showId && t.categoryId !== 'cat_21');
 
       if (isBusinessCost) {
         list.push({

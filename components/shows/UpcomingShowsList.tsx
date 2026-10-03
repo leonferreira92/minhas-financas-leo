@@ -115,7 +115,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
 
     upcomingConfirmedShows.forEach(show => {
       const fin = getShowFinancialSummary(show, transactions);
-      totalContracted += fin.totalContracted;
+      totalContracted += fin.totalPredicted;
       totalPending += fin.totalPending;
 
       if (show.date) {
@@ -240,13 +240,11 @@ export const UpcomingShowsList: React.FC<Props> = ({
                   {/* Nome do Contratante / Evento */}
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight group-hover:text-purple-200 transition-colors">
-                      {nextShow.contractorName || nextShow.name}
+                      {nextShow.location && nextShow.location.trim() !== '' ? nextShow.location : `Show - ${nextShow.contractorName || nextShow.name || 'Contratante'}`}
                     </h3>
-                    {nextShow.eventType && (
-                      <p className="text-xs text-purple-300/90 font-bold uppercase tracking-wider mt-0.5">
-                        {nextShow.eventType}
-                      </p>
-                    )}
+                    <p className="text-xs text-purple-300/95 font-bold mt-0.5">
+                      Contratante: {nextShow.contractorName || nextShow.name || 'Não informado'} • {nextShow.city || 'Cidade a definir'}
+                    </p>
                   </div>
 
                   {/* Grid de Informações: Data, Horário, Cidade */}
@@ -372,13 +370,11 @@ export const UpcomingShowsList: React.FC<Props> = ({
                     {/* Contratante / Evento */}
                     <div>
                       <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                        {show.contractorName || show.name}
+                        {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
                       </h4>
-                      {show.eventType && (
-                        <p className="text-[11px] text-slate-400 font-medium">
-                          {show.eventType}
-                        </p>
-                      )}
+                      <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
+                        Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+                      </p>
                     </div>
 
                     {/* BARRA DE PROGRESSO DO PAGAMENTO */}
@@ -404,11 +400,6 @@ export const UpcomingShowsList: React.FC<Props> = ({
                         <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
                           {show.city || 'Cidade a definir'}
                         </span>
-                        {show.location && (
-                          <span className="text-slate-400 truncate">
-                            • {show.location}
-                          </span>
-                        )}
                       </div>
 
                       <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 flex items-center space-x-0.5 group-hover:translate-x-1 transition-transform">

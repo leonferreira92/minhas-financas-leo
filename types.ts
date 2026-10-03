@@ -255,6 +255,7 @@ export interface Show {
   showHours?: number;            // Duração do show em horas
 
   extraAmount?: number;   // Valor de extras adicionados à contratação
+  extraNote?: string;     // Observação / motivo do extra (ex: 1h a mais de apresentação, gorjeta)
   cacheCombined?: number; // Cachê combinado (para compatibilidade anterior)
   cacheReceived?: number; // Cachê recebido totalizado (para compatibilidade anterior)
   paymentMethod?: string; // Forma de pagamento do show

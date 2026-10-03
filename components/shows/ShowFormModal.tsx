@@ -49,6 +49,9 @@ export const ShowFormModal: React.FC<Props> = ({
 
   // --- BLOCO B: RESUMO FINANCEIRO & MODELO DE RECEITA ---
   const [totalCache, setTotalCache] = useState('');
+  const [showExtraField, setShowExtraField] = useState(false);
+  const [extraAmount, setExtraAmount] = useState('');
+  const [extraNote, setExtraNote] = useState('');
   const [revenueModel, setRevenueModel] = useState<'fixed' | 'couvert' | 'hybrid'>('fixed');
   const [estimatedPeople, setEstimatedPeople] = useState('80');
   const [couvertPrice, setCouvertPrice] = useState('15');
@@ -131,6 +134,21 @@ export const ShowFormModal: React.FC<Props> = ({
       setLocation(existingShow.location || '');
       const cacheVal = existingShow.totalCache ?? existingShow.cacheCombined;
       setTotalCache(cacheVal !== undefined && cacheVal !== null ? String(cacheVal) : '');
+      
+      const existingExtra = existingShow.extraAmount || (existingShow.payments || [])
+        .filter(p => p.type === 'Extra' || p.type === 'Bônus')
+        .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+
+      if (existingExtra > 0) {
+        setShowExtraField(true);
+        setExtraAmount(String(existingExtra));
+        setExtraNote(existingShow.extraNote || '');
+      } else {
+        setShowExtraField(false);
+        setExtraAmount('');
+        setExtraNote('');
+      }
+
       setStatus((existingShow.status === 'Agendado' ? 'Aguardando confirmação' : existingShow.status) || 'Confirmado');
       setNotes(existingShow.notes || '');
 
@@ -168,6 +186,9 @@ export const ShowFormModal: React.FC<Props> = ({
       setCity(prefilledVenueData?.city || '');
       setLocation(prefilledVenueData?.location || '');
       setTotalCache(prefilledVenueData?.totalCache ? String(prefilledVenueData.totalCache) : '');
+      setShowExtraField(false);
+      setExtraAmount('');
+      setExtraNote('');
       setStatus(initialStatus || 'Confirmado');
       setNotes('');
       setRevenueModel('fixed');
@@ -211,6 +232,11 @@ export const ShowFormModal: React.FC<Props> = ({
       grossCache = minCache + (people * cPrice * cPct);
     }
 
+    // REGRA DE RECEITA DO SHOW:
+    // O valor total do show deve ser exclusivamente: [Cachê Base Contratado] + [Extras / Hora Extra / Gorjeta].
+    const extraVal = showExtraField ? (parseFloat(extraAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0) : 0;
+    const totalShowValue = grossCache + extraVal;
+
     const depVal = hasImmediateDeposit ? (parseFloat(depositAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0) : 0;
 
     // 1. Custos de Equipe
@@ -228,8 +254,8 @@ export const ShowFormModal: React.FC<Props> = ({
     // Fundo de Depreciação / Reserva para Equipamento
     const reserveVal = Math.max(0, parseFloat(equipmentReserveAmount.replace(',', '.')) || 0);
 
-    // Lucro Líquido Real = Cachê Bruto - Custo Total
-    const netProfit = grossCache - totalCosts;
+    // Lucro Líquido Real = Valor Total do Evento - Custo Total
+    const netProfit = totalShowValue - totalCosts;
     const netProfitAfterReserve = netProfit - reserveVal;
 
     // Tempo Dedicado Total (Horas)
@@ -241,14 +267,16 @@ export const ShowFormModal: React.FC<Props> = ({
     // Lucro por Hora Trabalhada
     const profitPerHour = Math.round((netProfit / totalDedicatedHours) * 100) / 100;
 
-    // Margem de Lucro (%)
-    const marginPercent = grossCache > 0 ? (netProfit / grossCache) * 100 : 0;
+    // Margem de Lucro (%) calculada sobre o total final do evento
+    const marginPercent = totalShowValue > 0 ? (netProfit / totalShowValue) * 100 : 0;
 
     // Saldo Restante a Receber
-    const remainingToReceive = Math.max(0, grossCache - depVal);
+    const remainingToReceive = Math.max(0, totalShowValue - depVal);
 
     return {
       grossCache,
+      extraVal,
+      totalShowValue,
       depVal,
       remainingToReceive,
       crewCost,
@@ -264,6 +292,7 @@ export const ShowFormModal: React.FC<Props> = ({
     };
   }, [
     totalCache, revenueModel, estimatedPeople, couvertPrice, guaranteedMinCache, couvertPercentage,
+    showExtraField, extraAmount,
     hasImmediateDeposit, depositAmount, crewMembers, logistics, otherExpenses, equipmentReserveAmount,
     showHours, travelTimeMinutes, soundcheckTimeMinutes
   ]);
@@ -411,6 +440,7 @@ export const ShowFormModal: React.FC<Props> = ({
 
   const executeSave = () => {
     const cacheVal = financialSummaryLive.grossCache;
+    const extraVal = financialSummaryLive.extraVal;
     const depVal = financialSummaryLive.depVal;
 
     const paymentsList: ShowPayment[] = existingShow?.payments ? [...existingShow.payments] : [];
@@ -446,6 +476,33 @@ export const ShowFormModal: React.FC<Props> = ({
       };
     }
 
+    // Gerenciar acréscimo de Hora Extra / Gorjeta nos pagamentos do show
+    if (extraVal > 0) {
+      const extraIdx = paymentsList.findIndex(p => p.type === 'Extra' || p.type === 'Bônus');
+      if (extraIdx >= 0) {
+        paymentsList[extraIdx] = {
+          ...paymentsList[extraIdx],
+          amount: extraVal,
+          notes: extraNote.trim() || paymentsList[extraIdx].notes || 'Hora Extra / Gorjeta'
+        };
+      } else {
+        paymentsList.push({
+          id: generateUUID(),
+          type: 'Extra',
+          amount: extraVal,
+          status: 'Recebido',
+          expectedDate: date,
+          accountId: defaultAccountId,
+          notes: extraNote.trim() || 'Hora Extra / Gorjeta'
+        });
+      }
+    } else {
+      const extraIdx = paymentsList.findIndex(p => (p.type === 'Extra' || p.type === 'Bônus') && !p.transactionId);
+      if (extraIdx >= 0) {
+        paymentsList.splice(extraIdx, 1);
+      }
+    }
+
     const showPayload: Partial<Show> = {
       name: name.trim() || contractorName.trim() || 'Show',
       contractorName: contractorName.trim() || name.trim() || 'Show',
@@ -458,6 +515,8 @@ export const ShowFormModal: React.FC<Props> = ({
       city: city.trim() || undefined,
       location: location.trim() || name.trim() || 'A definir',
       totalCache: cacheVal,
+      extraAmount: extraVal > 0 ? extraVal : undefined,
+      extraNote: extraVal > 0 ? (extraNote.trim() || undefined) : undefined,
       status,
       notes: notes.trim() || undefined,
       revenueModel,
@@ -824,6 +883,69 @@ export const ShowFormModal: React.FC<Props> = ({
                   </div>
                 </div>
               )}
+              {/* CAMPO ESPECÍFICO PARA HORA EXTRA / GORJETA */}
+              <div className="space-y-2 pt-1">
+                {!showExtraField ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowExtraField(true)}
+                    className="w-full py-2.5 px-3 rounded-2xl bg-purple-950/30 hover:bg-purple-900/40 border border-purple-800/40 text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-98"
+                  >
+                    <Sparkles size={14} className="text-purple-400" />
+                    <span>+ Adicionar Hora Extra / Gorjeta</span>
+                  </button>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-800/40 space-y-2.5 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                        <Sparkles size={14} />
+                        Acréscimos ao Cachê (Hora Extra / Gorjeta)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowExtraField(false);
+                          setExtraAmount('');
+                          setExtraNote('');
+                        }}
+                        className="text-[10px] text-zinc-400 hover:text-rose-400 font-bold transition"
+                      >
+                        Remover Extra
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 block mb-1">
+                          Valor Adicional (R$)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={extraAmount}
+                          onChange={(e) => setExtraAmount(e.target.value)}
+                          placeholder="Ex: 200,00"
+                          className="w-full bg-[#121214] border border-purple-500/30 rounded-xl p-2.5 text-base font-black text-purple-300 focus:outline-none focus:border-purple-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 block mb-1">
+                          Motivo / Descrição do Extra
+                        </label>
+                        <input
+                          type="text"
+                          value={extraNote}
+                          onChange={(e) => setExtraNote(e.target.value)}
+                          placeholder="Ex: 1h extra de apresentação / Gorjeta"
+                          className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-zinc-400">
+                      O valor total do show será exclusivamente: <strong className="text-white">{formatCurrency(financialSummaryLive.grossCache)}</strong> (Cachê Base) + <strong className="text-purple-300">{formatCurrency(financialSummaryLive.extraVal)}</strong> (Extra) = <strong className="text-emerald-400">{formatCurrency(financialSummaryLive.totalShowValue)}</strong>
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Sinal / Adiantamento */}
@@ -928,12 +1050,16 @@ export const ShowFormModal: React.FC<Props> = ({
             {/* TERMÔMETRO DE LUCRO (4 CARDS VISUAIS ATUALIZADOS) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
               <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-0.5">
-                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Cachê Bruto</span>
-                <span className="text-sm font-black text-white tabular-nums block">
-                  {formatCurrency(financialSummaryLive.grossCache)}
+                <span className="text-[9px] font-bold text-zinc-400 uppercase block">
+                  {financialSummaryLive.extraVal > 0 ? 'Valor Final do Show' : 'Cachê Bruto'}
                 </span>
-                <span className="text-[9px] text-zinc-500 block">
-                  {hasImmediateDeposit ? `Sinal: ${formatCurrency(financialSummaryLive.depVal)}` : 'Sem sinal'}
+                <span className="text-sm font-black text-white tabular-nums block">
+                  {formatCurrency(financialSummaryLive.totalShowValue)}
+                </span>
+                <span className="text-[9px] text-zinc-500 block truncate">
+                  {financialSummaryLive.extraVal > 0 
+                    ? `Base ${formatCurrency(financialSummaryLive.grossCache)} + Extra ${formatCurrency(financialSummaryLive.extraVal)}`
+                    : hasImmediateDeposit ? `Sinal: ${formatCurrency(financialSummaryLive.depVal)}` : 'Sem sinal'}
                 </span>
               </div>
 

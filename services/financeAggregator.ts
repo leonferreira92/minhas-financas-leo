@@ -89,7 +89,19 @@ export const getMonthlyCareerMetrics = (
     );
   });
 
-  const faturamentoReal = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  // Desconsidera transações duplicadas de base para o mesmo showId
+  const seenShowBaseIds = new Set<string>();
+  const deduplicatedIncomeTxs = incomeTxs.filter(t => {
+    if (!t.showId) return true;
+    const desc = (t.description || '').toLowerCase();
+    const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || desc.includes('hora extra') || desc.includes('gorjeta');
+    if (isExtra) return true;
+    if (seenShowBaseIds.has(t.showId)) return false;
+    seenShowBaseIds.add(t.showId);
+    return true;
+  });
+
+  const faturamentoReal = deduplicatedIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
   // 2. Despesas Efetivas (Regime de Caixa)
   const expenseTxs = transactions.filter(t => {

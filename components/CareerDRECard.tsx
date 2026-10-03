@@ -92,7 +92,19 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
       );
     });
 
-    const grossRevenue = projectIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    // Desconsidera transações duplicadas de base para o mesmo showId
+    const seenShowBaseIds = new Set<string>();
+    const deduplicatedProjectIncomeTxs = projectIncomeTxs.filter(t => {
+      if (!t.showId) return true;
+      const desc = (t.description || '').toLowerCase();
+      const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || desc.includes('hora extra') || desc.includes('gorjeta');
+      if (isExtra) return true;
+      if (seenShowBaseIds.has(t.showId)) return false;
+      seenShowBaseIds.add(t.showId);
+      return true;
+    });
+
+    const grossRevenue = deduplicatedProjectIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
     // 2. Custos / Equipamentos Efetivados do Projeto no período (Regime de Caixa)
     const projectExpenseTxs = transactions.filter(t => {

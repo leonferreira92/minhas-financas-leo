@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Show, Transaction } from '../../types';
 import { useFinance } from '../../context/FinanceContext';
-import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
+import { getShowFinancialSummary, auditShowTransactionsAndExtracts, ShowAuditResult } from '../../services/showFinanceSyncService';
+import { generateUUID } from '../../services/uuidHelper';
 import { 
   Music, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, 
   Percent, Award, Calendar, BarChart3, PieChart, Sparkles, 
-  MapPin, Users, Fuel, Briefcase, ChevronRight, CheckCircle2, Clock
+  MapPin, Users, Fuel, Briefcase, ChevronRight, CheckCircle2, Clock,
+  ShieldCheck, Link2, AlertCircle, Eye, EyeOff, Check, X, ArrowRight, ExternalLink, HelpCircle
 } from 'lucide-react';
 
 interface Props {
@@ -21,9 +23,12 @@ export const PerformanceDashboard: React.FC<Props> = ({
   onSelectShow,
   onOpenCreateShow
 }) => {
-  const { isBlurred } = useFinance();
+  const { isBlurred, updateTransaction, updateShow } = useFinance();
   const [timeRange, setTimeRange] = useState<'all' | '3m' | '6m' | '12m'>('all');
   const [activeChartPoint, setActiveChartPoint] = useState<number | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [auditTab, setAuditTab] = useState<'matches' | 'shows' | 'excluded'>('matches');
+  const [dismissedTxIds, setDismissedTxIds] = useState<Set<string>>(new Set());
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
@@ -50,32 +55,72 @@ export const PerformanceDashboard: React.FC<Props> = ({
     return list;
   }, [timeRange, currentYear, currentMonthIdx]);
 
+  // Deduplicate shows by ID so each show is processed a SINGLE TIME
+  const uniqueShows = useMemo(() => {
+    const map = new Map<string, Show>();
+    (Array.isArray(shows) ? shows : []).forEach(s => {
+      if (s && s.id && !map.has(s.id)) {
+        map.set(s.id, s);
+      }
+    });
+    return Array.from(map.values());
+  }, [shows]);
+
+  // Auditoria Estrita de Cachês e Extratos Bancários
+  const auditResult = useMemo(() => {
+    return auditShowTransactionsAndExtracts(uniqueShows, Array.isArray(transactions) ? transactions : []);
+  }, [uniqueShows, transactions]);
+
+  const activeMatches = useMemo(() => {
+    return auditResult.suggestedMatches.filter(m => !dismissedTxIds.has(m.transaction.id));
+  }, [auditResult.suggestedMatches, dismissedTxIds]);
+
+  const handleLinkAuditMatch = (tx: Transaction, targetShow: Show) => {
+    updateTransaction({
+      ...tx,
+      showId: targetShow.id,
+      scope: 'BUSINESS',
+      categoryId: 'cat_33'
+    });
+
+    const currentPayments = Array.isArray(targetShow.payments) ? [...targetShow.payments] : [];
+    const existingIdx = currentPayments.findIndex(p => p.transactionId === tx.id);
+    if (existingIdx < 0) {
+      currentPayments.push({
+        id: generateUUID(),
+        type: 'Pagamento final',
+        amount: Number(tx.amount) || 0,
+        expectedDate: tx.date,
+        effectiveDate: tx.status === 'paid' ? tx.date : undefined,
+        accountId: tx.accountId,
+        status: tx.status === 'paid' ? 'Recebido' : 'Agendado',
+        transactionId: tx.id,
+        notes: tx.description
+      });
+      updateShow({
+        ...targetShow,
+        payments: currentPayments
+      });
+    }
+  };
+
+  const handleDismissMatch = (txId: string) => {
+    setDismissedTxIds(prev => new Set([...prev, txId]));
+  };
+
   // Calculate monthly metrics for chart
   const chartSeries = useMemo(() => {
-    const safeShows = Array.isArray(shows) ? shows : [];
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
     return monthsData.map(m => {
-      const monthShows = safeShows.filter(s => s && s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
+      const monthShows = uniqueShows.filter(s => s && s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
       
-      // Receitas do Mês a partir dos shows
-      let revenue = monthShows.reduce((sum, s) => {
+      // REGRA DE OURO: Receita mensal = exclusivamente os valores efetivamente recebidos dos shows cadastrados
+      const revenue = monthShows.reduce((sum, s) => {
         const fin = getShowFinancialSummary(s, safeTransactions);
-        const amt = fin.totalPredicted || s.totalCache || (s as any).cache || (s as any).price || 0;
-        return sum + amt;
+        return sum + fin.totalReceived;
       }, 0);
 
-      if (revenue === 0) {
-        const incomeTxs = safeTransactions.filter(t => {
-          if (!t.date || !t.date.startsWith(m.monthKey)) return false;
-          if (t.type !== 'income' || t.status === 'cancelled') return false;
-          const desc = (t.description || '').toLowerCase();
-          if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
-          return t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId || desc.includes('cachê') || desc.includes('show');
-        });
-        revenue = incomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      }
-
-      // Despesas do Mês: Soma TODAS as transações marcadas com escopo Músico/Carreira ('scope: BUSINESS' ou categorias de música/equipamentos), mais despesas de shows não vinculadas
+      // Despesas do Mês: Custos diretos do show e despesas de música vinculadas (sem duplicações)
       const monthBusinessExpenseTxs = safeTransactions.filter(t => {
         if (!t.date || !t.date.startsWith(m.monthKey)) return false;
         if (t.type !== 'expense' || t.status === 'cancelled') return false;
@@ -96,7 +141,6 @@ export const PerformanceDashboard: React.FC<Props> = ({
       });
 
       const expenses = monthBusinessExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) + unlinkedShowExpenses;
-
       const profit = Math.round((revenue - expenses) * 100) / 100;
       const showsCount = monthShows.length;
 
@@ -109,13 +153,12 @@ export const PerformanceDashboard: React.FC<Props> = ({
         showsCount
       };
     });
-  }, [monthsData, shows, transactions]);
+  }, [monthsData, uniqueShows, transactions]);
 
-  // Overall Global Career Performance Metrics (Reconciliado somando diretamente todos os shows válidos)
+  // Overall Global Career Performance Metrics (Lendo cada show uma ÚNICA VEZ e desconsiderando movimentações avulsas do extrato)
   const globalMetrics = useMemo(() => {
-    const safeShows = Array.isArray(shows) ? shows : [];
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
-    const validShows = safeShows.filter(s => {
+    const validShows = uniqueShows.filter(s => {
       if (!s || s.status === 'Cancelado') return false;
       if (timeRange === 'all') return true;
       if (!s.date) return true;
@@ -133,14 +176,20 @@ export const PerformanceDashboard: React.FC<Props> = ({
     const confirmedShowsCount = validShows.filter(s => s && s.status === 'Confirmado').length;
     const quotesShowsCount = validShows.filter(s => s && (s.status === 'Orçamento' || s.status === 'Aguardando confirmação')).length;
 
-    // Receita Total Bruta de Cachês (somando diretamente todos os shows válidos)
+    // REGRA AUDITADA: Receita Total Bruta de Cachês = valores EFETIVAMENTE RECEBIDOS dos shows cadastrados
+    // [Cachê Base Recebido] + [Extras / Hora Extra / Gorjeta Recebidos]
     const totalGrossRevenue = validShows.reduce((sum, s) => {
       const fin = getShowFinancialSummary(s, safeTransactions);
-      const gross = fin.totalPredicted || s.totalCache || (s as any).cache || (s as any).price || 0;
-      return sum + gross;
+      return sum + fin.totalReceived;
     }, 0);
 
-    // Custos Totais da Música (somando TODAS as despesas com escopo BUSINESS no período, com ou sem showId)
+    // Cachê Previsto / Contratado total (para comparativo)
+    const totalContractedRevenue = validShows.reduce((sum, s) => {
+      const fin = getShowFinancialSummary(s, safeTransactions);
+      return sum + fin.totalPredicted;
+    }, 0);
+
+    // Custos Totais da Música (somando despesas da carreira no período, com ou sem showId)
     const periodBusinessExpenseTxs = safeTransactions.filter(t => {
       if (!t.date) return false;
       if (t.type !== 'expense' || t.status === 'cancelled') return false;
@@ -168,22 +217,23 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
     const totalMusicExpenses = periodBusinessExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) + globalUnlinkedShowExpenses;
 
-    // Total Efetivamente Recebido em Caixa
-    const totalReceivedInCash = validShows.reduce((sum, s) => {
-      const fin = getShowFinancialSummary(s, transactions);
-      return sum + fin.totalReceived;
-    }, 0);
+    const totalReceivedInCash = totalGrossRevenue;
 
-    // Lucro Líquido Real = Receita Bruta - Custos Totais
+    // Lucro Líquido Real = Receita Efetivamente Recebida - Custos Totais
     const netRealProfit = totalGrossRevenue - totalMusicExpenses;
     const netCashProfit = totalReceivedInCash - totalMusicExpenses;
 
     // Margem de Lucro Real (%)
     const profitMargin = totalGrossRevenue > 0 ? (netRealProfit / totalGrossRevenue) * 100 : 0;
 
-    // Ticket Médio por Show
-    const averageTicketPerShow = totalShowsCount > 0 ? totalGrossRevenue / totalShowsCount : 0;
-    const averageProfitPerShow = totalShowsCount > 0 ? netRealProfit / totalShowsCount : 0;
+    // Ticket Médio por Show com Recebimento (cada show lido uma ÚNICA VEZ)
+    const showsWithReceipts = validShows.filter(s => {
+      const fin = getShowFinancialSummary(s, safeTransactions);
+      return fin.totalReceived > 0;
+    });
+    const divisorShows = showsWithReceipts.length > 0 ? showsWithReceipts.length : (totalShowsCount > 0 ? totalShowsCount : 1);
+    const averageTicketPerShow = totalShowsCount > 0 ? totalGrossRevenue / divisorShows : 0;
+    const averageProfitPerShow = totalShowsCount > 0 ? netRealProfit / divisorShows : 0;
 
     // Média de Lucro Mensal
     const monthsDivisor = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : timeRange === '12m' ? 12 : Math.max(1, chartSeries.length || 1);
@@ -200,6 +250,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       confirmedShowsCount,
       quotesShowsCount,
       totalGrossRevenue,
+      totalContractedRevenue,
       totalReceivedInCash,
       totalMusicExpenses,
       netRealProfit,
@@ -210,18 +261,18 @@ export const PerformanceDashboard: React.FC<Props> = ({
       averageMonthlyProfit,
       totalEquipmentReserve
     };
-  }, [shows, transactions, timeRange, monthsData, chartSeries]);
+  }, [uniqueShows, transactions, timeRange, monthsData, chartSeries]);
 
   // Breakdown by Event Type
   const eventTypesBreakdown = useMemo(() => {
     const map = new Map<string, { count: number; totalRevenue: number }>();
-    shows.filter(s => s.status !== 'Cancelado').forEach(s => {
+    uniqueShows.filter(s => s.status !== 'Cancelado').forEach(s => {
       const type = s.eventType || 'Bar / Pub / Restaurante';
       const existing = map.get(type) || { count: 0, totalRevenue: 0 };
       const fin = getShowFinancialSummary(s, transactions);
       map.set(type, {
         count: existing.count + 1,
-        totalRevenue: existing.totalRevenue + fin.totalContracted
+        totalRevenue: existing.totalRevenue + fin.totalPredicted
       });
     });
 
@@ -231,7 +282,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       totalRevenue: data.totalRevenue,
       percentage: globalMetrics.totalGrossRevenue > 0 ? (data.totalRevenue / globalMetrics.totalGrossRevenue) * 100 : 0
     })).sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [shows, transactions, globalMetrics.totalGrossRevenue]);
+  }, [uniqueShows, transactions, globalMetrics.totalGrossRevenue]);
 
   // Chart Dimensions & Calculations for SVG
   const maxVal = Math.max(...chartSeries.map(d => Math.max(d.revenue, d.expenses, d.profit, 1000)), 3000);
@@ -294,6 +345,41 @@ export const PerformanceDashboard: React.FC<Props> = ({
       </div>
 
       {/* ========================================================================= */}
+      {/* BANNER / STATUS DE AUDITORIA DE CACHÊS & EXTRATOS                        */}
+      {/* ========================================================================= */}
+      <div className="p-4 rounded-3xl bg-zinc-900/90 border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+        <div className="flex items-start sm:items-center space-x-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
+            <ShieldCheck size={20} />
+          </div>
+          <div className="space-y-0.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs sm:text-sm font-black text-white">Auditoria Estrita de Receitas de Shows</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                100% Baseada em Eventos Cadastrados
+              </span>
+              {activeMatches.length > 0 && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                  {activeMatches.length} Sugestão(ões) de Vínculo
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-zinc-400">
+              Receita calculada exclusivamente sobre os cachês recebidos de <strong className="text-zinc-200">{globalMetrics.totalShowsCount} shows cadastrados</strong>. {auditResult.unlinkedExtratoIncomes.length} movimentações no extrato foram desconsideradas para não inflacionar os valores.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsAuditModalOpen(true)}
+          className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider flex items-center space-x-2 transition active:scale-95 shadow-md shadow-purple-600/20 shrink-0 self-start md:self-auto"
+        >
+          <ShieldCheck size={16} />
+          <span>Ver Auditoria ({auditResult.auditedShows.length} Shows)</span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
       {/* 2. CARDS PRINCIPAIS DE PERFORMANCE (REQUISITO 1 DO BRIEFING)              */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -320,15 +406,15 @@ export const PerformanceDashboard: React.FC<Props> = ({
           </p>
         </div>
 
-        {/* CARD 2: RECEITA BRUTA */}
+        {/* CARD 2: RECEITA BRUTA (EFETIVAMENTE RECEBIDA) */}
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-emerald-950/40 via-[#101c15] to-[#121214] border border-emerald-500/30 space-y-2 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
               <DollarSign size={12} className="text-emerald-400" />
-              Receita Bruta
+              Receita Bruta (Recebida)
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
-              Cachês
+              Cachês Recebidos
             </span>
           </div>
           <div className="flex items-baseline space-x-1.5">
@@ -337,7 +423,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
             </span>
           </div>
           <p className="text-[10px] text-zinc-400 font-medium">
-            Entradas no caixa: {formatCurrency(globalMetrics.totalReceivedInCash)}
+            Contratado total: {formatCurrency(globalMetrics.totalContractedRevenue)}
           </p>
         </div>
 
@@ -429,11 +515,11 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Cachê Médio</span>
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Cachê Médio Recebido</span>
               <span className="text-lg font-black text-amber-300 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageTicketPerShow)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Valor bruto contratado</span>
+              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Média por show com recebimento</span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
@@ -740,6 +826,283 @@ export const PerformanceDashboard: React.FC<Props> = ({
         </div>
 
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL DE AUDITORIA COMPLETA DE CACHÊS & EXTRATOS                        */}
+      {/* ========================================================================= */}
+      {isAuditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-3xl bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            
+            {/* MODAL HEADER */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Auditoria de Cachês & Extratos</h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Conferência estrita: Receitas baseadas unicamente em eventos cadastrados.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAuditModalOpen(false)}
+                className="p-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* AUDIT SUMMARY STATS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
+              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-zinc-400">Receita Auditada dos Shows</span>
+                <span className="text-lg font-black text-emerald-400 tabular-nums block">
+                  {formatCurrency(auditResult.totalAuditedReceived)}
+                </span>
+                <span className="text-[10px] text-zinc-500">
+                  {auditResult.auditedShows.length} eventos cadastrados
+                </span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-zinc-400">Movimentações Desconsideradas</span>
+                <span className="text-lg font-black text-amber-400 tabular-nums block">
+                  {formatCurrency(auditResult.totalExcludedExtratoIncome)}
+                </span>
+                <span className="text-[10px] text-zinc-500">
+                  {auditResult.unlinkedExtratoIncomes.length} entradas no extrato sem show
+                </span>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-zinc-400">Sugestões de Vínculo</span>
+                <span className="text-lg font-black text-purple-400 tabular-nums block">
+                  {activeMatches.length}
+                </span>
+                <span className="text-[10px] text-zinc-500">
+                  Transações compatíveis encontradas
+                </span>
+              </div>
+            </div>
+
+            {/* AUDIT TABS */}
+            <div className="flex items-center space-x-1.5 border-b border-zinc-800 pb-2 shrink-0 overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setAuditTab('matches')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
+                  auditTab === 'matches'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-400 hover:text-white bg-zinc-900'
+                }`}
+              >
+                <span>Sugestões de Vínculo</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-purple-950 text-purple-300 text-[10px]">
+                  {activeMatches.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setAuditTab('shows')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
+                  auditTab === 'shows'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-400 hover:text-white bg-zinc-900'
+                }`}
+              >
+                <span>Shows Conferidos</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-300 text-[10px]">
+                  {auditResult.auditedShows.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setAuditTab('excluded')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
+                  auditTab === 'excluded'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-400 hover:text-white bg-zinc-900'
+                }`}
+              >
+                <span>Extrato Desconsiderado</span>
+                <span className="px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-300 text-[10px]">
+                  {auditResult.unlinkedExtratoIncomes.length}
+                </span>
+              </button>
+            </div>
+
+            {/* AUDIT TAB CONTENT */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              
+              {/* TAB 1: SUGESTÕES DE VÍNCULO */}
+              {auditTab === 'matches' && (
+                <div className="space-y-3">
+                  {activeMatches.length === 0 ? (
+                    <div className="p-8 rounded-2xl bg-zinc-900/50 border border-dashed border-zinc-800 text-center space-y-2">
+                      <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
+                      <p className="text-sm font-bold text-white">Nenhum cachê pendente de conferência</p>
+                      <p className="text-xs text-zinc-400">
+                        Todas as transações do extrato reconhecidas como cachê já estão vinculadas aos seus respectivos shows.
+                      </p>
+                    </div>
+                  ) : (
+                    activeMatches.map(({ transaction: tx, candidateShow, matchReason, confidence }) => (
+                      <div
+                        key={tx.id}
+                        className="p-4 rounded-2xl bg-zinc-900 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-black text-white truncate">
+                              {tx.description}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                              {formatCurrency(tx.amount)}
+                            </span>
+                            <span className="text-[10px] text-zinc-400">
+                              {tx.date}
+                            </span>
+                          </div>
+                          
+                          <div className="text-xs text-zinc-300 flex items-center space-x-1.5">
+                            <ArrowRight size={13} className="text-purple-400 shrink-0" />
+                            <span>Vincular ao Show: <strong className="text-white">{candidateShow.contractorName || candidateShow.name}</strong> ({candidateShow.date})</span>
+                          </div>
+                          
+                          <p className="text-[10px] text-emerald-400 font-medium">
+                            ✓ {matchReason}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <button
+                            onClick={() => handleLinkAuditMatch(tx, candidateShow)}
+                            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center space-x-1 transition active:scale-95 shadow-md shadow-purple-600/20"
+                          >
+                            <Link2 size={13} />
+                            <span>Vincular ao Show</span>
+                          </button>
+                          <button
+                            onClick={() => handleDismissMatch(tx.id)}
+                            className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs font-bold transition"
+                          >
+                            Dispensar
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: SHOWS CADASTRADOS & CONFERIDOS */}
+              {auditTab === 'shows' && (
+                <div className="space-y-2.5">
+                  {auditResult.auditedShows.map(({ show, financialSummary: fin, linkedTransactions: linked, statusMessage }) => (
+                    <div
+                      key={show.id}
+                      className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-black text-white truncate">
+                            {show.contractorName || show.name}
+                          </span>
+                          <span className="text-[10px] text-zinc-400">{show.date}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            fin.totalReceived >= fin.totalPredicted && fin.totalPredicted > 0
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : fin.totalReceived > 0
+                              ? 'bg-amber-500/20 text-amber-300'
+                              : 'bg-zinc-800 text-zinc-400'
+                          }`}>
+                            {statusMessage}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400">
+                          Recebido: <strong className="text-emerald-400">{formatCurrency(fin.totalReceived)}</strong> de {formatCurrency(fin.totalPredicted)} previsto
+                          {fin.extraReceived > 0 && ` (inclui ${formatCurrency(fin.extraReceived)} de extras)`}
+                        </p>
+                        {linked.length > 0 && (
+                          <div className="text-[10px] text-zinc-500 flex flex-wrap gap-1.5 pt-0.5">
+                            {linked.map(t => (
+                              <span key={t.id} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                                Pix: {formatCurrency(t.amount)} ({t.date})
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 flex items-center space-x-2">
+                        <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                          {formatCurrency(fin.totalReceived)}
+                        </span>
+                        {onSelectShow && (
+                          <button
+                            onClick={() => {
+                              setIsAuditModalOpen(false);
+                              onSelectShow(show);
+                            }}
+                            className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                          >
+                            <ExternalLink size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* TAB 3: MOVIMENTAÇÕES DE EXTRATO DESCONSIDERADAS */}
+              {auditTab === 'excluded' && (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start space-x-2">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <span>
+                      Estas movimentações foram <strong>desconsideradas</strong> no Dashboard de Performance para evitar inflacionar as receitas e ticket médio da carreira. Elas permanecem salvas normalmente no seu livro-razão / extrato geral.
+                    </span>
+                  </div>
+
+                  {auditResult.unlinkedExtratoIncomes.length === 0 ? (
+                    <p className="text-xs text-zinc-500 text-center py-4">Nenhuma movimentação avulsa encontrada.</p>
+                  ) : (
+                    auditResult.unlinkedExtratoIncomes.map(t => (
+                      <div
+                        key={t.id}
+                        className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex items-center justify-between text-xs"
+                      >
+                        <div className="min-w-0 pr-3">
+                          <span className="font-bold text-zinc-200 block truncate">{t.description}</span>
+                          <span className="text-[10px] text-zinc-500">{t.date} • {t.originalBankDescription || 'Extrato'}</span>
+                        </div>
+                        <span className="font-bold text-zinc-400 tabular-nums shrink-0">
+                          +{formatCurrency(t.amount)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="pt-3 border-t border-zinc-800 flex justify-end shrink-0">
+              <button
+                onClick={() => setIsAuditModalOpen(false)}
+                className="px-5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition"
+              >
+                Fechar Auditoria
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
