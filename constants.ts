@@ -57,8 +57,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_adjustment', name: 'Ajuste de Saldo', type: 'adjustment', color: '#64748b', icon: 'Calculator', classification: 'personal' },
 
   // --- DESPESAS DA MÚSICA / EMPRESA (EXCLUSIVAS MÚSICO) ---
-  { id: 'cat_equipamentos', name: 'Equipamentos & Instrumentos', type: 'expense', color: '#8b5cf6', icon: 'Hammer', classification: 'professional', scope: 'BUSINESS' },
-  { id: 'cat_producao_shows', name: 'Produção / Músicos / Equipe', type: 'expense', color: '#a855f7', icon: 'Users', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_logistica_shows', name: 'Deslocamento / Logística', type: 'expense', color: '#f59e0b', icon: 'Fuel', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_equipamentos', name: 'Equipamentos & Som', type: 'expense', color: '#8b5cf6', icon: 'Hammer', classification: 'professional', scope: 'BUSINESS' },
+  { id: 'cat_producao_shows', name: 'Músicos / Apoio (Equipe)', type: 'expense', color: '#a855f7', icon: 'Users', classification: 'professional', scope: 'BUSINESS' },
   { id: 'cat_marketing', name: 'Mídia / Marketing & Divulgação', type: 'expense', color: '#ec4899', icon: 'Sparkles', classification: 'professional', scope: 'BUSINESS' },
   { id: 'cat_prolabore_out', name: 'Retirada de Pró-Labore', type: 'expense', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'professional', scope: 'BUSINESS' },
 ];
@@ -109,5 +110,5 @@ export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
   targetReserveMonths: 6,
   essentialCategoryIds: ['cat_1', 'cat_2', 'cat_3', 'cat_21', 'cat_4', 'cat_11', 'cat_12', 'cat_13', 'cat_14', 'cat_26', 'cat_27'],
   lifestyleCategoryIds: ['cat_5', 'cat_22', 'cat_9', 'cat_15', 'cat_16', 'cat_17', 'cat_18', 'cat_19', 'cat_23', 'cat_20', 'cat_28', 'cat_29'],
-  professionalCategoryIds: ['cat_equipamentos', 'cat_producao_shows', 'cat_marketing', 'cat_33']
+  professionalCategoryIds: ['cat_logistica_shows', 'cat_equipamentos', 'cat_producao_shows', 'cat_marketing', 'cat_33']
 };

@@ -49,6 +49,13 @@ export interface Debt {
   interestRate?: number;
 }
 
+export type ShowCostGroup = 'logistica' | 'musicos' | 'equipamentos';
+
+export type ShowLogisticsSubcategory = 'Combustível' | 'Pedágio' | 'Hospedagem';
+export type ShowCrewSubcategory = 'Cachê de Terceiros / Equipe';
+export type ShowEquipmentSubcategory = 'Aluguel' | 'Manutenção' | 'Insumos do Show';
+export type ShowExpenseSubcategory = ShowLogisticsSubcategory | ShowCrewSubcategory | ShowEquipmentSubcategory | string;
+
 export interface Transaction {
   id: string;
   date: string;
@@ -56,6 +63,8 @@ export interface Transaction {
   type: TransactionType;
   categoryId: string;
   category?: string; // Para compatibilidade com base legada
+  subcategory?: ShowExpenseSubcategory; // Subcategoria vinculada ao custo do show
+  costGroup?: ShowCostGroup; // Grupo de custo do show (logistica | musicos | equipamentos)
   description: string;
   status: TransactionStatus;
   createdAt: number;
@@ -75,6 +84,7 @@ export interface Transaction {
   showPaymentId?: string; // ID do pagamento vinculado do show
   showPaymentType?: ShowPaymentType; // Natureza da parcela: Sinal | Parcela | Restante | Extra | Bônus
   showExpenseId?: string; // ID da despesa vinculada do show
+  isEventTransaction?: boolean; // Flag explícita indicando que a transação pertence a um evento
   scope?: ScopeType;
   importedFromBank?: boolean;
   originalBankDescription?: string;
@@ -140,7 +150,7 @@ export interface ShowExpenses {
   others: number;       // Outros
 }
 
-export type ShowPaymentType = 'Sinal' | 'Parcela' | 'Restante' | 'Pagamento final' | 'Extra' | 'Bônus' | 'Outro';
+export type ShowPaymentType = 'Cachê Principal' | 'Sinal' | 'Parcela' | 'Restante' | 'Pagamento final' | 'Extra' | 'Hora Extra' | 'Couvert' | 'Gorjeta' | 'Bônus' | 'Outro';
 export type ShowPaymentStatus = 'Agendado' | 'Recebido' | 'Previsto' | 'Cancelado';
 
 export interface ShowPayment {
@@ -155,15 +165,18 @@ export interface ShowPayment {
   transactionId?: string; // ID da movimentação no Financeiro
 }
 
-export type ShowExpenseCategory = 'Combustível' | 'Alimentação' | 'Pedágio' | 'Estacionamento' | 'Comissão' | 'Hospedagem' | 'Outros';
+export type ShowExpenseCategory = 'Combustível' | 'Pedágio' | 'Hospedagem' | 'Cachê de Terceiros / Equipe' | 'Aluguel' | 'Manutenção' | 'Insumos do Show' | 'Alimentação' | 'Estacionamento' | 'Comissão' | 'Outros';
 
 export interface ShowExpenseItem {
   id: string;
   category: ShowExpenseCategory | string;
+  subcategory?: ShowExpenseSubcategory;
+  costGroup?: ShowCostGroup;
   amount: number;
   date: string; // Data da despesa (YYYY-MM-DD)
   accountId: string; // Conta bancária/carteira de onde saiu o valor
   notes?: string;
+  status?: 'paid' | 'pending';
   transactionId?: string; // ID da movimentação no Financeiro
 }
 
@@ -187,6 +200,8 @@ export interface ShowCrewItem {
   memberId?: string; // ID do músico no cadastro geral se houver
   name: string;
   role: string;      // Bateria, Baixo, Teclado, Roadie, Técnico, etc.
+  subcategory?: ShowCrewSubcategory | string; // Cachê de Terceiros / Equipe
+  costGroup?: ShowCostGroup;
   cacheAmount: number;
   status?: 'paid' | 'pending';
   pixKey?: string;
@@ -196,7 +211,9 @@ export interface ShowCrewItem {
 
 export interface ShowLogisticsItem {
   id?: string;
-  type: 'uber' | 'car_km' | 'toll' | 'van' | 'fuel' | 'parking' | 'other';
+  type: 'fuel' | 'toll' | 'lodging' | 'uber' | 'car_km' | 'van' | 'parking' | 'other';
+  subcategory?: ShowLogisticsSubcategory | string; // Combustível | Pedágio | Hospedagem
+  costGroup?: ShowCostGroup;
   description: string;
   amount: number;
   km?: number;
@@ -207,7 +224,9 @@ export interface ShowLogisticsItem {
 
 export interface ShowOtherExpenseItem {
   id?: string;
-  category: string;  // Alimentação, Camarim, Aluguel de Equipamentos, Hospedagem, etc.
+  category: string;  // Aluguel, Manutenção, Insumos do Show, etc.
+  subcategory?: ShowEquipmentSubcategory | string; // Aluguel | Manutenção | Insumos do Show
+  costGroup?: ShowCostGroup;
   description: string;
   amount: number;
   status?: 'paid' | 'pending';

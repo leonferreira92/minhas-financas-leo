@@ -5,7 +5,7 @@ import {
   Calendar, MapPin, DollarSign, Search, Filter, 
   ChevronRight, Archive, CheckCircle2, XCircle, Check
 } from 'lucide-react';
-import { getStatusConfig } from './types';
+import { getStatusConfig, getShowDisplayHierarchy } from './types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 
 interface Props {
@@ -145,6 +145,7 @@ export const ShowHistoryView: React.FC<Props> = ({
             const fin = getShowFinancialSummary(show, transactions);
             const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
             const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
+            const hierarchy = getShowDisplayHierarchy(show);
 
             return (
               <div
@@ -152,23 +153,27 @@ export const ShowHistoryView: React.FC<Props> = ({
                 onClick={() => onSelectShow(show)}
                 className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 transition cursor-pointer space-y-2.5 shadow-xs active:scale-[0.99] group"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 pr-3">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                       <span className={`px-2 py-0.2 rounded text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}>
                         {show.status}
                       </span>
                       <span className="text-[10px] text-slate-400 font-medium">
                         {formatDateLabel(show.date)}
                       </span>
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        <MapPin size={10} className="text-purple-500 shrink-0" />
+                        <span>{hierarchy.cityTag}</span>
+                      </span>
                     </div>
 
-                    <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white truncate mt-1">
-                      {show.contractorName || show.name}
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate mt-1.5 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                      {hierarchy.eventTitle}
                     </h4>
 
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {show.city || show.location || 'Local a definir'}
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-bold truncate mt-0.5">
+                      {hierarchy.contractorSubtitle}
                     </p>
                   </div>
 

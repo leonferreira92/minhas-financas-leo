@@ -7,7 +7,7 @@ import {
   Phone, Wallet, ArrowDownRight, Users, Car, Hammer,
   Plus, Trash2, Calculator, TrendingUp, ShieldCheck, ChevronDown
 } from 'lucide-react';
-import { EVENT_TYPES, SHOW_STATUSES } from './types';
+import { EVENT_TYPES, SHOW_STATUSES, getShowDisplayHierarchy } from './types';
 import { checkScheduleConflict, ConflictResult } from './conflictHelper';
 import { generateUUID } from '../../services/uuidHelper';
 import { getLocalDateString } from '../../services/dateUtils';
@@ -122,8 +122,9 @@ export const ShowFormModal: React.FC<Props> = ({
   // Carrega dados se for edição ou novo
   useEffect(() => {
     if (existingShow) {
-      setName(existingShow.name || existingShow.contractorName || '');
-      setContractorName(existingShow.contractorName || existingShow.name || '');
+      const hierarchy = getShowDisplayHierarchy(existingShow);
+      setName(existingShow.name || hierarchy.eventTitle || '');
+      setContractorName(existingShow.contractorName || '');
       setContractorPhone(existingShow.contractorPhone || '');
       setEventType(existingShow.eventType || EVENT_TYPES[0]);
       setDate(existingShow.date || getLocalDateString());
@@ -131,7 +132,7 @@ export const ShowFormModal: React.FC<Props> = ({
       setEndTime(existingShow.endTime || '23:00');
       setDuration(existingShow.duration || '3h');
       setCity(existingShow.city || '');
-      setLocation(existingShow.location || '');
+      setLocation(existingShow.location && existingShow.location !== 'A definir' ? existingShow.location : '');
       const cacheVal = existingShow.totalCache ?? existingShow.cacheCombined;
       setTotalCache(cacheVal !== undefined && cacheVal !== null ? String(cacheVal) : '');
       
@@ -416,8 +417,8 @@ export const ShowFormModal: React.FC<Props> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalContractor = contractorName.trim() || name.trim();
-    if (!finalContractor) return;
+    const finalEventName = name.trim() || location.trim() || contractorName.trim();
+    if (!finalEventName) return;
 
     // Check conflict if status is 'Confirmado'
     if (status === 'Confirmado') {
@@ -447,7 +448,6 @@ export const ShowFormModal: React.FC<Props> = ({
     let initialDepositTx: any = null;
 
     if (!existingShow && depVal > 0) {
-      const txId = generateUUID();
       const paymentId = generateUUID();
 
       paymentsList.push({
@@ -458,22 +458,35 @@ export const ShowFormModal: React.FC<Props> = ({
         expectedDate: depositDate,
         effectiveDate: depositDate,
         accountId: depositAccountId,
-        transactionId: txId,
         notes: 'Sinal cadastrado junto ao show'
       });
 
-      initialDepositTx = {
-        id: txId,
-        description: `Sinal: ${name || contractorName || 'Show'}`,
-        amount: depVal,
-        type: 'income',
-        categoryId: 'cat_33',
-        accountId: depositAccountId,
-        date: depositDate,
-        status: 'paid',
-        scope: 'BUSINESS',
-        showPaymentType: 'Sinal'
-      };
+      const remainingCache = Math.max(0, cacheVal - depVal);
+      if (remainingCache > 0) {
+        const isRealized = status === 'Realizado';
+        paymentsList.push({
+          id: generateUUID(),
+          type: 'Cachê Principal',
+          amount: remainingCache,
+          status: isRealized ? 'Recebido' : 'Agendado',
+          expectedDate: date,
+          effectiveDate: isRealized ? date : undefined,
+          accountId: defaultAccountId,
+          notes: 'Restante do Cachê Principal'
+        });
+      }
+    } else if (!existingShow && cacheVal > 0 && extraVal > 0) {
+      const isRealized = status === 'Realizado';
+      paymentsList.push({
+        id: generateUUID(),
+        type: 'Cachê Principal',
+        amount: cacheVal,
+        status: isRealized ? 'Recebido' : 'Agendado',
+        expectedDate: date,
+        effectiveDate: isRealized ? date : undefined,
+        accountId: defaultAccountId,
+        notes: 'Cachê Principal do Evento'
+      });
     }
 
     // Gerenciar acréscimo de Hora Extra / Gorjeta nos pagamentos do show
@@ -503,9 +516,12 @@ export const ShowFormModal: React.FC<Props> = ({
       }
     }
 
+    const resolvedEventName = name.trim() || location.trim() || contractorName.trim() || 'Show';
+    const resolvedContractorName = contractorName.trim() || resolvedEventName;
+
     const showPayload: Partial<Show> = {
-      name: name.trim() || contractorName.trim() || 'Show',
-      contractorName: contractorName.trim() || name.trim() || 'Show',
+      name: resolvedEventName,
+      contractorName: resolvedContractorName,
       contractorPhone: contractorPhone.trim() || undefined,
       eventType,
       date,
@@ -513,7 +529,7 @@ export const ShowFormModal: React.FC<Props> = ({
       endTime: endTime.trim() || undefined,
       duration: duration.trim() || undefined,
       city: city.trim() || undefined,
-      location: location.trim() || name.trim() || 'A definir',
+      location: location.trim() || resolvedEventName,
       totalCache: cacheVal,
       extraAmount: extraVal > 0 ? extraVal : undefined,
       extraNote: extraVal > 0 ? (extraNote.trim() || undefined) : undefined,
@@ -584,38 +600,36 @@ export const ShowFormModal: React.FC<Props> = ({
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           
           {/* ========================================================================= */}
-          {/* 1. BLOCO A: CABEÇALHO & STATUS OPERACIONAL                                */}
+          {/* 1. BLOCO A: IDENTIFICAÇÃO HIERÁRQUICA DO EVENTO (FLUXO 1 A 4)             */}
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 rounded-3xl bg-[#18181b] border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
               <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
                 <Calendar size={13} />
-                BLOCO A • Cabeçalho & Status Operacional
+                BLOCO A • Identificação Estruturada do Show (1 → 4)
               </span>
-              <span className="text-[10px] text-zinc-500 font-bold">Informações Básicas</span>
+              <span className="text-[10px] text-zinc-400 font-bold">Hierarquia Sincronizada com o Card</span>
             </div>
 
+            {/* PASSOS 1 E 2: 1. NOME DO EVENTO / CASA  &  2. CONTRATANTE / CLIENTE */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Nome do Local / Evento */}
+              {/* 1. Nome do Evento / Casa (Título Principal do Card) */}
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">
-                  Nome do Local / Evento *
+                <label className="text-zinc-200 font-black block mb-1">
+                  1. Nome do Evento / Casa * <span className="text-[10px] font-bold text-purple-400">(Título Principal)</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (!contractorName) setContractorName(e.target.value);
-                  }}
-                  placeholder="Ex: Bar do Zé, Casamento Sítio Palmeiras..."
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-500"
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ex: Show Haras Casa Velha"
+                  className="w-full bg-[#121214] border border-purple-500/40 rounded-xl p-2.5 text-white font-black text-sm focus:outline-none focus:border-purple-500"
                 />
                 {/* Sugestões de Locais Cadastrados */}
                 {venues.length > 0 && !existingShow && (
                   <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-1.5">
-                    <span className="text-[9px] text-zinc-500 font-bold shrink-0">Bares:</span>
+                    <span className="text-[9px] text-zinc-500 font-bold shrink-0">Casas:</span>
                     {venues.slice(0, 3).map(v => (
                       <button
                         key={v.id}
@@ -635,6 +649,49 @@ export const ShowFormModal: React.FC<Props> = ({
                 )}
               </div>
 
+              {/* 2. Contratante / Cliente (Subtítulo do Card) */}
+              <div>
+                <label className="text-zinc-200 font-black block mb-1">
+                  2. Contratante / Cliente * <span className="text-[10px] font-bold text-emerald-400">(Subtítulo)</span>
+                </label>
+                <input
+                  type="text"
+                  value={contractorName}
+                  onChange={(e) => setContractorName(e.target.value)}
+                  placeholder="Ex: LSA Tecnologia"
+                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold text-sm focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            {/* PASSO 3: 3. CIDADE / UF (TAG DO CARD) + ENDEREÇO / TIPO DE EVENTO */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* 3. Cidade / UF (Tag do Card) */}
+              <div>
+                <label className="text-zinc-200 font-black block mb-1">
+                  3. Cidade / UF * <span className="text-[10px] font-bold text-sky-400">(Tag / Cidade)</span>
+                </label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Ex: Cruzília - MG"
+                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              {/* Endereço / Espaço Complementar */}
+              <div>
+                <label className="text-zinc-300 font-bold block mb-1">Endereço / Espaço (Opcional)</label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Rua, Rodovia ou Referência"
+                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
               {/* Tipo de Evento */}
               <div>
                 <label className="text-zinc-300 font-bold block mb-1">Tipo de Evento</label>
@@ -650,74 +707,91 @@ export const ShowFormModal: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Data, Horário de Início, Término e Duração */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="text-zinc-300 font-bold block mb-1">Data *</label>
-                <input
-                  type="date"
-                  required
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
-                />
-              </div>
+            {/* PASSO 4: 4. DATA, HORÁRIO & VALOR DO CACHÊ (R$) */}
+            <div className="p-3.5 rounded-2xl bg-[#121214]/90 border border-zinc-800/90 space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">
+                4. Data, Horário & Valor do Cachê Combinado
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="text-zinc-300 font-bold block mb-1">Data do Show *</label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-500"
+                  />
+                </div>
 
-              <div>
-                <label className="text-zinc-300 font-bold block mb-1">Início *</label>
-                <input
-                  type="time"
-                  required
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
-                />
-              </div>
+                <div>
+                  <label className="text-emerald-400 font-black block mb-1">Valor / Cachê (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={totalCache}
+                    onChange={(e) => setTotalCache(e.target.value)}
+                    placeholder="Ex: 2500.00"
+                    className="w-full bg-[#18181b] border border-emerald-500/40 rounded-xl p-2.5 text-emerald-400 font-black focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
 
-              <div>
-                <label className="text-zinc-300 font-bold block mb-1">Término</label>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
-                />
-              </div>
+                <div>
+                  <label className="text-zinc-300 font-bold block mb-1">Horário Início *</label>
+                  <input
+                    type="time"
+                    required
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
 
-              <div>
-                <label className="text-zinc-300 font-bold block mb-1">Duração</label>
-                <input
-                  type="text"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  placeholder="Ex: 3h, 4h"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
-                />
+                <div>
+                  <label className="text-zinc-300 font-bold block mb-1">Término / Duração</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white focus:outline-none focus:border-purple-500"
+                    />
+                    <input
+                      type="text"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      placeholder="3h"
+                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-center focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Endereço e Cidade */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <label className="text-zinc-300 font-bold block mb-1">Endereço / Local</label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Rua, Bairro ou Nome do Espaço"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
-                />
+            {/* PRÉVIA EM TEMPO REAL DO CARD DE SHOW (SINCRONISMO ESTRITO) */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/30 via-[#141416] to-[#121214] border border-purple-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center space-x-2">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-purple-400">Prévia do Card:</span>
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[10px] font-bold text-purple-300">
+                    <MapPin size={10} />
+                    <span>{city.trim() || 'Cruzília - MG'}</span>
+                  </span>
+                </div>
+                <div className="text-sm sm:text-base font-black text-white truncate">
+                  {name.trim() || 'Show Haras Casa Velha'}
+                </div>
+                <div className="text-xs font-bold text-zinc-400 truncate">
+                  Contratante: {contractorName.trim() || name.trim() || 'LSA Tecnologia'}
+                </div>
               </div>
-
-              <div>
-                <label className="text-zinc-300 font-bold block mb-1">Cidade / UF</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="Ex: São Paulo - SP"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
-                />
+              <div className="text-left sm:text-right shrink-0">
+                <span className="text-sm font-black text-emerald-400 tabular-nums block">
+                  {formatCurrency(financialSummaryLive.totalShowValue)}
+                </span>
+                <span className="text-[10px] text-zinc-400 block">
+                  Lucro Líquido: {formatCurrency(financialSummaryLive.netProfit)}
+                </span>
               </div>
             </div>
 

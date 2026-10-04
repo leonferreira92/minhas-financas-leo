@@ -11,10 +11,11 @@ import {
   Copy, Volume2, Navigation, Phone, MessageCircle, Users, Car,
   Fuel, Receipt, ShieldCheck, RefreshCw
 } from 'lucide-react';
-import { getStatusConfig } from './types';
+import { getStatusConfig, getShowDisplayHierarchy } from './types';
 import { 
   normalizeShowFinancials, 
-  getShowFinancialSummary 
+  getShowFinancialSummary,
+  resolveShowExpenseClassification
 } from '../../services/showFinanceSyncService';
 import { generateUUID } from '../../services/uuidHelper';
 import { syncShowToGoogleCalendar, googleSignIn, getAccessToken } from '../../services/googleCalendarService';
@@ -56,6 +57,7 @@ export const ShowDetailModal: React.FC<Props> = ({
   const { 
     shows, accounts, transactions, crew, updateShow, 
     updateTransaction, addTransaction, deleteTransaction, 
+    unlinkTransactionFromShow,
     getDefaultAccountForScope, isBlurred 
   } = useFinance();
 
@@ -69,23 +71,34 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [newContractedCache, setNewContractedCache] = useState('');
   const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
 
-  // Form states para adição rápida
+  // Form states para adição rápida de Receita
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(openPaymentDirectly);
   const [payStatus, setPayStatus] = useState<'Recebido' | 'Agendado'>('Recebido');
-  const [payType, setPayType] = useState<ShowPaymentType>('Sinal');
+  const [payType, setPayType] = useState<ShowPaymentType>('Cachê Principal');
   const [payAmount, setPayAmount] = useState('');
+  const [payNotes, setPayNotes] = useState('');
   const [payDate, setPayDate] = useState(() => getLocalDateString());
   const [payAccountId, setPayAccountId] = useState(() => getDefaultAccountForScope('BUSINESS'));
 
-  // Adição explícita de Hora Extra / Gorjeta inline
+  // Edição inline de Recebimento existente
+  const [editingPaymentIndex, setEditingPaymentIndex] = useState<number | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [editPaymentType, setEditPaymentType] = useState<ShowPaymentType>('Cachê Principal');
+  const [editPaymentAmount, setEditPaymentAmount] = useState('');
+  const [editPaymentNotes, setEditPaymentNotes] = useState('');
+  const [editPaymentDate, setEditPaymentDate] = useState(() => getLocalDateString());
+  const [editPayStatus, setEditPayStatus] = useState<'Recebido' | 'Agendado'>('Recebido');
+
+  // Adição explícita de Hora Extra / Couvert / Gorjeta inline
   const [isAddExtraOpen, setIsAddExtraOpen] = useState(false);
+  const [extraTypeInput, setExtraTypeInput] = useState<ShowPaymentType>('Hora Extra');
   const [extraValInput, setExtraValInput] = useState('');
   const [extraDescInput, setExtraDescInput] = useState('');
   const [extraStatusInput, setExtraStatusInput] = useState<'Recebido' | 'Agendado'>('Recebido');
   const [extraDateInput, setExtraDateInput] = useState(() => getLocalDateString());
   const [extraAccountIdInput, setExtraAccountIdInput] = useState(() => getDefaultAccountForScope('BUSINESS'));
 
-  // Adição de equipe inline
+  // Adição de equipe inline (Músicos/Apoio -> Cachê de Terceiros / Equipe)
   const [isAddCrewOpen, setIsAddCrewOpen] = useState(false);
   const [selectedCrewId, setSelectedCrewId] = useState('');
   const [customCrewName, setCustomCrewName] = useState('');
@@ -93,17 +106,18 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [customCrewCache, setCustomCrewCache] = useState('');
   const [customCrewPix, setCustomCrewPix] = useState('');
 
-  // Adição de logística inline
+  // Adição de logística inline (Deslocamento/Logística -> Combustível, Pedágio, Hospedagem)
   const [isAddLogisticsOpen, setIsAddLogisticsOpen] = useState(false);
-  const [logType, setLogType] = useState<ShowLogisticsItem['type']>('uber');
+  const [logSubcategory, setLogSubcategory] = useState<'Combustível' | 'Pedágio' | 'Hospedagem'>('Combustível');
+  const [logType, setLogType] = useState<'fuel' | 'car_km' | 'toll' | 'lodging' | 'uber'>('fuel');
   const [logDesc, setLogDesc] = useState('');
   const [logAmount, setLogAmount] = useState('');
   const [logKm, setLogKm] = useState('');
   const [logPricePerKm, setLogPricePerKm] = useState('1.20');
 
-  // Adição de outras despesas inline
+  // Adição de Equipamentos/Som inline (Equipamentos/Som -> Aluguel, Manutenção, Insumos do Show)
   const [isAddOtherOpen, setIsAddOtherOpen] = useState(false);
-  const [otherCat, setOtherCat] = useState('Alimentação / Camarim');
+  const [otherCat, setOtherCat] = useState<'Aluguel' | 'Manutenção' | 'Insumos do Show'>('Aluguel');
   const [otherDesc, setOtherDesc] = useState('');
   const [otherAmount, setOtherAmount] = useState('');
 
@@ -115,13 +129,13 @@ export const ShowDetailModal: React.FC<Props> = ({
   const [editCrewPix, setEditCrewPix] = useState('');
 
   const [editingLogisticsIndex, setEditingLogisticsIndex] = useState<number | null>(null);
-  const [editLogType, setEditLogType] = useState<ShowLogisticsItem['type']>('fuel');
+  const [editLogSubcategory, setEditLogSubcategory] = useState<'Combustível' | 'Pedágio' | 'Hospedagem'>('Combustível');
   const [editLogDesc, setEditLogDesc] = useState('');
   const [editLogAmount, setEditLogAmount] = useState('');
   const [editLogKm, setEditLogKm] = useState('');
 
   const [editingOtherIndex, setEditingOtherIndex] = useState<number | null>(null);
-  const [editOtherCat, setEditOtherCat] = useState('Outros Custos');
+  const [editOtherCat, setEditOtherCat] = useState<'Aluguel' | 'Manutenção' | 'Insumos do Show'>('Aluguel');
   const [editOtherDesc, setEditOtherDesc] = useState('');
   const [editOtherAmount, setEditOtherAmount] = useState('');
 
@@ -184,6 +198,11 @@ export const ShowDetailModal: React.FC<Props> = ({
   // Reset form states on show switch
   useEffect(() => {
     setIsAddPaymentOpen(openPaymentDirectly);
+    setEditingPaymentIndex(null);
+    setEditingPaymentId(null);
+    setEditingCrewIndex(null);
+    setEditingLogisticsIndex(null);
+    setEditingOtherIndex(null);
     setIsAddCrewOpen(false);
     setIsAddLogisticsOpen(false);
     setIsAddOtherOpen(false);
@@ -205,188 +224,265 @@ export const ShowDetailModal: React.FC<Props> = ({
   if (!show) return null;
 
   const statusCfg = getStatusConfig(show.status);
+  const displayHierarchy = getShowDisplayHierarchy(show);
 
   // =========================================================================
-  // CÁLCULO INSTANTÂNEO DE MÉTRICAS FINANCEIRAS DO SHOW (REGRA DE SOBRESCRITA & EXTRAS)
+  // CÁLCULO DINÂMICO DE MÉTRICAS FINANCEIRAS DO SHOW (BASEADO EM LANÇAMENTOS VINCULADOS)
   // =========================================================================
   const finSummary = useMemo(() => {
     return getShowFinancialSummary(show, transactions);
   }, [show, transactions]);
 
-  // Cachê Base Contratado
-  const baseCache = finSummary.baseContracted ?? (Number(show.totalCache ?? show.cacheCombined) || 0);
-  // Extras (Hora Extra, Gorjeta)
-  const extraVal = finSummary.extraContracted ?? finSummary.extraAmount ?? (Number(show.extraAmount) || 0);
-  // O valor total do show deve ser exclusivamente: [Cachê Base Contratado] + [Extras / Hora Extra / Gorjeta]
-  const totalShowValue = finSummary.totalPredicted ?? (baseCache + extraVal);
-  const grossCache = totalShowValue;
+  // Cachê Principal (soma das receitas de Cachê Principal/Parcelas vinculadas)
+  const baseCache = finSummary.principalCacheTotal;
+  // Extras (Horas Extras + Couvert/Gorjeta)
+  const extraVal = finSummary.extraAmount;
+  // Cachê Bruto Real = Soma de todas as Receitas com o showId correspondente (Cachê Principal + Horas Extras + Couvert/Gorjeta)
+  const totalShowValue = finSummary.realGrossCache;
+  const grossCache = finSummary.realGrossCache;
 
-  // Recebimentos no Caixa (Regra de Sobrescrita: transação vinculada define/sobrescreve, nunca soma em duplicidade)
+  // Recebimentos Efetivados no Caixa
   const totalReceived = finSummary.totalReceived;
   const remainingToReceive = finSummary.totalPending;
   const percentReceived = finSummary.percentReceived;
 
-  // Normalização e Agrupamento de Custos Diretos com Compatibilidade Multichaves / Aliases
+  // Normalização e Isolamento Estrito dos Custos em 3 Grupos:
+  // 1. Deslocamento/Logística -> Combustível, Pedágio, Hospedagem (cat_logistica_shows)
+  // 2. Músicos/Apoio -> Cachê de Terceiros / Equipe (cat_producao_shows)
+  // 3. Equipamentos/Som -> Aluguel, Manutenção, Insumos do Show (cat_equipamentos)
   const normalizedCostBlocks = useMemo(() => {
     if (!show) return { crew: [], logistics: [], other: [], crewCost: 0, logisticsCost: 0, otherCost: 0, totalCosts: 0 };
 
-    const logisticsAliases = ['combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'fuel', 'logistica', 'logística', 'deslocamento', 'transporte', 'uber', '99', 'taxi', 'táxi', 'carro', 'car_km', 'km', 'trajeto', 'viagem', 'pedagio', 'pedágio', 'toll', 'van', 'estacionamento', 'parking', 'passagem'];
-    const crewAliases = ['musico', 'músico', 'musicos', 'músicos', 'freelancer', 'freelancers', 'equipe', 'cache', 'cachê', 'membros', 'banda', 'tecnico', 'técnico', 'roadie', 'bateria', 'baixo', 'guitarra', 'teclado', 'sanfona', 'percussao', 'percussão', 'vocal', 'backing', 'fotógrafo', 'fotografo', 'video', 'vídeo', 'som'];
+    const crewItems: Array<{
+      id: string;
+      name: string;
+      role: string;
+      subcategory: string;
+      amount: number;
+      status: 'paid' | 'pending';
+      pixKey?: string;
+      transactionId?: string;
+      origType: 'crew' | 'expenseItem' | 'tx';
+      origIndex: number;
+    }> = [];
 
-    const crewItems: Array<{ id: string; name: string; role: string; amount: number; status: 'paid' | 'pending'; pixKey?: string; origType: 'crew' | 'expenseItem'; origIndex: number }> = [];
-    const logisticsItems: Array<{ id: string; type: string; description: string; amount: number; km?: number; pricePerKm?: number; status: 'paid' | 'pending'; origType: 'logistics' | 'expenseItem' | 'legacy'; origIndex: number }> = [];
-    const otherItems: Array<{ id: string; category: string; description: string; amount: number; status: 'paid' | 'pending'; origType: 'other' | 'expenseItem' | 'legacy'; origIndex: number }> = [];
+    const logisticsItems: Array<{
+      id: string;
+      type: string;
+      subcategory: 'Combustível' | 'Pedágio' | 'Hospedagem';
+      description: string;
+      amount: number;
+      km?: number;
+      pricePerKm?: number;
+      status: 'paid' | 'pending';
+      transactionId?: string;
+      origType: 'logistics' | 'expenseItem' | 'tx';
+      origIndex: number;
+    }> = [];
 
-    // 1. Integrantes de Equipe registrados
+    const otherItems: Array<{
+      id: string;
+      category: 'Aluguel' | 'Manutenção' | 'Insumos do Show';
+      subcategory: 'Aluguel' | 'Manutenção' | 'Insumos do Show';
+      description: string;
+      amount: number;
+      status: 'paid' | 'pending';
+      transactionId?: string;
+      origType: 'other' | 'expenseItem' | 'tx';
+      origIndex: number;
+    }> = [];
+
+    const trackedTxIds = new Set<string>();
+    const trackedExpenseIds = new Set<string>();
+
+    // 1. Músicos / Apoio -> Cachê de Terceiros / Equipe
     (show.crewMembers || []).forEach((c, i) => {
+      if (c.id && trackedExpenseIds.has(c.id)) return;
+      if (c.transactionId && trackedTxIds.has(c.transactionId)) return;
+      if (c.id) trackedExpenseIds.add(c.id);
+      if (c.transactionId) trackedTxIds.add(c.transactionId);
       crewItems.push({
         id: c.id || `crew_${i}`,
         name: c.name,
-        role: c.role || 'Músico',
+        role: c.role || 'Músico / Equipe',
+        subcategory: 'Cachê de Terceiros / Equipe',
         amount: Number(c.cacheAmount) || 0,
         status: c.status === 'paid' ? 'paid' : 'pending',
         pixKey: c.pixKey,
+        transactionId: c.transactionId,
         origType: 'crew',
         origIndex: i
       });
     });
 
-    // 2. Logística e Deslocamento registrados
+    // 2. Deslocamento / Logística -> Combustível, Pedágio, Hospedagem
     (show.logistics || []).forEach((l, i) => {
+      if (l.id && trackedExpenseIds.has(l.id)) return;
+      if (l.transactionId && trackedTxIds.has(l.transactionId)) return;
+      if (l.id) trackedExpenseIds.add(l.id);
+      if (l.transactionId) trackedTxIds.add(l.transactionId);
+      const cls = resolveShowExpenseClassification({
+        costGroup: 'logistica',
+        subcategory: l.subcategory,
+        logisticsType: l.type,
+        description: l.description
+      });
       logisticsItems.push({
         id: l.id || `log_${i}`,
-        type: l.type || 'fuel',
-        description: l.description || 'Deslocamento',
+        type: cls.logisticsType,
+        subcategory: cls.subcategory as 'Combustível' | 'Pedágio' | 'Hospedagem',
+        description: l.description || cls.subcategory,
         amount: Number(l.amount) || 0,
         km: l.km,
         pricePerKm: l.pricePerKm,
         status: l.status === 'paid' ? 'paid' : 'pending',
+        transactionId: l.transactionId,
         origType: 'logistics',
         origIndex: i
       });
     });
 
-    // 3. Outras Despesas registradas
+    // 3. Equipamentos / Som -> Aluguel, Manutenção, Insumos do Show
     (show.otherExpenses || []).forEach((o, i) => {
+      if (o.id && trackedExpenseIds.has(o.id)) return;
+      if (o.transactionId && trackedTxIds.has(o.transactionId)) return;
+      if (o.id) trackedExpenseIds.add(o.id);
+      if (o.transactionId) trackedTxIds.add(o.transactionId);
+      const cls = resolveShowExpenseClassification({
+        costGroup: 'equipamentos',
+        subcategory: o.subcategory || o.category,
+        category: o.category,
+        description: o.description
+      });
+      const sub = (cls.subcategory === 'Aluguel' || cls.subcategory === 'Manutenção' ? cls.subcategory : 'Insumos do Show') as
+        | 'Aluguel'
+        | 'Manutenção'
+        | 'Insumos do Show';
       otherItems.push({
         id: o.id || `oth_${i}`,
-        category: o.category || 'Outras Despesas',
-        description: o.description || o.category || 'Despesa Extra',
+        category: sub,
+        subcategory: sub,
+        description: o.description || sub,
         amount: Number(o.amount) || 0,
         status: o.status === 'paid' ? 'paid' : 'pending',
+        transactionId: o.transactionId,
         origType: 'other',
         origIndex: i
       });
     });
 
-    // 4. Processar expenseItems por aliases de categoria
+    // 4. Processar expenseItems legados
     (show.expenseItems || []).forEach((e, i) => {
-      const text = ((e.category || '') + ' ' + (e.notes || '')).toLowerCase();
-      const isLogistics = logisticsAliases.some(a => text.includes(a));
-      const isCrew = crewAliases.some(a => text.includes(a));
+      if (e.id && trackedExpenseIds.has(e.id)) return;
+      if (e.transactionId && trackedTxIds.has(e.transactionId)) return;
+      if (e.id) trackedExpenseIds.add(e.id);
+      if (e.transactionId) trackedTxIds.add(e.transactionId);
 
-      if (isLogistics) {
+      const cls = resolveShowExpenseClassification({
+        costGroup: e.costGroup,
+        subcategory: e.subcategory || e.category,
+        category: e.category,
+        description: e.notes
+      });
+
+      if (cls.costGroup === 'logistica') {
         logisticsItems.push({
           id: e.id || `exp_log_${i}`,
-          type: 'fuel',
-          description: e.notes || e.category || 'Combustível / Transporte',
+          type: cls.logisticsType,
+          subcategory: cls.subcategory as 'Combustível' | 'Pedágio' | 'Hospedagem',
+          description: e.notes || cls.subcategory,
           amount: Number(e.amount) || 0,
-          status: 'paid',
+          status: e.status === 'pending' ? 'pending' : 'paid',
+          transactionId: e.transactionId,
           origType: 'expenseItem',
           origIndex: i
         });
-      } else if (isCrew) {
+      } else if (cls.costGroup === 'musicos') {
         crewItems.push({
           id: e.id || `exp_crew_${i}`,
-          name: e.notes || e.category || 'Músico Convidado',
-          role: e.category || 'Músico',
+          name: e.notes || 'Músico / Apoio',
+          role: 'Cachê de Terceiros / Equipe',
+          subcategory: 'Cachê de Terceiros / Equipe',
           amount: Number(e.amount) || 0,
-          status: 'paid',
+          status: e.status === 'pending' ? 'pending' : 'paid',
+          transactionId: e.transactionId,
           origType: 'expenseItem',
           origIndex: i
         });
       } else {
+        const sub = (cls.subcategory === 'Aluguel' || cls.subcategory === 'Manutenção' ? cls.subcategory : 'Insumos do Show') as
+          | 'Aluguel'
+          | 'Manutenção'
+          | 'Insumos do Show';
         otherItems.push({
           id: e.id || `exp_oth_${i}`,
-          category: e.category || 'Outras Despesas',
-          description: e.notes || e.category || 'Despesa Extra',
+          category: sub,
+          subcategory: sub,
+          description: e.notes || sub,
           amount: Number(e.amount) || 0,
-          status: 'paid',
+          status: e.status === 'pending' ? 'pending' : 'paid',
+          transactionId: e.transactionId,
           origType: 'expenseItem',
           origIndex: i
         });
       }
     });
 
-    // 4.5. Processar transações avulsas de despesa do livro-razão vinculadas ao show (sem showExpenseId)
-    if (linkedExpenseTransactions && linkedExpenseTransactions.length > 0) {
-      linkedExpenseTransactions.forEach(t => {
-        if (!t) return;
-        const isAssociated = crewItems.some(c => c.id === t.showExpenseId) ||
-                             logisticsItems.some(l => l.id === t.showExpenseId) ||
-                             otherItems.some(o => o.id === t.showExpenseId);
-        
-        if (!isAssociated && !t.showExpenseId) {
-          otherItems.push({
-            id: t.id,
-            category: 'Outros Custos',
-            description: t.description || 'Despesa Avulsa',
-            amount: Number(t.amount) || 0,
-            status: t.status === 'paid' ? 'paid' : 'pending',
-            origType: 'other',
-            origIndex: -2
-          });
-        }
-      });
-    }
+    // 5. Processar quaisquer transações de despesa vinculadas ao showId no Extrato que ainda não estejam nas listas acima
+    linkedExpenseTransactions.forEach((t, idx) => {
+      if (!t || t.status === 'cancelled') return;
+      if (trackedTxIds.has(t.id)) return;
+      if (t.showExpenseId && trackedExpenseIds.has(t.showExpenseId)) return;
 
-    // 5. Objeto de despesas legadas (fuel, toll, food, commission, others)
-    if (show.expenses) {
-      if (show.expenses.fuel > 0 && logisticsItems.length === 0) {
+      const cls = resolveShowExpenseClassification({
+        costGroup: t.costGroup,
+        subcategory: t.subcategory,
+        categoryId: t.categoryId,
+        description: t.description
+      });
+
+      if (cls.costGroup === 'logistica') {
         logisticsItems.push({
-          id: 'legacy_fuel',
-          type: 'fuel',
-          description: 'Combustível / Gasolina',
-          amount: Number(show.expenses.fuel),
-          status: 'paid',
-          origType: 'legacy',
-          origIndex: -1
+          id: t.id,
+          type: cls.logisticsType,
+          subcategory: cls.subcategory as 'Combustível' | 'Pedágio' | 'Hospedagem',
+          description: t.description || cls.subcategory,
+          amount: Number(t.amount) || 0,
+          status: t.status === 'paid' ? 'paid' : 'pending',
+          transactionId: t.id,
+          origType: 'tx',
+          origIndex: idx
         });
-      }
-      if (show.expenses.toll > 0 && !logisticsItems.some(l => l.description.toLowerCase().includes('pedágio') || l.description.toLowerCase().includes('pedagio'))) {
-        logisticsItems.push({
-          id: 'legacy_toll',
-          type: 'toll',
-          description: 'Pedágio',
-          amount: Number(show.expenses.toll),
-          status: 'paid',
-          origType: 'legacy',
-          origIndex: -1
+      } else if (cls.costGroup === 'musicos') {
+        crewItems.push({
+          id: t.id,
+          name: t.description || 'Músico / Apoio',
+          role: 'Cachê de Terceiros / Equipe',
+          subcategory: 'Cachê de Terceiros / Equipe',
+          amount: Number(t.amount) || 0,
+          status: t.status === 'paid' ? 'paid' : 'pending',
+          transactionId: t.id,
+          origType: 'tx',
+          origIndex: idx
         });
-      }
-      if (show.expenses.food > 0 && !otherItems.some(o => o.description.toLowerCase().includes('alimentação') || o.description.toLowerCase().includes('lanche'))) {
+      } else {
+        const sub = (cls.subcategory === 'Aluguel' || cls.subcategory === 'Manutenção' ? cls.subcategory : 'Insumos do Show') as
+          | 'Aluguel'
+          | 'Manutenção'
+          | 'Insumos do Show';
         otherItems.push({
-          id: 'legacy_food',
-          category: 'Alimentação / Camarim',
-          description: 'Alimentação / Lanche',
-          amount: Number(show.expenses.food),
-          status: 'paid',
-          origType: 'legacy',
-          origIndex: -1
+          id: t.id,
+          category: sub,
+          subcategory: sub,
+          description: t.description || sub,
+          amount: Number(t.amount) || 0,
+          status: t.status === 'paid' ? 'paid' : 'pending',
+          transactionId: t.id,
+          origType: 'tx',
+          origIndex: idx
         });
       }
-      if (show.expenses.others > 0) {
-        otherItems.push({
-          id: 'legacy_others',
-          category: 'Outros Custos',
-          description: 'Outras Despesas do Show',
-          amount: Number(show.expenses.others),
-          status: 'paid',
-          origType: 'legacy',
-          origIndex: -1
-        });
-      }
-    }
+    });
 
     const crewCostVal = crewItems.reduce((s, c) => s + c.amount, 0);
     const logisticsCostVal = logisticsItems.reduce((s, l) => s + l.amount, 0);
@@ -402,11 +498,15 @@ export const ShowDetailModal: React.FC<Props> = ({
       otherCost: otherCostVal,
       totalCosts: totalCostsVal
     };
-  }, [show]);
+  }, [show, linkedExpenseTransactions]);
 
-  const { crewCost, logisticsCost, otherCost, totalCosts } = normalizedCostBlocks;
+  const { crewCost, logisticsCost, otherCost } = normalizedCostBlocks;
+  const totalCosts = finSummary.totalExpenses;
+  // Lucro Líquido Real = Cachê Bruto Real - (Soma de todas as Despesas vinculadas com o showId)
+  const netProfit = finSummary.realNetProfit;
+  const marginPercent = finSummary.profitMarginPercent;
 
-  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE EQUIPE ---
+  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE EQUIPE (MÚSICOS / APOIO) ---
   const handleStartEditCrew = (idx: number, item: any) => {
     setEditingCrewIndex(idx);
     setEditCrewName(item.name || '');
@@ -424,6 +524,8 @@ export const ShowDetailModal: React.FC<Props> = ({
             ...c,
             name: editCrewName.trim() || c.name,
             role: editCrewRole.trim() || c.role,
+            costGroup: 'musicos' as const,
+            subcategory: 'Cachê de Terceiros / Equipe' as const,
             cacheAmount: amt,
             pixKey: editCrewPix.trim() || undefined
           };
@@ -434,14 +536,33 @@ export const ShowDetailModal: React.FC<Props> = ({
     } else if (item.origType === 'expenseItem') {
       const updated = (show.expenseItems || []).map((e, i) => {
         if (i === item.origIndex) {
-          return { ...e, category: editCrewRole, notes: editCrewName, amount: amt };
+          return {
+            ...e,
+            category: 'Cachê de Terceiros / Equipe',
+            subcategory: 'Cachê de Terceiros / Equipe',
+            costGroup: 'musicos' as const,
+            notes: editCrewName,
+            amount: amt
+          };
         }
         return e;
       });
       updateShow({ ...show, expenseItems: updated });
+    } else if (item.origType === 'tx' && item.transactionId) {
+      const tx = transactions.find(t => t.id === item.transactionId);
+      if (tx) {
+        updateTransaction({
+          ...tx,
+          description: editCrewName.trim() || tx.description,
+          amount: amt,
+          costGroup: 'musicos',
+          subcategory: 'Cachê de Terceiros / Equipe',
+          categoryId: 'cat_producao_shows'
+        });
+      }
     }
     setEditingCrewIndex(null);
-    showToast('Membro da equipe atualizado e sincronizado com o Extrato!');
+    showToast('Custo de Músicos/Apoio atualizado e saldo recalculado em tempo real!');
   };
 
   const handleRemoveCrewItem = (item: any) => {
@@ -451,14 +572,16 @@ export const ShowDetailModal: React.FC<Props> = ({
     } else if (item.origType === 'expenseItem') {
       const updated = (show.expenseItems || []).filter((_, i) => i !== item.origIndex);
       updateShow({ ...show, expenseItems: updated });
+    } else if (item.origType === 'tx' && item.transactionId) {
+      deleteTransaction(item.transactionId);
     }
-    showToast('Membro removido e lançamento excluído do Extrato!');
+    showToast('Custo de Músicos/Apoio removido e saldo recalculado!');
   };
 
-  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE LOGÍSTICA ---
+  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE LOGÍSTICA (COMBUSTÍVEL, PEDÁGIO, HOSPEDAGEM) ---
   const handleStartEditLogistics = (idx: number, item: any) => {
     setEditingLogisticsIndex(idx);
-    setEditLogType(item.type || 'fuel');
+    setEditLogSubcategory(item.subcategory || 'Combustível');
     setEditLogDesc(item.description || '');
     setEditLogAmount(String(item.amount || ''));
     setEditLogKm(item.km ? String(item.km) : '');
@@ -467,17 +590,21 @@ export const ShowDetailModal: React.FC<Props> = ({
   const handleSaveEditLogisticsItem = (item: any) => {
     let amt = parseFloat(editLogAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
     const kmNum = parseFloat(editLogKm.replace(',', '.')) || undefined;
-    if (editLogType === 'car_km' && kmNum && !amt) {
+    if (kmNum && !amt) {
       amt = kmNum * 1.2;
     }
+    const logTypeMapped =
+      editLogSubcategory === 'Pedágio' ? 'toll' : editLogSubcategory === 'Hospedagem' ? 'lodging' : 'fuel';
 
     if (item.origType === 'logistics') {
       const updated = (show.logistics || []).map((l, i) => {
         if (i === item.origIndex) {
           return {
             ...l,
-            type: editLogType,
-            description: editLogDesc.trim() || l.description,
+            type: logTypeMapped as 'fuel' | 'toll' | 'lodging',
+            costGroup: 'logistica' as const,
+            subcategory: editLogSubcategory,
+            description: editLogDesc.trim() || editLogSubcategory,
             amount: amt,
             km: kmNum
           };
@@ -488,19 +615,33 @@ export const ShowDetailModal: React.FC<Props> = ({
     } else if (item.origType === 'expenseItem') {
       const updated = (show.expenseItems || []).map((e, i) => {
         if (i === item.origIndex) {
-          return { ...e, category: 'Combustível', notes: editLogDesc.trim(), amount: amt };
+          return {
+            ...e,
+            category: editLogSubcategory,
+            subcategory: editLogSubcategory,
+            costGroup: 'logistica' as const,
+            notes: editLogDesc.trim() || editLogSubcategory,
+            amount: amt
+          };
         }
         return e;
       });
       updateShow({ ...show, expenseItems: updated });
-    } else if (item.origType === 'legacy') {
-      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
-      if (item.id === 'legacy_fuel') updatedExpenses.fuel = amt;
-      if (item.id === 'legacy_toll') updatedExpenses.toll = amt;
-      updateShow({ ...show, expenses: updatedExpenses });
+    } else if (item.origType === 'tx' && item.transactionId) {
+      const tx = transactions.find(t => t.id === item.transactionId);
+      if (tx) {
+        updateTransaction({
+          ...tx,
+          description: editLogDesc.trim() || editLogSubcategory,
+          amount: amt,
+          costGroup: 'logistica',
+          subcategory: editLogSubcategory,
+          categoryId: 'cat_logistica_shows'
+        });
+      }
     }
     setEditingLogisticsIndex(null);
-    showToast('Transporte atualizado e sincronizado com o Extrato!');
+    showToast('Custo de Deslocamento/Logística atualizado e saldo recalculado!');
   };
 
   const handleRemoveLogisticsItem = (item: any) => {
@@ -510,19 +651,18 @@ export const ShowDetailModal: React.FC<Props> = ({
     } else if (item.origType === 'expenseItem') {
       const updated = (show.expenseItems || []).filter((_, i) => i !== item.origIndex);
       updateShow({ ...show, expenseItems: updated });
-    } else if (item.origType === 'legacy') {
-      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
-      if (item.id === 'legacy_fuel') updatedExpenses.fuel = 0;
-      if (item.id === 'legacy_toll') updatedExpenses.toll = 0;
-      updateShow({ ...show, expenses: updatedExpenses });
+    } else if (item.origType === 'tx' && item.transactionId) {
+      deleteTransaction(item.transactionId);
     }
-    showToast('Transporte removido e lançamento excluído do Extrato!');
+    showToast('Custo de Deslocamento/Logística removido e saldo recalculado!');
   };
 
-  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE OUTRAS DESPESAS ---
+  // --- AÇÕES DE EDIÇÃO E EXCLUSÃO DE EQUIPAMENTOS / SOM (ALUGUEL, MANUTENÇÃO, INSUMOS DO SHOW) ---
   const handleStartEditOther = (idx: number, item: any) => {
     setEditingOtherIndex(idx);
-    setEditOtherCat(item.category || 'Outros Custos');
+    const sub =
+      item.subcategory === 'Aluguel' || item.subcategory === 'Manutenção' ? item.subcategory : 'Insumos do Show';
+    setEditOtherCat(sub);
     setEditOtherDesc(item.description || '');
     setEditOtherAmount(String(item.amount || ''));
   };
@@ -535,7 +675,9 @@ export const ShowDetailModal: React.FC<Props> = ({
           return {
             ...o,
             category: editOtherCat,
-            description: editOtherDesc.trim() || o.description,
+            subcategory: editOtherCat,
+            costGroup: 'equipamentos' as const,
+            description: editOtherDesc.trim() || editOtherCat,
             amount: amt
           };
         }
@@ -545,19 +687,33 @@ export const ShowDetailModal: React.FC<Props> = ({
     } else if (item.origType === 'expenseItem') {
       const updated = (show.expenseItems || []).map((e, i) => {
         if (i === item.origIndex) {
-          return { ...e, category: editOtherCat, notes: editOtherDesc.trim(), amount: amt };
+          return {
+            ...e,
+            category: editOtherCat,
+            subcategory: editOtherCat,
+            costGroup: 'equipamentos' as const,
+            notes: editOtherDesc.trim() || editOtherCat,
+            amount: amt
+          };
         }
         return e;
       });
       updateShow({ ...show, expenseItems: updated });
-    } else if (item.origType === 'legacy') {
-      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
-      if (item.id === 'legacy_food') updatedExpenses.food = amt;
-      if (item.id === 'legacy_others') updatedExpenses.others = amt;
-      updateShow({ ...show, expenses: updatedExpenses });
+    } else if (item.origType === 'tx' && item.transactionId) {
+      const tx = transactions.find(t => t.id === item.transactionId);
+      if (tx) {
+        updateTransaction({
+          ...tx,
+          description: editOtherDesc.trim() || editOtherCat,
+          amount: amt,
+          costGroup: 'equipamentos',
+          subcategory: editOtherCat,
+          categoryId: 'cat_equipamentos'
+        });
+      }
     }
     setEditingOtherIndex(null);
-    showToast('Despesa extra atualizada e sincronizada com o Extrato!');
+    showToast('Custo de Equipamentos/Som atualizado e saldo recalculado!');
   };
 
   const handleRemoveOtherItem = (item: any) => {
@@ -567,16 +723,11 @@ export const ShowDetailModal: React.FC<Props> = ({
     } else if (item.origType === 'expenseItem') {
       const updated = (show.expenseItems || []).filter((_, i) => i !== item.origIndex);
       updateShow({ ...show, expenseItems: updated });
-    } else if (item.origType === 'legacy') {
-      const updatedExpenses = { ...(show.expenses || { fuel: 0, food: 0, toll: 0, commission: 0, others: 0 }) };
-      if (item.id === 'legacy_food') updatedExpenses.food = 0;
-      if (item.id === 'legacy_others') updatedExpenses.others = 0;
-      updateShow({ ...show, expenses: updatedExpenses });
+    } else if (item.origType === 'tx' && item.transactionId) {
+      deleteTransaction(item.transactionId);
     }
-    showToast('Despesa extra removida e lançamento excluído do Extrato!');
+    showToast('Custo de Equipamentos/Som removido e saldo recalculado!');
   };
-  const netProfit = grossCache - totalCosts;
-  const marginPercent = grossCache > 0 ? Math.round((netProfit / grossCache) * 100) : 0;
 
   // Status Badge do Pagamento: Pendente, Parcial ou Pago
   const paymentBadge = useMemo(() => {
@@ -648,169 +799,266 @@ export const ShowDetailModal: React.FC<Props> = ({
     showToast(`Status alterado para: ${newStatus}`);
   };
 
-  // Atualizar Cachê
+  // Atualizar Cachê Principal (sincronizando diretamente o lançamento vinculado de Cachê Principal)
   const handleSaveContractedCache = (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(newContractedCache.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
     if (val < 0) return;
-    updateShow({ ...show, totalCache: val, cacheCombined: val });
+
+    const existingPayments = Array.isArray(show.payments) ? [...show.payments] : [];
+    const principalIdx = existingPayments.findIndex(
+      p => p.type === 'Cachê Principal' || p.type === 'Pagamento final' || p.type === 'Parcela'
+    );
+
+    if (principalIdx >= 0) {
+      existingPayments[principalIdx] = {
+        ...existingPayments[principalIdx],
+        type: 'Cachê Principal',
+        amount: val
+      };
+    } else if (val > 0) {
+      existingPayments.unshift({
+        id: generateUUID(),
+        type: 'Cachê Principal',
+        amount: val,
+        expectedDate: show.date || getLocalDateString(),
+        effectiveDate: show.status === 'Realizado' ? show.date || getLocalDateString() : undefined,
+        accountId: defaultAccountId,
+        status: show.status === 'Realizado' ? 'Recebido' : 'Agendado',
+        notes: 'Cachê Principal do Evento'
+      });
+    }
+
+    updateShow({ ...show, payments: existingPayments, totalCache: val, cacheCombined: val });
     setIsEditCacheModalOpen(false);
-    showToast(`Cachê atualizado para ${formatCurrency(val)}!`);
+    showToast(`Cachê Principal atualizado para ${formatCurrency(val)} e recalculado em tempo real!`);
   };
 
-  // Salvar Adiantamento / Recebimento
+  // Salvar Recebimento (Cachê Principal, Sinal, Parcela, Hora Extra, Couvert, Gorjeta)
   const handleSavePayment = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(payAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
     if (amt <= 0) return;
 
-    const txId = generateUUID();
     const paymentId = generateUUID();
     const isPaid = payStatus === 'Recebido';
+    const isInstallmentOfBase = payType === 'Sinal' || payType === 'Parcela' || payType === 'Restante';
 
-    const newTx: any = {
-      id: txId,
-      type: 'income',
-      amount: amt,
-      description: `Cachê: ${show.contractorName || show.name} (${payType})`,
-      categoryId: 'cat_33',
-      accountId: payAccountId,
-      date: payDate || getLocalDateString(),
-      status: isPaid ? 'paid' : 'pending',
-      scope: 'BUSINESS',
-      showId: show.id,
-      showPaymentType: payType,
-      showPaymentId: paymentId
-    };
+    const basePayments: ShowPayment[] = [...(show.payments || [])];
 
-    addTransaction(newTx);
+    // Se for Sinal, Parcela ou Restante, abate do saldo Agendado de Cachê Principal/Restante para não duplicar o Cachê Bruto
+    if (isInstallmentOfBase) {
+      const pendingPrincipalIdx = basePayments.findIndex(
+        p => p.status !== 'Recebido' && (p.type === 'Cachê Principal' || p.type === 'Restante' || p.type === 'Pagamento final')
+      );
+      if (pendingPrincipalIdx >= 0) {
+        const pendingItem = basePayments[pendingPrincipalIdx];
+        const remainingVal = Math.round(((Number(pendingItem.amount) || 0) - amt) * 100) / 100;
+        if (remainingVal > 0.01) {
+          basePayments[pendingPrincipalIdx] = {
+            ...pendingItem,
+            type: 'Restante',
+            amount: remainingVal,
+            notes: 'Restante do Cachê a Receber'
+          };
+        } else {
+          basePayments.splice(pendingPrincipalIdx, 1);
+        }
+      }
+    }
 
-    const updatedPayments: ShowPayment[] = [...(show.payments || []), {
-      id: paymentId,
-      type: payType,
-      amount: amt,
-      expectedDate: payDate || getLocalDateString(),
-      effectiveDate: isPaid ? (payDate || getLocalDateString()) : undefined,
-      accountId: payAccountId,
-      status: isPaid ? 'Recebido' : 'Agendado',
-      transactionId: txId
-    }];
+    const updatedPayments: ShowPayment[] = [
+      ...basePayments,
+      {
+        id: paymentId,
+        type: payType,
+        amount: amt,
+        expectedDate: payDate || show.date || getLocalDateString(),
+        effectiveDate: isPaid ? payDate || show.date || getLocalDateString() : undefined,
+        accountId: payAccountId || defaultAccountId,
+        status: isPaid ? 'Recebido' : 'Agendado',
+        notes: payNotes.trim() || `${payType} - ${show.contractorName || show.name}`
+      }
+    ];
 
-    const extraTotal = updatedPayments.filter(p => p.type === 'Extra' || p.type === 'Bônus').reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-    updateShow({ 
-      ...show, 
-      payments: updatedPayments,
-      extraAmount: extraTotal > 0 ? extraTotal : (show.extraAmount || undefined)
+    updateShow({
+      ...show,
+      payments: updatedPayments
     });
     setPayAmount('');
+    setPayNotes('');
     setIsAddPaymentOpen(false);
-    showToast(`${payType} de ${formatCurrency(amt)} registrado!`);
+    showToast(`${payType} de ${formatCurrency(amt)} vinculado ao show e recalculado!`);
   };
 
-  // Salvar Hora Extra / Gorjeta Inline
+  // Salvar Hora Extra / Couvert / Gorjeta Inline
   const handleSaveExtraPayment = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
     if (amt <= 0) return;
 
-    const txId = generateUUID();
     const paymentId = generateUUID();
     const isPaid = extraStatusInput === 'Recebido';
 
-    const newTx: any = {
-      id: txId,
-      type: 'income',
-      amount: amt,
-      description: `Hora Extra / Gorjeta: ${show.contractorName || show.name}${extraDescInput ? ` (${extraDescInput})` : ''}`,
-      categoryId: 'cat_33',
-      accountId: extraAccountIdInput,
-      date: extraDateInput || getLocalDateString(),
-      status: isPaid ? 'paid' : 'pending',
-      scope: 'BUSINESS',
-      showId: show.id,
-      showPaymentType: 'Extra',
-      showPaymentId: paymentId
-    };
-
-    addTransaction(newTx);
-
-    const updatedPayments: ShowPayment[] = [...(show.payments || []), {
-      id: paymentId,
-      type: 'Extra',
-      amount: amt,
-      expectedDate: extraDateInput || getLocalDateString(),
-      effectiveDate: isPaid ? (extraDateInput || getLocalDateString()) : undefined,
-      accountId: extraAccountIdInput,
-      status: isPaid ? 'Recebido' : 'Agendado',
-      transactionId: txId,
-      notes: extraDescInput.trim() || 'Hora Extra / Gorjeta'
-    }];
-
-    const extraTotal = updatedPayments.filter(p => p.type === 'Extra' || p.type === 'Bônus').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const updatedPayments: ShowPayment[] = [
+      ...(show.payments || []),
+      {
+        id: paymentId,
+        type: extraTypeInput,
+        amount: amt,
+        expectedDate: extraDateInput || show.date || getLocalDateString(),
+        effectiveDate: isPaid ? extraDateInput || show.date || getLocalDateString() : undefined,
+        accountId: extraAccountIdInput || defaultAccountId,
+        status: isPaid ? 'Recebido' : 'Agendado',
+        notes: extraDescInput.trim() || extraTypeInput
+      }
+    ];
 
     updateShow({
       ...show,
-      extraAmount: extraTotal,
-      extraNote: extraDescInput.trim() || show.extraNote || 'Hora Extra / Gorjeta',
+      extraNote: extraDescInput.trim() || show.extraNote || extraTypeInput,
       payments: updatedPayments
     });
 
     setExtraValInput('');
     setExtraDescInput('');
     setIsAddExtraOpen(false);
-    showToast(`Hora Extra / Gorjeta de ${formatCurrency(amt)} registrada com sucesso!`);
+    showToast(`${extraTypeInput} de ${formatCurrency(amt)} registrado e somado ao Cachê Bruto Real!`);
   };
 
-  // Salvar Membro de Equipe Inline
+  // Edição e Exclusão de Lançamento de Receita do Show
+  const handleStartEditPayment = (idx: number, p: ShowPayment) => {
+    setEditingPaymentIndex(idx);
+    setEditingPaymentId(p.id);
+    setEditPaymentType(p.type || 'Cachê Principal');
+    setEditPaymentAmount(String(p.amount || ''));
+    setEditPaymentNotes(p.notes || '');
+    setEditPaymentDate(p.effectiveDate || p.expectedDate || show.date || getLocalDateString());
+    setEditPayStatus(p.status === 'Recebido' ? 'Recebido' : 'Agendado');
+  };
+
+  const handleSaveEditPayment = (idxOrId: number | string) => {
+    const amt = parseFloat(editPaymentAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    if (amt <= 0) return;
+
+    const updatedPayments = (show.payments || []).map((p, idx) => {
+      if (idx === idxOrId || p.id === idxOrId) {
+        return {
+          ...p,
+          type: editPaymentType,
+          amount: amt,
+          notes: editPaymentNotes.trim(),
+          status: editPayStatus,
+          expectedDate: editPaymentDate || p.expectedDate || show.date || getLocalDateString(),
+          effectiveDate: editPayStatus === 'Recebido' ? (editPaymentDate || p.effectiveDate || show.date || getLocalDateString()) : undefined
+        };
+      }
+      return p;
+    });
+
+    updateShow({ ...show, payments: updatedPayments });
+    setEditingPaymentIndex(null);
+    setEditingPaymentId(null);
+    showToast('Receita atualizada e saldo recalculado em tempo real!');
+  };
+
+  const handleTogglePaymentStatus = (idxOrId: number | string) => {
+    const updatedPayments = (show.payments || []).map((p, idx) => {
+      if (idx === idxOrId || p.id === idxOrId) {
+        const nextStatus = p.status === 'Recebido' ? ('Agendado' as const) : ('Recebido' as const);
+        return {
+          ...p,
+          status: nextStatus,
+          effectiveDate: nextStatus === 'Recebido' ? p.effectiveDate || show.date || getLocalDateString() : undefined
+        };
+      }
+      return p;
+    });
+    updateShow({ ...show, payments: updatedPayments });
+    showToast('Status do recebimento atualizado!');
+  };
+
+  const handleRemovePaymentItem = (idxOrId: number | string) => {
+    const target = (show.payments || []).find((p, idx) => idx === idxOrId || p.id === idxOrId);
+    const updatedPayments = (show.payments || []).filter((p, idx) => idx !== idxOrId && p.id !== idxOrId);
+    updateShow({ ...show, payments: updatedPayments });
+    if (target?.transactionId) {
+      deleteTransaction(target.transactionId);
+    }
+    showToast('Receita removida e Cachê Bruto Real recalculado!');
+  };
+
+  // Salvar Membro de Equipe Inline (Músicos/Apoio -> Cachê de Terceiros / Equipe)
   const handleAddCrewInline = () => {
     if (selectedCrewId) {
       const found = crew.find(c => c.id === selectedCrewId);
       if (found) {
-        const updated = [...(show.crewMembers || []), {
-          id: generateUUID(),
-          memberId: found.id,
-          name: found.name,
-          role: found.role,
-          cacheAmount: found.defaultCache || 0,
-          pixKey: found.pixKey,
-          status: 'pending' as const
-        }];
+        const updated = [
+          ...(show.crewMembers || []),
+          {
+            id: generateUUID(),
+            memberId: found.id,
+            name: found.name,
+            role: found.role,
+            costGroup: 'musicos' as const,
+            subcategory: 'Cachê de Terceiros / Equipe' as const,
+            cacheAmount: found.defaultCache || 0,
+            pixKey: found.pixKey,
+            status: 'pending' as const
+          }
+        ];
         updateShow({ ...show, crewMembers: updated });
         setSelectedCrewId('');
         setIsAddCrewOpen(false);
-        showToast(`${found.name} adicionado(a) à equipe do show!`);
+        showToast(`${found.name} vinculado em Músicos/Apoio (Cachê de Terceiros / Equipe)!`);
         return;
       }
     }
 
     if (customCrewName.trim()) {
       const amt = parseFloat(customCrewCache.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-      const updated = [...(show.crewMembers || []), {
-        id: generateUUID(),
-        name: customCrewName.trim(),
-        role: customCrewRole,
-        cacheAmount: amt,
-        pixKey: customCrewPix.trim() || undefined,
-        status: 'pending' as const
-      }];
+      const updated = [
+        ...(show.crewMembers || []),
+        {
+          id: generateUUID(),
+          name: customCrewName.trim(),
+          role: customCrewRole,
+          costGroup: 'musicos' as const,
+          subcategory: 'Cachê de Terceiros / Equipe' as const,
+          cacheAmount: amt,
+          pixKey: customCrewPix.trim() || undefined,
+          status: 'pending' as const
+        }
+      ];
       updateShow({ ...show, crewMembers: updated });
       setCustomCrewName('');
       setCustomCrewCache('');
       setCustomCrewPix('');
       setIsAddCrewOpen(false);
-      showToast(`${customCrewName} adicionado(a) à equipe!`);
+      showToast(`${customCrewName} vinculado em Músicos/Apoio (Cachê de Terceiros / Equipe)!`);
     }
   };
 
-  const handleToggleCrewStatus = (idx: number) => {
-    const updated = (show.crewMembers || []).map((c, i) => {
-      if (i === idx) {
-        return { ...c, status: c.status === 'paid' ? 'pending' as const : 'paid' as const };
-      }
-      return c;
-    });
-    updateShow({ ...show, crewMembers: updated });
+  const handleToggleCrewStatus = (itemOrIdx: any) => {
+    if (typeof itemOrIdx === 'number') {
+      const updated = (show.crewMembers || []).map((c, i) =>
+        i === itemOrIdx ? { ...c, status: c.status === 'paid' ? ('pending' as const) : ('paid' as const) } : c
+      );
+      updateShow({ ...show, crewMembers: updated });
+    } else if (itemOrIdx?.origType === 'crew') {
+      const updated = (show.crewMembers || []).map((c, i) =>
+        i === itemOrIdx.origIndex ? { ...c, status: c.status === 'paid' ? ('pending' as const) : ('paid' as const) } : c
+      );
+      updateShow({ ...show, crewMembers: updated });
+    } else if (itemOrIdx?.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).map((e, i) =>
+        i === itemOrIdx.origIndex ? { ...e, status: e.status === 'paid' ? ('pending' as const) : ('paid' as const) } : e
+      );
+      updateShow({ ...show, expenseItems: updated });
+    } else if (itemOrIdx?.origType === 'tx' && itemOrIdx.transactionId) {
+      const tx = transactions.find(t => t.id === itemOrIdx.transactionId);
+      if (tx) updateTransaction({ ...tx, status: tx.status === 'paid' ? 'pending' : 'paid' });
+    }
     showToast('Status de pagamento da equipe atualizado!');
   };
 
@@ -820,81 +1068,119 @@ export const ShowDetailModal: React.FC<Props> = ({
     showToast('Membro removido da equipe do show.');
   };
 
-  // Salvar Logística Inline
+  // Salvar Logística Inline (Deslocamento/Logística -> Combustível, Pedágio, Hospedagem)
   const handleAddLogisticsInline = () => {
     let amt = parseFloat(logAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
     const kmNum = parseFloat(logKm.replace(',', '.')) || undefined;
     const priceNum = parseFloat(logPricePerKm.replace(',', '.')) || undefined;
 
-    if (logType === 'car_km' && kmNum && priceNum && !amt) {
+    if (kmNum && priceNum && !amt) {
       amt = kmNum * priceNum;
     }
 
     if (amt <= 0) return;
 
-    const defaultLabels = {
-      uber: 'Uber / 99',
-      car_km: `Carro Próprio (${kmNum || 0} KM)`,
-      toll: 'Pedágio',
-      van: 'Transporte Banda / Van',
-      fuel: 'Combustível',
-      parking: 'Estacionamento',
-      other: 'Outro Transporte'
-    };
+    const mappedType: 'fuel' | 'toll' | 'lodging' =
+      logSubcategory === 'Pedágio' ? 'toll' : logSubcategory === 'Hospedagem' ? 'lodging' : 'fuel';
 
-    const updated = [...(show.logistics || []), {
-      id: generateUUID(),
-      type: logType,
-      description: logDesc.trim() || defaultLabels[logType],
-      amount: amt,
-      km: kmNum,
-      pricePerKm: priceNum,
-      status: 'pending' as const
-    }];
+    const updated = [
+      ...(show.logistics || []),
+      {
+        id: generateUUID(),
+        type: mappedType,
+        costGroup: 'logistica' as const,
+        subcategory: logSubcategory,
+        description: logDesc.trim() || logSubcategory,
+        amount: amt,
+        km: kmNum,
+        pricePerKm: priceNum,
+        status: 'pending' as const
+      }
+    ];
 
     updateShow({ ...show, logistics: updated });
     setLogDesc('');
     setLogAmount('');
     setLogKm('');
     setIsAddLogisticsOpen(false);
-    showToast('Custo logístico adicionado ao show!');
+    showToast(`Despesa de ${logSubcategory} vinculada em Deslocamento/Logística!`);
   };
 
-  const handleToggleLogisticsStatus = (idx: number) => {
-    const updated = (show.logistics || []).map((l, i) => {
-      if (i === idx) {
-        return { ...l, status: l.status === 'paid' ? 'pending' as const : 'paid' as const };
-      }
-      return l;
-    });
-    updateShow({ ...show, logistics: updated });
-    showToast('Status da despesa de transporte atualizado!');
+  const handleToggleLogisticsStatus = (itemOrIdx: any) => {
+    if (typeof itemOrIdx === 'number') {
+      const updated = (show.logistics || []).map((l, i) =>
+        i === itemOrIdx ? { ...l, status: l.status === 'paid' ? ('pending' as const) : ('paid' as const) } : l
+      );
+      updateShow({ ...show, logistics: updated });
+    } else if (itemOrIdx?.origType === 'logistics') {
+      const updated = (show.logistics || []).map((l, i) =>
+        i === itemOrIdx.origIndex ? { ...l, status: l.status === 'paid' ? ('pending' as const) : ('paid' as const) } : l
+      );
+      updateShow({ ...show, logistics: updated });
+    } else if (itemOrIdx?.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).map((e, i) =>
+        i === itemOrIdx.origIndex ? { ...e, status: e.status === 'paid' ? ('pending' as const) : ('paid' as const) } : e
+      );
+      updateShow({ ...show, expenseItems: updated });
+    } else if (itemOrIdx?.origType === 'tx' && itemOrIdx.transactionId) {
+      const tx = transactions.find(t => t.id === itemOrIdx.transactionId);
+      if (tx) updateTransaction({ ...tx, status: tx.status === 'paid' ? 'pending' : 'paid' });
+    }
+    showToast('Status da despesa de logística atualizado!');
   };
 
   const handleRemoveLogistics = (idx: number) => {
     const updated = (show.logistics || []).filter((_, i) => i !== idx);
     updateShow({ ...show, logistics: updated });
-    showToast('Despesa de transporte removida.');
+    showToast('Despesa de logística removida.');
   };
 
-  // Salvar Outra Despesa Inline
+  // Salvar Equipamentos / Som Inline (Aluguel, Manutenção ou Insumos do Show)
   const handleAddOtherInline = () => {
     const amt = parseFloat(otherAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
     if (amt <= 0) return;
 
-    const updated = [...(show.otherExpenses || []), {
-      id: generateUUID(),
-      category: otherCat,
-      description: otherDesc.trim() || otherCat,
-      amount: amt,
-      status: 'pending' as const
-    }];
+    const updated = [
+      ...(show.otherExpenses || []),
+      {
+        id: generateUUID(),
+        category: otherCat,
+        subcategory: otherCat,
+        costGroup: 'equipamentos' as const,
+        description: otherDesc.trim() || otherCat,
+        amount: amt,
+        status: 'pending' as const
+      }
+    ];
 
     updateShow({ ...show, otherExpenses: updated });
     setOtherDesc('');
     setOtherAmount('');
     setIsAddOtherOpen(false);
-    showToast('Despesa extra vinculada ao show!');
+    showToast(`Despesa de ${otherCat} vinculada em Equipamentos/Som!`);
+  };
+
+  const handleToggleOtherStatus = (itemOrIdx: any) => {
+    if (typeof itemOrIdx === 'number') {
+      const updated = (show.otherExpenses || []).map((o, i) =>
+        i === itemOrIdx ? { ...o, status: o.status === 'paid' ? ('pending' as const) : ('paid' as const) } : o
+      );
+      updateShow({ ...show, otherExpenses: updated });
+    } else if (itemOrIdx?.origType === 'other') {
+      const updated = (show.otherExpenses || []).map((o, i) =>
+        i === itemOrIdx.origIndex ? { ...o, status: o.status === 'paid' ? ('pending' as const) : ('paid' as const) } : o
+      );
+      updateShow({ ...show, otherExpenses: updated });
+    } else if (itemOrIdx?.origType === 'expenseItem') {
+      const updated = (show.expenseItems || []).map((e, i) =>
+        i === itemOrIdx.origIndex ? { ...e, status: e.status === 'paid' ? ('pending' as const) : ('paid' as const) } : e
+      );
+      updateShow({ ...show, expenseItems: updated });
+    } else if (itemOrIdx?.origType === 'tx' && itemOrIdx.transactionId) {
+      const tx = transactions.find(t => t.id === itemOrIdx.transactionId);
+      if (tx) updateTransaction({ ...tx, status: tx.status === 'paid' ? 'pending' : 'paid' });
+    }
+    showToast('Status do custo de Equipamentos/Som atualizado!');
   };
 
   const handleRemoveOther = (idx: number) => {
@@ -931,15 +1217,18 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-md border border-emerald-500/20">
                   {show.eventType || 'Show / Apresentação'}
                 </span>
-                <span className="text-xs text-zinc-400 flex items-center space-x-1">
-                  <MapPin size={12} className="text-zinc-500" />
-                  <span>{show.city || 'Cidade base'}</span>
+                <span className="text-[11px] font-bold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-md flex items-center space-x-1">
+                  <MapPin size={11} className="text-purple-400 shrink-0" />
+                  <span>{displayHierarchy.cityTag}</span>
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-white truncate tracking-tight">
-                {show.name || show.location || 'Ficha do Show'}
+                {displayHierarchy.eventTitle}
               </h2>
-              <div className="flex items-center space-x-3 text-xs sm:text-sm text-zinc-300 font-medium">
+              <p className="text-xs sm:text-sm font-bold text-zinc-300 truncate">
+                {displayHierarchy.contractorSubtitle}
+              </p>
+              <div className="flex items-center space-x-3 text-xs sm:text-sm text-zinc-400 font-medium pt-0.5">
                 <span className="flex items-center space-x-1 text-emerald-400">
                   <Calendar size={13} />
                   <span>{formatDateBR(show.date)}</span>
@@ -1061,19 +1350,19 @@ export const ShowDetailModal: React.FC<Props> = ({
               </span>
             </div>
 
-            {/* Grid dos 4 Cards Financeiros */}
+            {/* Grid dos 4 Cards Financeiros (Cálculo Dinâmico por showId) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {/* 1. Cachê Bruto / Valor Final */}
+              {/* 1. Cachê Bruto Real */}
               <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
-                    {extraVal > 0 ? 'Valor Final do Show' : 'Cachê Bruto'}
+                    Cachê Bruto Real
                   </span>
                   <button 
                     type="button" 
                     onClick={() => { setNewContractedCache(String(baseCache)); setIsEditCacheModalOpen(true); }}
                     className="text-zinc-500 hover:text-emerald-400 transition"
-                    title="Editar Cachê Base"
+                    title="Editar Cachê Principal"
                   >
                     <Edit3 size={11} />
                   </button>
@@ -1083,35 +1372,37 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </div>
                 <div className="text-[10px] text-zinc-500 truncate">
                   {extraVal > 0 
-                    ? `Base ${formatCurrency(baseCache)} + Extra ${formatCurrency(extraVal)}` 
-                    : 'Valor contratado'}
+                    ? `Base ${formatCurrency(baseCache)} + Extras ${formatCurrency(extraVal)}` 
+                    : `Soma das receitas (#${show.id.slice(0, 5)})`}
                 </div>
               </div>
 
               {/* 2. Sinal / Recebido */}
               <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Sinal Recebido</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Total Recebido</span>
                 <div className="text-base sm:text-lg font-black text-emerald-400 tabular-nums">
                   {formatCurrency(totalReceived)}
                 </div>
                 <div className="text-[10px] text-zinc-500 truncate">
-                  {remainingToReceive > 0 ? `Resta: ${formatCurrency(remainingToReceive)}` : '100% recebido'}
+                  {remainingToReceive > 0 ? `Resta: ${formatCurrency(remainingToReceive)}` : '100% quitado no caixa'}
                 </div>
               </div>
 
-              {/* 3. Custo Total (Equipe + Logística + Extras) */}
+              {/* 3. Custos Vinculados (Logística + Equipe + Equipamentos/Som) */}
               <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">Custos Totais</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">Custos do Show</span>
                 <div className="text-base sm:text-lg font-black text-rose-400 tabular-nums">
                   {formatCurrency(totalCosts)}
                 </div>
-                <div className="text-[10px] text-zinc-500 truncate">Equipe + Logística + Extras</div>
+                <div className="text-[10px] text-zinc-500 truncate">
+                  Logística + Equipe + Equip./Som
+                </div>
               </div>
 
               {/* 4. Lucro Líquido Real */}
               <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-300">Lucro Líquido</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-300">Lucro Líquido Real</span>
                   <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
                     marginPercent >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
                     marginPercent >= 30 ? 'bg-amber-500/20 text-amber-400' :
@@ -1123,29 +1414,69 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <div className={`text-base sm:text-lg font-black tabular-nums ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {formatCurrency(netProfit)}
                 </div>
-                <div className="text-[10px] text-zinc-500 truncate">Margem líquida real</div>
+                <div className="text-[10px] text-zinc-500 truncate">Cachê Bruto − Despesas</div>
               </div>
             </div>
 
-            {/* Termômetro de Lucro & Barra de Progresso */}
-            <div className="space-y-2 pt-2 border-t border-zinc-800/80">
-              <div className="flex items-center justify-between text-xs font-bold text-zinc-400">
-                <span>Progresso do Recebimento</span>
-                <span className={remainingToReceive === 0 ? 'text-emerald-400 font-black' : 'text-amber-400'}>
-                  {remainingToReceive === 0 ? '✓ Cachê 100% Quitado' : `Falta receber: ${formatCurrency(remainingToReceive)}`}
-                </span>
+            {/* Termômetro de Lucro Real & Barra de Progresso do Recebimento */}
+            <div className="space-y-3 pt-2 border-t border-zinc-800/80">
+              {/* Termômetro de Lucro Real */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-zinc-400 flex items-center space-x-1.5">
+                    <span>Termômetro de Lucro Real</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${
+                      marginPercent >= 60 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+                      marginPercent >= 30 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
+                      'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    }`}>
+                      {marginPercent >= 60 ? 'Alta Rentabilidade' : marginPercent >= 30 ? 'Margem Moderada' : 'Margem Crítica'} ({marginPercent}%)
+                    </span>
+                  </span>
+                  <span className={netProfit >= 0 ? 'text-emerald-400 font-black' : 'text-rose-400 font-black'}>
+                    Livre: {formatCurrency(netProfit)} de {formatCurrency(totalShowValue)}
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-zinc-800 rounded-full overflow-hidden flex">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      marginPercent >= 60 ? 'bg-[#1ed760]' : marginPercent >= 30 ? 'bg-amber-400' : 'bg-rose-500'
+                    }`}
+                    style={{ width: `${totalShowValue > 0 ? Math.max(0, Math.min(100, Math.round((Math.max(0, netProfit) / totalShowValue) * 100))) : 0}%` }}
+                    title={`Lucro Líquido: ${formatCurrency(netProfit)}`}
+                  />
+                  <div
+                    className="h-full bg-rose-500/60 transition-all duration-300"
+                    style={{ width: `${totalShowValue > 0 ? Math.max(0, Math.min(100, Math.round((totalCosts / totalShowValue) * 100))) : 0}%` }}
+                    title={`Custos Vinculados: ${formatCurrency(totalCosts)}`}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                  <span>Equipe: {formatCurrency(crewCost)} • Logística: {formatCurrency(logisticsCost)} • Equip./Som: {formatCurrency(otherCost)}</span>
+                  <span>Custos: {totalShowValue > 0 ? Math.round((totalCosts / totalShowValue) * 100) : 0}% do Cachê Bruto</span>
+                </div>
               </div>
-              <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-500 rounded-full ${
-                    remainingToReceive === 0 ? 'bg-[#1ed760]' : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${percentReceived}%` }}
-                />
+
+              {/* Barra de Progresso do Recebimento */}
+              <div className="space-y-1.5 pt-1 border-t border-zinc-800/50">
+                <div className="flex items-center justify-between text-xs font-bold text-zinc-400">
+                  <span>Progresso de Quitação do Cachê ({percentReceived}%)</span>
+                  <span className={remainingToReceive === 0 ? 'text-emerald-400 font-black' : 'text-amber-400'}>
+                    {remainingToReceive === 0 ? '✓ Cachê 100% Quitado' : `Falta receber: ${formatCurrency(remainingToReceive)}`}
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-500 rounded-full ${
+                      remainingToReceive === 0 ? 'bg-[#1ed760]' : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${percentReceived}%` }}
+                  />
+                </div>
               </div>
 
               {/* INDICADORES INTELIGENTES DE PERFORMANCE */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                 {/* Formato de Recebimento */}
                 <div className="p-3 rounded-xl bg-[#0f0f11] border border-zinc-800 space-y-1">
                   <span className="text-[9px] font-black uppercase text-zinc-500 block">Formato de Recebimento</span>
@@ -1195,7 +1526,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                   className="text-xs font-bold text-purple-300 hover:text-purple-200 bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/50 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 transition active:scale-95"
                 >
                   <Sparkles size={13} className="text-purple-400" />
-                  <span>{isAddExtraOpen ? 'Fechar Hora Extra' : '+ Adicionar Hora Extra / Gorjeta'}</span>
+                  <span>{isAddExtraOpen ? 'Fechar Hora Extra / Couvert' : '+ Hora Extra / Couvert / Gorjeta'}</span>
                 </button>
 
                 <button
@@ -1208,19 +1539,31 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </button>
               </div>
 
-              {/* Form de Adicionar Hora Extra / Gorjeta */}
+              {/* Form de Adicionar Hora Extra / Couvert / Gorjeta */}
               {isAddExtraOpen && (
                 <form onSubmit={handleSaveExtraPayment} className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-800/50 space-y-3 mt-2 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center space-x-1.5">
                       <Sparkles size={14} className="text-purple-400" />
-                      <span>Registrar Hora Extra / Gorjeta no Evento</span>
+                      <span>Registrar Receita Adicional (Hora Extra / Couvert / Gorjeta)</span>
                     </span>
                     <span className="text-[10px] text-zinc-400">
-                      Soma ao total do show sem duplicar
+                      Soma ao Cachê Bruto Real com vínculo showId
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 block mb-1">Modalidade</label>
+                      <select
+                        value={extraTypeInput}
+                        onChange={e => setExtraTypeInput(e.target.value as ShowPaymentType)}
+                        className="w-full bg-zinc-900 border border-purple-500/40 rounded-lg px-2.5 py-1.5 text-xs text-purple-200 font-bold"
+                      >
+                        <option value="Extra">Horas Extras</option>
+                        <option value="Couvert">Couvert / Gorjeta</option>
+                        <option value="Bônus">Bônus / Adicional</option>
+                      </select>
+                    </div>
                     <div>
                       <label className="text-[10px] font-bold text-zinc-400 block mb-1">Valor Adicional (R$)</label>
                       <input
@@ -1237,7 +1580,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                       <label className="text-[10px] font-bold text-zinc-400 block mb-1">Motivo / Descrição</label>
                       <input
                         type="text"
-                        placeholder="Ex: 1h extra / Gorjeta"
+                        placeholder="Ex: +1h palco / Gorjeta mesa"
                         value={extraDescInput}
                         onChange={e => setExtraDescInput(e.target.value)}
                         className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
@@ -1266,7 +1609,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                   </div>
                   <div className="flex justify-between items-center pt-1">
                     <p className="text-[10px] text-zinc-400">
-                      Total pós-extra: <strong className="text-white">{formatCurrency(baseCache)}</strong> + <strong className="text-purple-300">{formatCurrency(parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0)}</strong> = <strong className="text-emerald-400">{formatCurrency(baseCache + (parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0))}</strong>
+                      Cachê Bruto Real após lançamento: <strong className="text-white">{formatCurrency(totalShowValue)}</strong> + <strong className="text-purple-300">{formatCurrency(parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0)}</strong> = <strong className="text-emerald-400">{formatCurrency(totalShowValue + (parseFloat(extraValInput.replace(/[^\d.,]/g, '').replace(',', '.')) || 0))}</strong>
                     </p>
                     <div className="flex space-x-2">
                       <button
@@ -1280,7 +1623,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                         type="submit"
                         className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-wider"
                       >
-                        Salvar Extra
+                        Salvar Receita
                       </button>
                     </div>
                   </div>
@@ -1302,7 +1645,9 @@ export const ShowDetailModal: React.FC<Props> = ({
                         <option value="Sinal">Sinal</option>
                         <option value="Parcela">Parcela</option>
                         <option value="Restante">Restante / Quitação</option>
+                        <option value="Cachê Principal">Cachê Principal</option>
                         <option value="Extra">Extra / Horas Extras</option>
+                        <option value="Couvert">Couvert / Gorjeta</option>
                       </select>
                     </div>
                     <div>
@@ -1360,75 +1705,176 @@ export const ShowDetailModal: React.FC<Props> = ({
                 <div className="pt-3 border-t border-zinc-800/80 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
-                      Entradas & Recebimentos Vinculados ({((show.payments || []).length) + (linkedIncomeTransactions.filter(t => !(show.payments || []).some(p => p.transactionId === t.id)).length)})
+                      Receitas Vinculadas ao Show ({((show.payments || []).length) + (linkedIncomeTransactions.filter(t => !(show.payments || []).some(p => p.transactionId === t.id)).length)})
                     </span>
                     <span className="text-[10px] text-zinc-500">
-                      {remainingToReceive === 0 ? '✓ Todos quitados' : `Restam ${formatCurrency(remainingToReceive)}`}
+                      Cachê Bruto Real: <strong className="text-emerald-400">{formatCurrency(totalShowValue)}</strong>
                     </span>
                   </div>
 
                   <div className="space-y-1.5">
                     {/* Pagamentos registrados no show */}
                     {(show.payments || []).map((p, idx) => {
-                      const isExtra = p.type === 'Extra' || p.type === 'Bônus';
+                      const isExtra = p.type === 'Extra' || p.type === 'Bônus' || p.type === 'Couvert';
+                      const isEditing = editingPaymentIndex === idx;
+                      if (isEditing) {
+                        return (
+                          <div key={p.id || idx} className="p-3 rounded-xl bg-zinc-900 border border-emerald-500/50 space-y-2 animate-fadeIn text-xs">
+                            <span className="font-bold text-emerald-400 block">Editar Receita Vinculada ao Show</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                              <select
+                                value={editPaymentType}
+                                onChange={e => setEditPaymentType(e.target.value as ShowPaymentType)}
+                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                              >
+                                <option value="Cachê Principal">Cachê Principal</option>
+                                <option value="Sinal">Sinal</option>
+                                <option value="Parcela">Parcela</option>
+                                <option value="Restante">Restante</option>
+                                <option value="Extra">Horas Extras</option>
+                                <option value="Couvert">Couvert / Gorjeta</option>
+                                <option value="Bônus">Bônus</option>
+                              </select>
+                              <input
+                                type="text"
+                                value={editPaymentNotes}
+                                onChange={e => setEditPaymentNotes(e.target.value)}
+                                placeholder="Descrição"
+                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                              />
+                              <input
+                                type="text"
+                                value={editPaymentAmount}
+                                onChange={e => setEditPaymentAmount(e.target.value)}
+                                placeholder="Valor R$"
+                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold"
+                              />
+                              <input
+                                type="date"
+                                value={editPaymentDate}
+                                onChange={e => setEditPaymentDate(e.target.value)}
+                                className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                              />
+                            </div>
+                            <div className="flex justify-end space-x-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingPaymentIndex(null)}
+                                className="px-2.5 py-1 rounded bg-zinc-800 text-zinc-400 text-xs font-bold"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditPayment(idx)}
+                                className="px-3 py-1 rounded bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs"
+                              >
+                                Salvar Alteração
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={p.id || idx} className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 text-xs">
-                          <div className="flex items-center space-x-2.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                          <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ${
                               isExtra ? 'bg-purple-950/60 text-purple-300 border border-purple-800/50' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/50'
                             }`}>
                               {p.type}
                             </span>
-                            <span className="text-zinc-200 font-bold truncate max-w-[200px]">
-                              {p.notes || (isExtra ? 'Hora Extra / Gorjeta' : 'Cachê')}
+                            <span className="text-zinc-200 font-bold truncate max-w-[180px] sm:max-w-[240px]">
+                              {p.notes || (isExtra ? 'Hora Extra / Gorjeta' : 'Cachê do Show')}
                             </span>
                             {p.effectiveDate && (
-                              <span className="text-[10px] text-zinc-500">({formatDateBR(p.effectiveDate)})</span>
+                              <span className="text-[10px] text-zinc-500 shrink-0">({formatDateBR(p.effectiveDate)})</span>
                             )}
                           </div>
-                          <div className="flex items-center space-x-2.5">
+                          <div className="flex items-center space-x-2 shrink-0">
                             <span className={`font-black ${isExtra ? 'text-purple-300' : 'text-emerald-400'}`}>
                               {formatCurrency(p.amount)}
                             </span>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              p.status === 'Recebido' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                            }`}>
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePaymentStatus(idx)}
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold transition ${
+                                p.status === 'Recebido' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                              }`}
+                              title="Alternar Recebido / Agendado"
+                            >
                               {p.status}
-                            </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditPayment(idx, p)}
+                              className="text-zinc-500 hover:text-emerald-400 p-1 transition"
+                              title="Editar Receita"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePaymentItem(idx)}
+                              className="text-zinc-500 hover:text-rose-400 p-1 transition"
+                              title="Excluir Receita do Show"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </div>
                       );
                     })}
 
-                    {/* Transações avulsas vinculadas via Extrato (sem duplicar) */}
+                    {/* Transações avulsas vinculadas via Auditoria / Extrato (sem duplicar) */}
                     {linkedIncomeTransactions
                       .filter(t => !(show.payments || []).some(p => p.transactionId === t.id))
                       .map(t => {
-                        const isExtra = t.showPaymentType === 'Extra' || (t.description || '').toLowerCase().includes('hora extra');
+                        const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Couvert' || t.showPaymentType === 'Bônus' || (t.description || '').toLowerCase().includes('hora extra');
                         return (
                           <div key={t.id} className="flex items-center justify-between p-2.5 rounded-xl bg-[#0f0f11] border border-sky-900/30 text-xs">
-                            <div className="flex items-center space-x-2.5">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            <div className="flex items-center space-x-2.5 min-w-0 pr-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shrink-0 ${
                                 isExtra ? 'bg-purple-950/60 text-purple-300 border border-purple-800/50' : 'bg-sky-950/60 text-sky-300 border border-sky-800/50'
                               }`}>
-                                {isExtra ? 'Extra (Extrato)' : 'Pix / Extrato'}
+                                {t.showPaymentType || (isExtra ? 'Extra (Extrato)' : 'Extrato Vinculado')}
                               </span>
-                              <span className="text-zinc-200 font-bold truncate max-w-[200px]">
+                              <span className="text-zinc-200 font-bold truncate max-w-[180px] sm:max-w-[240px]">
                                 {t.description}
                               </span>
                               {t.date && (
-                                <span className="text-[10px] text-zinc-500">({formatDateBR(t.date)})</span>
+                                <span className="text-[10px] text-zinc-500 shrink-0">({formatDateBR(t.date)})</span>
                               )}
                             </div>
-                            <div className="flex items-center space-x-2.5">
+                            <div className="flex items-center space-x-2 shrink-0">
                               <span className={`font-black ${isExtra ? 'text-purple-300' : 'text-emerald-400'}`}>
                                 {formatCurrency(t.amount)}
                               </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                                t.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              }`}>
+                              <button
+                                type="button"
+                                onClick={() => updateTransaction({ ...t, status: t.status === 'paid' ? 'pending' : 'paid' })}
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-bold transition ${
+                                  t.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                }`}
+                              >
                                 {t.status === 'paid' ? 'Recebido' : 'Pendente'}
-                              </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => unlinkTransactionFromShow(t.id)}
+                                className="text-zinc-500 hover:text-amber-400 p-1 transition text-[10px] font-bold"
+                                title="Desvincular deste Show"
+                              >
+                                Desvincular
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteTransaction(t.id)}
+                                className="text-zinc-500 hover:text-rose-400 p-1 transition"
+                                title="Excluir Lançamento"
+                              >
+                                <Trash2 size={13} />
+                              </button>
                             </div>
                           </div>
                         );
@@ -1440,25 +1886,28 @@ export const ShowDetailModal: React.FC<Props> = ({
           </div>
 
           {/* ========================================================================= */}
-          {/* BLOCO C: CUSTOS DIRETOS VINCULADOS AO EVENTO                              */}
+          {/* BLOCO C: CUSTOS DIRETOS VINCULADOS AO EVENTO (ISOLAMENTO DE SUBCATEGORIAS) */}
           {/* ========================================================================= */}
           <div className="p-4 sm:p-5 rounded-2xl bg-[#17171a] border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center space-x-1.5">
                 <Users size={14} className="text-purple-400" />
-                <span>Custos Diretos Vinculados ao Evento</span>
+                <span>Custos Diretos Isolados por Categoria do Show</span>
               </span>
               <span className="text-xs font-black text-rose-400">
                 Total: {formatCurrency(totalCosts)}
               </span>
             </div>
 
-            {/* 1. TABELA DE MÚSICOS & EQUIPE */}
+            {/* 1. TABELA DE MÚSICOS / APOIO (Subcategoria: Cachê de Terceiros / Equipe) */}
             <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Users size={14} className="text-purple-400" />
-                  <span className="text-xs font-bold text-zinc-200">Músicos & Freelancers ({normalizedCostBlocks.crew.length})</span>
+                  <div>
+                    <span className="text-xs font-bold text-zinc-200 block">Músicos / Apoio ({normalizedCostBlocks.crew.length})</span>
+                    <span className="text-[10px] text-purple-400/80 font-medium">Subcategoria: Cachê de Terceiros / Equipe</span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-black text-purple-400">{formatCurrency(crewCost)}</span>
@@ -1481,7 +1930,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                     if (isEditing) {
                       return (
                         <div key={member.id} className="p-3 rounded-lg bg-zinc-900 border border-purple-500/50 space-y-2 animate-fadeIn text-xs">
-                          <span className="font-bold text-purple-300 block">Editar Músico / Equipe</span>
+                          <span className="font-bold text-purple-300 block">Editar Músico / Apoio (Cachê de Terceiros / Equipe)</span>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <input
                               type="text"
@@ -1528,9 +1977,12 @@ export const ShowDetailModal: React.FC<Props> = ({
                     return (
                       <div key={member.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
                         <div className="space-y-0.5 min-w-0 pr-2">
-                          <div className="flex items-center space-x-1.5">
+                          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                             <span className="font-bold text-zinc-200 truncate">{member.name}</span>
                             <span className="text-[10px] text-zinc-400 bg-zinc-800 px-1.5 py-0.2 rounded font-medium shrink-0">{member.role}</span>
+                            <span className="text-[9px] text-purple-300 bg-purple-950/60 border border-purple-800/40 px-1.5 py-0.2 rounded font-bold shrink-0">
+                              {member.subcategory || 'Cachê de Terceiros / Equipe'}
+                            </span>
                           </div>
                           {member.pixKey && (
                             <span className="text-[10px] text-zinc-500 block truncate">PIX: {member.pixKey}</span>
@@ -1538,17 +1990,15 @@ export const ShowDetailModal: React.FC<Props> = ({
                         </div>
                         <div className="flex items-center space-x-2 shrink-0">
                           <span className="font-black text-zinc-100">{formatCurrency(member.amount)}</span>
-                          {member.origType === 'crew' && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleCrewStatus(member.origIndex)}
-                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
-                                member.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                              }`}
-                            >
-                              {member.status === 'paid' ? 'Pago' : 'A Pagar'}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCrewStatus(member)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
+                              member.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}
+                          >
+                            {member.status === 'paid' ? 'Pago' : 'A Pagar'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleStartEditCrew(idx, member)}
@@ -1572,14 +2022,19 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="text-center py-2 text-xs text-zinc-500">
-                  Nenhum músico ou técnico vinculado a este show.
+                  Nenhum músico ou apoio vinculado a este show.
                 </div>
               )}
 
               {/* Form Inline Adicionar Equipe */}
               {isAddCrewOpen && (
                 <div className="p-3 rounded-lg bg-zinc-900 border border-purple-500/30 space-y-2 animate-fadeIn">
-                  <span className="text-[11px] font-bold text-purple-300 block">Adicionar Músico ou Equipe</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-300 block">Adicionar Músico / Apoio</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-purple-950/60 border border-purple-800/40 text-purple-300 font-bold">
+                      Subcategoria: Cachê de Terceiros / Equipe
+                    </span>
+                  </div>
                   {crew && crew.length > 0 && (
                     <div>
                       <label className="text-[10px] text-zinc-400 block mb-1">Selecionar dos Cadastrados:</label>
@@ -1599,7 +2054,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                       <input
                         type="text"
-                        placeholder="Nome do músico"
+                        placeholder="Nome do músico / técnico"
                         value={customCrewName}
                         onChange={e => setCustomCrewName(e.target.value)}
                         className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
@@ -1649,12 +2104,15 @@ export const ShowDetailModal: React.FC<Props> = ({
               )}
             </div>
 
-            {/* 2. LOGÍSTICA & DESLOCAMENTO */}
+            {/* 2. DESLOCAMENTO / LOGÍSTICA (Subcategorias: Combustível, Pedágio, Hospedagem) */}
             <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Fuel size={14} className="text-sky-400" />
-                  <span className="text-xs font-bold text-zinc-200">Logística & Deslocamento ({normalizedCostBlocks.logistics.length})</span>
+                  <div>
+                    <span className="text-xs font-bold text-zinc-200 block">Deslocamento / Logística ({normalizedCostBlocks.logistics.length})</span>
+                    <span className="text-[10px] text-sky-400/80 font-medium">Subcategorias: Combustível • Pedágio • Hospedagem</span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-black text-sky-400">{formatCurrency(logisticsCost)}</span>
@@ -1677,7 +2135,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                     if (isEditing) {
                       return (
                         <div key={item.id} className="p-3 rounded-lg bg-zinc-900 border border-sky-500/50 space-y-2 animate-fadeIn text-xs">
-                          <span className="font-bold text-sky-300 block">Editar Deslocamento / Transporte</span>
+                          <span className="font-bold text-sky-300 block">Editar Deslocamento / Logística</span>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <input
                               type="text"
@@ -1724,24 +2182,27 @@ export const ShowDetailModal: React.FC<Props> = ({
                     return (
                       <div key={item.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
                         <div className="space-y-0.5 min-w-0 pr-2">
-                          <span className="font-bold text-zinc-200 block truncate">{item.description}</span>
+                          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                            <span className="font-bold text-zinc-200 truncate">{item.description}</span>
+                            <span className="text-[9px] text-sky-300 bg-sky-950/60 border border-sky-800/40 px-1.5 py-0.2 rounded font-bold shrink-0">
+                              {item.subcategory || 'Combustível'}
+                            </span>
+                          </div>
                           {item.km && (
                             <span className="text-[10px] text-zinc-500 block truncate">{item.km} KM ({formatCurrency(item.pricePerKm || 1.2)}/KM)</span>
                           )}
                         </div>
                         <div className="flex items-center space-x-2 shrink-0">
                           <span className="font-black text-zinc-100">{formatCurrency(item.amount)}</span>
-                          {item.origType === 'logistics' && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleLogisticsStatus(item.origIndex)}
-                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
-                                item.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                              }`}
-                            >
-                              {item.status === 'paid' ? 'Pago' : 'A Pagar'}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLogisticsStatus(item)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
+                              item.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}
+                          >
+                            {item.status === 'paid' ? 'Pago' : 'A Pagar'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleStartEditLogistics(idx, item)}
@@ -1765,61 +2226,98 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="text-center py-2 text-xs text-zinc-500">
-                  Nenhum custo de locomoção associado a este show.
+                  Nenhum custo de deslocamento/logística (Combustível, Pedágio, Hospedagem) neste show.
                 </div>
               )}
 
               {/* Form Inline Adicionar Logística */}
               {isAddLogisticsOpen && (
                 <div className="p-3 rounded-lg bg-zinc-900 border border-sky-500/30 space-y-2 animate-fadeIn">
-                  <span className="text-[11px] font-bold text-sky-300 block">Adicionar Deslocamento / Transporte</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <select
-                      value={logType}
-                      onChange={e => setLogType(e.target.value as any)}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                    >
-                      <option value="uber">Uber / 99</option>
-                      <option value="car_km">Carro Próprio (KM)</option>
-                      <option value="fuel">Combustível</option>
-                      <option value="toll">Pedágio</option>
-                      <option value="van">Van / Transporte Coletivo</option>
-                      <option value="parking">Estacionamento</option>
-                      <option value="other">Outro</option>
-                    </select>
+                  <span className="text-[11px] font-bold text-sky-300 block">Adicionar Deslocamento / Logística</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">Subcategoria Obrigatória</label>
+                      <select
+                        value={logSubcategory}
+                        onChange={e => {
+                          const sub = e.target.value as 'Combustível' | 'Pedágio' | 'Hospedagem';
+                          setLogSubcategory(sub);
+                          if (sub === 'Pedágio') setLogType('toll');
+                          else if (sub === 'Hospedagem') setLogType('lodging');
+                          else setLogType('fuel');
+                        }}
+                        className="w-full bg-zinc-800 border border-sky-500/40 rounded-lg px-2.5 py-1.5 text-xs text-sky-200 font-bold"
+                      >
+                        <option value="Combustível">Combustível</option>
+                        <option value="Pedágio">Pedágio</option>
+                        <option value="Hospedagem">Hospedagem</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">Modalidade</label>
+                      <select
+                        value={logType}
+                        onChange={e => {
+                          const t = e.target.value as any;
+                          setLogType(t);
+                          if (t === 'toll') setLogSubcategory('Pedágio');
+                          else if (t === 'lodging') setLogSubcategory('Hospedagem');
+                          else setLogSubcategory('Combustível');
+                        }}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                      >
+                        <option value="fuel">Abastecimento / Combustível</option>
+                        <option value="car_km">Carro Próprio (Cálculo KM)</option>
+                        <option value="toll">Pedágio / Estacionamento</option>
+                        <option value="lodging">Hotel / Pousada / Hospedagem</option>
+                        <option value="uber">Uber / 99 / Van</option>
+                      </select>
+                    </div>
                     {logType === 'car_km' ? (
                       <>
-                        <input
-                          type="text"
-                          placeholder="KM Rodado (ex: 45)"
-                          value={logKm}
-                          onChange={e => setLogKm(e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                        />
-                        <input
-                          type="text"
-                          placeholder="R$/KM (ex: 1.20)"
-                          value={logPricePerKm}
-                          onChange={e => setLogPricePerKm(e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                        />
+                        <div>
+                          <label className="text-[10px] text-zinc-400 block mb-1">KM Rodado</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: 45"
+                            value={logKm}
+                            onChange={e => setLogKm(e.target.value)}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-zinc-400 block mb-1">R$/KM</label>
+                          <input
+                            type="text"
+                            placeholder="Ex: 1.20"
+                            value={logPricePerKm}
+                            onChange={e => setLogPricePerKm(e.target.value)}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                          />
+                        </div>
                       </>
                     ) : (
                       <>
-                        <input
-                          type="text"
-                          placeholder="Descrição (ex: Uber ida)"
-                          value={logDesc}
-                          onChange={e => setLogDesc(e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Valor R$"
-                          value={logAmount}
-                          onChange={e => setLogAmount(e.target.value)}
-                          className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                        />
+                        <div>
+                          <label className="text-[10px] text-zinc-400 block mb-1">Descrição</label>
+                          <input
+                            type="text"
+                            placeholder={`Ex: ${logSubcategory} show`}
+                            value={logDesc}
+                            onChange={e => setLogDesc(e.target.value)}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-zinc-400 block mb-1">Valor (R$)</label>
+                          <input
+                            type="text"
+                            placeholder="Valor R$"
+                            value={logAmount}
+                            onChange={e => setLogAmount(e.target.value)}
+                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                          />
+                        </div>
                       </>
                     )}
                   </div>
@@ -1836,19 +2334,22 @@ export const ShowDetailModal: React.FC<Props> = ({
                       onClick={handleAddLogisticsInline}
                       className="px-3 py-1 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs"
                     >
-                      Salvar Transporte
+                      Salvar Logística
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* 3. OUTRAS DESPESAS DO SHOW */}
+            {/* 3. EQUIPAMENTOS / SOM (Subcategorias: Aluguel, Manutenção, Insumos do Show) */}
             <div className="p-3.5 rounded-xl bg-[#0f0f11] border border-zinc-800/80 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Receipt size={14} className="text-amber-400" />
-                  <span className="text-xs font-bold text-zinc-200">Outras Despesas do Show ({normalizedCostBlocks.other.length})</span>
+                  <div>
+                    <span className="text-xs font-bold text-zinc-200 block">Equipamentos / Som ({normalizedCostBlocks.other.length})</span>
+                    <span className="text-[10px] text-amber-400/80 font-medium">Subcategorias: Aluguel • Manutenção • Insumos do Show</span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-black text-amber-400">{formatCurrency(otherCost)}</span>
@@ -1863,7 +2364,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Lista de Outras Despesas */}
+              {/* Lista de Equipamentos / Som */}
               {normalizedCostBlocks.other.length > 0 ? (
                 <div className="space-y-1.5">
                   {normalizedCostBlocks.other.map((item, idx) => {
@@ -1871,15 +2372,17 @@ export const ShowDetailModal: React.FC<Props> = ({
                     if (isEditing) {
                       return (
                         <div key={item.id} className="p-3 rounded-lg bg-zinc-900 border border-amber-500/50 space-y-2 animate-fadeIn text-xs">
-                          <span className="font-bold text-amber-300 block">Editar Despesa Extra</span>
+                          <span className="font-bold text-amber-300 block">Editar Custo de Equipamentos / Som</span>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <input
-                              type="text"
+                            <select
                               value={editOtherCat}
                               onChange={e => setEditOtherCat(e.target.value)}
-                              placeholder="Categoria"
-                              className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
-                            />
+                              className="bg-zinc-800 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs text-amber-200 font-bold"
+                            >
+                              <option value="Aluguel">Aluguel</option>
+                              <option value="Manutenção">Manutenção</option>
+                              <option value="Insumos do Show">Insumos do Show</option>
+                            </select>
                             <input
                               type="text"
                               value={editOtherDesc}
@@ -1918,16 +2421,29 @@ export const ShowDetailModal: React.FC<Props> = ({
                     return (
                       <div key={item.id || idx} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
                         <div className="space-y-0.5 min-w-0 pr-2">
-                          <span className="font-bold text-zinc-200 block truncate">{item.description}</span>
-                          <span className="text-[10px] text-zinc-500 block truncate">{item.category}</span>
+                          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                            <span className="font-bold text-zinc-200 truncate">{item.description}</span>
+                            <span className="text-[9px] text-amber-300 bg-amber-950/60 border border-amber-800/40 px-1.5 py-0.2 rounded font-bold shrink-0">
+                              {item.subcategory || item.category || 'Insumos do Show'}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2 shrink-0">
                           <span className="font-black text-zinc-100">{formatCurrency(item.amount)}</span>
                           <button
                             type="button"
+                            onClick={() => handleToggleOtherStatus(item)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition ${
+                              item.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}
+                          >
+                            {item.status === 'paid' ? 'Pago' : 'A Pagar'}
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleStartEditOther(idx, item)}
                             className="text-zinc-500 hover:text-amber-400 p-1 transition"
-                            title="Editar Despesa Extra"
+                            title="Editar Custo de Equipamentos/Som"
                           >
                             <Edit3 size={13} />
                           </button>
@@ -1946,41 +2462,47 @@ export const ShowDetailModal: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="text-center py-2 text-xs text-zinc-500">
-                  Nenhuma despesa extra cadastrada (camarim, alimentação, aluguel de som).
+                  Nenhum custo de Equipamentos / Som (Aluguel, Manutenção ou Insumos do Show) cadastrado.
                 </div>
               )}
 
-              {/* Form Inline Adicionar Outra Despesa */}
+              {/* Form Inline Adicionar Equipamentos / Som */}
               {isAddOtherOpen && (
                 <div className="p-3 rounded-lg bg-zinc-900 border border-amber-500/30 space-y-2 animate-fadeIn">
-                  <span className="text-[11px] font-bold text-amber-300 block">Adicionar Despesa Extra</span>
+                  <span className="text-[11px] font-bold text-amber-300 block">Adicionar Custo de Equipamentos / Som</span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <select
-                      value={otherCat}
-                      onChange={e => setOtherCat(e.target.value)}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                    >
-                      <option value="Alimentação / Camarim">Alimentação / Camarim</option>
-                      <option value="Aluguel de Equipamentos / Som">Aluguel de Som / Equipamentos</option>
-                      <option value="Hospedagem">Hospedagem</option>
-                      <option value="Figurino / Vestuário">Figurino / Vestuário</option>
-                      <option value="Comissão / Agenciamento">Comissão / Agenciamento</option>
-                      <option value="Outros Custos">Outros Custos</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Descrição (ex: Jantar equipe)"
-                      value={otherDesc}
-                      onChange={e => setOtherDesc(e.target.value)}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Valor R$"
-                      value={otherAmount}
-                      onChange={e => setOtherAmount(e.target.value)}
-                      className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
-                    />
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">Subcategoria Obrigatória</label>
+                      <select
+                        value={otherCat}
+                        onChange={e => setOtherCat(e.target.value as 'Aluguel' | 'Manutenção' | 'Insumos do Show')}
+                        className="w-full bg-zinc-800 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs text-amber-200 font-bold"
+                      >
+                        <option value="Aluguel">Aluguel (PA / Som / Luz / Backline)</option>
+                        <option value="Manutenção">Manutenção (Luthier / Reparo / Cabos)</option>
+                        <option value="Insumos do Show">Insumos do Show (Cordas / Pilhas / Camarim / Apoio)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">Descrição do Item</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Locação PA / Cordas / Pilhas 9V"
+                        value={otherDesc}
+                        onChange={e => setOtherDesc(e.target.value)}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-zinc-400 block mb-1">Valor (R$)</label>
+                      <input
+                        type="text"
+                        placeholder="Valor R$"
+                        value={otherAmount}
+                        onChange={e => setOtherAmount(e.target.value)}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200"
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-end space-x-2 pt-1">
                     <button
@@ -1995,7 +2517,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                       onClick={handleAddOtherInline}
                       className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs"
                     >
-                      Salvar Despesa
+                      Salvar Equipamento / Som
                     </button>
                   </div>
                 </div>

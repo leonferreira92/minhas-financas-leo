@@ -6,7 +6,7 @@ import {
   Sparkles, CheckCircle2, Music, Plus, ArrowRight,
   TrendingUp, AlertCircle, Award, Star, Check
 } from 'lucide-react';
-import { getStatusConfig } from './types';
+import { getStatusConfig, getShowDisplayHierarchy } from './types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 
 interface Props {
@@ -208,6 +208,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
             const fin = getShowFinancialSummary(nextShow, transactions);
             const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
             const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
+            const hierarchy = getShowDisplayHierarchy(nextShow);
 
             return (
               <div
@@ -218,9 +219,9 @@ export const UpcomingShowsList: React.FC<Props> = ({
                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/15 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
 
                 <div className="relative z-10 space-y-4">
-                  {/* Badge de Destaque Superior */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
+                  {/* Badge de Destaque Superior + Tag Cidade/UF */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center space-x-2 flex-wrap gap-y-1.5">
                       <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-amber-950 shadow-sm">
                         <Star size={11} fill="currentColor" />
                         <span>Próximo Show</span>
@@ -228,6 +229,11 @@ export const UpcomingShowsList: React.FC<Props> = ({
 
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${countdown.color}`}>
                         {countdown.label}
+                      </span>
+
+                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-200 border border-purple-500/40">
+                        <MapPin size={11} className="text-amber-400 shrink-0" />
+                        <span>{hierarchy.cityTag}</span>
                       </span>
                     </div>
 
@@ -237,13 +243,13 @@ export const UpcomingShowsList: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  {/* Nome do Contratante / Evento */}
+                  {/* Hierarquia Estrita: 1. TÍTULO PRINCIPAL (Nome do Evento / Casa) + 2. SUBTÍTULO (Contratante) */}
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight group-hover:text-purple-200 transition-colors">
-                      {nextShow.location && nextShow.location.trim() !== '' ? nextShow.location : `Show - ${nextShow.contractorName || nextShow.name || 'Contratante'}`}
+                      {hierarchy.eventTitle}
                     </h3>
-                    <p className="text-xs text-purple-300/95 font-bold mt-0.5">
-                      Contratante: {nextShow.contractorName || nextShow.name || 'Não informado'} • {nextShow.city || 'Cidade a definir'}
+                    <p className="text-xs sm:text-sm text-purple-200/95 font-bold mt-1">
+                      {hierarchy.contractorSubtitle}
                     </p>
                   </div>
 
@@ -326,6 +332,7 @@ export const UpcomingShowsList: React.FC<Props> = ({
                 const fin = getShowFinancialSummary(show, transactions);
                 const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
                 const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
+                const hierarchy = getShowDisplayHierarchy(show);
 
                 return (
                   <div
@@ -333,9 +340,9 @@ export const UpcomingShowsList: React.FC<Props> = ({
                     onClick={() => onSelectShow(show)}
                     className="p-4 sm:p-5 rounded-[1.8rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-700 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
                   >
-                    {/* Linha Superior: Data + Countdown + Valor & Falta Receber */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-2">
+                    {/* Linha Superior: Data + Countdown + Tag Cidade/UF + Valor */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-2 flex-wrap gap-y-1.5">
                         <span className="text-xs font-black text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-xl border border-purple-100 dark:border-purple-900/50 flex items-center space-x-1">
                           <Calendar size={13} />
                           <span className="capitalize">{formatDateShort(show.date)}</span>
@@ -349,9 +356,14 @@ export const UpcomingShowsList: React.FC<Props> = ({
                         <span className={`px-2 py-0.5 rounded-md text-[9px] font-black border uppercase tracking-wider ${countdown.color}`}>
                           {countdown.label}
                         </span>
+
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          <MapPin size={10} className="text-purple-500 shrink-0" />
+                          <span>{hierarchy.cityTag}</span>
+                        </span>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums block">
                           {formatCurrency(fin.totalPredicted)}
                         </span>
@@ -367,13 +379,13 @@ export const UpcomingShowsList: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    {/* Contratante / Evento */}
+                    {/* Hierarquia Estrita: 1. TÍTULO PRINCIPAL (Nome do Evento / Casa) + 2. SUBTÍTULO (Contratante) */}
                     <div>
-                      <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                        {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
+                      <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                        {hierarchy.eventTitle}
                       </h4>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
-                        Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                        {hierarchy.contractorSubtitle}
                       </p>
                     </div>
 

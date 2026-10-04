@@ -6,7 +6,7 @@ import {
   ArrowRight, Plus, Search, Filter, CheckCircle2, 
   AlertTriangle, TrendingUp, Sparkles, FileText, ChevronRight
 } from 'lucide-react';
-import { getStatusConfig } from '../shows/types';
+import { getStatusConfig, getShowDisplayHierarchy } from '../shows/types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 import { useDraggableScroll } from '../../hooks/useDraggableScroll';
 
@@ -162,6 +162,7 @@ export const ShowsManagementView: React.FC<Props> = ({
             const isCompleted = show.status === 'Realizado';
             const totalCosts = fin.totalExpenses;
             const marginPct = fin.totalPredicted > 0 ? (fin.netProfit / fin.totalPredicted) * 100 : 0;
+            const hierarchy = getShowDisplayHierarchy(show);
 
             return (
               <div
@@ -170,10 +171,10 @@ export const ShowsManagementView: React.FC<Props> = ({
                 className="p-4 sm:p-5 rounded-3xl bg-[#141416] border border-zinc-800 hover:border-purple-500/40 transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs active:scale-[0.99]"
               >
                 <div className="space-y-2.5">
-                  {/* Header do Card */}
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center space-x-2">
+                  {/* Header do Card: Data + Status + Tag Cidade/UF + Horário */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                         <span className="text-xs font-black text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-lg border border-purple-500/20 flex items-center space-x-1">
                           <Calendar size={12} />
                           <span>{show.date}</span>
@@ -182,17 +183,25 @@ export const ShowsManagementView: React.FC<Props> = ({
                         <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}>
                           {show.status}
                         </span>
+
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-900 text-zinc-300 border border-zinc-800">
+                          <MapPin size={10} className="text-purple-400 shrink-0" />
+                          <span className="truncate max-w-[140px]">{hierarchy.cityTag}</span>
+                        </span>
                       </div>
 
-                      <h3 className="text-base font-black text-white mt-1.5 group-hover:text-purple-400 transition-colors">
-                        {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
+                      {/* 1. TÍTULO PRINCIPAL: Nome do Evento / Casa */}
+                      <h3 className="text-base sm:text-lg font-black text-white mt-2 truncate group-hover:text-purple-400 transition-colors">
+                        {hierarchy.eventTitle}
                       </h3>
-                      <p className="text-xs text-zinc-400 font-medium mt-0.5">
-                        Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+
+                      {/* 2. SUBTÍTULO: Nome do Contratante / Cliente */}
+                      <p className="text-xs text-zinc-400 font-bold mt-0.5 truncate">
+                        {hierarchy.contractorSubtitle}
                       </p>
                     </div>
 
-                    <span className="text-xs font-black text-zinc-400 bg-zinc-900 px-2 py-1 rounded-xl border border-zinc-800">
+                    <span className="text-xs font-black text-zinc-400 bg-zinc-900 px-2 py-1 rounded-xl border border-zinc-800 shrink-0">
                       {show.time || '20:00'}
                     </span>
                   </div>

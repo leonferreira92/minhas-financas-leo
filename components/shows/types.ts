@@ -1,4 +1,70 @@
-import { ShowStatus } from '../../types';
+import { Show, ShowStatus } from '../../types';
+
+export interface ShowDisplayHierarchy {
+  eventTitle: string;
+  contractorSubtitle: string;
+  contractorNameOnly: string;
+  cityTag: string;
+}
+
+/**
+ * Padroniza estritamente a hierarquia de exibição dos cards e fichas de show:
+ * 1. TÍTULO PRINCIPAL: Nome do Evento / Casa (ex: "Show Haras Casa Velha")
+ * 2. SUBTÍTULO: Nome do Contratante / Cliente (ex: "Contratante: LSA Tecnologia")
+ * 3. TAG/CIDADE: Cidade e Estado (ex: "Cruzília - MG")
+ */
+export const getShowDisplayHierarchy = (show?: Partial<Show> | null): ShowDisplayHierarchy => {
+  if (!show) {
+    return {
+      eventTitle: 'Evento / Show',
+      contractorSubtitle: 'Contratante: Não informado',
+      contractorNameOnly: 'Não informado',
+      cityTag: 'Cidade a definir'
+    };
+  }
+
+  const rawName = (show.name || '').trim();
+  const rawContractor = (show.contractorName || '').trim();
+  const rawLocation = (show.location || '').trim();
+  const rawCity = (show.city || '').trim();
+
+  const isValidLocation =
+    rawLocation !== '' &&
+    rawLocation.toLowerCase() !== 'a definir' &&
+    rawLocation.toLowerCase() !== 'local a definir';
+
+  const isGenericName =
+    rawName === '' ||
+    rawName.toLowerCase() === 'show' ||
+    rawName.toLowerCase() === 'evento';
+
+  // Se name for igual ao contractorName, mas houver um location válido diferente, o location era o nome da casa/evento
+  let eventTitle = '';
+  if (!isGenericName) {
+    if (rawName === rawContractor && isValidLocation && rawLocation !== rawContractor) {
+      eventTitle = rawLocation;
+    } else {
+      eventTitle = rawName;
+    }
+  } else if (isValidLocation) {
+    eventTitle = rawLocation;
+  } else if (rawContractor) {
+    eventTitle = `Show ${rawContractor}`;
+  } else {
+    eventTitle = 'Show / Evento';
+  }
+
+  const contractorNameOnly = rawContractor || (!isGenericName ? rawName : 'Não informado');
+  const contractorSubtitle = `Contratante: ${contractorNameOnly}`;
+  const cityTag = rawCity || 'Cidade a definir';
+
+  return {
+    eventTitle,
+    contractorSubtitle,
+    contractorNameOnly,
+    cityTag
+  };
+};
 
 export const EVENT_TYPES = [
   'Casamento',

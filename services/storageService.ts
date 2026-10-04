@@ -37,31 +37,46 @@ const safeGetItem = (key: string): string | null => {
   }
 };
 
+function deduplicateById<T extends { id?: string }>(items: T[]): T[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  const result: T[] = [];
+  for (const item of items) {
+    if (!item || !item.id) continue;
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    result.push(item);
+  }
+  return result;
+}
+
 export const StorageService = {
   getTransactions: (): Transaction[] => {
     try {
       const data = safeGetItem(KEYS.TRANSACTIONS);
-      return data ? JSON.parse(data) : [];
+      const parsed = data ? JSON.parse(data) : [];
+      return deduplicateById<Transaction>(parsed);
     } catch {
       return [];
     }
   },
 
   saveTransactions: (transactions: Transaction[]) => {
-    safeSetItem(KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    safeSetItem(KEYS.TRANSACTIONS, JSON.stringify(deduplicateById(transactions)));
   },
 
   getCategories: (): Category[] => {
     try {
       const data = safeGetItem(KEYS.CATEGORIES);
-      return data ? JSON.parse(data) : DEFAULT_CATEGORIES;
+      const parsed = data ? JSON.parse(data) : DEFAULT_CATEGORIES;
+      return deduplicateById<Category>(parsed);
     } catch {
       return DEFAULT_CATEGORIES;
     }
   },
 
   saveCategories: (categories: Category[]) => {
-    safeSetItem(KEYS.CATEGORIES, JSON.stringify(categories));
+    safeSetItem(KEYS.CATEGORIES, JSON.stringify(deduplicateById(categories)));
   },
 
   getSettings: (): AppSettings => {
@@ -92,14 +107,15 @@ export const StorageService = {
   getDebts: (): Debt[] => {
     try {
       const data = safeGetItem(KEYS.DEBTS);
-      return data ? JSON.parse(data) : [];
+      const parsed = data ? JSON.parse(data) : [];
+      return deduplicateById<Debt>(parsed);
     } catch {
       return [];
     }
   },
 
   saveDebts: (debts: Debt[]) => {
-    safeSetItem(KEYS.DEBTS, JSON.stringify(debts));
+    safeSetItem(KEYS.DEBTS, JSON.stringify(deduplicateById(debts)));
   },
 
   getAccounts: (): Account[] => {
@@ -109,7 +125,7 @@ export const StorageService = {
         safeSetItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
         return DEFAULT_ACCOUNTS;
       }
-      const parsed: Account[] = JSON.parse(data);
+      const parsed: Account[] = deduplicateById<Account>(JSON.parse(data));
       if (!parsed || parsed.length === 0) {
         safeSetItem(KEYS.ACCOUNTS, JSON.stringify(DEFAULT_ACCOUNTS));
         return DEFAULT_ACCOUNTS;
@@ -132,14 +148,14 @@ export const StorageService = {
         });
         safeSetItem(KEYS.ACCOUNTS, JSON.stringify(result));
       }
-      return result;
+      return deduplicateById(result);
     } catch {
       return DEFAULT_ACCOUNTS;
     }
   },
 
   saveAccounts: (accounts: Account[]) => {
-    safeSetItem(KEYS.ACCOUNTS, JSON.stringify(accounts));
+    safeSetItem(KEYS.ACCOUNTS, JSON.stringify(deduplicateById(accounts)));
   },
 
   getBudgets: (): Budget[] => {
@@ -161,8 +177,8 @@ export const StorageService = {
       if (!data) return [];
       const parsed = JSON.parse(data);
       if (!Array.isArray(parsed)) return [];
-      return parsed.map((s: any) => {
-        const id = s.id || `show_${Date.now()}`;
+      const mapped = parsed.map((s: any, idx: number) => {
+        const id = s.id || `show_${Date.now()}_${idx}`;
         let dateStr = s.date || s.eventDate || s.data || '';
         if (!dateStr || typeof dateStr !== 'string') {
           dateStr = s.createdAt ? new Date(s.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
@@ -190,29 +206,38 @@ export const StorageService = {
           costs: costsVal,
           extraAmount: Number(s.extraAmount) || 0,
           status: s.status || 'Confirmado',
-          payments: Array.isArray(s.payments) ? s.payments : [],
-          expenseItems: Array.isArray(s.expenseItems) ? s.expenseItems : [],
-          crewMembers: Array.isArray(s.crewMembers) ? s.crewMembers : [],
-          logistics: Array.isArray(s.logistics) ? s.logistics : [],
-          otherExpenses: Array.isArray(s.otherExpenses) ? s.otherExpenses : [],
-          receipts: Array.isArray(s.receipts) ? s.receipts : [],
+          payments: deduplicateById(Array.isArray(s.payments) ? s.payments : []),
+          expenseItems: deduplicateById(Array.isArray(s.expenseItems) ? s.expenseItems : []),
+          crewMembers: deduplicateById(Array.isArray(s.crewMembers) ? s.crewMembers : []),
+          logistics: deduplicateById(Array.isArray(s.logistics) ? s.logistics : []),
+          otherExpenses: deduplicateById(Array.isArray(s.otherExpenses) ? s.otherExpenses : []),
+          receipts: deduplicateById(Array.isArray(s.receipts) ? s.receipts : []),
           createdAt: Number(s.createdAt) || Date.now(),
           scope: s.scope || 'BUSINESS'
         } as Show;
       });
+      return deduplicateById<Show>(mapped);
     } catch {
       return [];
     }
   },
 
   saveShows: (shows: Show[]) => {
-    safeSetItem(KEYS.SHOWS, JSON.stringify(shows));
+    const cleanShows = deduplicateById(shows).map(s => ({
+      ...s,
+      payments: deduplicateById(Array.isArray(s.payments) ? s.payments : []),
+      expenseItems: deduplicateById(Array.isArray(s.expenseItems) ? s.expenseItems : []),
+      crewMembers: deduplicateById(Array.isArray(s.crewMembers) ? s.crewMembers : []),
+      logistics: deduplicateById(Array.isArray(s.logistics) ? s.logistics : []),
+      otherExpenses: deduplicateById(Array.isArray(s.otherExpenses) ? s.otherExpenses : [])
+    }));
+    safeSetItem(KEYS.SHOWS, JSON.stringify(cleanShows));
   },
 
   getVenues: (): Venue[] => {
     try {
       const data = safeGetItem(KEYS.VENUES);
-      if (data) return JSON.parse(data);
+      if (data) return deduplicateById<Venue>(JSON.parse(data));
       const defaultVenues: Venue[] = [
         { id: 'ven_1', name: 'Bar do Zé Pub', contactName: 'Zé Carlos', phone: '(11) 98765-4321', city: 'São Paulo - SP', address: 'Vila Madalena, 120', defaultCache: 1200, category: 'Bar / Pub', notes: 'Som próprio no local. Horário de início 21h.' },
         { id: 'ven_2', name: 'Villa Country Hall', contactName: 'Marcos Gerente', phone: '(11) 97654-3210', city: 'São Paulo - SP', address: 'Av. das Américas, 400', defaultCache: 2500, category: 'Casa de Show', notes: 'Passagem de som às 18h pontual. 2h de show.' },
@@ -226,13 +251,13 @@ export const StorageService = {
   },
 
   saveVenues: (venues: Venue[]) => {
-    safeSetItem(KEYS.VENUES, JSON.stringify(venues));
+    safeSetItem(KEYS.VENUES, JSON.stringify(deduplicateById(venues)));
   },
 
   getCrew: (): MusicianCrewMember[] => {
     try {
       const data = safeGetItem(KEYS.CREW);
-      if (data) return JSON.parse(data);
+      if (data) return deduplicateById<MusicianCrewMember>(JSON.parse(data));
       const defaultCrew: MusicianCrewMember[] = [
         { id: 'crew_1', name: 'Rodrigo Bateria', role: 'Bateria', defaultCache: 350, phone: '(11) 98111-2233', pixKey: 'rodrigo.batera@email.com', pixKeyType: 'Email', notes: 'Traz bateria e microfones próprios' },
         { id: 'crew_2', name: 'Mateus Baixo', role: 'Contrabaixo', defaultCache: 300, phone: '(11) 98222-3344', pixKey: '123.456.789-00', pixKeyType: 'CPF', notes: 'Baixo 5 cordas + In-Ear' },
@@ -247,33 +272,33 @@ export const StorageService = {
   },
 
   saveCrew: (crew: MusicianCrewMember[]) => {
-    safeSetItem(KEYS.CREW, JSON.stringify(crew));
+    safeSetItem(KEYS.CREW, JSON.stringify(deduplicateById(crew)));
   },
 
   getLocomotionExpenses: (): MusicLocomotionExpense[] => {
     try {
       const data = safeGetItem(KEYS.LOCOMOTION);
-      return data ? JSON.parse(data) : [];
+      return data ? deduplicateById<MusicLocomotionExpense>(JSON.parse(data)) : [];
     } catch {
       return [];
     }
   },
 
   saveLocomotionExpenses: (expenses: MusicLocomotionExpense[]) => {
-    safeSetItem(KEYS.LOCOMOTION, JSON.stringify(expenses));
+    safeSetItem(KEYS.LOCOMOTION, JSON.stringify(deduplicateById(expenses)));
   },
 
   getMusicCostItems: (): MusicCostItem[] => {
     try {
       const data = safeGetItem(KEYS.MUSIC_COSTS);
-      return data ? JSON.parse(data) : [];
+      return data ? deduplicateById<MusicCostItem>(JSON.parse(data)) : [];
     } catch {
       return [];
     }
   },
 
   saveMusicCostItems: (items: MusicCostItem[]) => {
-    safeSetItem(KEYS.MUSIC_COSTS, JSON.stringify(items));
+    safeSetItem(KEYS.MUSIC_COSTS, JSON.stringify(deduplicateById(items)));
   },
   
   clearData: () => {

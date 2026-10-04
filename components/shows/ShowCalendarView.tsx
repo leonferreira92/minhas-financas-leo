@@ -6,7 +6,7 @@ import {
   Clock, MapPin, Plus, CheckCircle2, AlertTriangle, AlertCircle,
   Sparkles, Check, ChevronDown, Music, DollarSign, ArrowRight
 } from 'lucide-react';
-import { getStatusConfig } from './types';
+import { getStatusConfig, getShowDisplayHierarchy } from './types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 import { getLocalDateString } from '../../services/dateUtils';
 
@@ -418,6 +418,7 @@ export const ShowCalendarView: React.FC<Props> = ({
               const fin = getShowFinancialSummary(show, transactions);
               const pct = fin.totalPredicted > 0 ? Math.min(100, Math.round((fin.totalReceived / fin.totalPredicted) * 100)) : 0;
               const is100 = fin.totalPending === 0 && fin.totalPredicted > 0;
+              const hierarchy = getShowDisplayHierarchy(show);
 
               return (
                 <div
@@ -425,9 +426,9 @@ export const ShowCalendarView: React.FC<Props> = ({
                   onClick={() => onSelectShow(show)}
                   className="p-4 rounded-2xl bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center space-x-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                         <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center space-x-1">
                           <Clock size={12} />
                           <span>{show.time || '20:00'}{show.endTime ? ` — ${show.endTime}` : ''}</span>
@@ -437,18 +438,17 @@ export const ShowCalendarView: React.FC<Props> = ({
                           {show.status}
                         </span>
 
-                        {show.eventType && (
-                          <span className="text-[10px] text-zinc-400 font-bold hidden sm:inline-block">
-                            • {show.eventType}
-                          </span>
-                        )}
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-800/90 text-zinc-200 border border-zinc-700">
+                          <MapPin size={10} className="text-emerald-400 shrink-0" />
+                          <span>{hierarchy.cityTag}</span>
+                        </span>
                       </div>
 
-                      <h4 className="text-sm font-black text-white mt-1.5 group-hover:text-emerald-400 transition-colors">
-                        {show.location && show.location.trim() !== '' ? show.location : `Show - ${show.contractorName || show.name || 'Contratante'}`}
+                      <h4 className="text-base font-black text-white mt-1.5 truncate group-hover:text-emerald-400 transition-colors">
+                        {hierarchy.eventTitle}
                       </h4>
-                      <p className="text-xs text-zinc-400 font-medium mt-0.5">
-                        Contratante: {show.contractorName || show.name || 'Não informado'} • {show.city || 'Cidade a definir'}
+                      <p className="text-xs text-zinc-400 font-bold mt-0.5 truncate">
+                        {hierarchy.contractorSubtitle}
                       </p>
                     </div>
 

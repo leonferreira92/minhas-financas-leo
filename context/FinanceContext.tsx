@@ -1,10 +1,21 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, ShowPaymentType, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, ShowPaymentType, ShowCostGroup, ShowExpenseSubcategory, ShowLogisticsSubcategory, ShowEquipmentSubcategory, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
-import { normalizeShowFinancials, syncShowWithTransactions, cancelShowFutureTransactions } from '../services/showFinanceSyncService';
+import {
+  normalizeShowFinancials,
+  syncShowWithTransactions,
+  cancelShowFutureTransactions,
+  validateShowTransaction,
+  resolveShowExpenseClassification,
+  resolveIncomeCategoryId,
+  getShowFinancialSummary,
+  reconcileAllShowsAndTransactions,
+  isShowOrMusicIncomeTransaction,
+  deduplicateItemsById
+} from '../services/showFinanceSyncService';
 import { generateUUID } from '../services/uuidHelper';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { User } from 'firebase/auth';
@@ -95,6 +106,16 @@ interface FinanceContextType {
   updateShow: (s: Show) => void;
   deleteShow: (id: string, deleteTransactions?: boolean) => void;
   cancelShowFutureFinancials: (showId: string) => void;
+  linkTransactionToShow: (
+    transactionId: string,
+    showId: string,
+    options?: {
+      paymentType?: ShowPaymentType;
+      costGroup?: ShowCostGroup;
+      subcategory?: ShowExpenseSubcategory;
+    }
+  ) => void;
+  unlinkTransactionFromShow: (transactionId: string) => void;
 
   // Career Sou Artista CRUD
   addVenue: (v: Omit<Venue, 'id' | 'createdAt'> & { id?: string }) => void;
@@ -197,33 +218,50 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // 1. Escutador em tempo real: Contas Bancárias
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
-      setAccounts(cloudAccounts);
-      StorageService.saveAccounts(cloudAccounts);
+      const cleanAccounts = deduplicateItemsById(cloudAccounts);
+      setAccounts(cleanAccounts);
+      StorageService.saveAccounts(cleanAccounts);
     });
 
     // 2. Escutador em tempo real: Transações / Lançamentos
     const unsubTransactions = subscribeToUserTransactions(uid, (cloudTxs) => {
-      setTransactions(cloudTxs);
-      StorageService.saveTransactions(cloudTxs);
+      const cleanTxs = deduplicateItemsById(cloudTxs);
+      setTransactions(cleanTxs);
+      StorageService.saveTransactions(cleanTxs);
     });
 
     // 3. Escutador em tempo real: Shows / Apresentações
     const unsubShows = subscribeToUserShows(uid, (cloudShows) => {
-      setShows(cloudShows);
-      StorageService.saveShows(cloudShows);
+      const cleanShows = deduplicateItemsById(cloudShows).map(s => {
+        const hadDupPayments = Array.isArray(s.payments) && deduplicateItemsById(s.payments).length !== s.payments.length;
+        const hadDupCrew = Array.isArray(s.crewMembers) && deduplicateItemsById(s.crewMembers).length !== s.crewMembers.length;
+        const hadDupLog = Array.isArray(s.logistics) && deduplicateItemsById(s.logistics).length !== s.logistics.length;
+        const hadDupOther = Array.isArray(s.otherExpenses) && deduplicateItemsById(s.otherExpenses).length !== s.otherExpenses.length;
+        const hadDupExp = Array.isArray(s.expenseItems) && deduplicateItemsById(s.expenseItems).length !== s.expenseItems.length;
+
+        const normalized = normalizeShowFinancials(s, 'acc_mp');
+        if (hadDupPayments || hadDupCrew || hadDupLog || hadDupOther || hadDupExp) {
+          saveShowToFirestore(uid, normalized);
+        }
+        return normalized;
+      });
+      setShows(cleanShows);
+      StorageService.saveShows(cleanShows);
     });
 
     // 4. Escutador em tempo real: Dívidas / Parcelamentos
     const unsubDebts = subscribeToUserDebts(uid, (cloudDebts) => {
-      setDebts(cloudDebts);
-      StorageService.saveDebts(cloudDebts);
+      const cleanDebts = deduplicateItemsById(cloudDebts);
+      setDebts(cleanDebts);
+      StorageService.saveDebts(cleanDebts);
     });
 
     // 5. Escutador em tempo real: Categorias Customizadas
     const unsubCategories = subscribeToUserCategories(uid, (cloudCategories) => {
       if (cloudCategories && cloudCategories.length > 0) {
-        setCategories(cloudCategories);
-        StorageService.saveCategories(cloudCategories);
+        const cleanCategories = deduplicateItemsById(cloudCategories);
+        setCategories(cleanCategories);
+        StorageService.saveCategories(cleanCategories);
       }
     });
 
@@ -424,12 +462,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       cat33.type = 'income';
     }
 
-    // Garantir categoria "Equipamentos" para saídas do módulo de Música
-    let catEquip = storedCategories.find(c => c.id === 'cat_equipamentos' || c.name.toLowerCase() === 'equipamentos');
+    // Garantir categoria "Equipamentos & Som" para saídas do módulo de Música
+    const duplicateEquipCatIds = new Set(
+      storedCategories
+        .filter(c => c.id !== 'cat_equipamentos' && c.name.toLowerCase() === 'equipamentos')
+        .map(c => c.id)
+    );
+    let catEquip = storedCategories.find(c => c.id === 'cat_equipamentos');
     if (!catEquip) {
       catEquip = {
         id: 'cat_equipamentos',
-        name: 'Equipamentos',
+        name: 'Equipamentos & Som',
         type: 'expense',
         color: '#8b5cf6',
         icon: 'Hammer',
@@ -438,24 +481,60 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       storedCategories.push(catEquip);
     } else {
-      catEquip.id = 'cat_equipamentos';
-      catEquip.name = 'Equipamentos';
+      catEquip.name = 'Equipamentos & Som';
       catEquip.scope = 'BUSINESS';
       catEquip.type = 'expense';
     }
 
+    // Garantir categoria "Deslocamento / Logística" (cat_logistica_shows)
+    let catLogistica = storedCategories.find(c => c.id === 'cat_logistica_shows');
+    if (!catLogistica) {
+      catLogistica = {
+        id: 'cat_logistica_shows',
+        name: 'Deslocamento / Logística',
+        type: 'expense',
+        color: '#f59e0b',
+        icon: 'Fuel',
+        classification: 'professional',
+        scope: 'BUSINESS'
+      };
+      storedCategories.push(catLogistica);
+    } else {
+      catLogistica.scope = 'BUSINESS';
+      catLogistica.type = 'expense';
+    }
+
+    // Garantir categoria "Músicos / Apoio (Equipe)" (cat_producao_shows)
+    let catMusicos = storedCategories.find(c => c.id === 'cat_producao_shows');
+    if (!catMusicos) {
+      catMusicos = {
+        id: 'cat_producao_shows',
+        name: 'Músicos / Apoio (Equipe)',
+        type: 'expense',
+        color: '#a855f7',
+        icon: 'Users',
+        classification: 'professional',
+        scope: 'BUSINESS'
+      };
+      storedCategories.push(catMusicos);
+    } else {
+      catMusicos.scope = 'BUSINESS';
+      catMusicos.type = 'expense';
+    }
+
     // Remover categorias duplicadas
-    let finalCategories = storedCategories.filter(c => !duplicateCatIds.has(c.id));
+    let finalCategories = deduplicateItemsById(
+      storedCategories.filter(c => !duplicateCatIds.has(c.id) && !duplicateEquipCatIds.has(c.id))
+    );
 
     // Garantir defaults que faltem
+    const existingIds = new Set(finalCategories.map(c => c.id));
     const existingNames = new Set(finalCategories.map(c => c.name.toLowerCase()));
-    const missingDefaults = DEFAULT_CATEGORIES.filter(d => !existingNames.has(d.name.toLowerCase()) && !isDuplicateCacheCat(d.name, d.id));
+    const missingDefaults = DEFAULT_CATEGORIES.filter(
+      d => !existingIds.has(d.id) && !existingNames.has(d.name.toLowerCase()) && !isDuplicateCacheCat(d.name, d.id)
+    );
     if (missingDefaults.length > 0) {
-      const toAdd = missingDefaults.map(cat => ({
-        ...cat,
-        id: finalCategories.some(sc => sc.id === cat.id) ? generateUUID() : cat.id
-      }));
-      finalCategories = [...finalCategories, ...toAdd];
+      finalCategories = [...finalCategories, ...missingDefaults];
     }
     StorageService.saveCategories(finalCategories);
 
@@ -509,7 +588,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Remover 'BOTH' do escopo (obrigatoriamente PERSONAL ou BUSINESS)
       if (!newScope || newScope === 'BOTH') {
-        const isBiz = newCatId === 'cat_33' || newCatId === 'cat_equipamentos' || !!t.showId || !!t.showExpenseId || descLower.includes('show') || descLower.includes('músico') || descLower.includes('musico');
+        const isBiz = newCatId === 'cat_33' || newCatId === 'cat_equipamentos' || newCatId === 'cat_logistica_shows' || newCatId === 'cat_producao_shows' || !!t.showId || !!t.showExpenseId || descLower.includes('show') || descLower.includes('músico') || descLower.includes('musico');
         newScope = isBiz ? 'BUSINESS' : 'PERSONAL';
         modified = true;
       }
@@ -534,15 +613,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       StorageService.saveTransactions(migratedTransactions);
     }
 
-    setTransactions(storedTransactions);
+    const rawShows = StorageService.getShows();
+    const defaultBizAcc = storedAccounts.find(a => a.scope === 'BUSINESS' || a.vinculo === 'MUSICO')?.id || (storedAccounts[0]?.id || 'acc_mp');
+    const { reconciledShows, reconciledTransactions } = reconcileAllShowsAndTransactions(
+      rawShows,
+      storedTransactions,
+      finalCategories,
+      defaultBizAcc
+    );
+
+    const persistedShows = reconciledShows.filter(s => !String(s.id).startsWith('show_legacy_'));
+    StorageService.saveShows(persistedShows);
+    StorageService.saveTransactions(reconciledTransactions);
+
     setCategories(finalCategories);
     setDebts(storedDebts);
     setAccounts(storedAccounts);
     setBudgets(storedBudgets);
-    const storedShows = StorageService.getShows();
-
-    setTransactions(storedTransactions);
-    setShows(storedShows);
+    setTransactions(reconciledTransactions);
+    setShows(reconciledShows);
     setVenues(StorageService.getVenues());
     setCrew(StorageService.getCrew());
     setLocomotionExpenses(StorageService.getLocomotionExpenses());
@@ -707,21 +796,66 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const fixedGroupId = t.isFixed ? generateUUID() : undefined;
     const tid = t.id || generateUUID();
     const cleanAmount = Number(t.amount) || 0;
-    const cleanScope: ScopeType = t.scope || ((t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || !!t.showId) ? 'BUSINESS' : (activeScope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL'));
+    const isShowTx = Boolean(t.showId) || Boolean(t.isEventTransaction) || Boolean(t.showPaymentId) || Boolean(t.showExpenseId) || Boolean(t.costGroup);
+
+    let resolvedCategoryId = t.categoryId;
+    let resolvedCostGroup = t.costGroup;
+    let resolvedSubcategory = t.subcategory;
+
+    if (isShowTx) {
+      if (t.type === 'income') {
+        resolvedCategoryId = resolvedCategoryId || resolveIncomeCategoryId(categories);
+      } else if (t.type === 'expense') {
+        const cls = resolveShowExpenseClassification({
+          costGroup: t.costGroup,
+          subcategory: t.subcategory,
+          categoryId: t.categoryId,
+          description: t.description
+        });
+        resolvedCategoryId = cls.categoryId;
+        resolvedCostGroup = cls.costGroup;
+        resolvedSubcategory = cls.subcategory;
+      }
+
+      const validation = validateShowTransaction({ ...t, categoryId: resolvedCategoryId }, true);
+      if (!validation.valid) {
+        console.error(validation.error);
+        throw new Error(validation.error);
+      }
+    }
+
+    const cleanScope: ScopeType =
+      t.scope ||
+      (isShowTx ||
+      resolvedCategoryId === 'cat_33' ||
+      resolvedCategoryId === 'cat_equipamentos' ||
+      resolvedCategoryId === 'cat_logistica_shows' ||
+      resolvedCategoryId === 'cat_producao_shows'
+        ? 'BUSINESS'
+        : activeScope === 'BUSINESS'
+        ? 'BUSINESS'
+        : 'PERSONAL');
 
     let finalTxDate = t.date;
     let finalTxStatus = t.status || 'paid';
+    let resolvedShowName = t.showName;
     if (t.showId) {
       const targetShow = shows.find(s => s.id === t.showId);
       if (targetShow) {
-        if (targetShow.date) {
+        resolvedShowName = targetShow.contractorName || targetShow.name;
+        if (!finalTxDate && targetShow.date) {
           finalTxDate = targetShow.date;
         }
-        if (t.type === 'expense' && targetShow.status !== 'Realizado') {
+        if (!t.status && t.type === 'expense' && targetShow.status !== 'Realizado') {
           finalTxStatus = 'pending';
         }
       }
     }
+
+    const resolvedShowPaymentId =
+      t.showId && t.type === 'income' ? (t.showPaymentId || generateUUID()) : t.showPaymentId;
+    const resolvedShowExpenseId =
+      t.showId && t.type === 'expense' ? (t.showExpenseId || generateUUID()) : t.showExpenseId;
 
     const fullTx: Transaction = {
       ...t,
@@ -729,149 +863,256 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       amount: cleanAmount,
       date: finalTxDate,
       status: finalTxStatus,
+      categoryId: resolvedCategoryId,
+      category: resolvedCategoryId,
+      costGroup: resolvedCostGroup,
+      subcategory: resolvedSubcategory,
+      showName: resolvedShowName,
+      showPaymentId: resolvedShowPaymentId,
+      showExpenseId: resolvedShowExpenseId,
+      isEventTransaction: isShowTx ? true : t.isEventTransaction,
       scope: cleanScope,
       createdAt: Date.now(),
       fixedGroupId
     };
 
-    setTransactions(prev => {
-      const txs = [...prev, fullTx];
-      if (t.isFixed && fixedGroupId) {
-        for (let i = 1; i < 12; i++) {
-          const d = new Date(t.date + 'T12:00:00'); d.setMonth(d.getMonth() + i);
-          const recurTx: Transaction = { ...t, id: generateUUID(), date: getLocalDateString(d), status: 'pending', createdAt: Date.now() + i, fixedGroupId, amount: cleanAmount, scope: cleanScope };
-          txs.push(recurTx);
-          if (currentUser) {
-            saveTransactionToFirestore(currentUser.uid, recurTx);
-          }
-        }
+    const recurTxs: Transaction[] = [];
+    if (t.isFixed && fixedGroupId) {
+      for (let i = 1; i < 12; i++) {
+        const d = new Date(t.date + 'T12:00:00');
+        d.setMonth(d.getMonth() + i);
+        const recurTx: Transaction = {
+          ...fullTx,
+          id: generateUUID(),
+          date: getLocalDateString(d),
+          status: 'pending',
+          createdAt: Date.now() + i,
+          fixedGroupId,
+          amount: cleanAmount,
+          scope: cleanScope
+        };
+        recurTxs.push(recurTx);
       }
+    }
+
+    setTransactions(prev => {
+      const txs = deduplicateItemsById([...prev, fullTx, ...recurTxs]);
       StorageService.saveTransactions(txs);
       return txs;
     });
 
     if (currentUser) {
       saveTransactionToFirestore(currentUser.uid, fullTx);
+      recurTxs.forEach(recurTx => saveTransactionToFirestore(currentUser.uid, recurTx));
     }
 
-    if (t.showId) {
+    if (fullTx.showId) {
       const defaultAccId = getDefaultAccountForScope('BUSINESS');
-      setShows(prevShows => {
-        let modified = false;
-        const updated = prevShows.map(show => {
-          if (show.id !== t.showId) return show;
-          modified = true;
-          if (t.type === 'income') {
-            let payments = Array.isArray(show.payments) ? [...show.payments] : [];
-            const descLower = (t.description || '').toLowerCase();
-            const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || descLower.includes('hora extra') || descLower.includes('gorjeta') || descLower.includes('adicional');
-            const pType: ShowPaymentType = isExtra ? 'Extra' : (t.showPaymentType || (descLower.includes('sinal') ? 'Sinal' : 'Parcela'));
-            
-            // REGRA DE SOBRESCRITA DE RECEITA DO SHOW:
-            // Quando uma transação do Extrato (Pix/Transferência) for vinculada a um show,
-            // o valor dessa transação deve DEFINIR/SOBRESCREVER o valor recebido do show, e NUNCA ser somado em duplicidade com o cachê previsto.
-            let existingIdx = payments.findIndex(p => p.transactionId === tid || (t.showPaymentId && p.id === t.showPaymentId));
-            if (existingIdx < 0 && !isExtra) {
-              // Procura pagamento prévio de base não vinculado para sobrescrever
-              existingIdx = payments.findIndex(p => !p.transactionId && p.type !== 'Extra' && p.type !== 'Bônus');
-            }
-            
-            const updatedPayment: ShowPayment = {
-              id: (existingIdx >= 0 && payments[existingIdx].id) ? payments[existingIdx].id : (t.showPaymentId || generateUUID()),
-              type: pType,
-              amount: cleanAmount,
-              status: t.status === 'paid' ? 'Recebido' : 'Agendado',
-              expectedDate: t.date,
-              effectiveDate: t.status === 'paid' ? t.date : undefined,
-              accountId: t.accountId || defaultAccId,
-              transactionId: tid
-            };
+      const targetShowInState = shows.find(s => s.id === fullTx.showId);
+      if (targetShowInState) {
+        let updatedTargetShow: Show = targetShowInState;
+        if (fullTx.type === 'income') {
+          const payments = Array.isArray(targetShowInState.payments) ? [...targetShowInState.payments] : [];
+          const descLower = (fullTx.description || '').toLowerCase();
+          const isOvertime =
+            fullTx.showPaymentType === 'Hora Extra' ||
+            fullTx.showPaymentType === 'Extra' ||
+            descLower.includes('hora extra');
+          const isCouvert =
+            fullTx.showPaymentType === 'Couvert' ||
+            fullTx.showPaymentType === 'Gorjeta' ||
+            fullTx.showPaymentType === 'Bônus' ||
+            descLower.includes('couvert') ||
+            descLower.includes('gorjeta');
 
-            if (existingIdx >= 0) {
-              payments[existingIdx] = updatedPayment;
-            } else {
-              payments.push(updatedPayment);
-            }
+          const pType: ShowPaymentType =
+            fullTx.showPaymentType ||
+            (isOvertime
+              ? 'Hora Extra'
+              : isCouvert
+              ? 'Couvert'
+              : descLower.includes('sinal')
+              ? 'Sinal'
+              : 'Cachê Principal');
 
-            let newExtraAmount = Number(show.extraAmount) || 0;
-            if (isExtra) {
-              newExtraAmount = Math.max(newExtraAmount, cleanAmount);
-            }
+          const existingIdx = payments.findIndex(
+            p => p.transactionId === tid || (resolvedShowPaymentId && p.id === resolvedShowPaymentId)
+          );
 
-            return normalizeShowFinancials({ ...show, payments, extraAmount: newExtraAmount }, defaultAccId);
-          } else if (t.type === 'expense') {
-            let expenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
-            const existingIdx = expenses.findIndex(e => e.transactionId === tid || (t.showExpenseId && e.id === t.showExpenseId));
-            const updatedExpense = {
-              id: (existingIdx >= 0 && expenses[existingIdx].id) ? expenses[existingIdx].id : (t.showExpenseId || generateUUID()),
-              category: 'Outros',
-              notes: t.description || 'Despesa do Show',
-              amount: cleanAmount,
-              date: t.date,
-              accountId: t.accountId || defaultAccId,
-              transactionId: tid
-            };
+          const updatedPayment: ShowPayment = {
+            id:
+              existingIdx >= 0 && payments[existingIdx].id
+                ? payments[existingIdx].id
+                : resolvedShowPaymentId || generateUUID(),
+            type: pType,
+            amount: cleanAmount,
+            status: fullTx.status === 'paid' ? 'Recebido' : 'Agendado',
+            expectedDate: fullTx.date,
+            effectiveDate: fullTx.status === 'paid' ? fullTx.date : undefined,
+            accountId: fullTx.accountId || defaultAccId,
+            notes: fullTx.description,
+            transactionId: tid
+          };
 
-            if (existingIdx >= 0) {
-              expenses[existingIdx] = updatedExpense;
-            } else {
-              expenses.push(updatedExpense);
-            }
-            return normalizeShowFinancials({ ...show, expenseItems: expenses }, defaultAccId);
+          if (existingIdx >= 0) {
+            payments[existingIdx] = updatedPayment;
+          } else {
+            payments.push(updatedPayment);
           }
-          return show;
+
+          updatedTargetShow = normalizeShowFinancials({ ...targetShowInState, payments }, defaultAccId);
+        } else if (fullTx.type === 'expense') {
+          const cls = resolveShowExpenseClassification({
+            costGroup: fullTx.costGroup,
+            subcategory: fullTx.subcategory,
+            categoryId: fullTx.categoryId,
+            description: fullTx.description
+          });
+          const expId = resolvedShowExpenseId || generateUUID();
+
+          if (cls.costGroup === 'logistica') {
+            const logistics = Array.isArray(targetShowInState.logistics) ? [...targetShowInState.logistics] : [];
+            const existingIdx = logistics.findIndex(l => l.transactionId === tid || l.id === expId);
+            const item = {
+              id: existingIdx >= 0 && logistics[existingIdx].id ? logistics[existingIdx].id : expId,
+              type: cls.logisticsType,
+              costGroup: 'logistica' as const,
+              subcategory: cls.subcategory as ShowLogisticsSubcategory,
+              description: fullTx.description || cls.subcategory,
+              amount: cleanAmount,
+              status: (fullTx.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending',
+              transactionId: tid
+            };
+            if (existingIdx >= 0) logistics[existingIdx] = item;
+            else logistics.push(item);
+            updatedTargetShow = normalizeShowFinancials({ ...targetShowInState, logistics }, defaultAccId);
+          } else if (cls.costGroup === 'musicos') {
+            const crewMembers = Array.isArray(targetShowInState.crewMembers) ? [...targetShowInState.crewMembers] : [];
+            const existingIdx = crewMembers.findIndex(c => c.transactionId === tid || c.id === expId);
+            const item = {
+              id: existingIdx >= 0 && crewMembers[existingIdx].id ? crewMembers[existingIdx].id : expId,
+              name: fullTx.description || 'Músico / Apoio',
+              role: 'Cachê de Terceiros / Equipe',
+              costGroup: 'musicos' as const,
+              subcategory: 'Cachê de Terceiros / Equipe' as const,
+              cacheAmount: cleanAmount,
+              status: (fullTx.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending',
+              transactionId: tid
+            };
+            if (existingIdx >= 0) crewMembers[existingIdx] = item;
+            else crewMembers.push(item);
+            updatedTargetShow = normalizeShowFinancials({ ...targetShowInState, crewMembers }, defaultAccId);
+          } else {
+            const otherExpenses = Array.isArray(targetShowInState.otherExpenses) ? [...targetShowInState.otherExpenses] : [];
+            const existingIdx = otherExpenses.findIndex(o => o.transactionId === tid || o.id === expId);
+            const item = {
+              id: existingIdx >= 0 && otherExpenses[existingIdx].id ? otherExpenses[existingIdx].id : expId,
+              category: cls.subcategory,
+              subcategory: cls.subcategory as ShowEquipmentSubcategory,
+              costGroup: 'equipamentos' as const,
+              description: fullTx.description || cls.subcategory,
+              amount: cleanAmount,
+              status: (fullTx.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending',
+              transactionId: tid
+            };
+            if (existingIdx >= 0) otherExpenses[existingIdx] = item;
+            else otherExpenses.push(item);
+            updatedTargetShow = normalizeShowFinancials({ ...targetShowInState, otherExpenses }, defaultAccId);
+          }
+        }
+
+        setShows(prevShows => {
+          const updated = prevShows.map(show => (show.id === updatedTargetShow.id ? updatedTargetShow : show));
+          StorageService.saveShows(updated);
+          return deduplicateItemsById(updated);
         });
 
-        if (modified) {
-          StorageService.saveShows(updated);
-          if (currentUser) {
-            const currentShow = updated.find(s => s.id === t.showId);
-            if (currentShow) saveShowToFirestore(currentUser.uid, currentShow);
-          }
-          return updated;
+        if (currentUser) {
+          saveShowToFirestore(currentUser.uid, updatedTargetShow);
         }
-        return prevShows;
-      });
+      }
     }
   };
 
   const importTransactions = (newTxs: Array<Omit<Transaction, 'id' | 'createdAt'> & { id?: string }>) => {
+    const itemsToAdd: Transaction[] = newTxs.map((t, idx) => {
+      const tid = t.id || generateUUID();
+      const cleanAmount = Number(t.amount) || 0;
+      const cleanScope: ScopeType = (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_logistica_shows' || t.categoryId === 'cat_producao_shows') ? 'BUSINESS' : 'PERSONAL';
+      return {
+        ...t,
+        id: tid,
+        amount: cleanAmount,
+        scope: cleanScope,
+        status: t.status || 'paid',
+        createdAt: Date.now() + idx
+      };
+    });
+
     setTransactions(prev => {
-      const txs = [...prev];
-      newTxs.forEach(t => {
-        const tid = t.id || generateUUID();
-        const cleanAmount = Number(t.amount) || 0;
-        const cleanScope: ScopeType = (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
-        const item: Transaction = {
-          ...t,
-          id: tid,
-          amount: cleanAmount,
-          scope: cleanScope,
-          status: t.status || 'paid',
-          createdAt: Date.now()
-        };
-        txs.push(item);
-        if (currentUser) {
-          saveTransactionToFirestore(currentUser.uid, item);
-        }
-      });
+      const txs = deduplicateItemsById([...prev, ...itemsToAdd]);
       StorageService.saveTransactions(txs);
       return txs;
     });
+
+    if (currentUser) {
+      itemsToAdd.forEach(item => saveTransactionToFirestore(currentUser.uid, item));
+    }
   };
 
   const updateTransaction = (updatedT: Transaction) => {
     const cleanAmount = Number(updatedT.amount) || 0;
-    const cleanScope = (updatedT.scope === 'BUSINESS' || updatedT.categoryId === 'cat_33' || updatedT.categoryId === 'cat_equipamentos') ? 'BUSINESS' : 'PERSONAL';
-    
+    const isShowTx = Boolean(updatedT.showId) || Boolean(updatedT.isEventTransaction);
+
+    let resolvedCategoryId = updatedT.categoryId;
+    let resolvedCostGroup = updatedT.costGroup;
+    let resolvedSubcategory = updatedT.subcategory;
+
+    if (isShowTx && updatedT.showId) {
+      if (updatedT.type === 'income') {
+        resolvedCategoryId = resolvedCategoryId || resolveIncomeCategoryId(categories);
+      } else if (updatedT.type === 'expense') {
+        const cls = resolveShowExpenseClassification({
+          costGroup: updatedT.costGroup,
+          subcategory: updatedT.subcategory,
+          categoryId: updatedT.categoryId,
+          description: updatedT.description
+        });
+        resolvedCategoryId = cls.categoryId;
+        resolvedCostGroup = cls.costGroup;
+        resolvedSubcategory = cls.subcategory;
+      }
+
+      const validation = validateShowTransaction({ ...updatedT, categoryId: resolvedCategoryId }, true);
+      if (!validation.valid) {
+        console.error(validation.error);
+        throw new Error(validation.error);
+      }
+    }
+
+    const cleanScope =
+      updatedT.scope === 'BUSINESS' ||
+      Boolean(updatedT.showId) ||
+      resolvedCategoryId === 'cat_33' ||
+      resolvedCategoryId === 'cat_equipamentos' ||
+      resolvedCategoryId === 'cat_logistica_shows' ||
+      resolvedCategoryId === 'cat_producao_shows'
+        ? 'BUSINESS'
+        : 'PERSONAL';
+
     const cleanT: Transaction = {
       ...updatedT,
       amount: cleanAmount,
+      categoryId: resolvedCategoryId,
+      category: resolvedCategoryId,
+      costGroup: resolvedCostGroup,
+      subcategory: resolvedSubcategory,
+      isEventTransaction: Boolean(updatedT.showId),
       scope: cleanScope
     };
 
     setTransactions(prev => {
-      const txs = prev.map(t => t.id === cleanT.id ? cleanT : t);
+      const txs = prev.map(t => (t.id === cleanT.id ? cleanT : t));
       StorageService.saveTransactions(txs);
       return txs;
     });
@@ -881,82 +1122,142 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     // Sincronização bidirecional automática com o módulo de Shows
-    const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
+    const defaultAccId = getDefaultAccountForScope('BUSINESS');
     setShows(prevShows => {
       let showsModified = false;
       const updatedShows = prevShows.map(show => {
         const isDirectMatch = show.id === cleanT.showId;
-        const hasPaymentMatch = show.payments && show.payments.some(p => p.transactionId === cleanT.id || (cleanT.showPaymentId && p.id === cleanT.showPaymentId));
-        const hasReceiptMatch = show.receipts && show.receipts.some(r => r.transactionId === cleanT.id);
-        const hasExpenseMatch = show.expenseItems && show.expenseItems.some(e => e.transactionId === cleanT.id || (cleanT.showExpenseId && e.id === cleanT.showExpenseId));
+        const hasPaymentMatch =
+          show.payments &&
+          show.payments.some(p => p.transactionId === cleanT.id || (cleanT.showPaymentId && p.id === cleanT.showPaymentId));
+        const hasCrewMatch =
+          show.crewMembers &&
+          show.crewMembers.some(c => c.transactionId === cleanT.id || (cleanT.showExpenseId && c.id === cleanT.showExpenseId));
+        const hasLogisticsMatch =
+          show.logistics &&
+          show.logistics.some(l => l.transactionId === cleanT.id || (cleanT.showExpenseId && l.id === cleanT.showExpenseId));
+        const hasOtherMatch =
+          show.otherExpenses &&
+          show.otherExpenses.some(o => o.transactionId === cleanT.id || (cleanT.showExpenseId && o.id === cleanT.showExpenseId));
+        const hasExpenseMatch =
+          show.expenseItems &&
+          show.expenseItems.some(e => e.transactionId === cleanT.id || (cleanT.showExpenseId && e.id === cleanT.showExpenseId));
 
-        if (!isDirectMatch && !hasPaymentMatch && !hasReceiptMatch && !hasExpenseMatch) {
+        if (!isDirectMatch && !hasPaymentMatch && !hasCrewMatch && !hasLogisticsMatch && !hasOtherMatch && !hasExpenseMatch) {
           return show;
         }
 
-        let paymentChanged = false;
-        let expenseChanged = false;
+        showsModified = true;
+
+        // Se a transação foi desvinculada deste show (cleanT.showId !== show.id), remove dos itens deste show
+        if (cleanT.showId !== show.id) {
+          const filteredShow: Show = {
+            ...show,
+            payments: (show.payments || []).filter(p => p.transactionId !== cleanT.id && p.id !== cleanT.showPaymentId),
+            crewMembers: (show.crewMembers || []).filter(c => c.transactionId !== cleanT.id && c.id !== cleanT.showExpenseId),
+            logistics: (show.logistics || []).filter(l => l.transactionId !== cleanT.id && l.id !== cleanT.showExpenseId),
+            otherExpenses: (show.otherExpenses || []).filter(o => o.transactionId !== cleanT.id && o.id !== cleanT.showExpenseId),
+            expenseItems: (show.expenseItems || []).filter(e => e.transactionId !== cleanT.id && e.id !== cleanT.showExpenseId)
+          };
+          return normalizeShowFinancials(filteredShow, defaultAccId);
+        }
 
         let newPayments = Array.isArray(show.payments) ? [...show.payments] : [];
-        if (cleanT.showPaymentId || cleanT.type === 'income') {
+        if (cleanT.type === 'income') {
+          let matched = false;
           newPayments = newPayments.map(p => {
             if ((cleanT.showPaymentId && p.id === cleanT.showPaymentId) || p.transactionId === cleanT.id) {
-              paymentChanged = true;
+              matched = true;
               return {
                 ...p,
+                type: cleanT.showPaymentType || p.type || 'Cachê Principal',
                 amount: cleanAmount,
-                status: cleanT.status === 'paid' ? 'Recebido' as const : 'Agendado' as const,
-                effectiveDate: cleanT.status === 'paid' ? (p.effectiveDate || cleanT.date) : undefined,
+                status: cleanT.status === 'paid' ? ('Recebido' as const) : ('Agendado' as const),
+                effectiveDate: cleanT.status === 'paid' ? p.effectiveDate || cleanT.date : undefined,
                 expectedDate: cleanT.date || p.expectedDate,
                 accountId: cleanT.accountId || p.accountId
               };
             }
             return p;
           });
-        }
-
-        let newExpenses = Array.isArray(show.expenseItems) ? [...show.expenseItems] : [];
-        if (cleanT.showExpenseId || cleanT.type === 'expense') {
-          newExpenses = newExpenses.map(e => {
-            if ((cleanT.showExpenseId && e.id === cleanT.showExpenseId) || e.transactionId === cleanT.id) {
-              expenseChanged = true;
-              return {
-                ...e,
-                amount: cleanAmount,
-                date: cleanT.date || e.date,
-                accountId: cleanT.accountId || e.accountId
-              };
-            }
-            return e;
-          });
-        }
-
-        if (paymentChanged || expenseChanged || isDirectMatch) {
-          showsModified = true;
-          const descLower = (cleanT.description || '').toLowerCase();
-          const isExtra = cleanT.showPaymentType === 'Extra' || cleanT.showPaymentType === 'Bônus' || descLower.includes('hora extra') || descLower.includes('gorjeta');
-          let extraAmt = Number(show.extraAmount) || 0;
-          if (isExtra && cleanT.type === 'income') {
-            extraAmt = Math.max(extraAmt, cleanAmount);
+          if (!matched) {
+            newPayments.push({
+              id: cleanT.showPaymentId || generateUUID(),
+              type: cleanT.showPaymentType || 'Cachê Principal',
+              amount: cleanAmount,
+              status: cleanT.status === 'paid' ? 'Recebido' : 'Agendado',
+              expectedDate: cleanT.date,
+              effectiveDate: cleanT.status === 'paid' ? cleanT.date : undefined,
+              accountId: cleanT.accountId || defaultAccId,
+              notes: cleanT.description,
+              transactionId: cleanT.id
+            });
           }
+        }
 
-          return normalizeShowFinancials({
+        const newCrew = (show.crewMembers || []).map(c => {
+          if (c.transactionId === cleanT.id || (cleanT.showExpenseId && c.id === cleanT.showExpenseId)) {
+            return {
+              ...c,
+              cacheAmount: cleanAmount,
+              status: (cleanT.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending'
+            };
+          }
+          return c;
+        });
+
+        const newLogistics = (show.logistics || []).map(l => {
+          if (l.transactionId === cleanT.id || (cleanT.showExpenseId && l.id === cleanT.showExpenseId)) {
+            return {
+              ...l,
+              amount: cleanAmount,
+              status: (cleanT.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending'
+            };
+          }
+          return l;
+        });
+
+        const newOther = (show.otherExpenses || []).map(o => {
+          if (o.transactionId === cleanT.id || (cleanT.showExpenseId && o.id === cleanT.showExpenseId)) {
+            return {
+              ...o,
+              amount: cleanAmount,
+              status: (cleanT.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending'
+            };
+          }
+          return o;
+        });
+
+        const newExpenses = (show.expenseItems || []).map(e => {
+          if ((cleanT.showExpenseId && e.id === cleanT.showExpenseId) || e.transactionId === cleanT.id) {
+            return {
+              ...e,
+              amount: cleanAmount,
+              date: cleanT.date || e.date,
+              accountId: cleanT.accountId || e.accountId,
+              status: (cleanT.status === 'paid' ? 'paid' : 'pending') as 'paid' | 'pending'
+            };
+          }
+          return e;
+        });
+
+        return normalizeShowFinancials(
+          {
             ...show,
             payments: newPayments,
-            expenseItems: newExpenses,
-            extraAmount: extraAmt
-          }, defaultAccId);
-        }
-
-        return show;
+            crewMembers: newCrew,
+            logistics: newLogistics,
+            otherExpenses: newOther,
+            expenseItems: newExpenses
+          },
+          defaultAccId
+        );
       });
 
       if (showsModified) {
         StorageService.saveShows(updatedShows);
         if (currentUser) {
-          updatedShows
-            .filter(s => s.id === cleanT.showId || (s.payments && s.payments.some(p => p.transactionId === cleanT.id)) || (s.expenseItems && s.expenseItems.some(e => e.transactionId === cleanT.id)))
-            .forEach(s => saveShowToFirestore(currentUser.uid, s));
+          updatedShows.forEach(s => saveShowToFirestore(currentUser.uid, s));
         }
         return updatedShows;
       }
@@ -1056,6 +1357,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const deleteTransaction = (id: string, deleteSeries: boolean = false) => {
+    const targetTx = transactions.find(t => t.id === id);
+
     setTransactions(prev => {
       const target = prev.find(t => t.id === id);
       let txs;
@@ -1075,36 +1378,66 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return txs;
     });
 
-    // Se a transação estiver vinculada a um show, remove a associação no Módulo de Shows
+    // Se a transação estiver vinculada a um show, remove a associação e recalcula o balanço do show afetado
+    const defaultAccId = getDefaultAccountForScope('BUSINESS');
     setShows(prevShows => {
       let modified = false;
       const updated = prevShows.map(show => {
-        let paymentsChanged = false;
-        let expensesChanged = false;
+        let changed = false;
 
         const updatedPayments = (show.payments || []).filter(p => {
-          if (p.transactionId === id) {
-            paymentsChanged = true;
-            return false; // Remove o pagamento vinculado se a transação do extrato for excluída
-          }
-          return true;
-        });
-
-        const updatedExpenses = (show.expenseItems || []).filter(e => {
-          if (e.transactionId === id) {
-            expensesChanged = true;
+          if (p.transactionId === id || (targetTx?.showPaymentId && p.id === targetTx.showPaymentId)) {
+            changed = true;
             return false;
           }
           return true;
         });
 
-        if (paymentsChanged || expensesChanged) {
+        const updatedCrew = (show.crewMembers || []).filter(c => {
+          if (c.transactionId === id || (targetTx?.showExpenseId && c.id === targetTx.showExpenseId)) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+
+        const updatedLogistics = (show.logistics || []).filter(l => {
+          if (l.transactionId === id || (targetTx?.showExpenseId && l.id === targetTx.showExpenseId)) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+
+        const updatedOther = (show.otherExpenses || []).filter(o => {
+          if (o.transactionId === id || (targetTx?.showExpenseId && o.id === targetTx.showExpenseId)) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+
+        const updatedExpenses = (show.expenseItems || []).filter(e => {
+          if (e.transactionId === id || (targetTx?.showExpenseId && e.id === targetTx.showExpenseId)) {
+            changed = true;
+            return false;
+          }
+          return true;
+        });
+
+        if (changed || (targetTx?.showId && show.id === targetTx.showId)) {
           modified = true;
-          const newShow = {
-            ...show,
-            payments: updatedPayments,
-            expenseItems: updatedExpenses
-          };
+          const newShow = normalizeShowFinancials(
+            {
+              ...show,
+              payments: updatedPayments,
+              crewMembers: updatedCrew,
+              logistics: updatedLogistics,
+              otherExpenses: updatedOther,
+              expenseItems: updatedExpenses
+            },
+            defaultAccId
+          );
           if (currentUser) {
             saveShowToFirestore(currentUser.uid, newShow);
           }
@@ -1318,9 +1651,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, transactions, categories);
 
     setShows(prev => {
-      const updated = [...prev, updatedShow];
+      const exists = prev.some(sh => sh.id === updatedShow.id);
+      const updated = exists
+        ? prev.map(sh => (sh.id === updatedShow.id ? updatedShow : sh))
+        : [...prev, updatedShow];
       StorageService.saveShows(updated);
-      return updated;
+      return deduplicateItemsById(updated);
     });
 
     setTransactions(updatedTransactions);
@@ -1328,7 +1664,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (currentUser) {
       saveShowToFirestore(currentUser.uid, updatedShow);
-      updatedTransactions.forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      updatedTransactions.filter(t => t.showId === updatedShow.id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
     }
   };
 
@@ -1336,33 +1672,41 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const defaultAccId = getDefaultAccountForScope('BUSINESS');
     const normalized = normalizeShowFinancials(s, defaultAccId);
 
-    setTransactions(prevTxs => {
-      let currentTxs = prevTxs;
-      if (s.status === 'Cancelado') {
-        currentTxs = cancelShowFutureTransactions(s.id, currentTxs);
-      }
+    let currentTxs = transactions;
+    if (s.status === 'Cancelado') {
+      currentTxs = cancelShowFutureTransactions(s.id, currentTxs);
+    }
 
-      let { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, currentTxs, categories);
+    const prevShowTxIds = new Set(currentTxs.filter(t => t.showId === s.id).map(t => t.id));
+    let { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, currentTxs, categories);
 
-      if (s.status === 'Cancelado') {
-        updatedTransactions = cancelShowFutureTransactions(s.id, updatedTransactions);
-      }
+    if (s.status === 'Cancelado') {
+      updatedTransactions = cancelShowFutureTransactions(s.id, updatedTransactions);
+    }
 
-      StorageService.saveTransactions(updatedTransactions);
+    const nextShowTxIds = new Set(updatedTransactions.filter(t => t.showId === s.id).map(t => t.id));
 
-      setShows(prevShows => {
-        const updated = prevShows.map(show => show.id === s.id ? updatedShow : show);
-        StorageService.saveShows(updated);
-        return updated;
-      });
+    setTransactions(updatedTransactions);
+    StorageService.saveTransactions(updatedTransactions);
 
-      if (currentUser) {
-        saveShowToFirestore(currentUser.uid, updatedShow);
-        updatedTransactions.forEach(t => saveTransactionToFirestore(currentUser.uid, t));
-      }
-
-      return updatedTransactions;
+    setShows(prevShows => {
+      const exists = prevShows.some(show => show.id === s.id);
+      const updated = exists
+        ? prevShows.map(show => (show.id === s.id ? updatedShow : show))
+        : [...prevShows, updatedShow];
+      StorageService.saveShows(updated.filter(sh => !String(sh.id).startsWith('show_legacy_')));
+      return deduplicateItemsById(updated);
     });
+
+    if (currentUser) {
+      saveShowToFirestore(currentUser.uid, updatedShow);
+      updatedTransactions.filter(t => t.showId === s.id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      prevShowTxIds.forEach(oldId => {
+        if (!nextShowTxIds.has(oldId)) {
+          deleteTransactionFromFirestore(currentUser.uid, oldId);
+        }
+      });
+    }
   };
 
   const deleteShow = (id: string, deleteTransactions: boolean = false) => {
@@ -1397,6 +1741,277 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         updated.filter(t => t.showId === showId).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
       }
       return updated;
+    });
+  };
+
+  const linkTransactionToShow = (
+    transactionId: string,
+    showId: string,
+    options?: {
+      paymentType?: ShowPaymentType;
+      costGroup?: ShowCostGroup;
+      subcategory?: ShowExpenseSubcategory;
+    }
+  ) => {
+    if (!showId || !showId.trim()) {
+      throw new Error('Validação falhou: O showId é obrigatório para vincular uma transação a um evento.');
+    }
+
+    const targetShow = shows.find(s => s.id === showId);
+    const targetTx = transactions.find(t => t.id === transactionId);
+    if (!targetShow || !targetTx) return;
+
+    const defaultAccId = getDefaultAccountForScope('BUSINESS');
+    const showTitle = (targetShow.contractorName || targetShow.name || 'Show').trim();
+    const incomeCatId = resolveIncomeCategoryId(categories);
+
+    let updatedTx: Transaction;
+    let syntheticPendingTxIdToRemove: string | null = null;
+    let updatedShowObj: Show = { ...targetShow };
+
+    if (targetTx.type === 'income') {
+      const descLower = (targetTx.description || '').toLowerCase();
+      const paymentType: ShowPaymentType =
+        options?.paymentType ||
+        targetTx.showPaymentType ||
+        (descLower.includes('hora extra')
+          ? 'Hora Extra'
+          : descLower.includes('couvert')
+          ? 'Couvert'
+          : descLower.includes('gorjeta')
+          ? 'Gorjeta'
+          : 'Cachê Principal');
+
+      let payments = Array.isArray(updatedShowObj.payments) ? [...updatedShowObj.payments] : [];
+      let paymentId = targetTx.showPaymentId || generateUUID();
+
+      // Se estamos vinculando um recebimento real de Cachê Principal e o show tinha uma parcela sintética agendada pendente, substitui sem duplicar
+      const existingPendingIdx =
+        paymentType === 'Cachê Principal'
+          ? payments.findIndex(p => p.status !== 'Recebido' && p.type === 'Cachê Principal')
+          : -1;
+
+      if (existingPendingIdx >= 0) {
+        const pendingPayment = payments[existingPendingIdx];
+        paymentId = pendingPayment.id || paymentId;
+        if (pendingPayment.transactionId && pendingPayment.transactionId !== transactionId) {
+          syntheticPendingTxIdToRemove = pendingPayment.transactionId;
+        }
+        payments[existingPendingIdx] = {
+          ...pendingPayment,
+          id: paymentId,
+          type: paymentType,
+          amount: Number(targetTx.amount) || 0,
+          status: targetTx.status === 'paid' ? 'Recebido' : 'Agendado',
+          expectedDate: targetTx.date || updatedShowObj.date,
+          effectiveDate: targetTx.status === 'paid' ? targetTx.date : undefined,
+          accountId: targetTx.accountId || defaultAccId,
+          notes: targetTx.description,
+          transactionId: targetTx.id
+        };
+      } else {
+        const existingIdx = payments.findIndex(p => p.transactionId === targetTx.id || p.id === paymentId);
+        const newPayment: ShowPayment = {
+          id: paymentId,
+          type: paymentType,
+          amount: Number(targetTx.amount) || 0,
+          status: targetTx.status === 'paid' ? 'Recebido' : 'Agendado',
+          expectedDate: targetTx.date || updatedShowObj.date,
+          effectiveDate: targetTx.status === 'paid' ? targetTx.date : undefined,
+          accountId: targetTx.accountId || defaultAccId,
+          notes: targetTx.description,
+          transactionId: targetTx.id
+        };
+        if (existingIdx >= 0) payments[existingIdx] = newPayment;
+        else payments.push(newPayment);
+      }
+
+      updatedTx = {
+        ...targetTx,
+        showId: targetShow.id,
+        showName: showTitle,
+        showPaymentId: paymentId,
+        showPaymentType: paymentType,
+        categoryId: incomeCatId,
+        category: incomeCatId,
+        isEventTransaction: true,
+        scope: 'BUSINESS'
+      };
+
+      const check = validateShowTransaction(updatedTx, true);
+      if (!check.valid) throw new Error(check.error);
+
+      updatedShowObj = normalizeShowFinancials({ ...updatedShowObj, payments }, defaultAccId);
+    } else {
+      const cls = resolveShowExpenseClassification({
+        costGroup: options?.costGroup || targetTx.costGroup,
+        subcategory: options?.subcategory || targetTx.subcategory,
+        categoryId: targetTx.categoryId,
+        description: targetTx.description
+      });
+      const expenseId = targetTx.showExpenseId || generateUUID();
+
+      updatedTx = {
+        ...targetTx,
+        showId: targetShow.id,
+        showName: showTitle,
+        showExpenseId: expenseId,
+        costGroup: cls.costGroup,
+        subcategory: cls.subcategory,
+        categoryId: cls.categoryId,
+        category: cls.categoryId,
+        isEventTransaction: true,
+        scope: 'BUSINESS'
+      };
+
+      const check = validateShowTransaction(updatedTx, true);
+      if (!check.valid) throw new Error(check.error);
+
+      if (cls.costGroup === 'logistica') {
+        const logistics = Array.isArray(updatedShowObj.logistics) ? [...updatedShowObj.logistics] : [];
+        if (!logistics.some(l => l.transactionId === targetTx.id || l.id === expenseId)) {
+          logistics.push({
+            id: expenseId,
+            type: cls.logisticsType,
+            costGroup: 'logistica',
+            subcategory: cls.subcategory as ShowLogisticsSubcategory,
+            description: targetTx.description || cls.subcategory,
+            amount: Number(targetTx.amount) || 0,
+            status: targetTx.status === 'paid' ? 'paid' : 'pending',
+            transactionId: targetTx.id
+          });
+        }
+        updatedShowObj = normalizeShowFinancials({ ...updatedShowObj, logistics }, defaultAccId);
+      } else if (cls.costGroup === 'musicos') {
+        const crewMembers = Array.isArray(updatedShowObj.crewMembers) ? [...updatedShowObj.crewMembers] : [];
+        if (!crewMembers.some(c => c.transactionId === targetTx.id || c.id === expenseId)) {
+          crewMembers.push({
+            id: expenseId,
+            name: targetTx.description || 'Músico / Apoio',
+            role: 'Cachê de Terceiros / Equipe',
+            costGroup: 'musicos',
+            subcategory: 'Cachê de Terceiros / Equipe',
+            cacheAmount: Number(targetTx.amount) || 0,
+            status: targetTx.status === 'paid' ? 'paid' : 'pending',
+            transactionId: targetTx.id
+          });
+        }
+        updatedShowObj = normalizeShowFinancials({ ...updatedShowObj, crewMembers }, defaultAccId);
+      } else {
+        const otherExpenses = Array.isArray(updatedShowObj.otherExpenses) ? [...updatedShowObj.otherExpenses] : [];
+        if (!otherExpenses.some(o => o.transactionId === targetTx.id || o.id === expenseId)) {
+          otherExpenses.push({
+            id: expenseId,
+            category: cls.subcategory,
+            subcategory: cls.subcategory as ShowEquipmentSubcategory,
+            costGroup: 'equipamentos',
+            description: targetTx.description || cls.subcategory,
+            amount: Number(targetTx.amount) || 0,
+            status: targetTx.status === 'paid' ? 'paid' : 'pending',
+            transactionId: targetTx.id
+          });
+        }
+        updatedShowObj = normalizeShowFinancials({ ...updatedShowObj, otherExpenses }, defaultAccId);
+      }
+    }
+
+    const nextTransactions = transactions
+      .filter(t => t.id !== syntheticPendingTxIdToRemove)
+      .map(t => (t.id === transactionId ? updatedTx : t));
+
+    const summary = getShowFinancialSummary(updatedShowObj, nextTransactions);
+    updatedShowObj = {
+      ...updatedShowObj,
+      totalCache: summary.realGrossCache,
+      cacheCombined: summary.realGrossCache,
+      cacheReceived: summary.totalReceived,
+      extraAmount: summary.extraAmount
+    };
+
+    const nextShows = shows.map(s => (s.id === showId ? updatedShowObj : s));
+
+    setTransactions(nextTransactions);
+    StorageService.saveTransactions(nextTransactions);
+    setShows(nextShows);
+    StorageService.saveShows(nextShows);
+
+    if (currentUser) {
+      if (syntheticPendingTxIdToRemove) {
+        deleteTransactionFromFirestore(currentUser.uid, syntheticPendingTxIdToRemove);
+      }
+      saveTransactionToFirestore(currentUser.uid, updatedTx);
+      saveShowToFirestore(currentUser.uid, updatedShowObj);
+    }
+  };
+
+  const unlinkTransactionFromShow = (transactionId: string) => {
+    const targetTx = transactions.find(t => t.id === transactionId);
+    if (!targetTx || !targetTx.showId) return;
+
+    const affectedShowId = targetTx.showId;
+    const defaultAccId = getDefaultAccountForScope('BUSINESS');
+
+    const updatedTx: Transaction = {
+      ...targetTx,
+      showId: undefined,
+      showName: undefined,
+      showPaymentId: undefined,
+      showPaymentType: undefined,
+      showExpenseId: undefined,
+      costGroup: undefined,
+      subcategory: undefined,
+      isEventTransaction: false
+    };
+
+    const nextTransactions = transactions.map(t => (t.id === transactionId ? updatedTx : t));
+    setTransactions(nextTransactions);
+    StorageService.saveTransactions(nextTransactions);
+
+    if (currentUser) {
+      saveTransactionToFirestore(currentUser.uid, updatedTx);
+    }
+
+    setShows(prevShows => {
+      const nextShows = prevShows.map(s => {
+        if (s.id !== affectedShowId) return s;
+
+        const cleaned: Show = {
+          ...s,
+          payments: (s.payments || []).filter(
+            p => p.transactionId !== transactionId && p.id !== targetTx.showPaymentId
+          ),
+          crewMembers: (s.crewMembers || []).filter(
+            c => c.transactionId !== transactionId && c.id !== targetTx.showExpenseId
+          ),
+          logistics: (s.logistics || []).filter(
+            l => l.transactionId !== transactionId && l.id !== targetTx.showExpenseId
+          ),
+          otherExpenses: (s.otherExpenses || []).filter(
+            o => o.transactionId !== transactionId && o.id !== targetTx.showExpenseId
+          ),
+          expenseItems: (s.expenseItems || []).filter(
+            e => e.transactionId !== transactionId && e.id !== targetTx.showExpenseId
+          )
+        };
+
+        const normalized = normalizeShowFinancials(cleaned, defaultAccId);
+        const summary = getShowFinancialSummary(normalized, nextTransactions);
+        const finalShow: Show = {
+          ...normalized,
+          totalCache: summary.realGrossCache,
+          cacheCombined: summary.realGrossCache,
+          cacheReceived: summary.totalReceived,
+          extraAmount: summary.extraAmount
+        };
+
+        if (currentUser) {
+          saveShowToFirestore(currentUser.uid, finalShow);
+        }
+        return finalShow;
+      });
+
+      StorageService.saveShows(nextShows);
+      return nextShows;
     });
   };
 
@@ -1484,7 +2099,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         description: `Locomoção (${l.type.toUpperCase()}): ${l.title || 'Deslocamento'}`,
         amount: l.amount,
         type: 'expense',
-        categoryId: 'cat_producao_shows',
+        categoryId: 'cat_logistica_shows',
+        costGroup: 'logistica',
+        subcategory: l.type === 'toll' || l.type === 'parking' ? 'Pedágio' : l.type === 'lodging' ? 'Hospedagem' : 'Combustível',
         accountId: l.accountId || defaultAcc,
         date: txDate,
         status: txStatus,
@@ -1712,6 +2329,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return alerts;
   }, [transactions, accounts, activeScope]);
 
+  const { reconciledShows, reconciledTransactions } = useMemo(() => {
+    const defaultBizAcc =
+      accounts.find(a => a.scope === 'BUSINESS' || a.vinculo === 'MUSICO')?.id ||
+      (accounts[0]?.id || 'acc_mp');
+    return reconcileAllShowsAndTransactions(shows, transactions, categories, defaultBizAcc);
+  }, [shows, transactions, categories, accounts]);
+
   const handleSignInWithGoogle = async () => {
     await signInWithGoogle();
   };
@@ -1722,14 +2346,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   return (
     <FinanceContext.Provider value={{
-      transactions, categories, debts, accounts, budgets, shows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
+      transactions: reconciledTransactions, categories, debts, accounts, budgets, shows: reconciledShows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
       activeScope, setActiveScope, getDefaultAccountForScope,
       addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget,
-      addShow, updateShow, deleteShow, cancelShowFutureFinancials,
+      addShow, updateShow, deleteShow, cancelShowFutureFinancials, linkTransactionToShow, unlinkTransactionFromShow,
       addVenue, updateVenue, deleteVenue,
       addCrewMember, updateCrewMember, deleteCrewMember,
       addLocomotionExpense, updateLocomotionExpense, deleteLocomotionExpense,

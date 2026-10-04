@@ -4,7 +4,7 @@ import {
   FileText, Calendar, Clock, MapPin, DollarSign, 
   Check, ChevronRight, Plus, Sparkles, AlertCircle 
 } from 'lucide-react';
-import { getStatusConfig } from './types';
+import { getStatusConfig, getShowDisplayHierarchy } from './types';
 
 interface Props {
   shows: Show[];
@@ -94,6 +94,7 @@ export const ShowQuotesView: React.FC<Props> = ({
         <div className="space-y-3">
           {quotes.map(show => {
             const statusCfg = getStatusConfig(show.status);
+            const hierarchy = getShowDisplayHierarchy(show);
 
             return (
               <div
@@ -101,27 +102,31 @@ export const ShowQuotesView: React.FC<Props> = ({
                 onClick={() => onSelectShow(show)}
                 className="p-4 rounded-[1.8rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700/60 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
               >
-                {/* Header: Status + Cachê Proposto */}
-                <div className="flex items-center justify-between">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${statusCfg.badgeClass}`}>
-                    {show.status}
-                  </span>
+                {/* Header: Status + Tag Cidade/UF + Cachê Proposto */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${statusCfg.badgeClass}`}>
+                      {show.status}
+                    </span>
+                    <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      <MapPin size={10} className="text-sky-500 shrink-0" />
+                      <span>{hierarchy.cityTag}</span>
+                    </span>
+                  </div>
 
                   <span className="text-base font-black text-slate-900 dark:text-white tabular-nums">
                     {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
                   </span>
                 </div>
 
-                {/* Contratante & Evento */}
+                {/* Hierarquia Estrita: 1. TÍTULO PRINCIPAL (Nome do Evento / Casa) + 2. SUBTÍTULO (Contratante) */}
                 <div>
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                    {show.contractorName || show.name}
+                  <h4 className="text-base font-black text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                    {hierarchy.eventTitle}
                   </h4>
-                  {show.eventType && (
-                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                      {show.eventType}
-                    </p>
-                  )}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                    {hierarchy.contractorSubtitle}
+                  </p>
                 </div>
 
                 {/* Data e Cidade */}

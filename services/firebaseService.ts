@@ -424,7 +424,7 @@ export const saveTransactionToFirestore = async (userId: string, transaction: Tr
   const path = `users/${userId}/transactions/${transaction.id}`;
   try {
     const sanitized = sanitizeForFirestore(transaction);
-    await setDoc(doc(db, 'users', userId, 'transactions', transaction.id), sanitized, { merge: true });
+    await setDoc(doc(db, 'users', userId, 'transactions', transaction.id), sanitized);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
@@ -443,7 +443,7 @@ export const saveShowToFirestore = async (userId: string, show: Show) => {
   const path = `users/${userId}/shows/${show.id}`;
   try {
     const sanitized = sanitizeForFirestore(show);
-    await setDoc(doc(db, 'users', userId, 'shows', show.id), sanitized, { merge: true });
+    await setDoc(doc(db, 'users', userId, 'shows', show.id), sanitized);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
