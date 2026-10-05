@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { matchesScope } from '../../types';
+import { isCareerExpenseTransaction } from '../../services/financeAggregator';
 import { ArrowDownRight, TrendingDown, Layers, User, Music } from 'lucide-react';
 
 export const TopExpensesCard: React.FC = () => {
-  const { transactions, categories, activeScope, isBlurred } = useFinance();
+  const { transactions, debts, categories, activeScope, isBlurred } = useFinance();
 
   const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
@@ -14,11 +15,13 @@ export const TopExpensesCard: React.FC = () => {
     let businessTotal = 0;
 
     transactions.forEach(t => {
-      if (t.type !== 'expense' || !t.date || !t.date.startsWith(currentMonthStr)) return;
+      if (t.type !== 'expense' || t.status === 'cancelled' || !t.date || !t.date.startsWith(currentMonthStr)) return;
       const amt = Number(t.amount) || 0;
       
-      const isBiz = t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || !!t.showId || !!t.showExpenseId;
+      const isBiz = isCareerExpenseTransaction(t, debts);
       if (isBiz) {
+        // Para parcelas de dívida da música, apenas as parcelas pagas entram no relatório da carreira
+        if (t.debtId && t.status !== 'paid') return;
         businessTotal += amt;
       } else {
         personalTotal += amt;
@@ -36,14 +39,20 @@ export const TopExpensesCard: React.FC = () => {
       personalPct,
       businessPct
     };
-  }, [transactions, currentMonthStr]);
+  }, [transactions, debts, currentMonthStr]);
 
   const topExpenses = useMemo(() => {
-    const monthExpenses = transactions.filter(t => 
-      t.type === 'expense' && 
-      t.date.startsWith(currentMonthStr) && 
-      matchesScope(t.scope, activeScope)
-    );
+    const monthExpenses = transactions.filter(t => {
+      if (t.type !== 'expense' || t.status === 'cancelled' || !t.date.startsWith(currentMonthStr)) return false;
+      if (activeScope === 'BUSINESS') {
+        if (t.debtId && t.status !== 'paid') return false;
+        return isCareerExpenseTransaction(t, debts);
+      }
+      if (activeScope === 'PERSONAL') {
+        return !isCareerExpenseTransaction(t, debts);
+      }
+      return matchesScope(t.scope, activeScope);
+    });
 
     const sorted = [...monthExpenses].sort((a, b) => Number(b.amount) - Number(a.amount));
     const top5 = sorted.slice(0, 5);
@@ -52,13 +61,13 @@ export const TopExpensesCard: React.FC = () => {
     return {
       items: top5.map(t => {
         const cat = categories.find(c => c.id === t.categoryId);
-        const isBiz = t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || !!t.showId || !!t.showExpenseId;
+        const isBiz = isCareerExpenseTransaction(t, debts);
         return {
           id: t.id,
           description: t.description,
           amount: Number(t.amount) || 0,
           date: t.date,
-          categoryName: cat?.name || 'Geral',
+          categoryName: t.subcategory ? String(t.subcategory) : (cat?.name || 'Geral'),
           color: cat?.color || '#6366f1',
           isBusiness: isBiz,
           percentage: Math.round(((Number(t.amount) || 0) / maxAmount) * 100)
@@ -66,7 +75,7 @@ export const TopExpensesCard: React.FC = () => {
       }),
       totalMonthExpense: monthExpenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
     };
-  }, [transactions, categories, currentMonthStr, activeScope]);
+  }, [transactions, debts, categories, currentMonthStr, activeScope]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);

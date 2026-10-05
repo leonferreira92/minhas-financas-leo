@@ -1,4 +1,4 @@
-import { Category, Account, FinancialSettings } from './types';
+import { Category, Account, FinancialSettings, MusicCostCategory } from './types';
 import { 
   ShoppingBag, Utensils, Home, Car, HeartPulse, 
   Zap, Smartphone, Briefcase, DollarSign, Coffee,
@@ -12,6 +12,26 @@ import {
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
   BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy
 } from 'lucide-react';
+
+export interface CareerSubcategoryOption {
+  id: string;
+  label: string;
+  categoryId: string;
+  musicCostKey: MusicCostCategory;
+}
+
+export const CAREER_DEBT_SUBCATEGORIES: CareerSubcategoryOption[] = [
+  { id: 'Equipamentos / Instrumentos', label: 'Equipamentos / Instrumentos', categoryId: 'cat_equipamentos', musicCostKey: 'equipment' },
+  { id: 'Acessórios & Cordas', label: 'Acessórios & Cordas', categoryId: 'cat_equipamentos', musicCostKey: 'accessories' },
+  { id: 'Manutenção & Luthier', label: 'Manutenção & Luthier', categoryId: 'cat_equipamentos', musicCostKey: 'maintenance' },
+  { id: 'Deslocamento / Logística', label: 'Deslocamento / Logística', categoryId: 'cat_logistica_shows', musicCostKey: 'other' },
+  { id: 'Músicos / Apoio (Equipe)', label: 'Músicos / Apoio (Equipe)', categoryId: 'cat_producao_shows', musicCostKey: 'other' },
+  { id: 'Marketing & Divulgação', label: 'Marketing & Divulgação', categoryId: 'cat_marketing', musicCostKey: 'marketing' },
+  { id: 'Figurino & Imagem', label: 'Figurino & Imagem', categoryId: 'cat_producao_shows', musicCostKey: 'costume' },
+  { id: 'Softwares & Plugins', label: 'Softwares & Plugins', categoryId: 'cat_equipamentos', musicCostKey: 'software' },
+  { id: 'Ensaios & Estúdio', label: 'Ensaios & Estúdio', categoryId: 'cat_producao_shows', musicCostKey: 'rehearsal' },
+  { id: 'Outros Custos da Música', label: 'Outros Custos da Música', categoryId: 'cat_equipamentos', musicCostKey: 'other' },
+];
 
 export const DEFAULT_CATEGORIES: Category[] = [
   // --- DESPESAS ESSENCIAIS PESSOAIS (50%) ---

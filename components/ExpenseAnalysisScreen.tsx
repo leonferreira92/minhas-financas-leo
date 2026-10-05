@@ -9,10 +9,11 @@ import {
 import { getIcon } from '../constants';
 import { ScopeSelector } from './ScopeSelector';
 import { matchesScope } from '../types';
+import { isCareerExpenseTransaction } from '../services/financeAggregator';
 
 export const ExpenseAnalysisScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { transactions, categories, activeScope, isBlurred, accounts } = useFinance();
+  const { transactions, debts, categories, activeScope, isBlurred, accounts } = useFinance();
 
   // Current month state (YYYY-MM)
   const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
@@ -45,9 +46,21 @@ export const ExpenseAnalysisScreen: React.FC = () => {
       if (t.type !== 'expense') return false;
       if (!t.date || !t.date.startsWith(selectedMonth)) return false;
       if (t.status === 'cancelled') return false;
+
+      if (activeScope === 'BUSINESS') {
+        // No relatório da música: inclui automaticamente as parcelas PAGAS da dívida associadas a MÚSICA / CARREIRA
+        // e jamais inclui parcelas marcadas como PESSOAL
+        if (t.debtId && t.status !== 'paid') return false;
+        return isCareerExpenseTransaction(t, debts);
+      }
+
+      if (activeScope === 'PERSONAL') {
+        return !isCareerExpenseTransaction(t, debts);
+      }
+
       return matchesScope(t.scope, activeScope);
     });
-  }, [transactions, selectedMonth, activeScope]);
+  }, [transactions, debts, selectedMonth, activeScope]);
 
   // Total expense amount
   const totalExpense = useMemo(() => {
@@ -65,23 +78,26 @@ export const ExpenseAnalysisScreen: React.FC = () => {
 
   // Aggregated categories sorted highest to lowest
   const categoryStats = useMemo(() => {
-    const map = new Map<string, { amount: number; count: number }>();
+    const map = new Map<string, { amount: number; count: number; customName?: string }>();
     monthExpenses.forEach(t => {
-      const catId = t.categoryId || 'cat_other';
-      const prev = map.get(catId) || { amount: 0, count: 0 };
-      map.set(catId, {
+      const hasMusicSub = activeScope === 'BUSINESS' && t.subcategory;
+      const key = hasMusicSub ? `sub_${t.subcategory}` : (t.categoryId || 'cat_other');
+      const prev = map.get(key) || { amount: 0, count: 0, customName: hasMusicSub ? String(t.subcategory) : undefined };
+      map.set(key, {
         amount: prev.amount + (Number(t.amount) || 0),
-        count: prev.count + 1
+        count: prev.count + 1,
+        customName: prev.customName || (hasMusicSub ? String(t.subcategory) : undefined)
       });
     });
 
     const list = Array.from(map.entries()).map(([catId, data]) => {
-      const cat = categories.find(c => c.id === catId) || {
+      const baseCat = categories.find(c => c.id === catId);
+      const cat = baseCat || {
         id: catId,
-        name: catId === 'cat_other' ? 'Outros / Diversos' : 'Categoria Geral',
-        color: '#64748b',
-        icon: 'Tag',
-        type: 'expense'
+        name: data.customName || (catId === 'cat_other' ? 'Outros / Diversos' : 'Categoria Geral'),
+        color: data.customName ? '#a855f7' : '#64748b',
+        icon: data.customName ? 'Hammer' : 'Tag',
+        type: 'expense' as const
       };
       const percentage = totalExpense > 0 ? (data.amount / totalExpense) * 100 : 0;
       return {
@@ -93,7 +109,7 @@ export const ExpenseAnalysisScreen: React.FC = () => {
     });
 
     return list.sort((a, b) => b.amount - a.amount);
-  }, [monthExpenses, categories, totalExpense]);
+  }, [monthExpenses, categories, totalExpense, activeScope]);
 
   // Maximum value for bar scaling
   const maxCategoryAmount = useMemo(() => {

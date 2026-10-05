@@ -5,11 +5,12 @@ import {
   Plus, CreditCard, Building, User, ChevronRight, 
   CheckCircle2, TrendingDown, CarFront, Info, 
   ArrowUpRight, PieChart, Calendar, AlertCircle, ShieldCheck,
-  Clock
+  Clock, Music
 } from 'lucide-react';
 import { DebtForm } from './DebtForm';
 import { DebtDetail } from './DebtDetail';
 import { ActiveDebtsPanel } from './ActiveDebtsPanel';
+import { isVinyDebtOrTransaction, VINY_MUSIC_CEILING, VINY_INSTALLMENT_9_MUSIC_CAP } from '../services/financeAggregator';
 
 export const DebtList = () => {
   const { debts, getDebtProgress } = useFinance();
@@ -151,7 +152,30 @@ export const DebtList = () => {
                         <Icon size={26} strokeWidth={1.5} />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-black text-slate-800 dark:text-white text-lg leading-tight truncate">{debt.name}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-black text-slate-800 dark:text-white text-lg leading-tight truncate">{debt.name}</h3>
+                          {isVinyDebtOrTransaction(debt) ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                              <Music size={10} />
+                              <span>Teto Som {formatCurrency(VINY_MUSIC_CEILING)} (Parc. 9: {formatCurrency(VINY_INSTALLMENT_9_MUSIC_CAP)}) → Pessoal</span>
+                            </span>
+                          ) : (debt.costCenterMode === 'TOTAL_BUSINESS' || debt.scope === 'BUSINESS') ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                              <Music size={10} />
+                              <span>Música • {debt.musicSubcategory || 'Equipamentos / Instrumentos'}</span>
+                            </span>
+                          ) : debt.costCenterMode === 'INSTALLMENT_RANGE' ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                              <Music size={10} />
+                              <span>Parcelas {debt.businessStartInstallment || 1}-{debt.businessEndInstallment || debt.installmentCount} na Música</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              <User size={10} />
+                              <span>Pessoal</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
                             {debt.installmentCount} Parcela(s)

@@ -7,6 +7,7 @@ import {
   PieChart, Tag, Check, X, Search
 } from 'lucide-react';
 import { getLocalDateString } from '../../services/dateUtils';
+import { isCareerExpenseTransaction, resolveCareerSubcategoryMeta } from '../../services/financeAggregator';
 
 interface Props {
   shows: Show[];
@@ -16,6 +17,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
   const { 
     musicCostItems, 
     transactions,
+    debts,
     addMusicCostItem, 
     updateMusicCostItem, 
     deleteMusicCostItem, 
@@ -53,6 +55,18 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
   };
 
   const inferMusicCategory = (t: any): MusicCostCategory => {
+    if (t.subcategory) {
+      const meta = resolveCareerSubcategoryMeta(String(t.subcategory));
+      if (meta.musicCostKey) return meta.musicCostKey;
+    }
+    if (t.debtId) {
+      const parentDebt = debts.find(d => d.id === t.debtId);
+      if (parentDebt?.musicSubcategory) {
+        const meta = resolveCareerSubcategoryMeta(parentDebt.musicSubcategory);
+        if (meta.musicCostKey) return meta.musicCostKey;
+      }
+    }
+
     const desc = (t.description || '').toLowerCase();
     const orig = (t.originalBankDescription || '').toLowerCase();
     const txt = `${desc} ${orig}`;
@@ -94,7 +108,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
     return 'equipment';
   };
 
-  // Unifica musicCostItems e transações com escopo BUSINESS
+  // Unifica musicCostItems e transações com escopo BUSINESS (incluindo parcelas pagas de dívidas vinculadas à Música e excluindo Pessoais)
   const allUnifiedCostItems = useMemo<MusicCostItem[]>(() => {
     const list: MusicCostItem[] = [...musicCostItems];
     const processedTxIds = new Set(musicCostItems.map(i => i.transactionId).filter(Boolean));
@@ -102,6 +116,29 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
     transactions.forEach(t => {
       if (t.type !== 'expense' || t.status === 'cancelled') return;
       if (processedTxIds.has(t.id)) return;
+
+      // Para lançamentos de dívida/parcelamento:
+      // 1. Apenas parcelas PAGAS entram no relatório da música
+      // 2. Parcelas marcadas como PESSOAL jamais entram no relatório da música
+      if (t.debtId) {
+        if (t.status !== 'paid') return;
+        if (!isCareerExpenseTransaction(t, debts)) return;
+
+        const parentDebt = debts.find(d => d.id === t.debtId);
+        const subLabel = t.subcategory || parentDebt?.musicSubcategory || 'Equipamentos / Instrumentos';
+        list.push({
+          id: `mcost_tx_${t.id}`,
+          title: t.description || parentDebt?.name || 'Parcela de Dívida (Música)',
+          amount: Number(t.amount) || 0,
+          date: t.date || getLocalDateString(),
+          category: inferMusicCategory(t),
+          showId: t.showId,
+          transactionId: t.id,
+          notes: `Parcela paga • Subcategoria: ${subLabel}`,
+          createdAt: t.createdAt
+        });
+        return;
+      }
 
       const desc = `${t.description || ''} ${t.originalBankDescription || ''}`.toLowerCase();
       // REGRA: Combustível e Locomoção vão EXCLUSIVAMENTE para a aba 'Locomoção'
@@ -139,7 +176,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
     });
 
     return list;
-  }, [musicCostItems, transactions]);
+  }, [musicCostItems, transactions, debts]);
 
   const handleOpenModal = (item?: MusicCostItem) => {
     if (item) {

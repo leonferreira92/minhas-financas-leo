@@ -8,6 +8,20 @@ export type AccountType = 'wallet' | 'bank' | 'savings' | 'investment' | 'other'
 
 export type DebtType = 'bank' | 'person' | 'card_installment' | 'car_financing';
 export type DebtStatus = 'active' | 'paid';
+export type DebtCostCenterMode = 'TOTAL_PERSONAL' | 'TOTAL_BUSINESS' | 'INSTALLMENT_RANGE';
+
+export type CareerDebtSubcategory =
+  | 'Equipamentos / Instrumentos'
+  | 'Acessórios & Cordas'
+  | 'Manutenção & Luthier'
+  | 'Deslocamento / Logística'
+  | 'Músicos / Apoio (Equipe)'
+  | 'Marketing & Divulgação'
+  | 'Figurino & Imagem'
+  | 'Softwares & Plugins'
+  | 'Ensaios & Estúdio'
+  | 'Outros Custos da Música'
+  | string;
 
 export type AlertType = 'overdue' | 'today' | 'tomorrow' | 'week' | 'risk';
 
@@ -47,6 +61,15 @@ export interface Debt {
   description?: string;
   installmentAmount?: number;
   interestRate?: number;
+  scope?: ScopeType;
+  costCenterMode?: DebtCostCenterMode;
+  businessStartInstallment?: number;
+  businessEndInstallment?: number;
+  includeDownPaymentInBusiness?: boolean;
+  musicSubcategory?: CareerDebtSubcategory;
+  categoryId?: string;
+  personalCategoryId?: string;
+  accountId?: string;
 }
 
 export type ShowCostGroup = 'logistica' | 'musicos' | 'equipamentos';

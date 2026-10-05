@@ -6,6 +6,7 @@ import {
   Layers, Calendar, ChevronRight, ArrowRightLeft, Sparkles, Filter 
 } from 'lucide-react';
 import { getShowFinancialSummary } from '../services/showFinanceSyncService';
+import { consolidateCareerExpenses } from '../services/financeAggregator';
 import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
 
 export type DREPeriodPreset = 'current_month' | 'prev_month' | 'last_3_months' | 'custom';
@@ -16,7 +17,7 @@ interface Props {
 
 export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
   const navigate = useNavigate();
-  const { shows, transactions, accounts, categories, isBlurred, settings } = useFinance();
+  const { shows, transactions, debts, accounts, categories, isBlurred, settings } = useFinance();
 
   const careerName = settings.careerProjectName || 'Leo Ferreira';
   const [periodPreset, setPeriodPreset] = useState<DREPeriodPreset>('current_month');
@@ -107,30 +108,16 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
     const grossRevenue = deduplicatedProjectIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
     // 2. Custos / Equipamentos Efetivados do Projeto no período (Regime de Caixa)
-    const projectExpenseTxs = transactions.filter(t => {
-      if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
-      if (t.type !== 'expense' || t.status !== 'paid') return false;
-      
-      const desc = (t.description || '').toLowerCase();
-      // Retirada de pró-labore é apurada à parte como distribuição de lucro
-      if (desc.includes('retirada de pró-labore') || desc.includes('retirada de pro-labore')) return false;
-
-      return (
-        t.scope === 'BUSINESS' ||
-        t.categoryId === 'cat_equipamentos' ||
-        t.categoryId === 'cat_producao_shows' ||
-        !!t.showId ||
-        !!t.showExpenseId ||
-        desc.includes('equipamento') ||
-        desc.includes('músico') ||
-        desc.includes('musico') ||
-        desc.includes('ensaio') ||
-        desc.includes('logística') ||
-        desc.includes('logistica')
-      );
+    // Inclui automaticamente as parcelas PAGAS de dívidas associadas a 'MÚSICA / CARREIRA' e exclui parcelas 'PESSOAL'
+    const consolidatedExpenses = consolidateCareerExpenses(transactions, debts, {
+      startDate: periodStart,
+      endDate: periodEnd,
+      onlyPaidForAll: true
     });
 
-    const totalExpenses = projectExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const totalExpenses = consolidatedExpenses.totalAmount;
+    const debtInstallmentsTotal = consolidatedExpenses.debtInstallmentsTotal;
+    const debtInstallmentsCount = consolidatedExpenses.debtCareerExpenses.length;
 
     // 3. Lucro Real do Projeto
     const netProfit = grossRevenue - totalExpenses;
@@ -167,12 +154,15 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
     return {
       grossRevenue,
       totalExpenses,
+      debtInstallmentsTotal,
+      debtInstallmentsCount,
+      bySubcategory: consolidatedExpenses.bySubcategory,
       netProfit,
       profitMargin,
       proLaboreTotal,
       showsCount
     };
-  }, [shows, transactions, categories, periodStart, periodEnd]);
+  }, [shows, transactions, debts, categories, periodStart, periodEnd]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -360,7 +350,11 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
                 {!isBlurred ? formatCurrency(metrics.totalExpenses) : 'R$ ••••••'}
               </div>
               <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
-                <span>Produção & Equipamentos</span>
+                <span>
+                  {metrics.debtInstallmentsTotal > 0
+                    ? `Inclui ${!isBlurred ? formatCurrency(metrics.debtInstallmentsTotal) : '••••'} (${metrics.debtInstallmentsCount}x parcelamento)`
+                    : 'Produção & Equipamentos'}
+                </span>
                 <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
               </p>
             </div>

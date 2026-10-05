@@ -2,12 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { Show, Transaction } from '../../types';
 import { useFinance } from '../../context/FinanceContext';
 import { getShowFinancialSummary, auditShowTransactionsAndExtracts, ShowAuditResult } from '../../services/showFinanceSyncService';
+import { consolidateCareerExpenses } from '../../services/financeAggregator';
 import { generateUUID } from '../../services/uuidHelper';
 import { 
   Music, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, 
   Percent, Award, Calendar, BarChart3, PieChart, Sparkles, 
   MapPin, Users, Fuel, Briefcase, ChevronRight, CheckCircle2, Clock,
-  ShieldCheck, Link2, AlertCircle, Eye, EyeOff, Check, X, ArrowRight, ExternalLink, HelpCircle
+  ShieldCheck, Link2, AlertCircle, Eye, EyeOff, Check, X, ArrowRight, ExternalLink, HelpCircle, CreditCard, Tag
 } from 'lucide-react';
 
 interface Props {
@@ -23,7 +24,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
   onSelectShow,
   onOpenCreateShow
 }) => {
-  const { isBlurred, updateTransaction, updateShow } = useFinance();
+  const { isBlurred, updateTransaction, updateShow, debts } = useFinance();
   const [timeRange, setTimeRange] = useState<'all' | '3m' | '6m' | '12m'>('all');
   const [activeChartPoint, setActiveChartPoint] = useState<number | null>(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
@@ -120,12 +121,12 @@ export const PerformanceDashboard: React.FC<Props> = ({
         return sum + fin.totalReceived;
       }, 0);
 
-      // Despesas do Mês: Custos diretos do show e despesas de música vinculadas (sem duplicações)
-      const monthBusinessExpenseTxs = safeTransactions.filter(t => {
-        if (!t.date || !t.date.startsWith(m.monthKey)) return false;
-        if (t.type !== 'expense' || t.status === 'cancelled') return false;
-        return t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_marketing' || !!t.showId;
+      // Despesas do Mês: Custos diretos do show e despesas de música vinculadas + parcelas PAGAS de dívidas da Música (excluindo Pessoais)
+      const consolidatedMonth = consolidateCareerExpenses(safeTransactions, debts, {
+        monthPrefix: m.monthKey,
+        onlyPaidForAll: false
       });
+      const monthBusinessExpenseTxs = consolidatedMonth.allCareerExpenses;
 
       const txIdsInMonth = new Set(monthBusinessExpenseTxs.map(t => t.id));
       let unlinkedShowExpenses = 0;
@@ -140,7 +141,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
         }
       });
 
-      const expenses = monthBusinessExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) + unlinkedShowExpenses;
+      const expenses = consolidatedMonth.totalAmount + unlinkedShowExpenses;
       const profit = Math.round((revenue - expenses) * 100) / 100;
       const showsCount = monthShows.length;
 
@@ -153,7 +154,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
         showsCount
       };
     });
-  }, [monthsData, uniqueShows, transactions]);
+  }, [monthsData, uniqueShows, transactions, debts]);
 
   // Overall Global Career Performance Metrics (Lendo cada show uma ÚNICA VEZ e desconsiderando movimentações avulsas do extrato)
   const globalMetrics = useMemo(() => {
@@ -189,18 +190,20 @@ export const PerformanceDashboard: React.FC<Props> = ({
       return sum + fin.totalPredicted;
     }, 0);
 
-    // Custos Totais da Música (somando despesas da carreira no período, com ou sem showId)
-    const periodBusinessExpenseTxs = safeTransactions.filter(t => {
-      if (!t.date) return false;
-      if (t.type !== 'expense' || t.status === 'cancelled') return false;
-      if (timeRange !== 'all' && monthsData.length > 0) {
-        const minMonth = monthsData[0].monthKey;
-        const maxMonth = monthsData[monthsData.length - 1].monthKey;
-        const txMonth = t.date.slice(0, 7);
-        if (txMonth < minMonth || txMonth > maxMonth) return false;
-      }
-      return t.scope === 'BUSINESS' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_producao_shows' || t.categoryId === 'cat_marketing' || !!t.showId;
+    // Custos Totais da Música (somando despesas da carreira no período + parcelas PAGAS de dívidas da Música, excluindo Pessoais)
+    const startRangeDate =
+      timeRange !== 'all' && monthsData.length > 0 ? `${monthsData[0].monthKey}-01` : undefined;
+    const endRangeDate =
+      timeRange !== 'all' && monthsData.length > 0
+        ? `${monthsData[monthsData.length - 1].monthKey}-31`
+        : undefined;
+
+    const consolidatedPeriod = consolidateCareerExpenses(safeTransactions, debts, {
+      startDate: startRangeDate,
+      endDate: endRangeDate,
+      onlyPaidForAll: false
     });
+    const periodBusinessExpenseTxs = consolidatedPeriod.allCareerExpenses;
 
     const globalTxIds = new Set(periodBusinessExpenseTxs.map(t => t.id));
     let globalUnlinkedShowExpenses = 0;
@@ -215,7 +218,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
       }
     });
 
-    const totalMusicExpenses = periodBusinessExpenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) + globalUnlinkedShowExpenses;
+    const totalMusicExpenses = consolidatedPeriod.totalAmount + globalUnlinkedShowExpenses;
+    const debtInstallmentsTotal = consolidatedPeriod.debtInstallmentsTotal;
+    const debtInstallmentsCount = consolidatedPeriod.debtCareerExpenses.length;
 
     const totalReceivedInCash = totalGrossRevenue;
 
@@ -253,6 +258,10 @@ export const PerformanceDashboard: React.FC<Props> = ({
       totalContractedRevenue,
       totalReceivedInCash,
       totalMusicExpenses,
+      debtInstallmentsTotal,
+      debtInstallmentsCount,
+      bySubcategory: consolidatedPeriod.bySubcategory,
+      debtCareerExpenses: consolidatedPeriod.debtCareerExpenses,
       netRealProfit,
       netCashProfit,
       profitMargin,
@@ -261,7 +270,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       averageMonthlyProfit,
       totalEquipmentReserve
     };
-  }, [uniqueShows, transactions, timeRange, monthsData, chartSeries]);
+  }, [uniqueShows, transactions, debts, timeRange, monthsData, chartSeries]);
 
   // Breakdown by Event Type
   const eventTypesBreakdown = useMemo(() => {
@@ -444,7 +453,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
             </span>
           </div>
           <p className="text-[10px] text-zinc-400 font-medium">
-            Equipe, logística, locomoção e infra
+            {globalMetrics.debtInstallmentsTotal > 0
+              ? `Inclui ${formatCurrency(globalMetrics.debtInstallmentsTotal)} (${globalMetrics.debtInstallmentsCount}x parcelas pagas)`
+              : 'Equipe, logística, locomoção e infra'}
           </p>
         </div>
 
@@ -751,7 +762,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. RAIO-X POR TIPO DE EVENTO & FATURAMENTO POR FORMATO                    */}
+      {/* 5. RAIO-X POR TIPO DE EVENTO & GASTOS DA MÚSICA / PARCELAMENTOS           */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
@@ -771,7 +782,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
             {eventTypesBreakdown.length === 0 ? (
               <p className="text-xs text-zinc-400 py-4 text-center">Nenhum show registrado com categoria ainda.</p>
             ) : (
-              eventTypesBreakdown.map((item, idx) => (
+              eventTypesBreakdown.map((item) => (
                 <div key={item.type} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
@@ -793,35 +804,54 @@ export const PerformanceDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* DICAS DE CARREIRA E ESTRATÉGIA MUSICAL */}
-        <div className="p-5 rounded-3xl bg-gradient-to-br from-[#1b152b] to-[#121214] border border-purple-500/30 space-y-3">
-          <div className="flex items-center space-x-2">
-            <Sparkles size={16} className="text-amber-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-purple-300">
-              Insights de Carreira (Sou Artista)
-            </h3>
+        {/* ANÁLISE DE GASTOS DA MÚSICA & PARCELAMENTOS PAGOS POR SUBCATEGORIA */}
+        <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Tag size={16} className="text-rose-400" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                Gastos da Música por Subcategoria (DRE)
+              </h3>
+            </div>
+            {globalMetrics.debtInstallmentsTotal > 0 ? (
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                {globalMetrics.debtInstallmentsCount}x Parcelas Pagas Incluídas
+              </span>
+            ) : (
+              <span className="text-[10px] text-zinc-400 font-bold">Custos Consolidados</span>
+            )}
           </div>
 
-          <div className="space-y-2.5 text-xs text-zinc-300">
-            <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-900/50 flex items-start space-x-2.5">
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-white block">Margem de Lucro Recomendada</span>
-                <span className="text-[11px] text-zinc-400">
-                  Sua margem atual está em <strong>{globalMetrics.profitMargin.toFixed(0)}%</strong>. O ideal para artistas independentes é manter margem líquida acima de <strong>60%</strong> após cachês de equipe e locomoção.
-                </span>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-900/50 flex items-start space-x-2.5">
-              <Clock size={16} className="text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-white block">Previsibilidade de Caixa</span>
-                <span className="text-[11px] text-zinc-400">
-                  Cadastre o pagamento de sinal (ex: 50% no fechamento e 50% na data do show) para manter seu fluxo de caixa positivo antes mesmo do evento acontecer!
-                </span>
-              </div>
-            </div>
+          <div className="space-y-3 pt-1">
+            {globalMetrics.bySubcategory.length === 0 ? (
+              <p className="text-xs text-zinc-400 py-4 text-center">
+                Nenhum gasto da carreira ou parcela paga vinculada à música no período.
+              </p>
+            ) : (
+              globalMetrics.bySubcategory.map((sub) => (
+                <div key={sub.label} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                      <span className="font-bold text-zinc-200 truncate">{sub.label}</span>
+                      <span className="text-[10px] text-zinc-400 shrink-0">
+                        ({sub.count} {sub.count === 1 ? 'item' : 'itens'}
+                        {sub.debtCount > 0 ? ` • ${sub.debtCount}x dívida` : ''})
+                      </span>
+                    </div>
+                    <span className="font-black text-rose-400 tabular-nums shrink-0 ml-2">
+                      {formatCurrency(sub.amount)}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-rose-500 to-purple-500 rounded-full"
+                      style={{ width: `${Math.min(100, Math.max(4, sub.percentage))}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

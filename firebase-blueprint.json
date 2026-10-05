@@ -42,7 +42,9 @@
         "date": { "type": "string" },
         "status": { "type": "string" },
         "scope": { "type": "string" },
-        "showId": { "type": "string" }
+        "showId": { "type": "string" },
+        "debtId": { "type": "string" },
+        "subcategory": { "type": "string" }
       },
       "required": ["id", "description", "amount", "type", "accountId", "date", "status"]
     },
@@ -77,7 +79,7 @@
     },
     "Debt": {
       "title": "Dívida ou Financiamento",
-      "description": "Registro de dívida, empréstimo ou parcelamento",
+      "description": "Registro de dívida, empréstimo ou parcelamento com associação ao centro de custo Pessoal ou Música/Carreira",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -85,7 +87,14 @@
         "type": { "type": "string" },
         "totalAmount": { "type": "number" },
         "startDate": { "type": "string" },
-        "installmentCount": { "type": "number" }
+        "installmentCount": { "type": "number" },
+        "scope": { "type": "string" },
+        "costCenterMode": { "type": "string" },
+        "careerRangeStart": { "type": "number" },
+        "careerRangeEnd": { "type": "number" },
+        "careerIncludesInitial": { "type": "boolean" },
+        "musicSubcategory": { "type": "string" },
+        "musicCategoryId": { "type": "string" }
       },
       "required": ["id", "name", "totalAmount", "startDate", "installmentCount"]
     },

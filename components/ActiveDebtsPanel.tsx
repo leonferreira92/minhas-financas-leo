@@ -1,12 +1,20 @@
 import React, { useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { 
-  CreditCard, Calendar, AlertTriangle, ShieldCheck, 
+  CreditCard, Calendar, ShieldCheck, 
   TrendingDown, ArrowDownRight, CheckCircle2, 
-  Clock, AlertCircle, Sparkles, ChevronRight, Info
+  Clock, Sparkles, ChevronRight, Info,
+  Music, User, SlidersHorizontal
 } from 'lucide-react';
 import { Debt } from '../types';
 import { formatMonthYearBR } from '../services/aiReportService';
+import {
+  isVinyDebtOrTransaction,
+  VINY_MUSIC_CEILING,
+  VINY_PRIOR_AMORTIZED,
+  VINY_INSTALLMENT_9_MUSIC_CAP
+} from '../services/financeAggregator';
+import { DebtForm } from './DebtForm';
 
 interface ActiveDebtItem {
   debt: Debt;
@@ -17,8 +25,6 @@ interface ActiveDebtItem {
   totalCount: number;
   endMonthYear: string;
   endDateRaw: string;
-  hasInconsistency: boolean;
-  inconsistencyMessage?: string;
 }
 
 interface Props {
@@ -27,6 +33,7 @@ interface Props {
 
 export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
   const { debts, transactions, isBlurred, getDebtProgress } = useFinance();
+  const [editingDebt, setEditingDebt] = React.useState<Debt | null>(null);
 
   const formatBRL = (val: number | null | undefined) => {
     if (val === null || val === undefined) return '—';
@@ -38,7 +45,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
     const items: ActiveDebtItem[] = [];
 
     debts.forEach(debt => {
-      const { remaining, paid, totalReal } = getDebtProgress(debt.id);
+      const { remaining } = getDebtProgress(debt.id);
 
       // REGRA OBRIGATÓRIA: Não considerar dívidas com saldo restante igual a R$0 como obrigações futuras
       if (remaining <= 0.05) {
@@ -79,29 +86,6 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
         endMonthYear = formatMonthYearBR(estEnd.toISOString().slice(0, 7));
       }
 
-      // -----------------------------------------------------------------------
-      // VERIFICAÇÃO DE INCONSISTÊNCIA MATEMÁTICA
-      // (Saldo restante, valor da parcela e quantidade de parcelas restantes)
-      // REGRA: Mostrar alerta em vez de corrigir ou inventar dados.
-      // -----------------------------------------------------------------------
-      let hasInconsistency = false;
-      let inconsistencyMessage = '';
-
-      const expectedByInstallments = remainingCount * installmentAmount;
-      const diff = Math.abs(remaining - expectedByInstallments);
-
-      // Tolerância: se a diferença for maior que 10% e mais que R$ 20,00 (ou se parcelas restantes = 0 com saldo positivo)
-      if (remainingCount <= 0 && remaining > 1) {
-        hasInconsistency = true;
-        inconsistencyMessage = `Inconsistência: Consta saldo de ${formatBRL(remaining)}, mas nenhuma parcela restante está pendente.`;
-      } else if (installmentAmount <= 0 && remaining > 1) {
-        hasInconsistency = true;
-        inconsistencyMessage = `Inconsistência: Saldo restante é ${formatBRL(remaining)}, mas o valor da parcela é R$ 0,00.`;
-      } else if (remaining > 1 && remainingCount > 0 && installmentAmount > 0 && diff > Math.max(25, remaining * 0.12)) {
-        hasInconsistency = true;
-        inconsistencyMessage = `Inconsistência nos dados cadastrados: O saldo restante (${formatBRL(remaining)}) não fecha com ${remainingCount}x de ${formatBRL(installmentAmount)} (soma ${formatBRL(expectedByInstallments)}). Os valores foram preservados exatamente como cadastrados.`;
-      }
-
       items.push({
         debt,
         remainingAmount: remaining,
@@ -110,9 +94,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
         remainingCount,
         totalCount,
         endMonthYear,
-        endDateRaw,
-        hasInconsistency,
-        inconsistencyMessage
+        endDateRaw
       });
     });
 
@@ -273,16 +255,13 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
         <div className="grid grid-cols-1 gap-3.5">
           {parsedDebtsData.items.map(item => {
             const pct = item.totalCount > 0 ? (item.paidCount / item.totalCount) * 100 : 0;
+            const isViny = isVinyDebtOrTransaction(item.debt);
 
             return (
               <div 
                 key={item.debt.id}
                 onClick={() => onSelectDebt && onSelectDebt(item.debt.id)}
-                className={`bg-white dark:bg-slate-900 rounded-[2rem] p-5 border shadow-sm transition hover:shadow-md ${
-                  item.hasInconsistency 
-                    ? 'border-amber-300 dark:border-amber-700/80 bg-amber-50/20 dark:bg-amber-950/10' 
-                    : 'border-slate-200/80 dark:border-slate-800'
-                } ${onSelectDebt ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+                className={`bg-white dark:bg-slate-900 rounded-[2rem] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition hover:shadow-md ${onSelectDebt ? 'cursor-pointer active:scale-[0.99]' : ''}`}
               >
                 
                 {/* TOPO: NOME, TIPO E PREVISÃO DE TÉRMINO */}
@@ -292,9 +271,32 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                       <CreditCard size={20} strokeWidth={2.2} />
                     </div>
                     <div>
-                      <h4 className="text-base font-black text-slate-900 dark:text-white leading-tight">
-                        {item.debt.name}
-                      </h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-base font-black text-slate-900 dark:text-white leading-tight">
+                          {item.debt.name}
+                        </h4>
+                        {isViny ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                            <Music size={10} />
+                            <span>Teto Som {formatBRL(VINY_MUSIC_CEILING)} (Parc. 9: {formatBRL(VINY_INSTALLMENT_9_MUSIC_CAP)}) → Pessoal (10–{item.totalCount})</span>
+                          </span>
+                        ) : (item.debt.costCenterMode === 'TOTAL_BUSINESS' || item.debt.scope === 'BUSINESS') ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                            <Music size={10} />
+                            <span>Música • {item.debt.musicSubcategory || 'Equipamentos / Instrumentos'}</span>
+                          </span>
+                        ) : item.debt.costCenterMode === 'INSTALLMENT_RANGE' ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                            <Music size={10} />
+                            <span>Parcelas {item.debt.businessStartInstallment || 1}-{item.debt.businessEndInstallment || item.totalCount} na Música ({item.debt.musicSubcategory || 'Equipamentos / Instrumentos'})</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-500">
+                            <User size={10} />
+                            <span>Pessoal</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center space-x-2 mt-0.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                           {item.debt.type === 'bank' ? 'Empréstimo Bancário' : item.debt.type === 'car_financing' ? 'Financiamento Veículo' : item.debt.type === 'card_installment' ? 'Cartão Parcelado' : 'Outros'}
@@ -307,13 +309,28 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                     </div>
                   </div>
 
-                  <div className="sm:text-right">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                      Término Previsto
-                    </span>
-                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
-                      {item.endMonthYear}
-                    </span>
+                  <div className="flex items-center justify-between sm:justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingDebt(item.debt);
+                      }}
+                      className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 hover:bg-purple-100 text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95"
+                      title="Editar Centro de Custo e Subcategoria"
+                    >
+                      <SlidersHorizontal size={12} />
+                      <span>Centro de Custo</span>
+                    </button>
+
+                    <div className="sm:text-right">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                        Término Previsto
+                      </span>
+                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
+                        {item.endMonthYear}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -362,6 +379,20 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
 
                 </div>
 
+                {/* REGRA DE TRANSIÇÃO DA PARCELA 9 (VINY - TETO DO SOM EM R$ 6.614,00) */}
+                {isViny && (
+                  <div className="mb-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] text-slate-600 dark:text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="font-black text-purple-600 dark:text-purple-300 uppercase tracking-wider block text-[10px]">
+                        Regra de Transição Automática • Equipamentos/Som (Teto {formatBRL(VINY_MUSIC_CEILING)})
+                      </span>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Amortizado até Parc. 8: <strong>{formatBRL(VINY_PRIOR_AMORTIZED)}</strong> • <strong>Parcela 9:</strong> destina <strong>{formatBRL(VINY_INSTALLMENT_9_MUSIC_CAP)}</strong> à Música e o restante (+ Parcelas 10 a {item.totalCount}) ao Centro de Custo <strong>Pessoal</strong>.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* BARRA DE PROGRESSO DE QUITAÇÃO */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400">
@@ -378,27 +409,19 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                   </div>
                 </div>
 
-                {/* ALERTA DE INCONSISTÊNCIA MATEMÁTICA (CASO EXISTA) */}
-                {item.hasInconsistency && (
-                  <div className="mt-3.5 p-3 rounded-xl bg-amber-500/10 border border-amber-300 dark:border-amber-700/80 flex items-start space-x-2.5">
-                    <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-xs font-black text-amber-800 dark:text-amber-300 block">
-                        Aviso de Inconsistência nos Dados
-                      </span>
-                      <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
-                        {item.inconsistencyMessage}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
               </div>
             );
           })}
         </div>
 
       </div>
+
+      {editingDebt && (
+        <DebtForm
+          initialDebt={editingDebt}
+          onClose={() => setEditingDebt(null)}
+        />
+      )}
 
     </div>
   );

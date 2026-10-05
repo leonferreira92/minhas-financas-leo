@@ -4,6 +4,7 @@ import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, S
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
+import { resolveDebtInstallmentCostCenter, resolveCareerSubcategoryMeta } from '../services/financeAggregator';
 import {
   normalizeShowFinancials,
   syncShowWithTransactions,
@@ -95,7 +96,9 @@ interface FinanceContextType {
   getDefaultAccountForScope: (scope?: ScopeType | ActiveScopeFilter) => string;
   
   addDebt: (debtData: Omit<Debt, 'id'>, installmentsData: any) => void;
-  updateDebt: (id: string, name: string, installmentCount: number) => void;
+  updateDebt: (id: string, name: string, installmentCount: number, extraUpdates?: Partial<Debt>) => void;
+  updateDebtCostCenter: (debtId: string, config: Partial<Debt>) => void;
+  toggleInstallmentCostCenter: (transactionId: string, targetScope: 'BUSINESS' | 'PERSONAL', musicSubcategory?: string) => void;
   deleteDebt: (id: string) => void;
   getDebtProgress: (debtId: string) => { paid: number; remaining: number; status: DebtStatus; progress: number; totalReal: number };
 
@@ -1258,13 +1261,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     }
 
-    const cleanScope =
-      updatedT.scope === 'BUSINESS' ||
-      Boolean(updatedT.showId) ||
-      resolvedCategoryId === 'cat_33' ||
-      resolvedCategoryId === 'cat_equipamentos' ||
-      resolvedCategoryId === 'cat_logistica_shows' ||
-      resolvedCategoryId === 'cat_producao_shows'
+    const cleanScope: ScopeType =
+      updatedT.debtId && (updatedT.scope === 'PERSONAL' || updatedT.scope === 'BUSINESS')
+        ? updatedT.scope
+        : updatedT.scope === 'BUSINESS' ||
+          Boolean(updatedT.showId) ||
+          resolvedCategoryId === 'cat_33' ||
+          resolvedCategoryId === 'cat_equipamentos' ||
+          resolvedCategoryId === 'cat_logistica_shows' ||
+          resolvedCategoryId === 'cat_producao_shows' ||
+          resolvedCategoryId === 'cat_marketing'
         ? 'BUSINESS'
         : 'PERSONAL';
 
@@ -1675,16 +1681,65 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const addDebt = (debtData: Omit<Debt, 'id'>, installmentsData: any) => {
     const debtId = generateUUID();
-    const newDebt = { ...debtData, id: debtId };
+    const {
+      downPayment,
+      installments,
+      firstDate,
+      categoryId,
+      personalCategoryId,
+      accountId,
+      autoPayPast,
+      fixedInstallmentValue
+    } = installmentsData;
+
+    const mode =
+      debtData.costCenterMode ||
+      (debtData.scope === 'BUSINESS' ? 'TOTAL_BUSINESS' : 'TOTAL_PERSONAL');
+
+    const debtScope: ScopeType =
+      mode === 'TOTAL_BUSINESS'
+        ? 'BUSINESS'
+        : mode === 'INSTALLMENT_RANGE'
+        ? 'BOTH'
+        : 'PERSONAL';
+
+    const remainingAmount = debtData.totalAmount - (Number(downPayment) || 0);
+    const installmentValue =
+      fixedInstallmentValue && fixedInstallmentValue > 0
+        ? Number(fixedInstallmentValue)
+        : remainingAmount / (Number(installments) || 1);
+
+    const newDebt: Debt = {
+      ...debtData,
+      id: debtId,
+      scope: debtScope,
+      costCenterMode: mode,
+      businessStartInstallment:
+        mode === 'INSTALLMENT_RANGE' ? Math.max(1, Number(debtData.businessStartInstallment) || 1) : 1,
+      businessEndInstallment:
+        mode === 'INSTALLMENT_RANGE'
+          ? Math.max(1, Number(debtData.businessEndInstallment) || Number(installments) || 1)
+          : Number(installments) || 1,
+      includeDownPaymentInBusiness:
+        mode === 'TOTAL_BUSINESS' ? true : Boolean(debtData.includeDownPaymentInBusiness),
+      musicSubcategory:
+        mode !== 'TOTAL_PERSONAL'
+          ? debtData.musicSubcategory || 'Equipamentos / Instrumentos'
+          : undefined,
+      categoryId: categoryId || debtData.categoryId || 'cat_1',
+      personalCategoryId: personalCategoryId || debtData.personalCategoryId || categoryId || 'cat_1',
+      accountId: accountId || debtData.accountId,
+      installmentAmount: Number(installmentValue.toFixed(2))
+    };
+
     const newDebts = [...debts, newDebt];
-    
     const newTransactions = [...transactions];
-    const { downPayment, installments, firstDate, categoryId, accountId, autoPayPast, fixedInstallmentValue } = installmentsData;
-    
+
     const today = new Date().toISOString().slice(0, 10);
     const createdAtBase = Date.now();
 
     if (downPayment && Number(downPayment) > 0) {
+      const downCC = resolveDebtInstallmentCostCenter(newDebt, 0);
       newTransactions.push({
         id: generateUUID(),
         debtId,
@@ -1693,7 +1748,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         type: 'expense',
         status: 'paid',
         date: today,
-        categoryId,
+        categoryId: downCC.categoryId,
+        category: downCC.categoryId,
+        subcategory: downCC.subcategory,
+        scope: downCC.scope,
         accountId,
         installmentNumber: 0,
         installmentTotal: installments,
@@ -1701,42 +1759,39 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
     }
 
-    const remainingAmount = debtData.totalAmount - (Number(downPayment) || 0);
-    let installmentValue: number;
-
-    if (fixedInstallmentValue && fixedInstallmentValue > 0) {
-        installmentValue = fixedInstallmentValue;
-    } else {
-        installmentValue = remainingAmount / installments;
-    }
-    
     const [y, m, d] = firstDate.split('-').map(Number);
     const baseDate = new Date(y, m - 1, d, 12, 0, 0);
 
     for (let i = 0; i < installments; i++) {
-       const currentDate = new Date(baseDate);
-       currentDate.setMonth(baseDate.getMonth() + i);
-       const dateStr = currentDate.toISOString().slice(0, 10);
+      const currentDate = new Date(baseDate);
+      currentDate.setMonth(baseDate.getMonth() + i);
+      const dateStr = currentDate.toISOString().slice(0, 10);
 
-       let status: 'paid' | 'pending' = 'pending';
-       if (autoPayPast && dateStr < today) {
-          status = 'paid';
-       }
+      let status: 'paid' | 'pending' = 'pending';
+      if (autoPayPast && dateStr < today) {
+        status = 'paid';
+      }
 
-       newTransactions.push({
-         id: generateUUID(),
-         debtId,
-         description: `${debtData.name} (${i + 1}/${installments})`,
-         amount: Number(installmentValue.toFixed(2)),
-         type: 'expense',
-         status: status,
-         date: dateStr,
-         categoryId,
-         accountId,
-         installmentNumber: i + 1,
-         installmentTotal: installments,
-         createdAt: createdAtBase + i + 1
-       });
+      const instNum = i + 1;
+      const instCC = resolveDebtInstallmentCostCenter(newDebt, instNum);
+
+      newTransactions.push({
+        id: generateUUID(),
+        debtId,
+        description: `${debtData.name} (${instNum}/${installments})`,
+        amount: Number(installmentValue.toFixed(2)),
+        type: 'expense',
+        status: status,
+        date: dateStr,
+        categoryId: instCC.categoryId,
+        category: instCC.categoryId,
+        subcategory: instCC.subcategory,
+        scope: instCC.scope,
+        accountId,
+        installmentNumber: instNum,
+        installmentTotal: installments,
+        createdAt: createdAtBase + instNum
+      });
     }
 
     saveDebts(newDebts);
@@ -1750,16 +1805,107 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const updateDebt = (id: string, name: string, installmentCount: number) => {
-    const updatedDebts = debts.map(d => d.id === id ? { ...d, name, installmentCount } : d);
-    const updatedTxs = transactions.map(t => t.debtId === id ? { ...t, description: `${name} (${t.installmentNumber}/${installmentCount})`, installmentTotal: installmentCount } : t);
+  const updateDebt = (id: string, name: string, installmentCount: number, extraUpdates?: Partial<Debt>) => {
+    const existingDebt = debts.find(d => d.id === id);
+    if (!existingDebt) return;
+
+    const mergedDebt: Debt = {
+      ...existingDebt,
+      ...extraUpdates,
+      name: name || existingDebt.name,
+      installmentCount: installmentCount || existingDebt.installmentCount
+    };
+
+    const mode =
+      mergedDebt.costCenterMode ||
+      (mergedDebt.scope === 'BUSINESS' ? 'TOTAL_BUSINESS' : 'TOTAL_PERSONAL');
+
+    mergedDebt.costCenterMode = mode;
+    mergedDebt.scope =
+      mode === 'TOTAL_BUSINESS'
+        ? 'BUSINESS'
+        : mode === 'INSTALLMENT_RANGE'
+        ? 'BOTH'
+        : 'PERSONAL';
+
+    const updatedDebts = debts.map(d => (d.id === id ? mergedDebt : d));
+    const updatedTxs = transactions.map(t => {
+      if (t.debtId !== id) return t;
+      const instNum = t.installmentNumber ?? 1;
+      const instCC = resolveDebtInstallmentCostCenter(mergedDebt, instNum);
+      const isDownPayment = instNum === 0 || (t.description || '').toLowerCase().includes('entrada inicial');
+      return {
+        ...t,
+        description: isDownPayment
+          ? `Entrada Inicial - ${mergedDebt.name}`
+          : `${mergedDebt.name} (${instNum}/${mergedDebt.installmentCount})`,
+        installmentTotal: mergedDebt.installmentCount,
+        scope: instCC.scope,
+        categoryId: instCC.categoryId,
+        category: instCC.categoryId,
+        subcategory: instCC.subcategory,
+        accountId: mergedDebt.accountId || t.accountId
+      };
+    });
+
     saveDebts(updatedDebts);
     saveTransactions(updatedTxs);
 
     if (currentUser) {
-      const d = updatedDebts.find(item => item.id === id);
-      if (d) saveDebtToFirestore(currentUser.uid, d);
+      saveDebtToFirestore(currentUser.uid, mergedDebt);
       updatedTxs.filter(t => t.debtId === id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+    }
+  };
+
+  const updateDebtCostCenter = (debtId: string, config: Partial<Debt>) => {
+    const existingDebt = debts.find(d => d.id === debtId);
+    if (!existingDebt) return;
+    updateDebt(
+      debtId,
+      config.name || existingDebt.name,
+      config.installmentCount || existingDebt.installmentCount,
+      config
+    );
+  };
+
+  const toggleInstallmentCostCenter = (
+    transactionId: string,
+    targetScope: 'BUSINESS' | 'PERSONAL',
+    musicSubcategory?: string
+  ) => {
+    const targetTx = transactions.find(t => t.id === transactionId);
+    if (!targetTx) return;
+
+    const parentDebt = targetTx.debtId ? debts.find(d => d.id === targetTx.debtId) : undefined;
+    let nextCategoryId = targetTx.categoryId;
+    let nextSubcategory: string | undefined = undefined;
+
+    if (targetScope === 'BUSINESS') {
+      const sub = musicSubcategory || parentDebt?.musicSubcategory || 'Equipamentos / Instrumentos';
+      const meta = resolveCareerSubcategoryMeta(sub);
+      nextCategoryId = meta.categoryId;
+      nextSubcategory = meta.subcategory;
+    } else {
+      const businessCatIds = ['cat_equipamentos', 'cat_logistica_shows', 'cat_producao_shows', 'cat_marketing', 'cat_33'];
+      nextCategoryId =
+        parentDebt?.personalCategoryId ||
+        (!businessCatIds.includes(targetTx.categoryId) ? targetTx.categoryId : 'cat_1');
+      nextSubcategory = undefined;
+    }
+
+    const updatedTx: Transaction = {
+      ...targetTx,
+      scope: targetScope,
+      categoryId: nextCategoryId,
+      category: nextCategoryId,
+      subcategory: nextSubcategory
+    };
+
+    const updatedTxs = transactions.map(t => (t.id === transactionId ? updatedTx : t));
+    saveTransactions(updatedTxs);
+
+    if (currentUser) {
+      saveTransactionToFirestore(currentUser.uid, updatedTx);
     }
   };
 
@@ -2544,7 +2690,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
-      addDebt, updateDebt, deleteDebt, getDebtProgress,
+      addDebt, updateDebt, updateDebtCostCenter, toggleInstallmentCostCenter, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget,
       addShow, updateShow, deleteShow, cancelShowFutureFinancials, linkTransactionToShow, unlinkTransactionFromShow,
       addVenue, updateVenue, deleteVenue,
