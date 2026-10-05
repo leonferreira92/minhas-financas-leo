@@ -12,7 +12,14 @@ import {
 import { CalendarModal } from './CalendarModal';
 import { parseCurrencyInput, CAREER_DEBT_SUBCATEGORIES } from '../constants';
 import { getLocalDateString } from '../services/dateUtils';
-import { resolveCareerSubcategoryMeta } from '../services/financeAggregator';
+import {
+  resolveCareerSubcategoryMeta,
+  resolveDefaultPersonalDebtCategoryId,
+  DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+  isVinyDebtOrTransaction,
+  VINY_MUSIC_MAX_CEILING,
+  VINY_MONTHLY_MUSIC_FIXED
+} from '../services/financeAggregator';
 
 interface Props {
   onClose: () => void;
@@ -20,7 +27,7 @@ interface Props {
 }
 
 export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
-  const { addDebt, updateDebtCostCenter, categories, accounts, activeScope } = useFinance();
+  const { addDebt, updateDebtCostCenter, categories, accounts, transactions, activeScope } = useFinance();
   const isEditing = Boolean(initialDebt);
   const [step, setStep] = useState(0);
 
@@ -62,13 +69,12 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
     initialDebt?.includeDownPaymentInBusiness ?? false
   );
 
-  const [personalCategoryId, setPersonalCategoryId] = useState<string>(() => {
-    if (initialDebt?.personalCategoryId) return initialDebt.personalCategoryId;
-    if (initialDebt?.categoryId && !['cat_equipamentos', 'cat_logistica_shows', 'cat_producao_shows', 'cat_marketing', 'cat_33'].includes(initialDebt.categoryId)) {
-      return initialDebt.categoryId;
-    }
-    return 'cat_1';
-  });
+  const [personalCategoryId, setPersonalCategoryId] = useState<string>(() =>
+    resolveDefaultPersonalDebtCategoryId(
+      categories,
+      initialDebt?.personalCategoryId || initialDebt?.categoryId
+    )
+  );
 
   const [accountId, setAccountId] = useState(initialDebt?.accountId || '');
   
@@ -132,6 +138,24 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
   const downParsed = parseCurrencyInput(downPayment);
   const qtyParsed = Math.max(1, parseInt(installments) || 1);
   const isEntryInvalid = !isEditing && downParsed > 0 && downParsed >= totalParsed;
+  const isVinyContract = useMemo(
+    () => isVinyDebtOrTransaction({ id: initialDebt?.id, name }),
+    [initialDebt?.id, name]
+  );
+
+  // Total Amortizado Real das parcelas já pagas (para recálculo atômico do Saldo Devedor)
+  const totalAmortizedReal = useMemo(() => {
+    if (!initialDebt?.id) return 0;
+    return Math.round(
+      transactions
+        .filter(t => t.debtId === initialDebt.id && t.status === 'paid')
+        .reduce((s, t) => s + (Math.abs(Number(t.amount) || 0) - Math.max(0, Number(t.interest) || 0)), 0) * 100
+    ) / 100;
+  }, [initialDebt?.id, transactions]);
+
+  const atomicRemainingBalance = useMemo(() => {
+    return Math.max(0, Math.round((totalParsed - totalAmortizedReal) * 100) / 100);
+  }, [totalParsed, totalAmortizedReal]);
 
   const effectiveMusicSubcategory = isCustomSubcategory
     ? customSubcategory.trim() || 'Equipamentos / Instrumentos'
@@ -142,11 +166,24 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
     [effectiveMusicSubcategory]
   );
 
-  // Cálculo do resumo de divisão entre Música e Pessoal
+  // Cálculo do resumo de divisão entre Música e Pessoal (respeitando o teto máximo de R$ 6.500,00 no Viny)
   const allocationPreview = useMemo(() => {
     const startIdx = Math.max(1, Math.min(qtyParsed, parseInt(businessStartInstallment) || 1));
     const endIdx = Math.max(startIdx, Math.min(qtyParsed, parseInt(businessEndInstallment) || qtyParsed));
     const instVal = parseCurrencyInput(installmentValue) || (totalParsed - downParsed) / qtyParsed;
+
+    if (isVinyContract) {
+      const musicCount = Math.min(10, Math.max(0, endIdx - startIdx + 1));
+      const musicTotal = Math.min(VINY_MUSIC_MAX_CEILING, musicCount * VINY_MONTHLY_MUSIC_FIXED);
+      const personalTotal = Math.max(0, Math.round((totalParsed - musicTotal) * 100) / 100);
+      return {
+        musicInstallmentsCount: musicCount,
+        personalInstallmentsCount: Math.max(1, qtyParsed - musicCount),
+        musicTotalAmount: musicTotal,
+        personalTotalAmount: personalTotal,
+        rangeLabel: `Parcelas ${startIdx} até ${endIdx} (Fev a Nov): R$ 650,00/mês na Música (Teto máx R$ 6.500,00) • Excedente + demais parcelas no Pessoal`
+      };
+    }
 
     if (costCenterMode === 'TOTAL_BUSINESS') {
       return {
@@ -184,6 +221,7 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
       rangeLabel: `Parcelas ${startIdx} até ${endIdx} na Música (${musicCount}x) • ${personalCount}x no Pessoal`
     };
   }, [
+    isVinyContract,
     costCenterMode,
     qtyParsed,
     businessStartInstallment,
@@ -204,11 +242,12 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
 
     const startInst = Math.max(1, Math.min(qtyParsed, parseInt(businessStartInstallment) || 1));
     const endInst = Math.max(startInst, Math.min(qtyParsed, parseInt(businessEndInstallment) || qtyParsed));
+    const safePersonalCategoryId = resolveDefaultPersonalDebtCategoryId(categories, personalCategoryId);
 
     const effectiveCategoryId =
       costCenterMode === 'TOTAL_BUSINESS'
         ? resolvedMusicMeta.categoryId
-        : personalCategoryId || 'cat_1';
+        : safePersonalCategoryId;
 
     const debtScope =
       costCenterMode === 'TOTAL_BUSINESS'
@@ -233,7 +272,7 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
         musicSubcategory:
           costCenterMode !== 'TOTAL_PERSONAL' ? effectiveMusicSubcategory : undefined,
         categoryId: effectiveCategoryId,
-        personalCategoryId: personalCategoryId || 'cat_1',
+        personalCategoryId: safePersonalCategoryId,
         accountId
       });
       onClose();
@@ -256,7 +295,7 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
         musicSubcategory:
           costCenterMode !== 'TOTAL_PERSONAL' ? effectiveMusicSubcategory : undefined,
         categoryId: effectiveCategoryId,
-        personalCategoryId: personalCategoryId || 'cat_1',
+        personalCategoryId: safePersonalCategoryId,
         accountId
       },
       {
@@ -264,7 +303,7 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
         installments: qtyParsed,
         firstDate,
         categoryId: effectiveCategoryId,
-        personalCategoryId: personalCategoryId || 'cat_1',
+        personalCategoryId: safePersonalCategoryId,
         autoPayPast,
         accountId,
         fixedInstallmentValue: parseCurrencyInput(installmentValue)
@@ -273,10 +312,39 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
     onClose();
   };
 
-  const personalExpenseCategories = useMemo(
-    () => categories.filter(c => c.type === 'expense' && c.scope !== 'BUSINESS'),
-    [categories]
-  );
+  const personalExpenseCategories = useMemo(() => {
+    const base = categories.filter(c => c.type === 'expense' && c.scope !== 'BUSINESS');
+    const hasDebtCat = base.some(
+      c =>
+        c.id === DEFAULT_PERSONAL_DEBT_CATEGORY_ID ||
+        c.name.toLowerCase().includes('dívida') ||
+        c.name.toLowerCase().includes('divida') ||
+        c.name.toLowerCase().includes('empréstimo')
+    );
+    const list = hasDebtCat
+      ? [...base]
+      : [
+          {
+            id: DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+            name: 'Dívidas / Empréstimo Pessoal',
+            type: 'expense' as const,
+            color: '#6366f1',
+            icon: 'CreditCard',
+            classification: 'essential' as const,
+            scope: 'PERSONAL' as const
+          },
+          ...base
+        ];
+
+    // Coloca 'Dívidas / Empréstimo Pessoal' no topo da lista para fácil seleção
+    return list.sort((a, b) => {
+      const aIsDebt = a.id === DEFAULT_PERSONAL_DEBT_CATEGORY_ID || a.name.toLowerCase().includes('dívida') || a.name.toLowerCase().includes('empréstimo');
+      const bIsDebt = b.id === DEFAULT_PERSONAL_DEBT_CATEGORY_ID || b.name.toLowerCase().includes('dívida') || b.name.toLowerCase().includes('empréstimo');
+      if (aIsDebt && !bIsDebt) return -1;
+      if (!aIsDebt && bIsDebt) return 1;
+      return 0;
+    });
+  }, [categories]);
 
   return (
     <>
@@ -361,19 +429,43 @@ export const DebtForm: React.FC<Props> = ({ onClose, initialDebt }) => {
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-base">R$</span>
                       <input
-                        type="number"
-                        step="any"
+                        type="text"
+                        inputMode="decimal"
                         value={totalAmount}
                         onChange={(e) => {
                           setTotalAmount(e.target.value);
                           setIsManualInstallment(false);
                         }}
                         className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white shadow-inner tabular-nums"
-                        placeholder="0,00"
+                        placeholder="12.435,00"
                       />
                     </div>
                   </div>
                 </div>
+
+                {/* Recálculo Atômico do Saldo Devedor (ao editar contrato existente) */}
+                {isEditing && (
+                  <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-slate-400 block">Valor Total</span>
+                      <span className="text-xs font-black text-slate-800 dark:text-white tabular-nums">
+                        {formatBRL(totalParsed)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-emerald-500 block">Amortizado Real</span>
+                      <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        {formatBRL(totalAmortizedReal)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-black uppercase text-rose-500 block">Saldo Restante</span>
+                      <span className="text-xs font-black text-rose-600 dark:text-rose-400 tabular-nums">
+                        {formatBRL(atomicRemainingBalance)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* ================================================================= */}
                 {/* SEÇÃO PRINCIPAL: ASSOCIAÇÃO DE CENTRO DE CUSTO E SUBCATEGORIA      */}

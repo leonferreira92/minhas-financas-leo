@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { 
   CreditCard, Calendar, ShieldCheck, 
@@ -9,11 +9,21 @@ import {
 import { Debt } from '../types';
 import { formatMonthYearBR } from '../services/aiReportService';
 import {
+  isSomLeoDebtOrTransaction,
   isVinyDebtOrTransaction,
-  VINY_MUSIC_CEILING,
-  VINY_PRIOR_AMORTIZED,
-  VINY_INSTALLMENT_9_MUSIC_CAP
+  VINY_MUSIC_START_INSTALLMENT,
+  VINY_MUSIC_END_INSTALLMENT,
+  VINY_MONTHLY_MUSIC_FIXED,
+  VINY_MUSIC_MAX_CEILING,
+  reconcileUnifiedVinyDebt
 } from '../services/financeAggregator';
+import { StorageService } from '../services/storageService';
+import {
+  saveDebtToFirestore,
+  deleteDebtFromFirestore,
+  saveTransactionToFirestore,
+  deleteTransactionFromFirestore
+} from '../services/firebaseService';
 import { DebtForm } from './DebtForm';
 
 interface ActiveDebtItem {
@@ -32,8 +42,42 @@ interface Props {
 }
 
 export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
-  const { debts, transactions, isBlurred, getDebtProgress } = useFinance();
+  const { debts, transactions, isBlurred, getDebtProgress, refreshData, currentUser } = useFinance();
   const [editingDebt, setEditingDebt] = React.useState<Debt | null>(null);
+
+  // Unificação automática do contrato único 'Viny' e remoção do card duplicado 'Som Léo'
+  useEffect(() => {
+    if (!Array.isArray(debts) || debts.length === 0) return;
+
+    const result = reconcileUnifiedVinyDebt(debts, transactions);
+
+    if (result.changed) {
+      StorageService.saveDebts(result.debts);
+      StorageService.saveTransactions(result.transactions);
+
+      if (currentUser) {
+        result.deletedDebtIds.forEach(delDebtId => {
+          deleteDebtFromFirestore(currentUser.uid, delDebtId);
+        });
+        result.deletedTransactionIds.forEach(delTxId => {
+          deleteTransactionFromFirestore(currentUser.uid, delTxId);
+        });
+        result.debts.forEach(d => {
+          if (isVinyDebtOrTransaction(d)) {
+            saveDebtToFirestore(currentUser.uid, d);
+          }
+        });
+        result.transactions.forEach(t => {
+          const parent = result.debts.find(d => d.id === t.debtId);
+          if (isVinyDebtOrTransaction(parent, t)) {
+            saveTransactionToFirestore(currentUser.uid, t);
+          }
+        });
+      }
+
+      refreshData();
+    }
+  }, [debts, transactions, currentUser, refreshData]);
 
   const formatBRL = (val: number | null | undefined) => {
     if (val === null || val === undefined) return '—';
@@ -45,6 +89,11 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
     const items: ActiveDebtItem[] = [];
 
     debts.forEach(debt => {
+      // Garantir que o card duplicado 'Som Léo' nunca seja renderizado
+      if (isSomLeoDebtOrTransaction(debt)) {
+        return;
+      }
+
       const { remaining } = getDebtProgress(debt.id);
 
       // REGRA OBRIGATÓRIA: Não considerar dívidas com saldo restante igual a R$0 como obrigações futuras
@@ -278,7 +327,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                         {isViny ? (
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
                             <Music size={10} />
-                            <span>Teto Som {formatBRL(VINY_MUSIC_CEILING)} (Parc. 9: {formatBRL(VINY_INSTALLMENT_9_MUSIC_CAP)}) → Pessoal (10–{item.totalCount})</span>
+                            <span>Rateio DRE: {formatBRL(VINY_MONTHLY_MUSIC_FIXED)}/mês (Teto {formatBRL(VINY_MUSIC_MAX_CEILING)}) + Pessoal</span>
                           </span>
                         ) : (item.debt.costCenterMode === 'TOTAL_BUSINESS' || item.debt.scope === 'BUSINESS') ? (
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
@@ -299,7 +348,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                       </div>
                       <div className="flex items-center space-x-2 mt-0.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          {item.debt.type === 'bank' ? 'Empréstimo Bancário' : item.debt.type === 'car_financing' ? 'Financiamento Veículo' : item.debt.type === 'card_installment' ? 'Cartão Parcelado' : 'Outros'}
+                          {item.debt.type === 'bank' ? 'Empréstimo Bancário' : item.debt.type === 'car_financing' ? 'Financiamento Veículo' : item.debt.type === 'card_installment' ? 'Cartão Parcelado' : 'Acordo Geral'}
                         </span>
                         <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                         <span className="text-[10px] font-bold text-slate-500">
@@ -379,15 +428,15 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
 
                 </div>
 
-                {/* REGRA DE TRANSIÇÃO DA PARCELA 9 (VINY - TETO DO SOM EM R$ 6.614,00) */}
+                {/* DETALHAMENTO ESPECÍFICO DO CONTRATO ÚNICO VINY */}
                 {isViny && (
                   <div className="mb-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] text-slate-600 dark:text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <span className="font-black text-purple-600 dark:text-purple-300 uppercase tracking-wider block text-[10px]">
-                        Regra de Transição Automática • Equipamentos/Som (Teto {formatBRL(VINY_MUSIC_CEILING)})
+                        Contrato Único Viny • Teto DRE da Música: {formatBRL(VINY_MUSIC_MAX_CEILING)} (10x de {formatBRL(VINY_MONTHLY_MUSIC_FIXED)})
                       </span>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Amortizado até Parc. 8: <strong>{formatBRL(VINY_PRIOR_AMORTIZED)}</strong> • <strong>Parcela 9:</strong> destina <strong>{formatBRL(VINY_INSTALLMENT_9_MUSIC_CAP)}</strong> à Música e o restante (+ Parcelas 10 a {item.totalCount}) ao Centro de Custo <strong>Pessoal</strong>.
+                        Parcelas <strong>{VINY_MUSIC_START_INSTALLMENT} a {VINY_MUSIC_END_INSTALLMENT}</strong> (Fev a Nov): destina exatamente <strong>{formatBRL(VINY_MONTHLY_MUSIC_FIXED)}/mês</strong> para <strong>MÚSICA / CARREIRA</strong> (<em>Equipamentos/Som</em>, teto máx. {formatBRL(VINY_MUSIC_MAX_CEILING)}) • Excedente de cada parcela e demais meses alocados em <strong>PESSOAL (Dívidas / Empréstimo Pessoal)</strong>.
                       </p>
                     </div>
                   </div>

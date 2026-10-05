@@ -8,8 +8,12 @@ import {
 } from 'lucide-react';
 import { getIcon } from '../constants';
 import { ScopeSelector } from './ScopeSelector';
-import { matchesScope } from '../types';
-import { isCareerExpenseTransaction } from '../services/financeAggregator';
+import { matchesScope, Transaction } from '../types';
+import {
+  isCareerExpenseTransaction,
+  getTransactionCareerAndPersonalSplit,
+  DEFAULT_PERSONAL_DEBT_CATEGORY_ID
+} from '../services/financeAggregator';
 
 export const ExpenseAnalysisScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -40,26 +44,49 @@ export const ExpenseAnalysisScreen: React.FC = () => {
     return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   }, [selectedMonth]);
 
-  // Filtered expense transactions for selected month & active scope
+  // Filtered expense transactions for selected month & active scope (respeitando rateio R$ 650/mês e teto R$ 6.500,00 do Viny)
   const monthExpenses = useMemo(() => {
-    return transactions.filter(t => {
-      if (t.type !== 'expense') return false;
-      if (!t.date || !t.date.startsWith(selectedMonth)) return false;
-      if (t.status === 'cancelled') return false;
+    const result: Transaction[] = [];
+
+    transactions.forEach(t => {
+      if (t.type !== 'expense') return;
+      if (!t.date || !t.date.startsWith(selectedMonth)) return;
+      if (t.status === 'cancelled') return;
 
       if (activeScope === 'BUSINESS') {
-        // No relatório da música: inclui automaticamente as parcelas PAGAS da dívida associadas a MÚSICA / CARREIRA
-        // e jamais inclui parcelas marcadas como PESSOAL
-        if (t.debtId && t.status !== 'paid') return false;
-        return isCareerExpenseTransaction(t, debts);
+        if (t.debtId && t.status !== 'paid') return;
+        const { careerAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+        if (careerAmount > 0) {
+          result.push({
+            ...t,
+            amount: careerAmount
+          });
+        }
+        return;
       }
 
       if (activeScope === 'PERSONAL') {
-        return !isCareerExpenseTransaction(t, debts);
+        const { careerAmount, personalAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+        if (personalAmount > 0) {
+          const isSplitDebt = !!t.debtId && careerAmount > 0;
+          result.push({
+            ...t,
+            amount: personalAmount,
+            categoryId: isSplitDebt
+              ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID
+              : (t.debtId && (!t.categoryId || t.categoryId === 'cat_1') ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID : t.categoryId),
+            subcategory: isSplitDebt ? undefined : t.subcategory
+          });
+        }
+        return;
       }
 
-      return matchesScope(t.scope, activeScope);
+      if (matchesScope(t.scope, activeScope)) {
+        result.push(t);
+      }
     });
+
+    return result;
   }, [transactions, debts, selectedMonth, activeScope]);
 
   // Total expense amount

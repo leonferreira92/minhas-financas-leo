@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { matchesScope } from '../../types';
-import { isCareerExpenseTransaction } from '../../services/financeAggregator';
+import { matchesScope, Transaction } from '../../types';
+import {
+  isCareerExpenseTransaction,
+  getTransactionCareerAndPersonalSplit,
+  DEFAULT_PERSONAL_DEBT_CATEGORY_ID
+} from '../../services/financeAggregator';
 import { ArrowDownRight, TrendingDown, Layers, User, Music } from 'lucide-react';
 
 export const TopExpensesCard: React.FC = () => {
@@ -16,15 +20,13 @@ export const TopExpensesCard: React.FC = () => {
 
     transactions.forEach(t => {
       if (t.type !== 'expense' || t.status === 'cancelled' || !t.date || !t.date.startsWith(currentMonthStr)) return;
-      const amt = Number(t.amount) || 0;
-      
-      const isBiz = isCareerExpenseTransaction(t, debts);
-      if (isBiz) {
-        // Para parcelas de dívida da música, apenas as parcelas pagas entram no relatório da carreira
-        if (t.debtId && t.status !== 'paid') return;
-        businessTotal += amt;
-      } else {
-        personalTotal += amt;
+      const { careerAmount, personalAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+
+      if (careerAmount > 0 && (!t.debtId || t.status === 'paid')) {
+        businessTotal += careerAmount;
+      }
+      if (personalAmount > 0) {
+        personalTotal += personalAmount;
       }
     });
 
@@ -42,16 +44,37 @@ export const TopExpensesCard: React.FC = () => {
   }, [transactions, debts, currentMonthStr]);
 
   const topExpenses = useMemo(() => {
-    const monthExpenses = transactions.filter(t => {
-      if (t.type !== 'expense' || t.status === 'cancelled' || !t.date.startsWith(currentMonthStr)) return false;
+    const monthExpenses: Transaction[] = [];
+
+    transactions.forEach(t => {
+      if (t.type !== 'expense' || t.status === 'cancelled' || !t.date || !t.date.startsWith(currentMonthStr)) return;
       if (activeScope === 'BUSINESS') {
-        if (t.debtId && t.status !== 'paid') return false;
-        return isCareerExpenseTransaction(t, debts);
+        if (t.debtId && t.status !== 'paid') return;
+        const { careerAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+        if (careerAmount > 0) {
+          monthExpenses.push({ ...t, amount: careerAmount });
+        }
+        return;
       }
       if (activeScope === 'PERSONAL') {
-        return !isCareerExpenseTransaction(t, debts);
+        const { careerAmount, personalAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+        if (personalAmount > 0) {
+          const isSplitDebt = !!t.debtId && careerAmount > 0;
+          monthExpenses.push({
+            ...t,
+            amount: personalAmount,
+            categoryId: isSplitDebt
+              ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID
+              : (t.debtId && (!t.categoryId || t.categoryId === 'cat_1') ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID : t.categoryId),
+            subcategory: isSplitDebt ? undefined : t.subcategory,
+            scope: 'PERSONAL'
+          });
+        }
+        return;
       }
-      return matchesScope(t.scope, activeScope);
+      if (matchesScope(t.scope, activeScope)) {
+        monthExpenses.push(t);
+      }
     });
 
     const sorted = [...monthExpenses].sort((a, b) => Number(b.amount) - Number(a.amount));

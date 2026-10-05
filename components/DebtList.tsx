@@ -10,7 +10,14 @@ import {
 import { DebtForm } from './DebtForm';
 import { DebtDetail } from './DebtDetail';
 import { ActiveDebtsPanel } from './ActiveDebtsPanel';
-import { isVinyDebtOrTransaction, VINY_MUSIC_CEILING, VINY_INSTALLMENT_9_MUSIC_CAP } from '../services/financeAggregator';
+import {
+  isSomLeoDebtOrTransaction,
+  isVinyDebtOrTransaction,
+  VINY_MUSIC_START_INSTALLMENT,
+  VINY_MUSIC_END_INSTALLMENT,
+  VINY_MONTHLY_MUSIC_FIXED,
+  VINY_MUSIC_MAX_CEILING
+} from '../services/financeAggregator';
 
 export const DebtList = () => {
   const { debts, getDebtProgress } = useFinance();
@@ -22,12 +29,13 @@ export const DebtList = () => {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   const stats = useMemo(() => {
-    const active = debts.filter(d => getDebtProgress(d.id).status === 'active');
-    const paid = debts.filter(d => getDebtProgress(d.id).status === 'paid');
+    const cleanDebts = debts.filter(d => !isSomLeoDebtOrTransaction(d));
+    const active = cleanDebts.filter(d => getDebtProgress(d.id).status === 'active');
+    const paid = cleanDebts.filter(d => getDebtProgress(d.id).status === 'paid');
     
-    const totalDebt = debts.reduce((sum, d) => sum + d.totalAmount, 0);
+    const totalDebt = cleanDebts.reduce((sum, d) => sum + (Number(d.totalAmount) || 0), 0);
+    const totalPaid = cleanDebts.reduce((sum, d) => sum + getDebtProgress(d.id).paid, 0);
     const totalRemaining = active.reduce((sum, d) => sum + getDebtProgress(d.id).remaining, 0);
-    const totalPaid = totalDebt - totalRemaining;
     
     return { 
       active, 
@@ -35,7 +43,7 @@ export const DebtList = () => {
       totalDebt, 
       totalRemaining, 
       totalPaid,
-      progress: totalDebt > 0 ? (totalPaid / totalDebt) * 100 : 0
+      progress: totalDebt > 0 ? Math.min(100, (totalPaid / totalDebt) * 100) : 0
     };
   }, [debts, getDebtProgress]);
 
@@ -157,7 +165,7 @@ export const DebtList = () => {
                           {isVinyDebtOrTransaction(debt) ? (
                             <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
                               <Music size={10} />
-                              <span>Teto Som {formatCurrency(VINY_MUSIC_CEILING)} (Parc. 9: {formatCurrency(VINY_INSTALLMENT_9_MUSIC_CAP)}) → Pessoal</span>
+                              <span>Rateio DRE: {formatCurrency(VINY_MONTHLY_MUSIC_FIXED)}/mês (Teto {formatCurrency(VINY_MUSIC_MAX_CEILING)}) + Pessoal</span>
                             </span>
                           ) : (debt.costCenterMode === 'TOTAL_BUSINESS' || debt.scope === 'BUSINESS') ? (
                             <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">

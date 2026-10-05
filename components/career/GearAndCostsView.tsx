@@ -7,7 +7,11 @@ import {
   PieChart, Tag, Check, X, Search
 } from 'lucide-react';
 import { getLocalDateString } from '../../services/dateUtils';
-import { isCareerExpenseTransaction, resolveCareerSubcategoryMeta } from '../../services/financeAggregator';
+import {
+  isCareerExpenseTransaction,
+  resolveCareerSubcategoryMeta,
+  getTransactionCareerAndPersonalSplit
+} from '../../services/financeAggregator';
 
 interface Props {
   shows: Show[];
@@ -120,16 +124,18 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
       // Para lançamentos de dívida/parcelamento:
       // 1. Apenas parcelas PAGAS entram no relatório da música
       // 2. Parcelas marcadas como PESSOAL jamais entram no relatório da música
+      // 3. No contrato do Viny, respeita o teto de R$ 650,00/mês e R$ 6.500,00 acumulado
       if (t.debtId) {
         if (t.status !== 'paid') return;
-        if (!isCareerExpenseTransaction(t, debts)) return;
+        const { careerAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+        if (careerAmount <= 0) return;
 
         const parentDebt = debts.find(d => d.id === t.debtId);
         const subLabel = t.subcategory || parentDebt?.musicSubcategory || 'Equipamentos / Instrumentos';
         list.push({
           id: `mcost_tx_${t.id}`,
           title: t.description || parentDebt?.name || 'Parcela de Dívida (Música)',
-          amount: Number(t.amount) || 0,
+          amount: careerAmount,
           date: t.date || getLocalDateString(),
           category: inferMusicCategory(t),
           showId: t.showId,

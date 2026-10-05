@@ -46,6 +46,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_14', name: 'Internet / Celular', type: 'expense', color: '#0ea5e9', icon: 'Wifi', classification: 'essential', scope: 'PERSONAL' },
   { id: 'cat_26', name: 'Seguros', type: 'expense', color: '#64748b', icon: 'Umbrella', classification: 'essential', scope: 'PERSONAL' },
   { id: 'cat_27', name: 'Impostos / Taxas', type: 'expense', color: '#94a3b8', icon: 'Receipt', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_dividas', name: 'Dívidas / Empréstimo Pessoal', type: 'expense', color: '#6366f1', icon: 'CreditCard', classification: 'essential', scope: 'PERSONAL' },
 
   // --- ESTILO DE VIDA / PESSOAL (30%) ---
   { id: 'cat_5', name: 'Restaurantes', type: 'expense', color: '#8b5cf6', icon: 'Utensils', classification: 'personal', scope: 'PERSONAL' },

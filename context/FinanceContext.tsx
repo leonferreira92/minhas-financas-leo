@@ -4,7 +4,13 @@ import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, S
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
-import { resolveDebtInstallmentCostCenter, resolveCareerSubcategoryMeta } from '../services/financeAggregator';
+import {
+  resolveDebtInstallmentCostCenter,
+  resolveCareerSubcategoryMeta,
+  resolveDefaultPersonalDebtCategoryId,
+  DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+  extractInstallmentNumber
+} from '../services/financeAggregator';
 import {
   normalizeShowFinancials,
   syncShowWithTransactions,
@@ -348,7 +354,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // 5. Escutador em tempo real: Categorias Customizadas
     const unsubCategories = subscribeToUserCategories(uid, (cloudCategories) => {
       if (cloudCategories && cloudCategories.length > 0) {
-        const cleanCategories = deduplicateItemsById(cloudCategories);
+        let cleanCategories = deduplicateItemsById(cloudCategories);
+        if (!cleanCategories.some(c => c.id === DEFAULT_PERSONAL_DEBT_CATEGORY_ID)) {
+          cleanCategories = [
+            ...cleanCategories,
+            {
+              id: DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+              name: 'Dívidas / Empréstimo Pessoal',
+              type: 'expense',
+              color: '#6366f1',
+              icon: 'CreditCard',
+              classification: 'essential',
+              scope: 'PERSONAL'
+            }
+          ];
+        }
         setCategories(cleanCategories);
         StorageService.saveCategories(cleanCategories);
       }
@@ -635,6 +655,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       catMusicos.type = 'expense';
     }
 
+    // Garantir categoria "Dívidas / Empréstimo Pessoal" (cat_dividas) para parcelas pessoais
+    let catDividas = storedCategories.find(c => c.id === DEFAULT_PERSONAL_DEBT_CATEGORY_ID);
+    if (!catDividas) {
+      catDividas = {
+        id: DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+        name: 'Dívidas / Empréstimo Pessoal',
+        type: 'expense',
+        color: '#6366f1',
+        icon: 'CreditCard',
+        classification: 'essential',
+        scope: 'PERSONAL'
+      };
+      storedCategories.push(catDividas);
+    } else {
+      catDividas.scope = 'PERSONAL';
+      catDividas.type = 'expense';
+    }
+
     // Remover categorias duplicadas
     let finalCategories = deduplicateItemsById(
       storedCategories.filter(c => !duplicateCatIds.has(c.id) && !duplicateEquipCatIds.has(c.id))
@@ -673,19 +711,22 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       }
 
-      // Transações de Equipamentos -> registrar como Saída da Empresa (Módulo Música)
+      // Transações avulsas de Equipamentos (fora de dívidas) -> registrar como Saída da Empresa (Módulo Música)
       if (
-        t.categoryId === 'cat_equipamentos' || 
-        descLower.includes('equipamento') || 
-        descLower.includes('pedal') || 
-        descLower.includes('amplificador') || 
-        descLower.includes('instrumento') || 
-        descLower.includes('mesa de som') || 
-        descLower.includes('mesa') || 
-        descLower.includes('luthier') || 
-        descLower.includes('violao') || 
-        descLower.includes('violão') || 
-        descLower.includes('guitarra')
+        !t.debtId &&
+        (
+          t.categoryId === 'cat_equipamentos' || 
+          descLower.includes('equipamento') || 
+          descLower.includes('pedal') || 
+          descLower.includes('amplificador') || 
+          descLower.includes('instrumento') || 
+          descLower.includes('mesa de som') || 
+          descLower.includes('mesa') || 
+          descLower.includes('luthier') || 
+          descLower.includes('violao') || 
+          descLower.includes('violão') || 
+          descLower.includes('guitarra')
+        )
       ) {
         if (t.type === 'expense') {
           if (newCatId !== 'cat_equipamentos' && !finalCategories.some(c => c.id === newCatId && c.scope === 'BUSINESS')) {
@@ -1726,8 +1767,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         mode !== 'TOTAL_PERSONAL'
           ? debtData.musicSubcategory || 'Equipamentos / Instrumentos'
           : undefined,
-      categoryId: categoryId || debtData.categoryId || 'cat_1',
-      personalCategoryId: personalCategoryId || debtData.personalCategoryId || categoryId || 'cat_1',
+      categoryId:
+        categoryId ||
+        debtData.categoryId ||
+        resolveDefaultPersonalDebtCategoryId(categories, personalCategoryId || debtData.personalCategoryId),
+      personalCategoryId: resolveDefaultPersonalDebtCategoryId(
+        categories,
+        personalCategoryId || debtData.personalCategoryId || categoryId || debtData.categoryId
+      ),
       accountId: accountId || debtData.accountId,
       installmentAmount: Number(installmentValue.toFixed(2))
     };
@@ -1827,15 +1874,51 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         : mode === 'INSTALLMENT_RANGE'
         ? 'BOTH'
         : 'PERSONAL';
+    mergedDebt.personalCategoryId = resolveDefaultPersonalDebtCategoryId(
+      categories,
+      mergedDebt.personalCategoryId || mergedDebt.categoryId
+    );
+
+    const debtTxs = transactions.filter(t => t.debtId === id && t.status !== 'cancelled');
+    const paidReal = Math.round(
+      debtTxs
+        .filter(t => t.status === 'paid')
+        .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) * 100
+    ) / 100;
+
+    const pendingTxs = debtTxs
+      .filter(t => t.status === 'pending')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+    const totalContract = Number(mergedDebt.totalAmount) || 0;
+    const remainingToPay = Math.max(0, Math.round((totalContract - paidReal) * 100) / 100);
+    const totalChanged = Math.abs((Number(existingDebt.totalAmount) || 0) - totalContract) > 0.009;
+
+    const pendingAmountsMap = new Map<string, number>();
+    if (pendingTxs.length > 0 && totalChanged) {
+      const basePending = Math.floor((remainingToPay / pendingTxs.length) * 100) / 100;
+      const diffPending = Math.round((remainingToPay - basePending * pendingTxs.length) * 100) / 100;
+      pendingTxs.forEach((pt, idx) => {
+        const isLast = idx === pendingTxs.length - 1;
+        pendingAmountsMap.set(
+          pt.id,
+          isLast ? Math.round((basePending + diffPending) * 100) / 100 : basePending
+        );
+      });
+      mergedDebt.installmentAmount = basePending;
+    }
 
     const updatedDebts = debts.map(d => (d.id === id ? mergedDebt : d));
     const updatedTxs = transactions.map(t => {
       if (t.debtId !== id) return t;
-      const instNum = t.installmentNumber ?? 1;
-      const instCC = resolveDebtInstallmentCostCenter(mergedDebt, instNum);
-      const isDownPayment = instNum === 0 || (t.description || '').toLowerCase().includes('entrada inicial');
+      const instNum = extractInstallmentNumber(t, debtTxs);
+      const nextAmount = pendingAmountsMap.has(t.id) ? pendingAmountsMap.get(t.id)! : t.amount;
+      const instCC = resolveDebtInstallmentCostCenter(mergedDebt, instNum, nextAmount);
+      const isDownPayment = instNum === 0 || (t.description || '').toLowerCase().includes('entrada');
       return {
         ...t,
+        amount: nextAmount,
+        installmentNumber: instNum,
         description: isDownPayment
           ? `Entrada Inicial - ${mergedDebt.name}`
           : `${mergedDebt.name} (${instNum}/${mergedDebt.installmentCount})`,
@@ -1886,10 +1969,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       nextCategoryId = meta.categoryId;
       nextSubcategory = meta.subcategory;
     } else {
-      const businessCatIds = ['cat_equipamentos', 'cat_logistica_shows', 'cat_producao_shows', 'cat_marketing', 'cat_33'];
-      nextCategoryId =
-        parentDebt?.personalCategoryId ||
-        (!businessCatIds.includes(targetTx.categoryId) ? targetTx.categoryId : 'cat_1');
+      nextCategoryId = resolveDefaultPersonalDebtCategoryId(
+        categories,
+        parentDebt?.personalCategoryId || targetTx.categoryId
+      );
       nextSubcategory = undefined;
     }
 
@@ -1919,22 +2002,29 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const getDebtProgress = (debtId: string) => {
-    const txs = transactions.filter(t => t.debtId === debtId);
-    if (txs.length === 0) return { paid: 0, remaining: 0, status: 'active' as DebtStatus, progress: 0, totalReal: 0 };
-    
-    const paidPrincipal = txs.filter(t => t.status === 'paid')
-        .reduce((s, t) => s + (Number(t.amount) - (Number(t.interest) || 0)), 0);
-    
     const debt = debts.find(d => d.id === debtId);
-    const totalContract = debt ? Number(debt.totalAmount) : 0;
-    
-    const remaining = Math.max(0, totalContract - paidPrincipal);
-    
+    const totalContract = debt ? Math.max(0, Number(debt.totalAmount) || 0) : 0;
+    const txs = transactions.filter(t => t.debtId === debtId && t.status !== 'cancelled');
+
+    // Total Amortizado Real = soma exata de todas as parcelas/entradas com status === 'paid'
+    const paidPrincipal = Math.round(
+      txs
+        .filter(t => t.status === 'paid')
+        .reduce((s, t) => s + (Math.abs(Number(t.amount) || 0) - Math.max(0, Number(t.interest) || 0)), 0) * 100
+    ) / 100;
+
+    // Recálculo Atômico do Saldo Devedor: (Valor Total - Total Amortizado Real)
+    const remaining = Math.max(0, Math.round((totalContract - paidPrincipal) * 100) / 100);
+
+    if (txs.length === 0 && totalContract === 0) {
+      return { paid: 0, remaining: 0, status: 'active' as DebtStatus, progress: 0, totalReal: 0 };
+    }
+
     return { 
       paid: paidPrincipal, 
       remaining, 
-      status: remaining <= 0.1 ? 'paid' : 'active' as DebtStatus, 
-      progress: totalContract > 0 ? (paidPrincipal / totalContract) * 100 : 0,
+      status: remaining <= 0.05 && totalContract > 0 ? ('paid' as DebtStatus) : ('active' as DebtStatus), 
+      progress: totalContract > 0 ? Math.min(100, (paidPrincipal / totalContract) * 100) : 0,
       totalReal: totalContract 
     };
   };

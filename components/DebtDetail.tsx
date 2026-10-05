@@ -11,7 +11,14 @@ import {
 import { Transaction } from '../types';
 import { parseCurrencyInput } from '../constants';
 import { DebtForm } from './DebtForm';
-import { resolveDebtInstallmentCostCenter } from '../services/financeAggregator';
+import {
+  resolveDebtInstallmentCostCenter,
+  isVinyDebtOrTransaction,
+  calculateVinyCostCenterSummary,
+  buildVinyAllocationMap,
+  VINY_MUSIC_MAX_CEILING,
+  VINY_MONTHLY_MUSIC_FIXED
+} from '../services/financeAggregator';
 
 interface Props {
   debtId: string;
@@ -36,6 +43,7 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   const debt = debts.find(d => d.id === debtId);
+  const isViny = useMemo(() => isVinyDebtOrTransaction(debt), [debt]);
   
   useEffect(() => {
     if (debt) {
@@ -46,10 +54,21 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
   const debtTransactions = useMemo(() => 
     transactions
       .filter(t => t.debtId === debtId)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+      .sort((a, b) => {
+        const aIsDown = a.installmentNumber === 0 || (a.description || '').toLowerCase().includes('entrada');
+        const bIsDown = b.installmentNumber === 0 || (b.description || '').toLowerCase().includes('entrada');
+        if (aIsDown && !bIsDown) return -1;
+        if (!aIsDown && bIsDown) return 1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      }),
   [transactions, debtId]);
 
-  // Estatísticas de Centro de Custo desta Dívida
+  const vinyMap = useMemo(
+    () => (isViny && debt ? buildVinyAllocationMap(debtTransactions, [debt]) : new Map()),
+    [isViny, debt, debtTransactions]
+  );
+
+  // Estatísticas de Centro de Custo desta Dívida (com teto de R$ 6.500,00 garantido no Viny)
   const costCenterSummary = useMemo(() => {
     if (!debt) {
       return {
@@ -58,6 +77,17 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
         musicCount: 0,
         personalPaidTotal: 0,
         personalCount: 0
+      };
+    }
+
+    if (isViny) {
+      const vinySummary = calculateVinyCostCenterSummary(debtTransactions, debt.totalAmount);
+      return {
+        musicPaidTotal: vinySummary.musicPaidTotal,
+        musicPendingTotal: vinySummary.musicPendingTotal,
+        musicCount: vinySummary.musicCount,
+        personalPaidTotal: vinySummary.personalPaidTotal,
+        personalCount: vinySummary.personalCount
       };
     }
 
@@ -91,7 +121,7 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
       personalPaidTotal,
       personalCount
     };
-  }, [debt, debtTransactions]);
+  }, [debt, isViny, debtTransactions]);
 
   if (!debt) return null;
 
@@ -244,7 +274,7 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
                 <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-purple-200/50 dark:border-purple-800/40">
                   <div>
                     <span className="text-[9px] font-bold uppercase text-slate-400 block">
-                      Pago na Música (DRE)
+                      {isViny ? `Pago na Música (Teto ${formatCurrency(VINY_MUSIC_MAX_CEILING)})` : 'Pago na Música (DRE)'}
                     </span>
                     <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
                       {formatCurrency(costCenterSummary.musicPaidTotal)}
@@ -306,7 +336,7 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
                 <Clock size={14} className="mr-2" /> Cronograma de Parcelas
              </h3>
              <span className="text-[9px] font-black text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-1 rounded-lg uppercase tracking-widest">
-                Toque no selo p/ alternar Música / Pessoal
+                {isViny ? `Teto DRE Música: ${formatCurrency(VINY_MUSIC_MAX_CEILING)}` : 'Toque no selo p/ alternar Música / Pessoal'}
              </span>
           </div>
 
@@ -315,10 +345,14 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
              {debtTransactions.map((t) => {
                const isTPaid = t.status === 'paid';
                const isOverdue = !isTPaid && new Date(t.date) < new Date();
-               const effectiveScope: 'BUSINESS' | 'PERSONAL' =
-                 t.scope === 'BUSINESS' || t.scope === 'PERSONAL'
-                   ? t.scope
-                   : resolveDebtInstallmentCostCenter(debt, t.installmentNumber ?? 1).scope;
+               const vinyAlloc = isViny ? vinyMap.get(t.id) : undefined;
+               const effectiveScope: 'BUSINESS' | 'PERSONAL' = vinyAlloc
+                 ? vinyAlloc.musicAmount > 0
+                   ? 'BUSINESS'
+                   : 'PERSONAL'
+                 : t.scope === 'BUSINESS' || t.scope === 'PERSONAL'
+                 ? t.scope
+                 : resolveDebtInstallmentCostCenter(debt, t.installmentNumber ?? 1).scope;
                const isMusicInstallment = effectiveScope === 'BUSINESS';
                const subcatLabel =
                  t.subcategory || debt.musicSubcategory || 'Equipamentos / Instrumentos';
@@ -385,12 +419,18 @@ export const DebtDetail: React.FC<Props> = ({ debtId, onClose }) => {
                             {isMusicInstallment ? (
                               <>
                                 <Music size={10} />
-                                <span className="truncate max-w-[140px]">Música • {subcatLabel}</span>
+                                <span className="truncate max-w-[200px]">
+                                  {vinyAlloc
+                                    ? vinyAlloc.personalAmount > 0
+                                      ? `Música ${formatCurrency(vinyAlloc.musicAmount)} + Pessoal ${formatCurrency(vinyAlloc.personalAmount)}`
+                                      : `Música ${formatCurrency(vinyAlloc.musicAmount)} • Som`
+                                    : `Música • ${subcatLabel}`}
+                                </span>
                               </>
                             ) : (
                               <>
                                 <User size={10} />
-                                <span>Pessoal</span>
+                                <span>Pessoal • Dívidas</span>
                               </>
                             )}
                           </button>
