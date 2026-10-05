@@ -609,9 +609,9 @@ export const ExtratoScreen: React.FC = () => {
                         }`}
                       >
                         {/* Lado Esquerdo: Ícone da Categoria e Detalhes */}
-                        <div className="flex items-center space-x-3 min-w-0">
+                        <div className="flex items-start space-x-3.5 min-w-0 pr-3 flex-1">
                           <div 
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner"
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner mt-0.5"
                             style={{ 
                               backgroundColor: `${cat?.color || '#3b82f6'}20`, 
                               color: cat?.color || '#3b82f6' 
@@ -620,27 +620,36 @@ export const ExtratoScreen: React.FC = () => {
                             <Icon size={18} />
                           </div>
 
-                          <div className="min-w-0">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs font-bold text-white truncate group-hover:text-blue-400 transition">
-                                {t.description || 'Sem descrição'}
-                              </span>
+                          <div className="min-w-0 flex-1 flex flex-col gap-2">
+                            <span className="transaction-item-title text-xs sm:text-sm font-bold text-white block leading-relaxed break-words group-hover:text-blue-400 transition">
+                              {t.description || 'Sem descrição'}
+                            </span>
+
+                            <div className="transaction-badges-row flex flex-wrap items-center gap-2">
                               {isPending && (
-                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-[#fcca00] border border-amber-500/30 uppercase shrink-0">
+                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 uppercase shrink-0">
                                   Pendente
                                 </span>
                               )}
                               {t.showId && (
-                                <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase shrink-0">
+                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-purple-600 text-white border border-purple-400/40 uppercase shrink-0">
                                   Show
                                 </span>
                               )}
-                            </div>
-
-                            <div className="flex items-center space-x-2 text-[10px] text-zinc-400 mt-0.5">
-                              <span className="truncate">{cat?.name || 'Geral'}</span>
-                              <span aria-hidden="true">·</span>
-                              <span className="truncate text-zinc-300 font-medium">{acc?.name || 'Conta Padrão'}</span>
+                              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-md border uppercase shrink-0 ${
+                                t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId)
+                                  ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                                  : 'bg-zinc-800 text-zinc-200 border-zinc-700'
+                              }`}>
+                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId) ? 'Música' : 'Pessoal'}
+                              </span>
+                              <span className="text-[10px] text-zinc-400 truncate">
+                                {cat?.name || 'Geral'}
+                              </span>
+                              <span aria-hidden="true" className="text-zinc-600">·</span>
+                              <span className="text-[10px] text-zinc-300 font-medium truncate">
+                                {acc?.name || 'Conta Padrão'}
+                              </span>
                             </div>
                           </div>
                         </div>

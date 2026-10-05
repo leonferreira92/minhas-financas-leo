@@ -14,6 +14,7 @@ import {
 import { Transaction, matchesScope } from '../types';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
+import { TransactionItem } from './ui/TransactionItem';
 
 export type PeriodPreset = 'this_month' | 'prev_month' | 'next_month' | 'this_year' | 'custom';
 export type TypeFilter = 'all' | 'income' | 'expense';
@@ -411,11 +412,11 @@ export const TransactionList: React.FC = () => {
                 onClick={() => handlePeriodPresetChange(preset.id as PeriodPreset)}
                 className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-95 flex items-center space-x-1 border ${
                   isActive
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 border-slate-200/60 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-emerald-500 text-black border-emerald-500 shadow-sm'
+                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                {Icon && <Icon size={12} />}
+                {Icon && <Icon size={12} className={isActive ? 'text-black' : ''} />}
                 <span>{preset.label}</span>
               </button>
             );
@@ -429,8 +430,8 @@ export const TransactionList: React.FC = () => {
               onClick={() => setActiveScope('ALL')}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 ${
                 activeScope === 'ALL'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                  ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs'
+                  : 'text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white'
               }`}
             >
               Tudo
@@ -439,11 +440,11 @@ export const TransactionList: React.FC = () => {
               onClick={() => setActiveScope('PERSONAL')}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1.5 ${
                 activeScope === 'PERSONAL'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-indigo-600'
+                  ? 'bg-emerald-500 text-black shadow-xs'
+                  : 'text-slate-500 dark:text-slate-300 hover:text-emerald-500'
               }`}
             >
-              <User size={13} />
+              <User size={13} className={activeScope === 'PERSONAL' ? 'text-black' : ''} />
               <span>Apenas Pessoal</span>
             </button>
             <button
@@ -451,10 +452,10 @@ export const TransactionList: React.FC = () => {
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1.5 ${
                 activeScope === 'BUSINESS'
                   ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-purple-600'
+                  : 'text-slate-500 dark:text-slate-300 hover:text-purple-400'
               }`}
             >
-              <Music size={13} />
+              <Music size={13} className={activeScope === 'BUSINESS' ? 'text-white' : ''} />
               <span>Apenas Música</span>
             </button>
           </div>
@@ -804,193 +805,26 @@ export const TransactionList: React.FC = () => {
                 </div>
 
                 {/* Cards Modulares de Lançamento */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {items.map((t) => {
                     const category = categories.find(c => c.id === t.categoryId);
-                    const Icon = category ? getIcon(category.icon) : ArrowDownCircle;
-                    const isExpense = t.type === 'expense' || t.type === 'goal_deposit';
-                    const isIncome = t.type === 'income' || t.type === 'goal_withdraw';
-                    const isPending = t.status === 'pending';
                     const account = accounts.find(a => a.id === t.accountId);
                     const isHighlighted = t.id === highlightId;
 
                     return (
-                      <div
+                      <TransactionItem
                         key={t.id}
-                        id={`tx-${t.id}`}
-                        onClick={() => setEditingTransaction(t)}
-                        className={`group p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                          isHighlighted
-                            ? 'ring-2 ring-emerald-500 shadow-lg bg-emerald-500/10 border-emerald-500/40'
-                            : isPending
-                            ? 'bg-[#18181b] border-amber-500/30 hover:border-amber-500/50'
-                            : 'bg-[#18181b] border-zinc-800/80 hover:border-zinc-700 hover:shadow-xs'
-                        }`}
-                      >
-                        {/* Lado Esquerdo: Ícone + Título + Tags */}
-                        <div className="flex items-center space-x-3.5 min-w-0 pr-1 flex-1">
-                          
-                          {/* Ícone Indicativo */}
-                          <div className="relative shrink-0">
-                            <div 
-                              className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-xs transition-transform group-hover:scale-105 ${
-                                isExpense 
-                                  ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30' 
-                                  : isIncome 
-                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
-                                  : 'bg-zinc-800 text-zinc-300 border border-zinc-700/60'
-                              }`}
-                            >
-                              {t.type === 'transfer' ? (
-                                <ArrowRightLeft size={19} />
-                              ) : t.type === 'goal_deposit' || t.type === 'goal_withdraw' ? (
-                                <PiggyBank size={19} />
-                              ) : (
-                                <Icon size={19} style={{ color: category?.color || '#22c55e' }} />
-                              )}
-                            </div>
-
-                            {/* Badge Mini Indicador de Status */}
-                            {isPending && (
-                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-zinc-900 flex items-center justify-center shadow-xs" title="Lançamento Agendado/Pendente">
-                                <Clock size={8} className="text-zinc-950 font-black" strokeWidth={3} />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Detalhes do Lançamento */}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center space-x-2">
-                              <h4 className="text-xs sm:text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
-                                {t.description || 'Sem descrição'}
-                              </h4>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                              {/* Categoria */}
-                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
-                                {t.type === 'transfer' ? 'Transferência' : category ? category.name : 'Geral'}
-                              </span>
-
-                              {/* Badge Módulo: Pessoal vs Música */}
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${
-                                t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos'
-                                  ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                                  : 'bg-zinc-800 text-zinc-300 border-zinc-700'
-                              }`}>
-                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' ? '🎸 Música' : '👤 Pessoal'}
-                              </span>
-
-                              {/* Badge Efetivado / Agendado */}
-                              {isPending ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
-                                  <Clock size={9} className="mr-1 inline" /> Agendado
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
-                                  <Check size={9} strokeWidth={3} className="mr-1 inline" /> Efetivado
-                                </span>
-                              )}
-
-                              {/* Tag Show com Atalho Direto */}
-                              {t.showId && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/shows?showId=${t.showId}`);
-                                  }}
-                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/70 dark:hover:bg-purple-900/80 text-purple-700 dark:text-purple-300 border border-purple-300/50 dark:border-purple-800 uppercase tracking-wider transition active:scale-95"
-                                  title="Abrir detalhes deste show na agenda"
-                                >
-                                  <Music size={9} className="mr-1" /> Show
-                                </button>
-                              )}
-
-                              {/* Tag Recorrente / Fixa */}
-                              {t.isFixed && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 uppercase">
-                                  <Repeat size={8} className="mr-0.5" /> Fixa
-                                </span>
-                              )}
-
-                              {/* Tag Parcelamento */}
-                              {t.installmentNumber && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 uppercase">
-                                  {t.installmentNumber}/{t.installmentTotal}
-                                </span>
-                              )}
-
-                              {/* Conta Bancária */}
-                              {account && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 truncate max-w-[120px]">
-                                  <Wallet size={8} className="mr-1 shrink-0" /> {account.name}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Lado Direito: Valor + Atalhos de Ação Rápida */}
-                        <div className="flex items-center space-x-2.5 shrink-0">
-                          
-                          {/* Valor em Destaque */}
-                          <div className="text-right">
-                            <span className={`text-xs sm:text-base font-black tabular-nums block ${
-                              isExpense 
-                                ? 'text-slate-900 dark:text-white' 
-                                : isIncome 
-                                ? 'text-emerald-600 dark:text-emerald-400' 
-                                : 'text-indigo-600 dark:text-indigo-400'
-                            }`}>
-                              {isExpense ? '- ' : isIncome ? '+ ' : ''}{!isBlurred ? formatCurrency(Math.abs(t.amount)) : '••••••'}
-                            </span>
-                            <span className="text-[9px] text-slate-400 block">
-                              {isPending ? 'Projetado' : 'Liquidado'}
-                            </span>
-                          </div>
-
-                          {/* Botão de 1 Clique para Alternar Status (Agendado <-> Efetivado) */}
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleStatus(e, t)}
-                            className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all active:scale-90 shadow-xs shrink-0 ${
-                              isPending
-                                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 hover:bg-emerald-500 hover:text-white hover:border-emerald-500'
-                                : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-xs'
-                            }`}
-                            title={isPending ? "Clique para marcar como EFETIVADO (Recebido/Pago)" : "Clique para marcar como AGENDADO (Pendente)"}
-                          >
-                            {isPending ? (
-                              <Clock size={16} />
-                            ) : (
-                              <Check size={17} strokeWidth={3} />
-                            )}
-                          </button>
-
-                          {/* Botão Editar / Opções */}
-                          <button
-                            type="button"
-                            onClick={() => setEditingTransaction(t)}
-                            className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition hidden sm:flex"
-                            title="Editar Lançamento"
-                          >
-                            <Edit3 size={15} />
-                          </button>
-
-                          {/* Botão Excluir Lançamento */}
-                          <button
-                            type="button"
-                            onClick={(e) => handleDelete(e, t.id)}
-                            className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition flex"
-                            title="Excluir Lançamento"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-
-                        </div>
-
-                      </div>
+                        transaction={t}
+                        category={category}
+                        account={account}
+                        isHighlighted={isHighlighted}
+                        isBlurred={isBlurred}
+                        formatCurrency={formatCurrency}
+                        onEdit={(tx) => setEditingTransaction(tx)}
+                        onToggleStatus={handleToggleStatus}
+                        onDelete={handleDelete}
+                        onOpenShow={(showId) => navigate(`/shows?showId=${showId}`)}
+                      />
                     );
                   })}
                 </div>

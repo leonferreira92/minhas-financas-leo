@@ -500,9 +500,33 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const colorKey = settings.primaryColor || 'lime';
     const palette = APP_THEMES[colorKey] || APP_THEMES['lime'];
     const root = document.documentElement;
+
+    const hexToRgbTuple = (hex: string): [number, number, number] => {
+      const clean = hex.replace('#', '').trim();
+      const num = parseInt(clean, 16);
+      if (isNaN(num)) return [34, 197, 94];
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    };
+
+    const getContrastColor = (hex: string): string => {
+      const [r, g, b] = hexToRgbTuple(hex).map(v => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+      });
+      const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      return luminance > 0.35 ? '#000000' : '#FFFFFF';
+    };
+
     Object.keys(palette).forEach(shade => {
-      root.style.setProperty(`--color-primary-${shade}`, palette[shade]);
+      const hex = palette[shade];
+      const [r, g, b] = hexToRgbTuple(hex);
+      root.style.setProperty(`--color-primary-${shade}`, hex);
+      root.style.setProperty(`--color-primary-${shade}-rgb`, `${r} ${g} ${b}`);
     });
+
+    if (palette[600]) {
+      root.style.setProperty('--color-primary-contrast', getContrastColor(palette[600]));
+    }
   }, [settings.primaryColor]);
 
   const refreshData = () => {

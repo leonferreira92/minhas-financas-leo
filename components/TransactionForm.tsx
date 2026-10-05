@@ -13,6 +13,7 @@ import { getIcon } from '../constants';
 import { parseCurrencyInput } from '../services/financeAggregator';
 import { GeminiService } from '../services/geminiService';
 import { CalendarModal } from './CalendarModal';
+import { CategorySelector } from './ui/CategorySelector';
 import { generateUUID } from '../services/uuidHelper';
 import { getLocalDateString } from '../services/dateUtils';
 
@@ -535,7 +536,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
   // Theme styling based on active transaction type
   const activeColor = type === 'expense' ? 'rose' : type === 'income' ? 'emerald' : 'blue';
-  const activeBg = type === 'expense' ? 'bg-rose-500' : type === 'income' ? 'bg-emerald-500' : 'bg-blue-500';
+  const activeBg = type === 'expense' ? 'bg-rose-600' : type === 'income' ? 'bg-emerald-500' : 'bg-blue-600';
+  const activeBtnText = type === 'income' ? 'text-black' : 'text-white';
   const activeText = type === 'expense' ? 'text-rose-600 dark:text-rose-400' : type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400';
 
   return (
@@ -546,32 +548,32 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
           {/* ========================================== */}
           {/* 1. SELETOR DO TIPO DE TRANSAÇÃO (TOP BAR)  */}
           {/* ========================================== */}
-          <div className="px-6 pt-5 pb-3 flex justify-between items-center z-20 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl w-full max-w-[280px]">
+          <div className="px-6 pt-5 pb-3 flex justify-between items-center gap-3 z-20 border-b border-slate-100 dark:border-slate-800/80 shrink-0">
+            <div className="flex bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl flex-1 mr-2">
               <button 
                 type="button"
                 onClick={() => { setType('expense'); setUserManuallySetCategory(false); }} 
-                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'expense' ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'expense' ? 'bg-rose-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <ArrowDownRight size={14} strokeWidth={2.5} />
+                <ArrowDownRight size={14} strokeWidth={2.5} className={type === 'expense' ? 'text-white' : ''} />
                 <span>Despesa</span>
               </button>
 
               <button 
                 type="button"
                 onClick={() => { setType('income'); setUserManuallySetCategory(false); }} 
-                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'income' ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'income' ? 'bg-emerald-500 text-black shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <ArrowUpRight size={14} strokeWidth={2.5} />
+                <ArrowUpRight size={14} strokeWidth={2.5} className={type === 'income' ? 'text-black' : ''} />
                 <span>Receita</span>
               </button>
 
               <button 
                 type="button"
                 onClick={() => { setType('transfer'); if (!description) setDescription('Transferência'); }} 
-                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'transfer' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'transfer' ? 'bg-blue-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <ArrowRightLeft size={14} strokeWidth={2.5} />
+                <ArrowRightLeft size={14} strokeWidth={2.5} className={type === 'transfer' ? 'text-white' : ''} />
                 <span>Transf.</span>
               </button>
             </div>
@@ -579,44 +581,44 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             <button 
               type="button"
               onClick={onClose} 
-              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-95 ml-2"
+              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-95 shrink-0"
               title="Fechar"
             >
-              <X size={20} className="text-slate-500" />
+              <X size={20} className="text-slate-500 dark:text-slate-300" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pb-36">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-36">
             
             {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO */}
-            <div className="px-6 pt-3">
-              <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center justify-between border border-slate-200/60 dark:border-slate-700/60">
+            <div className="px-6 pt-2">
+              <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/60 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => {
                     setScope('PERSONAL');
                     setSelectedShowId('');
                   }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
+                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
                     scope === 'PERSONAL'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                      ? 'bg-emerald-500 text-black shadow-sm'
+                      : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <User size={13} />
+                  <User size={13} className={scope === 'PERSONAL' ? 'text-black' : ''} />
                   <span>👤 Pessoal</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setScope('BUSINESS')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
+                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
                     scope === 'BUSINESS'
-                      ? 'bg-purple-600 text-white shadow-xs'
-                      : 'text-slate-500 hover:text-purple-600'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-slate-500 dark:text-slate-300 hover:text-purple-500 dark:hover:text-purple-300'
                   }`}
                 >
-                  <Music size={13} />
+                  <Music size={13} className={scope === 'BUSINESS' ? 'text-white' : ''} />
                   <span>🎸 Músico / Carreira</span>
                 </button>
               </div>
@@ -683,13 +685,13 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             {/* ========================================== */}
             {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA)   */}
             {/* ========================================== */}
-            <div className="flex flex-col items-center justify-center pt-5 pb-3 relative px-6">
-              <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>
+            <div className="modal-amount-container mx-6 mt-4 mb-3 py-5 px-4 rounded-3xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800 flex flex-col items-center justify-center relative scroll-mt-6">
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 block ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>
                 {type === 'expense' ? 'Valor da Despesa' : type === 'income' ? 'Valor da Receita' : 'Valor da Transferência'}
               </span>
 
-              <div className="flex items-baseline justify-center relative w-full">
-                <span className={`text-3xl font-black mr-1.5 ${amount ? activeText : 'text-slate-300 dark:text-slate-700'}`}>
+              <div className="flex items-center justify-center relative w-full py-1.5 overflow-visible">
+                <span className={`text-2xl sm:text-3xl font-black mr-2 shrink-0 leading-normal ${amount ? activeText : 'text-slate-300 dark:text-slate-700'}`}>
                   R$
                 </span>
                 <input 
@@ -698,7 +700,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                   min="0" 
                   value={amount} 
                   onChange={(e) => setAmount(e.target.value)} 
-                  className={`w-full bg-transparent text-center text-5xl sm:text-6xl font-black outline-none placeholder:text-slate-200 dark:placeholder:text-slate-800 transition-colors ${activeText}`}
+                  className={`modal-amount-input w-full bg-transparent text-center text-4xl sm:text-5xl font-black leading-normal py-2 outline-none placeholder:text-slate-200 dark:placeholder:text-slate-800 transition-colors scroll-mt-8 ${activeText}`}
                   placeholder="0,00" 
                   required 
                   autoFocus={!transaction}
@@ -801,7 +803,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                       <button
                         type="button"
                         onClick={() => setIsFixed(!isFixed)}
-                        className={`px-2.5 py-1 rounded-lg font-black uppercase text-[9px] border transition ${isFixed ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-indigo-600 border-indigo-300'}`}
+                        className={`px-2.5 py-1 rounded-lg font-black uppercase text-[9px] border transition ${isFixed ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700'}`}
                       >
                         {isFixed ? '✓ Recorrente' : '+ Marcar Recorrente'}
                       </button>
@@ -831,29 +833,14 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                   </div>
 
                   {/* Chips Rápidos Horizontal */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {topCategories.map(cat => {
-                      const Icon = getIcon(cat.icon);
-                      const isSelected = categoryId === cat.id;
-
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => handleSelectCategory(cat.id)}
-                          className={`p-3 rounded-2xl border-2 flex items-center space-x-2.5 transition-all text-left active:scale-95 ${isSelected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-white shadow-md font-extrabold' : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-300'}`}
-                        >
-                          <div 
-                            className="w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
-                            style={{ backgroundColor: cat.color || '#6366f1' }}
-                          >
-                            <Icon size={16} />
-                          </div>
-                          <span className="text-xs font-bold truncate">{cat.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <CategorySelector
+                    categories={topCategories}
+                    selectedCategoryId={categoryId}
+                    onSelect={handleSelectCategory}
+                    columns="compact"
+                    scope={scope}
+                    transactionType={type}
+                  />
                 </div>
               )}
 
@@ -959,18 +946,18 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                         <button 
                           type="button"
                           onClick={() => setIsFixed(!isFixed)}
-                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${isFixed ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-extrabold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400'}`}
+                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${isFixed ? 'border-emerald-500 bg-emerald-500 text-black font-black shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                          <Repeat size={16} />
+                          <Repeat size={16} className={isFixed ? 'text-black' : ''} />
                           <span className="text-[10px] font-black uppercase">Fixa Mensal</span>
                         </button>
                         
                         <button 
                           type="button"
                           onClick={handleReminderToggle}
-                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${hasReminder ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-extrabold' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400'}`}
+                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${hasReminder ? 'border-emerald-500 bg-emerald-500 text-black font-black shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                          {hasReminder ? <BellRing size={16} /> : <Bell size={16} />}
+                          {hasReminder ? <BellRing size={16} className="text-black" /> : <Bell size={16} />}
                           <span className="text-[10px] font-black uppercase">Lembrete</span>
                         </button>
                       </div>
@@ -1031,9 +1018,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             <button 
               onClick={handleSubmit} 
               disabled={isAmountInvalid}
-              className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-2 text-white ${isAmountInvalid ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed' : activeBg + ' hover:opacity-90 shadow-indigo-500/20'}`}
+              className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-2 ${isAmountInvalid ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : `${activeBg} ${activeBtnText} hover:opacity-90 shadow-indigo-500/20`}`}
             >
-              <Check size={20} strokeWidth={3} />
+              <Check size={20} strokeWidth={3} className={isAmountInvalid ? '' : activeBtnText} />
               <span>{transaction ? 'Salvar Alterações' : 'Confirmar e Salvar'}</span>
             </button>
           </div>
@@ -1065,24 +1052,24 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
         <div className="fixed inset-0 bg-slate-950/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full max-w-md h-[80dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-slide-up border border-slate-200 dark:border-slate-800">
             
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider">
+            <div className="modal-header-safe flex justify-between items-center gap-3 mb-4">
+              <div className="pr-4 min-w-0">
+                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider block truncate">
                   {scope === 'BUSINESS' ? 'Categorias do Músico / Empresa' : 'Categorias Pessoais'} • {type === 'expense' ? 'Despesas' : 'Receitas'}
                 </span>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white">Selecione uma Categoria</h3>
+                <h3 className="text-lg font-black text-slate-800 dark:text-white truncate">Selecione uma Categoria</h3>
               </div>
               <button 
                 type="button" 
                 onClick={() => setShowAllCategoriesModal(false)}
-                className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600"
+                className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Barra de Pesquisa de Categorias */}
-            <div className="relative mb-4">
+            <div className="relative mb-4 shrink-0">
               <input
                 type="text"
                 placeholder="Pesquisar categoria..."
@@ -1094,31 +1081,18 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             </div>
 
             {/* Grid Scrollável de Categorias */}
-            <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 gap-2.5 pr-1">
-              {searchedCategories.map(cat => {
-                const Icon = getIcon(cat.icon);
-                const isSelected = categoryId === cat.id;
-
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      handleSelectCategory(cat.id);
-                      setShowAllCategoriesModal(false);
-                    }}
-                    className={`p-3.5 rounded-2xl border-2 flex items-center space-x-3 transition-all text-left ${isSelected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-white shadow-md font-extrabold' : 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:border-slate-300'}`}
-                  >
-                    <div 
-                      className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
-                      style={{ backgroundColor: cat.color || '#6366f1' }}
-                    >
-                      <Icon size={18} />
-                    </div>
-                    <span className="text-xs font-bold truncate">{cat.name}</span>
-                  </button>
-                );
-              })}
+            <div className="flex-1 overflow-y-auto no-scrollbar">
+              <CategorySelector
+                categories={searchedCategories}
+                selectedCategoryId={categoryId}
+                onSelect={(id) => {
+                  handleSelectCategory(id);
+                  setShowAllCategoriesModal(false);
+                }}
+                columns="modal"
+                scope={scope}
+                transactionType={type}
+              />
             </div>
 
           </div>
@@ -1131,20 +1105,20 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       {showQuickCreateShowModal && (
         <div className="fixed inset-0 bg-slate-950/85 z-[130] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center space-x-2.5 pr-4 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                   <Music size={20} />
                 </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white">Novo Show / Evento</h3>
-                  <p className="text-[10px] text-slate-500 font-bold">Cadastre e vincule a esta receita</p>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white truncate">Novo Show / Evento</h3>
+                  <p className="text-[10px] text-slate-500 font-bold truncate">Cadastre e vincule a esta receita</p>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setShowQuickCreateShowModal(false)}
-                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
               >
                 <X size={18} />
               </button>
