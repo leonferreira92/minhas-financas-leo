@@ -758,32 +758,42 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let balance = Number(account.initialBalance || 0);
     transactions.forEach(t => {
       if (t.status === 'pending') return;
+      const amt = Math.abs(Number(t.amount) || 0);
       if (t.accountId === accountId) {
         if (t.type === 'income' || (t.type === 'goal_withdraw' && account.type !== 'savings' && accountId !== 'acc_savings')) {
-          balance += Number(t.amount);
+          balance += amt;
         } else if (t.type === 'expense' || t.type === 'goal_deposit' || t.type === 'transfer' || (t.type === 'goal_withdraw' && (account.type === 'savings' || accountId === 'acc_savings'))) {
-          balance -= Number(t.amount);
+          balance -= amt;
         } else if (t.type === 'adjustment') {
-          balance += Number(t.amount);
+          const rawAmt = Number(t.amount) || 0;
+          if (rawAmt < 0) {
+            balance -= Math.abs(rawAmt);
+          } else {
+            balance += Math.abs(rawAmt);
+          }
         }
       }
       if (t.type === 'transfer' && t.destinationAccountId === accountId) {
-        balance += Number(t.amount);
+        balance += amt;
       }
       if (t.type === 'goal_deposit' && (account.type === 'savings' || accountId === 'acc_savings') && t.accountId !== accountId) {
-        balance += Number(t.amount);
+        balance += amt;
       }
     });
     return parseFloat(balance.toFixed(2));
   };
 
   const reconcileBalance = (accountId: string, realBalance: number) => {
-    const diff = realBalance - getAccountBalance(accountId);
+    const currentBalance = getAccountBalance(accountId);
+    const diff = realBalance - currentBalance;
     if (Math.abs(diff) < 0.01) return;
     const cat = categories.find(c => c.id === 'cat_adjustment' || c.type === 'adjustment') || categories[0];
+    const absDiff = Math.abs(diff);
+    const type: TransactionType = diff > 0 ? 'income' : 'expense';
+
     addTransaction({
-      amount: Number(diff.toFixed(2)),
-      type: 'adjustment',
+      amount: Number(absDiff.toFixed(2)),
+      type,
       description: 'Ajuste de Saldo',
       date: getLocalDateString(),
       status: 'paid',
@@ -795,7 +805,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const addTransaction = (t: Omit<Transaction, 'id' | 'createdAt'> & { id?: string }) => {
     const fixedGroupId = t.isFixed ? generateUUID() : undefined;
     const tid = t.id || generateUUID();
-    const cleanAmount = Number(t.amount) || 0;
+    const cleanAmount = Math.abs(Number(t.amount)) || 0;
     const isShowTx = Boolean(t.showId) || Boolean(t.isEventTransaction) || Boolean(t.showPaymentId) || Boolean(t.showExpenseId) || Boolean(t.costGroup);
 
     let resolvedCategoryId = t.categoryId;
@@ -1037,7 +1047,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const importTransactions = (newTxs: Array<Omit<Transaction, 'id' | 'createdAt'> & { id?: string }>) => {
     const itemsToAdd: Transaction[] = newTxs.map((t, idx) => {
       const tid = t.id || generateUUID();
-      const cleanAmount = Number(t.amount) || 0;
+      const cleanAmount = Math.abs(Number(t.amount)) || 0;
       const cleanScope: ScopeType = (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_logistica_shows' || t.categoryId === 'cat_producao_shows') ? 'BUSINESS' : 'PERSONAL';
       return {
         ...t,
@@ -1061,7 +1071,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const updateTransaction = (updatedT: Transaction) => {
-    const cleanAmount = Number(updatedT.amount) || 0;
+    const cleanAmount = Math.abs(Number(updatedT.amount)) || 0;
     const isShowTx = Boolean(updatedT.showId) || Boolean(updatedT.isEventTransaction);
 
     let resolvedCategoryId = updatedT.categoryId;
@@ -2265,7 +2275,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     filteredTransactions.forEach(t => {
       if (t.status === 'cancelled') return;
       if (t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid') return;
-      const amount = Number(t.amount) || 0;
+      const amount = Math.abs(Number(t.amount)) || 0;
       const isPaid = t.status === 'paid';
       const tTime = new Date(t.date + 'T12:00:00').getTime();
 

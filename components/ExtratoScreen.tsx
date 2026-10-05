@@ -139,7 +139,7 @@ export const ExtratoScreen: React.FC = () => {
     });
 
     baseTxs.forEach(t => {
-      const amount = Number(t.amount) || 0;
+      const amount = Math.abs(Number(t.amount) || 0);
       if (t.status === 'paid') {
         if (t.type === 'income') {
           entradasRealizadas += amount;
@@ -185,7 +185,8 @@ export const ExtratoScreen: React.FC = () => {
       // Saldo do dia (apenas o que foi efetivado)
       const dayNet = txs.reduce((sum, t) => {
         if (t.status !== 'paid') return sum;
-        return t.type === 'income' ? sum + Number(t.amount) : sum - Number(t.amount);
+        const amt = Math.abs(Number(t.amount) || 0);
+        return t.type === 'income' ? sum + amt : sum - amt;
       }, 0);
 
       return {
@@ -607,7 +608,7 @@ export const ExtratoScreen: React.FC = () => {
                             <span className={`text-xs font-black block tracking-tight ${
                               isIncome ? 'text-emerald-400' : 'text-rose-400'
                             }`}>
-                              {isIncome ? '+' : '-'}{formatCurrency(Number(t.amount) || 0)}
+                              {isIncome ? '+' : '-'}{formatCurrency(Math.abs(Number(t.amount) || 0))}
                             </span>
                             <span className="text-[9px] text-zinc-400 block font-medium">
                               {isPending ? 'Previsto' : 'Realizado'}

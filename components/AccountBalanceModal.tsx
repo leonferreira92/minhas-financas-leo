@@ -212,9 +212,9 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                       {Math.abs(difference) < 0.01 ? (
                         'Os valores são iguais. Nenhum ajuste necessário.'
                       ) : difference > 0 ? (
-                        <>Isso criará uma transação de ajuste positivo de <strong className="font-extrabold">{formatCurrency(difference)}</strong>.</>
+                        <>Isso criará uma transação de receita (ajuste positivo) de <strong className="font-extrabold">{formatCurrency(Math.abs(difference))}</strong>.</>
                       ) : (
-                        <>Isso criará uma transação de ajuste negativo de <strong className="font-extrabold">{formatCurrency(difference)}</strong>.</>
+                        <>Isso criará uma transação de despesa (ajuste negativo) de <strong className="font-extrabold">{formatCurrency(Math.abs(difference))}</strong>.</>
                       )}
                     </span>
                   </div>

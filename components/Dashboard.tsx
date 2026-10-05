@@ -88,8 +88,9 @@ export const Dashboard: React.FC = () => {
     transactions.forEach(t => {
       if (t.status !== 'paid') return;
       if (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId) {
-        if (t.type === 'income') net += Number(t.amount) || 0;
-        else if (t.type === 'expense') net -= Number(t.amount) || 0;
+        const amt = Math.abs(Number(t.amount) || 0);
+        if (t.type === 'income') net += amt;
+        else if (t.type === 'expense') net -= amt;
       }
     });
     return Math.max(0, net);
@@ -99,7 +100,7 @@ export const Dashboard: React.FC = () => {
   const monthMusicReceivables = useMemo(() => {
     return transactions
       .filter(t => t.status === 'pending' && t.type === 'income' && (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId))
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
   }, [transactions]);
 
   // Métricas de Dívidas / Parcelas Abertas do Mês
@@ -113,8 +114,8 @@ export const Dashboard: React.FC = () => {
       t.date && 
       t.date.startsWith(currentMonthStr)
     );
-    const monthDebtPaid = monthDebtTxs.filter(t => t.status === 'paid').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-    const monthDebtPending = monthDebtTxs.filter(t => t.status === 'pending').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const monthDebtPaid = monthDebtTxs.filter(t => t.status === 'paid').reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+    const monthDebtPending = monthDebtTxs.filter(t => t.status === 'pending').reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
 
     return {
       activeDebtsCount: activeDebts.length,
@@ -134,7 +135,7 @@ export const Dashboard: React.FC = () => {
       if (!t.date || !t.date.startsWith(currentMonthStr)) return false;
       if (!matchesScope(t.scope, activeScope)) return false;
 
-      const amt = Number(t.amount) || 0;
+      const amt = Math.abs(Number(t.amount) || 0);
       totalExpense += amt;
       const catId = t.categoryId || 'cat_other';
       map.set(catId, (map.get(catId) || 0) + amt);
@@ -775,7 +776,7 @@ export const Dashboard: React.FC = () => {
                     </div>
 
                     <span className={`text-xs font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {isIncome ? '+' : '-'}{formatCurrency(Number(t.amount) || 0)}
+                      {isIncome ? '+' : '-'}{formatCurrency(Math.abs(Number(t.amount) || 0))}
                     </span>
                   </div>
                 );

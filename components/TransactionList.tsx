@@ -184,7 +184,7 @@ export const TransactionList: React.FC = () => {
     let pendingExpense = 0;
 
     periodTransactions.forEach(t => {
-      const amt = Number(t.amount) || 0;
+      const amt = Math.abs(Number(t.amount) || 0);
       const isInc = t.type === 'income' || t.type === 'goal_withdraw';
       const isExp = t.type === 'expense' || t.type === 'goal_deposit';
 
@@ -891,7 +891,7 @@ export const TransactionList: React.FC = () => {
                                 ? 'text-emerald-600 dark:text-emerald-400' 
                                 : 'text-indigo-600 dark:text-indigo-400'
                             }`}>
-                              {isExpense ? '- ' : isIncome ? '+ ' : ''}{!isBlurred ? formatCurrency(t.amount) : '••••••'}
+                              {isExpense ? '- ' : isIncome ? '+ ' : ''}{!isBlurred ? formatCurrency(Math.abs(t.amount)) : '••••••'}
                             </span>
                             <span className="text-[9px] text-slate-400 block">
                               {isPending ? 'Projetado' : 'Liquidado'}

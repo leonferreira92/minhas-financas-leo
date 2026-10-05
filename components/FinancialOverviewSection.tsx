@@ -68,8 +68,8 @@ export const FinancialOverviewSection: React.FC = () => {
       !isGoalMovement(t)
     );
 
-    const totalFromToday = pendingFromToday.reduce((sum, t) => sum + Number(t.amount), 0);
-    const totalThisMonth = pendingThisMonth.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalFromToday = pendingFromToday.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+    const totalThisMonth = pendingThisMonth.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
 
     return {
       totalKnown: totalFromToday,

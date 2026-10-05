@@ -101,7 +101,7 @@ export const getMonthlyCareerMetrics = (
     return true;
   });
 
-  const faturamentoReal = deduplicatedIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const faturamentoReal = deduplicatedIncomeTxs.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
 
   // 2. Despesas Efetivas (Regime de Caixa)
   const expenseTxs = transactions.filter(t => {
@@ -126,7 +126,7 @@ export const getMonthlyCareerMetrics = (
     );
   });
 
-  const custosReais = expenseTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const custosReais = expenseTxs.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
   const lucroLiquido = faturamentoReal - custosReais;
   const margemLucro = faturamentoReal > 0 ? (lucroLiquido / faturamentoReal) * 100 : 0;
 
