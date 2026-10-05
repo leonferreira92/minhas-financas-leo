@@ -161,20 +161,103 @@ const DEFAULT_DASHBOARD_LAYOUT: DashboardWidgetConfig[] = [
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
+export const isAccountActive = (acc: Account | null | undefined): boolean => {
+  if (!acc || !acc.id) return false;
+  const anyAcc = acc as any;
+  if (acc.enabled === false) return false;
+  if (anyAcc.archived === true || anyAcc.isArchived === true) return false;
+  if (anyAcc.hidden === true || anyAcc.isHidden === true) return false;
+  if (anyAcc.deleted === true || anyAcc.isDeleted === true) return false;
+  if (anyAcc.status === 'archived' || anyAcc.status === 'hidden' || anyAcc.status === 'inactive') return false;
+  return true;
+};
+
+const loadPersistedAccountsRaw = (): Account[] => {
+  try {
+    const raw = localStorage.getItem('fin_app_accounts');
+    if (raw) {
+      const parsed: Account[] = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const active = deduplicateItemsById(parsed).filter(isAccountActive);
+        const rawTxs = localStorage.getItem('fin_app_transactions');
+        const txs: Transaction[] = rawTxs ? JSON.parse(rawTxs) : [];
+        const hasSavingsTx = Array.isArray(txs) && txs.some(
+          t => t && (t.accountId === 'acc_savings' || t.destinationAccountId === 'acc_savings' || t.type === 'goal_deposit' || t.type === 'goal_withdraw')
+        );
+        // Evita que a conta fantasma 'Economia' auto-injetada pelo StorageService altere a contagem do Patrimônio Consolidado ao recarregar
+        if (active.length > 1 && !hasSavingsTx) {
+          return active.filter(
+            a => !(a.id === 'acc_savings' && a.name === 'Economia' && Number(a.initialBalance || 0) === 0)
+          );
+        }
+        return active;
+      }
+    }
+  } catch (e) {
+    console.error('Erro ao carregar contas persistidas:', e);
+  }
+  return deduplicateItemsById(StorageService.getAccounts()).filter(isAccountActive);
+};
+
+const normalizeTransactionRecord = (t: Transaction, accountsList: Account[]): Transaction => {
+  const rawAmt = Number(t.amount) || 0;
+  const cleanAmount = Math.abs(rawAmt);
+  let cleanType: TransactionType = t.type;
+
+  // Normaliza ajustes legados para confiar estritamente em 'income' | 'expense' com Math.abs(amount)
+  if (cleanType === 'adjustment') {
+    cleanType = rawAmt < 0 ? 'expense' : 'income';
+  }
+
+  let cleanScope = t.scope;
+  if (t.accountId && (t.description === 'Ajuste de Saldo' || t.categoryId === 'cat_adjustment' || !cleanScope || cleanScope === 'BOTH')) {
+    const targetAcc = accountsList.find(a => a.id === t.accountId);
+    if (targetAcc && (t.description === 'Ajuste de Saldo' || t.categoryId === 'cat_adjustment')) {
+      cleanScope = (targetAcc.scope === 'BUSINESS' || targetAcc.vinculo === 'MUSICO') ? 'BUSINESS' : 'PERSONAL';
+    }
+  }
+
+  if (!cleanScope || cleanScope === 'BOTH') {
+    const descLower = (t.description || '').toLowerCase();
+    const isBiz =
+      t.categoryId === 'cat_33' ||
+      t.categoryId === 'cat_equipamentos' ||
+      t.categoryId === 'cat_logistica_shows' ||
+      t.categoryId === 'cat_producao_shows' ||
+      Boolean(t.showId) ||
+      Boolean(t.showExpenseId) ||
+      descLower.includes('show') ||
+      descLower.includes('músico') ||
+      descLower.includes('musico');
+    cleanScope = isBiz ? 'BUSINESS' : 'PERSONAL';
+  }
+
+  return {
+    ...t,
+    amount: cleanAmount,
+    type: cleanType,
+    status: t.status || 'paid',
+    scope: cleanScope
+  };
+};
+
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [debts, setDebts] = useState<Debt[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
-  const [shows, setShows] = useState<Show[]>([]);
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [crew, setCrew] = useState<MusicianCrewMember[]>([]);
-  const [locomotionExpenses, setLocomotionExpenses] = useState<MusicLocomotionExpense[]>([]);
-  const [musicCostItems, setMusicCostItems] = useState<MusicCostItem[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>(() => loadPersistedAccountsRaw());
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const initialAccs = loadPersistedAccountsRaw();
+    return deduplicateItemsById(StorageService.getTransactions()).map(t => normalizeTransactionRecord(t, initialAccs));
+  });
+  const [categories, setCategories] = useState<Category[]>(() => deduplicateItemsById(StorageService.getCategories()));
+  const [debts, setDebts] = useState<Debt[]>(() => deduplicateItemsById(StorageService.getDebts()));
+  const [budgets, setBudgets] = useState<Budget[]>(() => StorageService.getBudgets());
+  const [shows, setShows] = useState<Show[]>(() => deduplicateItemsById(StorageService.getShows()));
+  const [venues, setVenues] = useState<Venue[]>(() => StorageService.getVenues());
+  const [crew, setCrew] = useState<MusicianCrewMember[]>(() => StorageService.getCrew());
+  const [locomotionExpenses, setLocomotionExpenses] = useState<MusicLocomotionExpense[]>(() => StorageService.getLocomotionExpenses());
+  const [musicCostItems, setMusicCostItems] = useState<MusicCostItem[]>(() => StorageService.getMusicCostItems());
 
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
@@ -216,18 +299,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
     });
 
-    // 1. Escutador em tempo real: Contas Bancárias
+    // 1. Escutador em tempo real: Contas Bancárias (filtrando contas arquivadas/ocultas)
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
-      const cleanAccounts = deduplicateItemsById(cloudAccounts);
+      const cleanAccounts = deduplicateItemsById(cloudAccounts).filter(isAccountActive);
       setAccounts(cleanAccounts);
       StorageService.saveAccounts(cleanAccounts);
     });
 
     // 2. Escutador em tempo real: Transações / Lançamentos
     const unsubTransactions = subscribeToUserTransactions(uid, (cloudTxs) => {
-      const cleanTxs = deduplicateItemsById(cloudTxs);
-      setTransactions(cleanTxs);
-      StorageService.saveTransactions(cleanTxs);
+      setAccounts(currentAccs => {
+        const normalizedTxs = deduplicateItemsById(cloudTxs).map(t => normalizeTransactionRecord(t, currentAccs));
+        setTransactions(normalizedTxs);
+        StorageService.saveTransactions(normalizedTxs);
+        return currentAccs;
+      });
     });
 
     // 3. Escutador em tempo real: Shows / Apresentações
@@ -423,7 +509,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let storedTransactions = StorageService.getTransactions();
     let storedCategories = StorageService.getCategories();
     const storedDebts = StorageService.getDebts();
-    const storedAccounts = StorageService.getAccounts();
+    const storedAccounts = loadPersistedAccountsRaw();
     const storedBudgets = StorageService.getBudgets();
     const storedSettings = StorageService.getSettings();
 
@@ -593,19 +679,18 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         modified = true;
       }
 
-      if (modified) {
+      if (modified || t.type === 'adjustment' || Number(t.amount) < 0) {
         transactionsChanged = true;
-        return {
-          ...t,
-          categoryId: newCatId,
-          scope: newScope,
-          amount: Number(t.amount) || 0
-        };
+        return normalizeTransactionRecord(
+          {
+            ...t,
+            categoryId: newCatId,
+            scope: newScope
+          },
+          storedAccounts
+        );
       }
-      return {
-        ...t,
-        amount: Number(t.amount) || 0
-      };
+      return normalizeTransactionRecord(t, storedAccounts);
     });
 
     if (transactionsChanged) {
@@ -615,23 +700,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const rawShows = StorageService.getShows();
     const defaultBizAcc = storedAccounts.find(a => a.scope === 'BUSINESS' || a.vinculo === 'MUSICO')?.id || (storedAccounts[0]?.id || 'acc_mp');
-    const { reconciledShows, reconciledTransactions } = reconcileAllShowsAndTransactions(
-      rawShows,
-      storedTransactions,
-      finalCategories,
-      defaultBizAcc
+    const normalizedShows = deduplicateItemsById(
+      rawShows
+        .filter(s => s && s.id && !String(s.id).startsWith('show_legacy_'))
+        .map(s => normalizeShowFinancials(s, defaultBizAcc))
     );
+    const normalizedTransactions = deduplicateItemsById(migratedTransactions);
 
-    const persistedShows = reconciledShows.filter(s => !String(s.id).startsWith('show_legacy_'));
-    StorageService.saveShows(persistedShows);
-    StorageService.saveTransactions(reconciledTransactions);
+    StorageService.saveShows(normalizedShows);
+    StorageService.saveTransactions(normalizedTransactions);
+    StorageService.saveAccounts(storedAccounts);
 
     setCategories(finalCategories);
     setDebts(storedDebts);
     setAccounts(storedAccounts);
     setBudgets(storedBudgets);
-    setTransactions(reconciledTransactions);
-    setShows(reconciledShows);
+    setTransactions(normalizedTransactions);
+    setShows(normalizedShows);
     setVenues(StorageService.getVenues());
     setCrew(StorageService.getCrew());
     setLocomotionExpenses(StorageService.getLocomotionExpenses());
@@ -674,8 +759,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     StorageService.saveDebts(ds); 
   };
   const saveAccounts = (as: Account[]) => { 
-    setAccounts(as); 
-    StorageService.saveAccounts(as); 
+    const clean = deduplicateItemsById(as).filter(isAccountActive);
+    setAccounts(clean); 
+    StorageService.saveAccounts(clean); 
   };
   const saveBudgetsInternal = (bs: Budget[]) => { 
     setBudgets(bs); 
@@ -752,41 +838,88 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const getAccountBalance = (accountId: string): number => {
-    const account = accounts.find(a => a.id === accountId);
-    if (!account) return 0;
-    let balance = Number(account.initialBalance || 0);
+  // =========================================================================
+  // 1. DERIVED STATE: SALDO DE CADA CONTA REATIVO E CONSISTENTE (REGIME DE CAIXA ESTRITO)
+  // =========================================================================
+  const activeAccounts = useMemo(() => {
+    return deduplicateItemsById(accounts).filter(isAccountActive);
+  }, [accounts]);
+
+  const accountBalancesMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    activeAccounts.forEach(acc => {
+      map[acc.id] = Number(acc.initialBalance || 0);
+    });
+
     transactions.forEach(t => {
-      if (t.status === 'pending') return;
+      if (!t || t.status !== 'paid') return;
       const amt = Math.abs(Number(t.amount) || 0);
-      if (t.accountId === accountId) {
-        if (t.type === 'income' || (t.type === 'goal_withdraw' && account.type !== 'savings' && accountId !== 'acc_savings')) {
-          balance += amt;
-        } else if (t.type === 'expense' || t.type === 'goal_deposit' || t.type === 'transfer' || (t.type === 'goal_withdraw' && (account.type === 'savings' || accountId === 'acc_savings'))) {
-          balance -= amt;
+      if (amt === 0) return;
+
+      if (t.accountId && map[t.accountId] !== undefined) {
+        const account = activeAccounts.find(a => a.id === t.accountId);
+        const isSavings = account?.type === 'savings' || t.accountId === 'acc_savings';
+
+        if (t.type === 'income' || (t.type === 'goal_withdraw' && !isSavings)) {
+          map[t.accountId] += amt;
+        } else if (
+          t.type === 'expense' ||
+          t.type === 'goal_deposit' ||
+          t.type === 'transfer' ||
+          (t.type === 'goal_withdraw' && isSavings)
+        ) {
+          map[t.accountId] -= amt;
         } else if (t.type === 'adjustment') {
           const rawAmt = Number(t.amount) || 0;
-          if (rawAmt < 0) {
-            balance -= Math.abs(rawAmt);
-          } else {
-            balance += Math.abs(rawAmt);
-          }
+          map[t.accountId] += rawAmt < 0 ? -amt : amt;
         }
       }
-      if (t.type === 'transfer' && t.destinationAccountId === accountId) {
-        balance += amt;
+
+      if (t.type === 'transfer' && t.destinationAccountId && map[t.destinationAccountId] !== undefined) {
+        map[t.destinationAccountId] += amt;
       }
-      if (t.type === 'goal_deposit' && (account.type === 'savings' || accountId === 'acc_savings') && t.accountId !== accountId) {
-        balance += amt;
+
+      if (t.type === 'goal_deposit') {
+        activeAccounts.forEach(acc => {
+          if ((acc.type === 'savings' || acc.id === 'acc_savings') && t.accountId !== acc.id) {
+            map[acc.id] = (map[acc.id] || 0) + amt;
+          }
+        });
       }
     });
-    return parseFloat(balance.toFixed(2));
-  };
+
+    Object.keys(map).forEach(accId => {
+      map[accId] = parseFloat(map[accId].toFixed(2));
+    });
+
+    return map;
+  }, [activeAccounts, transactions]);
+
+  const derivedAccounts = useMemo(() => {
+    return activeAccounts.map(acc => ({
+      ...acc,
+      balance: accountBalancesMap[acc.id] ?? parseFloat(Number(acc.initialBalance || 0).toFixed(2))
+    }));
+  }, [activeAccounts, accountBalancesMap]);
+
+  const getAccountBalance = useCallback((accountId: string): number => {
+    if (accountBalancesMap[accountId] !== undefined) {
+      return accountBalancesMap[accountId];
+    }
+    const account = activeAccounts.find(a => a.id === accountId);
+    if (!account) return 0;
+    return parseFloat(Number(account.initialBalance || 0).toFixed(2));
+  }, [accountBalancesMap, activeAccounts]);
 
   const reconcileBalance = (accountId: string, realBalance: number) => {
     const currentBalance = getAccountBalance(accountId);
-    const diff = realBalance - currentBalance;
+    const diff = parseFloat((realBalance - currentBalance).toFixed(2));
     if (Math.abs(diff) < 0.01) return;
+    const targetAcc = activeAccounts.find(a => a.id === accountId);
+    const accScope: ScopeType =
+      targetAcc && (targetAcc.scope === 'BUSINESS' || targetAcc.vinculo === 'MUSICO')
+        ? 'BUSINESS'
+        : 'PERSONAL';
     const cat = categories.find(c => c.id === 'cat_adjustment' || c.type === 'adjustment') || categories[0];
     const absDiff = Math.abs(diff);
     const type: TransactionType = diff > 0 ? 'income' : 'expense';
@@ -798,6 +931,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       date: getLocalDateString(),
       status: 'paid',
       accountId,
+      scope: accScope,
       categoryId: cat ? cat.id : 'cat_adjustment'
     });
   };
@@ -1371,24 +1505,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     setTransactions(prev => {
       const target = prev.find(t => t.id === id);
-      let txs;
-      if (deleteSeries && target && target.fixedGroupId) {
-        const toDelete = prev.filter(t => t.fixedGroupId === target.fixedGroupId);
-        if (currentUser) {
-          toDelete.forEach(t => deleteTransactionFromFirestore(currentUser.uid, t.id));
-        }
-        txs = prev.filter(t => t.fixedGroupId !== target.fixedGroupId);
+      if (!target) return prev;
+
+      let toDelete: Transaction[] = [];
+      let remainingTxs: Transaction[] = [];
+
+      if (deleteSeries && target.fixedGroupId) {
+        toDelete = prev.filter(t => t.fixedGroupId === target.fixedGroupId);
+        remainingTxs = prev.filter(t => t.fixedGroupId !== target.fixedGroupId);
       } else {
-        txs = prev.filter(t => t.id !== id);
-        if (currentUser) {
-          deleteTransactionFromFirestore(currentUser.uid, id);
-        }
+        toDelete = [target];
+        remainingTxs = prev.filter(t => t.id !== id);
       }
-      StorageService.saveTransactions(txs);
-      return txs;
+
+      // Garante que cada transação restante preserve amount positivo (Math.abs) e type estrito ('income' | 'expense'),
+      // de modo que o estorno no Derived State (accountBalancesMap) opere matematicamente sem duplo sinal negativo:
+      // - Excluir DESPESA ('expense') -> Remove subtração (-Math.abs(amount)), aumentando o saldo em +Math.abs(amount)
+      // - Excluir RECEITA ('income') -> Remove adição (+Math.abs(amount)), reduzindo o saldo em -Math.abs(amount)
+      const normalizedRemaining = remainingTxs.map(t => normalizeTransactionRecord(t, activeAccounts));
+
+      if (currentUser) {
+        toDelete.forEach(t => deleteTransactionFromFirestore(currentUser.uid, t.id));
+      }
+
+      StorageService.saveTransactions(normalizedRemaining);
+      return normalizedRemaining;
     });
 
-    // Se a transação estiver vinculada a um show, remove a associação e recalcula o balanço do show afetado
+    // Se a transação estiver vinculada a um show, remove a associação sem jamais recriar pagamentos sintéticos
     const defaultAccId = getDefaultAccountForScope('BUSINESS');
     setShows(prevShows => {
       let modified = false;
@@ -1437,17 +1581,28 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
         if (changed || (targetTx?.showId && show.id === targetTx.showId)) {
           modified = true;
-          const newShow = normalizeShowFinancials(
-            {
-              ...show,
-              payments: updatedPayments,
-              crewMembers: updatedCrew,
-              logistics: updatedLogistics,
-              otherExpenses: updatedOther,
-              expenseItems: updatedExpenses
-            },
-            defaultAccId
-          );
+          const remainingGross = updatedPayments
+            .filter(p => p && p.status !== 'Cancelado')
+            .reduce((sum, p) => sum + Math.abs(Number(p.amount) || 0), 0);
+          const remainingReceived = updatedPayments
+            .filter(p => p && p.status === 'Recebido')
+            .reduce((sum, p) => sum + Math.abs(Number(p.amount) || 0), 0);
+          const remainingExtra = updatedPayments
+            .filter(p => p && (p.type === 'Extra' || p.type === 'Hora Extra' || p.type === 'Couvert' || p.type === 'Gorjeta' || p.type === 'Bônus'))
+            .reduce((sum, p) => sum + Math.abs(Number(p.amount) || 0), 0);
+
+          const newShow: Show = {
+            ...show,
+            totalCache: remainingGross,
+            cacheCombined: remainingGross,
+            cacheReceived: remainingReceived,
+            extraAmount: remainingExtra,
+            payments: updatedPayments,
+            crewMembers: updatedCrew,
+            logistics: updatedLogistics,
+            otherExpenses: updatedOther,
+            expenseItems: updatedExpenses
+          };
           if (currentUser) {
             saveShowToFirestore(currentUser.uid, newShow);
           }
@@ -2256,7 +2411,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const dayOfMonth = today.getDate() || 1;
     const currentScope = scopeOverride || activeScope;
 
-    const filteredAccounts = accounts.filter(acc => matchesScope(acc.scope, currentScope));
+    const filteredAccounts = activeAccounts.filter(acc => matchesScope(acc.scope, currentScope));
     const accountsTotal = filteredAccounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
     const realBalance = Number(accountsTotal.toFixed(2));
 
@@ -2339,12 +2494,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return alerts;
   }, [transactions, accounts, activeScope]);
 
-  const { reconciledShows, reconciledTransactions } = useMemo(() => {
+  const normalizedTransactions = useMemo(() => {
+    return deduplicateItemsById(transactions).map(t => normalizeTransactionRecord(t, activeAccounts));
+  }, [transactions, activeAccounts]);
+
+  const normalizedShows = useMemo(() => {
     const defaultBizAcc =
-      accounts.find(a => a.scope === 'BUSINESS' || a.vinculo === 'MUSICO')?.id ||
-      (accounts[0]?.id || 'acc_mp');
-    return reconcileAllShowsAndTransactions(shows, transactions, categories, defaultBizAcc);
-  }, [shows, transactions, categories, accounts]);
+      activeAccounts.find(a => a.scope === 'BUSINESS' || a.vinculo === 'MUSICO')?.id ||
+      (activeAccounts[0]?.id || 'acc_mp');
+    return deduplicateItemsById(shows).map(s => normalizeShowFinancials(s, defaultBizAcc));
+  }, [shows, activeAccounts]);
 
   const handleSignInWithGoogle = async () => {
     await signInWithGoogle();
@@ -2356,7 +2515,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   return (
     <FinanceContext.Provider value={{
-      transactions: reconciledTransactions, categories, debts, accounts, budgets, shows: reconciledShows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
+      transactions: normalizedTransactions, categories, debts, accounts: derivedAccounts, budgets, shows: normalizedShows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
       activeScope, setActiveScope, getDefaultAccountForScope,
       addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,

@@ -83,11 +83,32 @@ export const ExtratoScreen: React.FC = () => {
     return list;
   }, [currentYearMonth]);
 
+  const normalizeSearchText = (val?: string | null) =>
+    (val || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
   // All filtered transactions for the view
   const filteredTransactions = useMemo(() => {
+    const hasSearch = searchTerm.trim().length > 0;
+    const normTerm = normalizeSearchText(searchTerm);
+
     return transactions.filter(t => {
-      // 1. Escopo (Pessoal vs Músico)
-      if (!matchesScope(t.scope, activeScope)) return false;
+      if (!t || t.status === 'cancelled') return false;
+
+      // 1. Filtro por Conta (independente da pílula ativa, respeita a conta selecionada)
+      if (selectedAccountId !== 'all') {
+        if (t.accountId !== selectedAccountId && t.destinationAccountId !== selectedAccountId) {
+          return false;
+        }
+      } else if (!hasSearch) {
+        // Quando em "Todas as Contas" e sem busca textual ativa, filtra pelo escopo ativo (considerando também o escopo da conta)
+        const acc = accounts.find(a => a.id === t.accountId);
+        const scopeMatches = matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
+        if (!scopeMatches) return false;
+      }
 
       // 2. Filtro de Mês ou Futuros
       if (isFutureOnly) {
@@ -101,20 +122,22 @@ export const ExtratoScreen: React.FC = () => {
       if (statusFilter === 'pending' && t.status !== 'pending') return false;
       if (statusFilter === 'shows' && !(t.showId || t.categoryId === 'cat_33' || t.scope === 'BUSINESS')) return false;
 
-      // 4. Filtro por Conta
-      if (statusFilter === 'accounts' && selectedAccountId !== 'all' && t.accountId !== selectedAccountId) {
-        return false;
-      }
-
-      // 5. Termo de busca
-      if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        const descMatch = (t.description || '').toLowerCase().includes(term);
+      // 4. Termo de busca (considera de forma transparente todas as contas selecionadas ou a conta ativa)
+      if (hasSearch) {
+        const descMatch = normalizeSearchText(t.description).includes(normTerm);
+        const showMatch = normalizeSearchText(t.showName).includes(normTerm);
         const cat = categories.find(c => c.id === t.categoryId);
-        const catMatch = (cat?.name || '').toLowerCase().includes(term);
+        const catMatch = normalizeSearchText(cat?.name).includes(normTerm);
         const acc = accounts.find(a => a.id === t.accountId);
-        const accMatch = (acc?.name || '').toLowerCase().includes(term);
-        if (!descMatch && !catMatch && !accMatch) return false;
+        const destAcc = t.destinationAccountId ? accounts.find(a => a.id === t.destinationAccountId) : undefined;
+        const accMatch =
+          normalizeSearchText(acc?.name).includes(normTerm) ||
+          normalizeSearchText(destAcc?.name).includes(normTerm);
+        const amtStr = String(Math.abs(Number(t.amount) || 0));
+        const amtFormatted = formatCurrency(Math.abs(Number(t.amount) || 0)).toLowerCase();
+        const amtMatch = amtStr.includes(normTerm) || amtFormatted.includes(normTerm);
+
+        if (!descMatch && !showMatch && !catMatch && !accMatch && !amtMatch) return false;
       }
 
       return true;
@@ -124,7 +147,7 @@ export const ExtratoScreen: React.FC = () => {
     });
   }, [transactions, activeScope, isFutureOnly, selectedMonth, statusFilter, selectedAccountId, searchTerm, todayStr, categories, accounts]);
 
-  // Totais do Período Selecionado
+  // Totais do Período Selecionado (baseados nas transações filtradas e contas selecionadas)
   const metrics = useMemo(() => {
     let saldoRealizado = 0;
     let entradasRealizadas = 0;
@@ -132,47 +155,56 @@ export const ExtratoScreen: React.FC = () => {
     let futurosReceber = 0;
     let comprometidoPagar = 0;
 
-    const baseTxs = transactions.filter(t => {
-      if (!matchesScope(t.scope, activeScope)) return false;
-      if (isFutureOnly) return t.date >= todayStr;
-      return t.date && t.date.startsWith(selectedMonth);
-    });
-
-    baseTxs.forEach(t => {
+    filteredTransactions.forEach(t => {
       const amount = Math.abs(Number(t.amount) || 0);
+      const isInc =
+        t.type === 'income' ||
+        t.type === 'goal_withdraw' ||
+        (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
+      const isExp =
+        t.type === 'expense' ||
+        t.type === 'goal_deposit' ||
+        (t.type === 'transfer' && (selectedAccountId === 'all' || t.accountId === selectedAccountId));
+
       if (t.status === 'paid') {
-        if (t.type === 'income') {
+        if (isInc) {
           entradasRealizadas += amount;
           saldoRealizado += amount;
-        } else if (t.type === 'expense') {
+        } else if (isExp) {
           saidasRealizadas += amount;
           saldoRealizado -= amount;
         }
       } else if (t.status === 'pending') {
-        if (t.type === 'income') {
+        if (isInc) {
           futurosReceber += amount;
-        } else if (t.type === 'expense') {
+        } else if (isExp) {
           comprometidoPagar += amount;
         }
       }
     });
 
-    // Saldo Total das contas correspondentes ao escopo
-    const contasEscopo = accounts.filter(a => matchesScope(a.scope, activeScope));
-    const saldoTotalContas = contasEscopo.reduce((s, a) => s + getAccountBalance(a.id), 0);
+    // Saldo Total das contas ativas correspondentes ao filtro de conta ou escopo
+    const contasEscopo = accounts.filter(a => {
+      if (a.enabled === false) return false;
+      if (selectedAccountId !== 'all') return a.id === selectedAccountId;
+      return matchesScope(a.scope, activeScope);
+    });
+    const saldoTotalContas = parseFloat(
+      contasEscopo.reduce((s, a) => s + getAccountBalance(a.id), 0).toFixed(2)
+    );
 
     return {
-      saldoRealizado,
-      entradasRealizadas,
-      saidasRealizadas,
-      futurosReceber,
-      comprometidoPagar,
+      saldoRealizado: parseFloat(saldoRealizado.toFixed(2)),
+      entradasRealizadas: parseFloat(entradasRealizadas.toFixed(2)),
+      saidasRealizadas: parseFloat(saidasRealizadas.toFixed(2)),
+      futurosReceber: parseFloat(futurosReceber.toFixed(2)),
+      comprometidoPagar: parseFloat(comprometidoPagar.toFixed(2)),
       saldoTotalContas,
-      saldoProjetadoFinal: saldoTotalContas + futurosReceber - comprometidoPagar
+      saldoProjetadoFinal: parseFloat((saldoTotalContas + futurosReceber - comprometidoPagar).toFixed(2))
     };
-  }, [transactions, activeScope, isFutureOnly, selectedMonth, todayStr, accounts, getAccountBalance]);
+  }, [filteredTransactions, activeScope, selectedAccountId, accounts, getAccountBalance]);
 
-  // Agrupamento dos Lançamentos por Data (Timeline)
+  // Agrupamento dos Lançamentos por Data (Timeline) - Calculando "Saldo do dia" estritamente sobre filteredTransactions
   const groupedByDate = useMemo(() => {
     const groups: { [date: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
@@ -182,20 +214,28 @@ export const ExtratoScreen: React.FC = () => {
     });
 
     return Object.entries(groups).map(([date, txs]) => {
-      // Saldo do dia (apenas o que foi efetivado)
+      const hasPaidInGroup = txs.some(t => t.status === 'paid');
+      // Soma do "Saldo do dia" calculada exclusivamente sobre o array de transações filtradas (txs de filteredTransactions)
       const dayNet = txs.reduce((sum, t) => {
-        if (t.status !== 'paid') return sum;
+        if (t.status === 'cancelled') return sum;
+        if (hasPaidInGroup && statusFilter !== 'pending' && !isFutureOnly && t.status !== 'paid') {
+          return sum;
+        }
         const amt = Math.abs(Number(t.amount) || 0);
-        return t.type === 'income' ? sum + amt : sum - amt;
+        const isInc =
+          t.type === 'income' ||
+          t.type === 'goal_withdraw' ||
+          (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
+        return isInc ? sum + amt : sum - amt;
       }, 0);
 
       return {
         date,
         transactions: txs,
-        dayNet
+        dayNet: parseFloat(dayNet.toFixed(2))
       };
     });
-  }, [filteredTransactions]);
+  }, [filteredTransactions, statusFilter, isFutureOnly, selectedAccountId]);
 
   const formatDateHeader = (dateStr: string) => {
     if (dateStr === 'Sem Data') return 'SEM DATA';
@@ -553,7 +593,10 @@ export const ExtratoScreen: React.FC = () => {
                   {group.transactions.map(t => {
                     const cat = categories.find(c => c.id === t.categoryId);
                     const acc = accounts.find(a => a.id === t.accountId);
-                    const isIncome = t.type === 'income';
+                    const isIncome =
+                      t.type === 'income' ||
+                      t.type === 'goal_withdraw' ||
+                      (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
                     const isPending = t.status === 'pending';
                     const Icon = getIcon(cat?.icon || 'Tag');
 
@@ -626,6 +669,18 @@ export const ExtratoScreen: React.FC = () => {
                             title={isPending ? "Confirmar baixa / pagamento" : "Marcar como pendente"}
                           >
                             <Check size={13} strokeWidth={2.5} />
+                          </button>
+
+                          {/* Botão de Excluir Lançamento Direto */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteTransaction(t.id);
+                            }}
+                            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-950/30 transition active:scale-95"
+                            title="Excluir lançamento"
+                          >
+                            <Trash2 size={13} strokeWidth={2} />
                           </button>
                         </div>
                       </div>

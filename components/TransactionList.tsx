@@ -162,36 +162,111 @@ export const TransactionList: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
   };
 
+  const normalizeSearchText = (val?: string | null) =>
+    (val || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
   // 1. Filtragem principal de transações por período e módulo (Tudo | Apenas Pessoal | Apenas Música)
   const periodTransactions = useMemo(() => {
+    const hasSearch = searchTerm.trim().length > 0;
     return transactions.filter(t => {
-      if (!t.date) return false;
-      if (!matchesScope(t.scope, activeScope)) {
-        return false;
+      if (!t || !t.date || t.status === 'cancelled') return false;
+      if (accountIdFilter) {
+        if (t.accountId !== accountIdFilter && t.destinationAccountId !== accountIdFilter) {
+          return false;
+        }
+      } else if (!hasSearch) {
+        const acc = accounts.find(a => a.id === t.accountId);
+        const scopeMatches = matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
+        if (!scopeMatches) return false;
       }
       if (periodPreset === 'this_year') {
         return t.date.startsWith(currentYear);
       }
       return t.date.startsWith(selectedMonth);
     });
-  }, [transactions, periodPreset, selectedMonth, currentYear, activeScope]);
+  }, [transactions, periodPreset, selectedMonth, currentYear, activeScope, accountIdFilter, searchTerm, accounts]);
 
-  // 2. Cálculo dos 4 KPI Cards do Período Selecionado
+  // 2. Filtragem adicional da lista (tipo, status, categoria, conta, busca)
+  const filteredTransactions = useMemo(() => {
+    const hasSearch = searchTerm.trim().length > 0;
+    const normTerm = normalizeSearchText(searchTerm);
+
+    return periodTransactions
+      .filter(t => {
+        // Filtro por tipo
+        if (typeFilter === 'income') return t.type === 'income' || t.type === 'goal_withdraw' || (t.type === 'transfer' && accountIdFilter && t.destinationAccountId === accountIdFilter);
+        if (typeFilter === 'expense') return t.type === 'expense' || t.type === 'goal_deposit' || (t.type === 'transfer' && (!accountIdFilter || t.accountId === accountIdFilter));
+        return true;
+      })
+      .filter(t => {
+        // Filtro por status
+        if (statusFilter === 'paid') return t.status === 'paid';
+        if (statusFilter === 'pending') return t.status === 'pending';
+        return true;
+      })
+      .filter(t => {
+        if (categoryIdFilter) return t.categoryId === categoryIdFilter;
+        return true;
+      })
+      .filter(t => {
+        if (accountIdFilter) return t.accountId === accountIdFilter || t.destinationAccountId === accountIdFilter;
+        return true;
+      })
+      .filter(t => {
+        if (!hasSearch) return true;
+        const desc = normalizeSearchText(t.description);
+        const showName = normalizeSearchText(t.showName);
+        const cat = normalizeSearchText(categories.find(c => c.id === t.categoryId)?.name);
+        const acc = normalizeSearchText(accounts.find(a => a.id === t.accountId)?.name);
+        const destAcc = t.destinationAccountId ? normalizeSearchText(accounts.find(a => a.id === t.destinationAccountId)?.name) : '';
+        const amtStr = String(Math.abs(Number(t.amount) || 0));
+        const amtFmt = formatCurrency(Math.abs(Number(t.amount) || 0)).toLowerCase();
+        return (
+          desc.includes(normTerm) ||
+          showName.includes(normTerm) ||
+          cat.includes(normTerm) ||
+          acc.includes(normTerm) ||
+          destAcc.includes(normTerm) ||
+          amtStr.includes(normTerm) ||
+          amtFmt.includes(normTerm)
+        );
+      })
+      .sort((a, b) => {
+        const dateA = String(a.date || '');
+        const dateB = String(b.date || '');
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+  }, [periodTransactions, typeFilter, statusFilter, categoryIdFilter, accountIdFilter, searchTerm, categories, accounts]);
+
+  // 3. Cálculo dos 4 KPI Cards do Período Selecionado (sobre filteredTransactions)
   const kpiData = useMemo(() => {
     let paidIncome = 0;
     let paidExpense = 0;
     let pendingIncome = 0;
     let pendingExpense = 0;
 
-    periodTransactions.forEach(t => {
+    filteredTransactions.forEach(t => {
       const amt = Math.abs(Number(t.amount) || 0);
-      const isInc = t.type === 'income' || t.type === 'goal_withdraw';
-      const isExp = t.type === 'expense' || t.type === 'goal_deposit';
+      const isInc =
+        t.type === 'income' ||
+        t.type === 'goal_withdraw' ||
+        (t.type === 'transfer' && Boolean(accountIdFilter) && t.destinationAccountId === accountIdFilter);
+      const isExp =
+        t.type === 'expense' ||
+        t.type === 'goal_deposit' ||
+        (t.type === 'transfer' && (!accountIdFilter || t.accountId === accountIdFilter));
 
       if (t.status === 'paid') {
         if (isInc) paidIncome += amt;
         if (isExp) paidExpense += amt;
-      } else {
+      } else if (t.status === 'pending') {
         if (isInc) pendingIncome += amt;
         if (isExp) pendingExpense += amt;
       }
@@ -208,49 +283,7 @@ export const TransactionList: React.FC = () => {
       pendingExpense: Math.round(pendingExpense * 100) / 100,
       netProjected
     };
-  }, [periodTransactions]);
-
-  // 3. Filtragem adicional da lista (tipo, status, categoria, conta, busca)
-  const filteredTransactions = useMemo(() => {
-    return periodTransactions
-      .filter(t => {
-        // Filtro por tipo
-        if (typeFilter === 'income') return t.type === 'income' || t.type === 'goal_withdraw';
-        if (typeFilter === 'expense') return t.type === 'expense' || t.type === 'goal_deposit';
-        return true;
-      })
-      .filter(t => {
-        // Filtro por status
-        if (statusFilter === 'paid') return t.status === 'paid';
-        if (statusFilter === 'pending') return t.status === 'pending';
-        return true;
-      })
-      .filter(t => {
-        if (categoryIdFilter) return t.categoryId === categoryIdFilter;
-        return true;
-      })
-      .filter(t => {
-        if (accountIdFilter) return t.accountId === accountIdFilter;
-        return true;
-      })
-      .filter(t => {
-        if (!searchTerm.trim()) return true;
-        const term = searchTerm.toLowerCase().trim();
-        const desc = (t.description || '').toLowerCase();
-        const cat = categories.find(c => c.id === t.categoryId)?.name.toLowerCase() || '';
-        const acc = accounts.find(a => a.id === t.accountId)?.name.toLowerCase() || '';
-        const amtStr = String(t.amount || '');
-        return desc.includes(term) || cat.includes(term) || acc.includes(term) || amtStr.includes(term);
-      })
-      .sort((a, b) => {
-        const dateA = String(a.date || '');
-        const dateB = String(b.date || '');
-        if (dateA !== dateB) {
-          return dateB.localeCompare(dateA);
-        }
-        return (b.createdAt || 0) - (a.createdAt || 0);
-      });
-  }, [periodTransactions, typeFilter, statusFilter, categoryIdFilter, accountIdFilter, searchTerm, categories, accounts]);
+  }, [filteredTransactions, accountIdFilter]);
 
   // 4. Agrupamento por data (Hoje, Ontem, Datas Anteriores)
   const groupedTransactions = useMemo(() => {
@@ -734,6 +767,19 @@ export const TransactionList: React.FC = () => {
         ) : (
           (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([date, items]) => {
             const isToday = date === deviceToday;
+            const hasPaidInGroup = items.some(t => t.status === 'paid');
+            const dayNet = parseFloat(
+              items.reduce((sum, t) => {
+                if (t.status === 'cancelled') return sum;
+                if (hasPaidInGroup && statusFilter !== 'pending' && t.status !== 'paid') return sum;
+                const amt = Math.abs(Number(t.amount) || 0);
+                const isInc =
+                  t.type === 'income' ||
+                  t.type === 'goal_withdraw' ||
+                  (t.type === 'transfer' && Boolean(accountIdFilter) && t.destinationAccountId === accountIdFilter);
+                return isInc ? sum + amt : sum - amt;
+              }, 0).toFixed(2)
+            );
 
             return (
               <div key={date} className="space-y-2.5">
@@ -749,6 +795,12 @@ export const TransactionList: React.FC = () => {
                     <span>{formatDateLabel(date)}</span>
                   </div>
                   <div className="h-px bg-slate-200/80 dark:border-slate-800 flex-1" />
+                  <div className="flex items-center space-x-1.5 text-[10px] font-bold text-slate-400">
+                    <span>Saldo do dia:</span>
+                    <span className={`font-black tabular-nums ${dayNet >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {!isBlurred ? `${dayNet >= 0 ? '+' : ''}${formatCurrency(dayNet)}` : '••••••'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Cards Modulares de Lançamento */}
@@ -924,6 +976,16 @@ export const TransactionList: React.FC = () => {
                             title="Editar Lançamento"
                           >
                             <Edit3 size={15} />
+                          </button>
+
+                          {/* Botão Excluir Lançamento */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(e, t.id)}
+                            className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition flex"
+                            title="Excluir Lançamento"
+                          >
+                            <Trash2 size={15} />
                           </button>
 
                         </div>

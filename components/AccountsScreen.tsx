@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { Account, AccountType, ScopeType } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
+import { parseCurrencyInput } from '../services/financeAggregator';
+import { isAccountActive } from '../context/FinanceContext';
 
 export const AccountsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -28,27 +30,32 @@ export const AccountsScreen: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  // Contas ativas (excluindo arquivadas, ocultas ou desativadas)
+  const activeAccounts = useMemo(() => {
+    return accounts.filter(isAccountActive);
+  }, [accounts]);
+
   // Soma consolidada de todas as contas ativas
   const consolidatedTotal = useMemo(() => {
-    return accounts
-      .filter(a => a.enabled !== false)
-      .reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
-  }, [accounts, getAccountBalance]);
+    return parseFloat(
+      activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0).toFixed(2)
+    );
+  }, [activeAccounts, getAccountBalance]);
 
   // Contas Pessoais vs Músico
   const personalAccounts = useMemo(() => {
-    return accounts.filter(a => a.vinculo !== 'MUSICO' && a.scope !== 'BUSINESS');
-  }, [accounts]);
+    return activeAccounts.filter(a => a.vinculo !== 'MUSICO' && a.scope !== 'BUSINESS');
+  }, [activeAccounts]);
 
   const musicAccounts = useMemo(() => {
-    return accounts.filter(a => a.vinculo === 'MUSICO' || a.scope === 'BUSINESS');
-  }, [accounts]);
+    return activeAccounts.filter(a => a.vinculo === 'MUSICO' || a.scope === 'BUSINESS');
+  }, [activeAccounts]);
 
   const handleCreateAccount = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAccName.trim()) return;
 
-    const initialBal = parseFloat(newAccBalance.replace(',', '.')) || 0;
+    const initialBal = parseCurrencyInput(newAccBalance);
     const finalScope: ScopeType = newAccVinculo === 'MUSICO' ? 'BUSINESS' : newAccVinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH';
 
     addAccount({
@@ -115,7 +122,7 @@ export const AccountsScreen: React.FC = () => {
             Patrimônio Consolidado
           </span>
           <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-900/60 border border-blue-400/20 text-[#fcca00]">
-            {accounts.length} contas cadastradas
+            {activeAccounts.length} {activeAccounts.length === 1 ? 'conta cadastrada' : 'contas cadastradas'}
           </span>
         </div>
 
