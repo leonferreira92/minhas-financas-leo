@@ -1897,11 +1897,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const existingDebt = debts.find(d => d.id === id);
     if (!existingDebt) return;
 
+    const targetInstallmentCount = Math.max(1, installmentCount || existingDebt.installmentCount || 1);
+
     const mergedDebt: Debt = {
       ...existingDebt,
       ...extraUpdates,
       name: name || existingDebt.name,
-      installmentCount: installmentCount || existingDebt.installmentCount
+      installmentCount: targetInstallmentCount
     };
 
     const mode =
@@ -1920,7 +1922,72 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       mergedDebt.personalCategoryId || mergedDebt.categoryId
     );
 
-    const debtTxs = transactions.filter(t => t.debtId === id && t.status !== 'cancelled');
+    let currentDebtTxs = transactions.filter(t => t.debtId === id && t.status !== 'cancelled');
+
+    // 1. Sincronização da quantidade de parcelas nos lançamentos
+    const existingNumberedTxs = currentDebtTxs.filter(t => {
+      const num = extractInstallmentNumber(t, currentDebtTxs);
+      return num > 0 && !(t.description || '').toLowerCase().includes('entrada');
+    });
+
+    const maxExistingInstNum = existingNumberedTxs.reduce(
+      (max, t) => Math.max(max, extractInstallmentNumber(t, currentDebtTxs) || 0),
+      0
+    );
+
+    // Se o usuário aumentou a quantidade total de parcelas (ex: 18, 20):
+    // Gera automaticamente nos LANÇAMENTOS cada nova parcela com status 'pending'
+    if (targetInstallmentCount > maxExistingInstNum) {
+      const sortedNumbered = [...existingNumberedTxs].sort((a, b) => {
+        const numA = extractInstallmentNumber(a, currentDebtTxs);
+        const numB = extractInstallmentNumber(b, currentDebtTxs);
+        return numA - numB;
+      });
+      const lastExistingTx = sortedNumbered[sortedNumbered.length - 1];
+      const baseDateStr = lastExistingTx?.date || mergedDebt.startDate || getLocalDateString();
+      const [by, bm, bd] = baseDateStr.split('-').map(Number);
+      const baseDateObj = new Date(by || new Date().getFullYear(), (bm ? bm - 1 : 0), bd || 1, 12, 0, 0);
+
+      const addedTxs: Transaction[] = [];
+      for (let i = maxExistingInstNum + 1; i <= targetInstallmentCount; i++) {
+        const offset = i - maxExistingInstNum;
+        const nextDate = new Date(baseDateObj);
+        nextDate.setMonth(baseDateObj.getMonth() + offset);
+        const nextDateStr = nextDate.toISOString().slice(0, 10);
+
+        const instCC = resolveDebtInstallmentCostCenter(mergedDebt, i);
+        const newTx: Transaction = {
+          id: generateUUID(),
+          debtId: id,
+          description: `${mergedDebt.name} (${i}/${targetInstallmentCount})`,
+          amount: 0,
+          type: 'expense',
+          status: 'pending',
+          date: nextDateStr,
+          categoryId: instCC.categoryId,
+          category: instCC.categoryId,
+          subcategory: instCC.subcategory,
+          scope: instCC.scope,
+          accountId: mergedDebt.accountId || (accounts[0]?.id || 'acc_mp'),
+          installmentNumber: i,
+          installmentTotal: targetInstallmentCount,
+          createdAt: Date.now() + i
+        };
+        addedTxs.push(newTx);
+      }
+      currentDebtTxs = [...currentDebtTxs, ...addedTxs];
+    } else if (targetInstallmentCount < maxExistingInstNum) {
+      // Se reduziu a quantidade de parcelas:
+      // Remove SOMENTE as parcelas PENDENTES além da nova quantidade máxima (NUNCA toca em parcelas pagas no passado!)
+      currentDebtTxs = currentDebtTxs.filter(t => {
+        const num = extractInstallmentNumber(t, currentDebtTxs);
+        if (num > targetInstallmentCount && t.status === 'pending') {
+          return false;
+        }
+        return true;
+      });
+    }
+
     const totalContract = Math.max(0, Math.round((Number(mergedDebt.totalAmount) || 0) * 100) / 100);
     mergedDebt.totalAmount = totalContract;
 
@@ -1929,7 +1996,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const {
       updatedTransactions: recalculatedDebtTxs,
       averagePendingInstallment
-    } = recalculatePendingInstallmentsProportionally(mergedDebt, debtTxs, totalContract);
+    } = recalculatePendingInstallmentsProportionally(mergedDebt, currentDebtTxs, totalContract);
 
     if (averagePendingInstallment > 0) {
       mergedDebt.installmentAmount = averagePendingInstallment;
@@ -1939,17 +2006,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     recalculatedDebtTxs.forEach(t => updatedDebtTxMap.set(t.id, t));
 
     const updatedDebts = debts.map(d => (d.id === id ? mergedDebt : d));
-    const updatedTxs = transactions.map(t => {
-      if (t.debtId !== id) return t;
-      return updatedDebtTxMap.get(t.id) || t;
-    });
+    const nonDebtTxs = transactions.filter(t => t.debtId !== id);
+    const updatedTxs = [...nonDebtTxs, ...recalculatedDebtTxs];
+
+    const prevDebtTxIds = new Set(transactions.filter(t => t.debtId === id).map(t => t.id));
+    const nextDebtTxIds = new Set(recalculatedDebtTxs.map(t => t.id));
 
     saveDebts(updatedDebts);
     saveTransactions(updatedTxs);
 
     if (currentUser) {
       saveDebtToFirestore(currentUser.uid, mergedDebt);
-      updatedTxs.filter(t => t.debtId === id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      recalculatedDebtTxs.forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      prevDebtTxIds.forEach(oldId => {
+        if (!nextDebtTxIds.has(oldId)) {
+          deleteTransactionFromFirestore(currentUser.uid, oldId);
+        }
+      });
     }
   };
 

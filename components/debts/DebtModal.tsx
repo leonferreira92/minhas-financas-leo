@@ -29,7 +29,6 @@ import {
   resolveDefaultPersonalDebtCategoryId,
   DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
   isVinyDebtOrTransaction,
-  VINY_MUSIC_MAX_CEILING,
   VINY_MONTHLY_MUSIC_FIXED,
   VINY_MUSIC_START_INSTALLMENT,
   VINY_MUSIC_END_INSTALLMENT,
@@ -45,7 +44,7 @@ export interface DebtModalProps {
 }
 
 export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) => {
-  const { addDebt, updateDebt, updateDebtCostCenter, categories, accounts, transactions, activeScope } = useFinance();
+  const { addDebt, updateDebt, categories, accounts, transactions, activeScope } = useFinance();
   const isEditing = Boolean(initialDebt);
   const [step, setStep] = useState(0);
 
@@ -54,6 +53,11 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
   const [type, setType] = useState<DebtType>(initialDebt?.type || 'card_installment');
   const [totalAmount, setTotalAmount] = useState(
     initialDebt?.totalAmount !== undefined ? String(initialDebt.totalAmount) : ''
+  );
+
+  const isVinyContract = useMemo(
+    () => isVinyDebtOrTransaction({ id: initialDebt?.id, name }),
+    [initialDebt?.id, name]
   );
 
   // Cost Center & Subcategory State
@@ -74,22 +78,40 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
     return !CAREER_DEBT_SUBCATEGORIES.some(s => s.label === initialDebt.musicSubcategory);
   });
 
-  const [businessStartInstallment, setBusinessStartInstallment] = useState<string>(
-    initialDebt?.businessStartInstallment
-      ? String(initialDebt.businessStartInstallment)
-      : initialDebt && isVinyDebtOrTransaction(initialDebt)
-      ? String(VINY_MUSIC_START_INSTALLMENT)
-      : '1'
-  );
-  const [businessEndInstallment, setBusinessEndInstallment] = useState<string>(
-    initialDebt?.businessEndInstallment
-      ? String(initialDebt.businessEndInstallment)
-      : initialDebt && isVinyDebtOrTransaction(initialDebt)
-      ? String(VINY_MUSIC_END_INSTALLMENT)
-      : initialDebt?.installmentCount
-      ? String(Math.max(1, Math.floor(initialDebt.installmentCount / 2)))
-      : '6'
-  );
+  // CAMPOS DE INTERVALO DE PARCELAS TOTALMENTE DESTRAVADOS PARA LIVRE EDIÇÃO
+  const [businessStartInstallment, setBusinessStartInstallment] = useState<string>(() => {
+    if (initialDebt?.businessStartInstallment !== undefined) {
+      return String(initialDebt.businessStartInstallment);
+    }
+    if (initialDebt && isVinyDebtOrTransaction(initialDebt)) {
+      return String(VINY_MUSIC_START_INSTALLMENT);
+    }
+    return '1';
+  });
+
+  const [businessEndInstallment, setBusinessEndInstallment] = useState<string>(() => {
+    if (initialDebt?.businessEndInstallment !== undefined) {
+      return String(initialDebt.businessEndInstallment);
+    }
+    if (initialDebt && isVinyDebtOrTransaction(initialDebt)) {
+      return String(VINY_MUSIC_END_INSTALLMENT);
+    }
+    if (initialDebt?.installmentCount) {
+      return String(initialDebt.installmentCount);
+    }
+    return '10';
+  });
+
+  const [musicMonthlyAmountInput, setMusicMonthlyAmountInput] = useState<string>(() => {
+    if (initialDebt?.musicMonthlyAmount !== undefined && initialDebt.musicMonthlyAmount > 0) {
+      return String(initialDebt.musicMonthlyAmount);
+    }
+    if (initialDebt && isVinyDebtOrTransaction(initialDebt)) {
+      return String(VINY_MONTHLY_MUSIC_FIXED);
+    }
+    return '';
+  });
+
   const [includeDownPaymentInBusiness, setIncludeDownPaymentInBusiness] = useState<boolean>(
     initialDebt?.includeDownPaymentInBusiness ?? false
   );
@@ -144,10 +166,9 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
   const qtyParsed = Math.max(1, parseInt(installments) || 1);
   const isEntryInvalid = !isEditing && downParsed > 0 && downParsed >= totalParsed;
 
-  const isVinyContract = useMemo(
-    () => isVinyDebtOrTransaction({ id: initialDebt?.id, name }),
-    [initialDebt?.id, name]
-  );
+  const parsedStartInst = Math.max(1, parseInt(businessStartInstallment) || 1);
+  const parsedEndInst = Math.max(parsedStartInst, parseInt(businessEndInstallment) || qtyParsed);
+  const parsedMusicMonthly = parseCurrencyInput(musicMonthlyAmountInput);
 
   // Transações vinculadas a esta dívida (quando em modo de edição)
   const existingDebtTransactions = useMemo(() => {
@@ -182,8 +203,9 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
       totalAmount: totalParsed,
       installmentCount: qtyParsed,
       costCenterMode,
-      businessStartInstallment: Math.max(1, parseInt(businessStartInstallment) || 1),
-      businessEndInstallment: Math.max(1, parseInt(businessEndInstallment) || qtyParsed)
+      businessStartInstallment: parsedStartInst,
+      businessEndInstallment: parsedEndInst,
+      musicMonthlyAmount: parsedMusicMonthly > 0 ? parsedMusicMonthly : undefined
     };
 
     const result = recalculatePendingInstallmentsProportionally(
@@ -211,8 +233,9 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
     downParsed,
     qtyParsed,
     costCenterMode,
-    businessStartInstallment,
-    businessEndInstallment,
+    parsedStartInst,
+    parsedEndInst,
+    parsedMusicMonthly,
     existingDebtTransactions
   ]);
 
@@ -261,73 +284,20 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
 
   // Cálculo dinâmico do rateio entre DRE da Música e Pessoal (SEM VALORES IMPOSSÍVEIS)
   const allocationPreview = useMemo(() => {
-    const startIdx = isVinyContract
-      ? VINY_MUSIC_START_INSTALLMENT
-      : Math.max(1, Math.min(qtyParsed, parseInt(businessStartInstallment) || 1));
-    const endIdx = isVinyContract
-      ? Math.min(qtyParsed, VINY_MUSIC_END_INSTALLMENT)
-      : Math.max(startIdx, Math.min(qtyParsed, parseInt(businessEndInstallment) || qtyParsed));
+    const startIdx = parsedStartInst;
+    const endIdx = parsedEndInst;
     const instVal =
       parseCurrencyInput(installmentValue) ||
       (isEditing
         ? proportionalRecalcPreview.averagePendingInstallment
         : Math.max(0, (totalParsed - downParsed) / qtyParsed));
 
-    if (isVinyContract) {
-      // Se estivermos editando e houver transações simuladas, calcula parcela a parcela com Math.min(valorDaParcela, 650.00)
-      if (isEditing && proportionalRecalcPreview.simulatedTransactions.length > 0) {
-        let cumulativeMusic = 0;
-        let musicTotal = 0;
-        let personalTotal = 0;
-        let musicInstallmentsCount = 0;
-        let personalInstallmentsCount = 0;
-
-        proportionalRecalcPreview.simulatedTransactions.forEach((tx, idx) => {
-          const instNum = extractInstallmentNumber(tx) || idx + 1;
-          const isDown = instNum === 0 || (tx.description || '').toLowerCase().includes('entrada');
-          const alloc = resolveVinyInstallmentAllocation(instNum, tx.amount, isDown, cumulativeMusic);
-          cumulativeMusic = Math.round((cumulativeMusic + alloc.musicAmount) * 100) / 100;
-          musicTotal = Math.round((musicTotal + alloc.musicAmount) * 100) / 100;
-          personalTotal = Math.round((personalTotal + alloc.personalAmount) * 100) / 100;
-          if (alloc.musicAmount > 0) musicInstallmentsCount += 1;
-          if (alloc.personalAmount > 0 || alloc.musicAmount === 0) personalInstallmentsCount += 1;
-        });
-
-        const sampleMusicPerInstallment = Math.min(instVal, VINY_MONTHLY_MUSIC_FIXED);
-
-        return {
-          musicInstallmentsCount,
-          personalInstallmentsCount,
-          musicTotalAmount: musicTotal,
-          personalTotalAmount: personalTotal,
-          sampleMusicPerInstallment,
-          rangeLabel: `Parcelas ${VINY_MUSIC_START_INSTALLMENT} a ${VINY_MUSIC_END_INSTALLMENT} (Fev a Nov): até R$ ${sampleMusicPerInstallment.toFixed(2).replace('.', ',')}/mês na DRE da Música (Math.min(parcela, 650)) • Excedente e demais parcelas em PESSOAL`
-        };
-      }
-
-      // Simulação para novo contrato Viny
-      let cumulativeMusic = 0;
-      let musicTotal = 0;
-      let personalTotal = downParsed;
-      let musicCount = 0;
-      for (let i = 1; i <= qtyParsed; i++) {
-        const alloc = resolveVinyInstallmentAllocation(i, instVal, false, cumulativeMusic);
-        cumulativeMusic = Math.round((cumulativeMusic + alloc.musicAmount) * 100) / 100;
-        musicTotal = Math.round((musicTotal + alloc.musicAmount) * 100) / 100;
-        personalTotal = Math.round((personalTotal + alloc.personalAmount) * 100) / 100;
-        if (alloc.musicAmount > 0) musicCount += 1;
-      }
-      const sampleMusicPerInstallment = Math.min(instVal, VINY_MONTHLY_MUSIC_FIXED);
-
-      return {
-        musicInstallmentsCount: musicCount,
-        personalInstallmentsCount: Math.max(1, qtyParsed - musicCount),
-        musicTotalAmount: musicTotal,
-        personalTotalAmount: personalTotal,
-        sampleMusicPerInstallment,
-        rangeLabel: `Parcelas ${VINY_MUSIC_START_INSTALLMENT} a ${VINY_MUSIC_END_INSTALLMENT} (Fev a Nov): R$ ${sampleMusicPerInstallment.toFixed(2).replace('.', ',')}/mês na DRE da Música • Excedente no PESSOAL`
-      };
-    }
+    const effectiveMonthlyLimit =
+      parsedMusicMonthly > 0
+        ? parsedMusicMonthly
+        : isVinyContract
+        ? VINY_MONTHLY_MUSIC_FIXED
+        : instVal;
 
     if (costCenterMode === 'TOTAL_BUSINESS') {
       return {
@@ -351,29 +321,99 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
       };
     }
 
-    const musicCount = Math.max(0, endIdx - startIdx + 1);
-    const personalCount = Math.max(0, qtyParsed - musicCount);
-    const musicEntry = includeDownPaymentInBusiness ? downParsed : 0;
-    const personalEntry = includeDownPaymentInBusiness ? 0 : downParsed;
+    // Modo INTERVALO DE PARCELAS (incluindo Contrato Viny editável)
+    if (isEditing && proportionalRecalcPreview.simulatedTransactions.length > 0) {
+      let cumulativeMusic = 0;
+      let musicTotal = 0;
+      let personalTotal = 0;
+      let musicInstallmentsCount = 0;
+      let personalInstallmentsCount = 0;
 
-    const musicTotal = Math.min(totalParsed, Math.round((musicCount * instVal + musicEntry) * 100) / 100);
-    const personalTotal = Math.max(0, Math.round((totalParsed - musicTotal) * 100) / 100);
+      proportionalRecalcPreview.simulatedTransactions.forEach((tx, idx) => {
+        const instNum = extractInstallmentNumber(tx) || idx + 1;
+        const isDown = instNum === 0 || (tx.description || '').toLowerCase().includes('entrada');
+        
+        if (isDown) {
+          const downIsMusic = Boolean(includeDownPaymentInBusiness);
+          const downAmt = Math.abs(Number(tx.amount) || 0);
+          if (downIsMusic) {
+            musicTotal = Math.round((musicTotal + downAmt) * 100) / 100;
+            musicInstallmentsCount += 1;
+          } else {
+            personalTotal = Math.round((personalTotal + downAmt) * 100) / 100;
+            personalInstallmentsCount += 1;
+          }
+          return;
+        }
+
+        const alloc = resolveVinyInstallmentAllocation(
+          instNum,
+          tx.amount,
+          DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+          cumulativeMusic,
+          startIdx,
+          endIdx,
+          effectiveMonthlyLimit,
+          tx
+        );
+
+        cumulativeMusic = Math.round((cumulativeMusic + alloc.musicAmount) * 100) / 100;
+        musicTotal = Math.round((musicTotal + alloc.musicAmount) * 100) / 100;
+        personalTotal = Math.round((personalTotal + alloc.personalAmount) * 100) / 100;
+        if (alloc.musicAmount > 0) musicInstallmentsCount += 1;
+        if (alloc.personalAmount > 0 || alloc.musicAmount === 0) personalInstallmentsCount += 1;
+      });
+
+      const sampleMusicPerInstallment = Math.min(instVal, effectiveMonthlyLimit);
+
+      return {
+        musicInstallmentsCount,
+        personalInstallmentsCount,
+        musicTotalAmount: musicTotal,
+        personalTotalAmount: personalTotal,
+        sampleMusicPerInstallment,
+        rangeLabel: `Parcelas ${startIdx} a ${endIdx}: até R$ ${sampleMusicPerInstallment.toFixed(2).replace('.', ',')}/mês na DRE da Música • Parcela ${endIdx + 1 > qtyParsed ? 'final' : `${endIdx + 1}+`} e excedente em PESSOAL`
+      };
+    }
+
+    // Simulação para novo contrato
+    let cumulativeMusic = 0;
+    let musicTotal = 0;
+    let personalTotal = downParsed;
+    let musicCount = 0;
+    for (let i = 1; i <= qtyParsed; i++) {
+      const alloc = resolveVinyInstallmentAllocation(
+        i,
+        instVal,
+        DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+        cumulativeMusic,
+        startIdx,
+        endIdx,
+        effectiveMonthlyLimit
+      );
+      cumulativeMusic = Math.round((cumulativeMusic + alloc.musicAmount) * 100) / 100;
+      musicTotal = Math.round((musicTotal + alloc.musicAmount) * 100) / 100;
+      personalTotal = Math.round((personalTotal + alloc.personalAmount) * 100) / 100;
+      if (alloc.musicAmount > 0) musicCount += 1;
+    }
+    const sampleMusicPerInstallment = Math.min(instVal, effectiveMonthlyLimit);
 
     return {
       musicInstallmentsCount: musicCount,
-      personalInstallmentsCount: personalCount,
-      musicTotalAmount: Math.max(0, musicTotal),
-      personalTotalAmount: Math.max(0, personalTotal || personalCount * instVal + personalEntry),
-      sampleMusicPerInstallment: instVal,
-      rangeLabel: `Parcelas ${startIdx} até ${endIdx} na Música (${musicCount}x) • ${personalCount}x no Pessoal`
+      personalInstallmentsCount: Math.max(1, qtyParsed - musicCount),
+      musicTotalAmount: musicTotal,
+      personalTotalAmount: personalTotal,
+      sampleMusicPerInstallment,
+      rangeLabel: `Parcelas ${startIdx} a ${endIdx}: R$ ${sampleMusicPerInstallment.toFixed(2).replace('.', ',')}/mês na DRE da Música • Parcela ${endIdx + 1}+ e excedente em PESSOAL`
     };
   }, [
     isVinyContract,
     isEditing,
     costCenterMode,
     qtyParsed,
-    businessStartInstallment,
-    businessEndInstallment,
+    parsedStartInst,
+    parsedEndInst,
+    parsedMusicMonthly,
     installmentValue,
     totalParsed,
     downParsed,
@@ -389,15 +429,11 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
     const total = parseCurrencyInput(totalAmount);
     if (!name.trim() || isNaN(total) || total < 0 || !accountId || isEntryInvalid) return;
 
-    const startInst = isVinyContract
-      ? VINY_MUSIC_START_INSTALLMENT
-      : Math.max(1, Math.min(qtyParsed, parseInt(businessStartInstallment) || 1));
-    const endInst = isVinyContract
-      ? Math.min(qtyParsed, VINY_MUSIC_END_INSTALLMENT)
-      : Math.max(startInst, Math.min(qtyParsed, parseInt(businessEndInstallment) || qtyParsed));
+    const startInst = parsedStartInst;
+    const endInst = parsedEndInst;
     const safePersonalCategoryId = resolveDefaultPersonalDebtCategoryId(categories, personalCategoryId);
 
-    const effectiveMode: DebtCostCenterMode = isVinyContract ? 'INSTALLMENT_RANGE' : costCenterMode;
+    const effectiveMode: DebtCostCenterMode = costCenterMode;
 
     const effectiveCategoryId =
       effectiveMode === 'TOTAL_BUSINESS'
@@ -411,25 +447,28 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
         ? 'BOTH'
         : 'PERSONAL';
 
+    const debtPayload: Partial<Debt> = {
+      name: name.trim(),
+      type,
+      totalAmount: total,
+      installmentCount: qtyParsed,
+      startDate: firstDate,
+      scope: debtScope,
+      costCenterMode: effectiveMode,
+      businessStartInstallment: effectiveMode === 'INSTALLMENT_RANGE' ? startInst : 1,
+      businessEndInstallment: effectiveMode === 'INSTALLMENT_RANGE' ? endInst : qtyParsed,
+      musicMonthlyAmount: parsedMusicMonthly > 0 ? parsedMusicMonthly : undefined,
+      includeDownPaymentInBusiness:
+        effectiveMode === 'TOTAL_BUSINESS' ? true : includeDownPaymentInBusiness,
+      musicSubcategory:
+        effectiveMode !== 'TOTAL_PERSONAL' ? effectiveMusicSubcategory : undefined,
+      categoryId: effectiveCategoryId,
+      personalCategoryId: safePersonalCategoryId,
+      accountId
+    };
+
     if (isEditing && initialDebt) {
-      updateDebt(initialDebt.id, name.trim(), qtyParsed, {
-        name: name.trim(),
-        type,
-        totalAmount: total,
-        installmentCount: qtyParsed,
-        startDate: firstDate,
-        scope: debtScope,
-        costCenterMode: effectiveMode,
-        businessStartInstallment: effectiveMode === 'INSTALLMENT_RANGE' ? startInst : 1,
-        businessEndInstallment: effectiveMode === 'INSTALLMENT_RANGE' ? endInst : qtyParsed,
-        includeDownPaymentInBusiness:
-          effectiveMode === 'TOTAL_BUSINESS' ? true : includeDownPaymentInBusiness,
-        musicSubcategory:
-          effectiveMode !== 'TOTAL_PERSONAL' ? effectiveMusicSubcategory : undefined,
-        categoryId: effectiveCategoryId,
-        personalCategoryId: safePersonalCategoryId,
-        accountId
-      });
+      updateDebt(initialDebt.id, name.trim(), qtyParsed, debtPayload);
       onClose();
       return;
     }
@@ -445,6 +484,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
         costCenterMode: effectiveMode,
         businessStartInstallment: effectiveMode === 'INSTALLMENT_RANGE' ? startInst : 1,
         businessEndInstallment: effectiveMode === 'INSTALLMENT_RANGE' ? endInst : qtyParsed,
+        musicMonthlyAmount: parsedMusicMonthly > 0 ? parsedMusicMonthly : undefined,
         includeDownPaymentInBusiness:
           effectiveMode === 'TOTAL_BUSINESS' ? true : includeDownPaymentInBusiness,
         musicSubcategory:
@@ -528,14 +568,14 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
               )}
               <h2 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white tracking-tighter">
                 {isEditing
-                  ? 'Editar Dívida & Recálculo Dinâmico'
+                  ? 'Editar Dívida & Rateio Flexível'
                   : step === 0
                   ? 'Nova Dívida / Parcelamento'
                   : 'Plano de Parcelas'}
               </h2>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
                 {isEditing
-                  ? 'Edite o Valor Total para recalcular o Saldo Restante e redistribuir nas parcelas pendentes'
+                  ? 'Altere o valor total, quantidade de parcelas e intervalos com recálculo automático sem travar'
                   : step === 0
                   ? 'Passo 1: Dados, Centro de Custo e Subcategoria'
                   : 'Passo 2: Simulação e Intervalo de Parcelas'}
@@ -667,7 +707,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                 )}
 
                 {/* ================================================================= */}
-                {/* SEÇÃO PRINCIPAL: ASSOCIAÇÃO DE CENTRO DE CUSTO E SUBCATEGORIA      */}
+                {/* SEÇÃO PRINCIPAL: ASSOCIAÇÃO DE CENTRO DE CUSTO E INTERVALOS        */}
                 {/* ================================================================= */}
                 <div className="p-4 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 space-y-4">
                   <div className="flex items-center justify-between">
@@ -775,21 +815,22 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                     </button>
                   </div>
 
-                  {/* Configuração de Intervalo de Parcelas (quando INSTALLMENT_RANGE) */}
+                  {/* Configuração de Intervalo de Parcelas Totalmente Destravado */}
                   {(costCenterMode === 'INSTALLMENT_RANGE' || isVinyContract) && (
                     <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-amber-500/30 space-y-3 animate-fade-in">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
                           {isVinyContract
-                            ? 'Regra Dinâmica Viny (Parcelas 2 a 11 / Fev a Nov)'
-                            : 'Intervalo vinculado a MÚSICA / CARREIRA'}
+                            ? 'Intervalo do Som / Música do Viny (Livre Edição)'
+                            : 'Intervalo Destinado à MÚSICA / CARREIRA'}
                         </span>
                         <span className="text-[10px] font-bold text-slate-400">
                           Total de {qtyParsed} parcelas
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2.5">
+                      {/* CAMPOS DESTRAVADOS: Da Parcela Nº e Até a Parcela Nº */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
                           <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">
                             Qtd. Total Parcelas
@@ -813,10 +854,10 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                             type="number"
                             min="1"
                             max={qtyParsed}
-                            value={isVinyContract ? VINY_MUSIC_START_INSTALLMENT : businessStartInstallment}
+                            value={businessStartInstallment}
                             onChange={e => setBusinessStartInstallment(e.target.value)}
-                            disabled={isVinyContract}
-                            className="w-full px-3 py-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-500/40 font-black text-sm text-purple-700 dark:text-purple-300 tabular-nums disabled:opacity-75"
+                            placeholder="2"
+                            className="w-full px-3 py-2 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border-2 border-purple-500/50 focus:border-purple-600 font-black text-sm text-purple-700 dark:text-purple-300 tabular-nums outline-none transition"
                           />
                         </div>
                         <div>
@@ -825,29 +866,44 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           </label>
                           <input
                             type="number"
-                            min={businessStartInstallment || 1}
-                            max={qtyParsed}
-                            value={isVinyContract ? Math.min(qtyParsed, VINY_MUSIC_END_INSTALLMENT) : businessEndInstallment}
+                            min="1"
+                            value={businessEndInstallment}
                             onChange={e => setBusinessEndInstallment(e.target.value)}
-                            disabled={isVinyContract}
-                            className="w-full px-3 py-2 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-500/40 font-black text-sm text-purple-700 dark:text-purple-300 tabular-nums disabled:opacity-75"
+                            placeholder="10"
+                            className="w-full px-3 py-2 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border-2 border-purple-500/50 focus:border-purple-600 font-black text-sm text-purple-700 dark:text-purple-300 tabular-nums outline-none transition"
                           />
                         </div>
                       </div>
 
-                      {isVinyContract ? (
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                          Parcelas <strong>2 a 11 (Fev a Nov)</strong> destinam para a DRE da Música o valor de{' '}
-                          <code>Math.min(valorDaParcela, R$ 650,00)</code> (atualmente{' '}
-                          <strong>{formatBRL(allocationPreview.sampleMusicPerInstallment)}</strong>/parcela). O excedente{' '}
-                          <code>Math.max(0, valorDaParcela - 650)</code> e as parcelas 1 e 12 são alocados em{' '}
-                          <strong>PESSOAL</strong>.
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                          As parcelas de <strong>{businessStartInstallment || 1} a {businessEndInstallment || qtyParsed}</strong> entrarão no centro de custo <strong>MÚSICA / CARREIRA</strong>. As demais parcelas ficarão marcadas como <strong>PESSOAL</strong>.
-                        </p>
-                      )}
+                      {/* Limite Mensal da Música (Opcional) */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">
+                            Cota Máxima da Música por Parcela (R$)
+                          </label>
+                          <span className="text-[9px] text-slate-400">
+                            Padrão: {isVinyContract ? 'R$ 650,00 (Som)' : 'Valor integral da parcela'}
+                          </span>
+                        </div>
+                        <div className="w-full sm:w-36 relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-purple-500">
+                            R$
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={musicMonthlyAmountInput}
+                            onChange={e => setMusicMonthlyAmountInput(e.target.value)}
+                            placeholder={isVinyContract ? '650,00' : 'Integral'}
+                            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-purple-500/30 font-black text-xs text-purple-700 dark:text-purple-300 tabular-nums outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                        Parcelas <strong>{parsedStartInst} a {parsedEndInst}</strong> destinam para a DRE da Música até{' '}
+                        <strong>{formatBRL(allocationPreview.sampleMusicPerInstallment)}</strong>/parcela. O excedente e as parcelas fora desse intervalo (ex: {parsedEndInst + 1 > qtyParsed ? 'últimas' : `Parcela ${parsedEndInst + 1} em diante`}) são alocadas automaticamente como <strong>100% PESSOAL</strong>.
+                      </p>
                     </div>
                   )}
 
@@ -992,7 +1048,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                       className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center"
                     >
                       <Check size={18} className="mr-2" />
-                      Salvar & Recalcular Parcelas
+                      Salvar & Sincronizar Parcelas
                     </button>
                   </div>
                 ) : (
@@ -1034,7 +1090,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                       {costCenterMode === 'TOTAL_BUSINESS'
                         ? `🎸 Música: ${effectiveMusicSubcategory}`
                         : costCenterMode === 'INSTALLMENT_RANGE'
-                        ? `🔀 Parcelas ${businessStartInstallment}-${businessEndInstallment} na Música`
+                        ? `🔀 Parcelas ${parsedStartInst}-${parsedEndInst} na Música`
                         : '👤 100% Pessoal'}
                     </span>
                   </div>
@@ -1148,7 +1204,6 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                         <input
                           type="number"
                           min={businessStartInstallment || 1}
-                          max={qtyParsed}
                           value={businessEndInstallment}
                           onChange={e => setBusinessEndInstallment(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-500/30 font-black text-sm dark:text-white"
@@ -1265,7 +1320,17 @@ export interface InstallmentRecalcModalProps {
   transaction: Transaction;
   debtTransactions: Transaction[];
   onClose: () => void;
-  onSave: (transactionId: string, newAmount: number) => void;
+  onSave: (
+    transactionId: string,
+    newAmount: number,
+    overrides?: {
+      scope?: 'BUSINESS' | 'PERSONAL';
+      customMusicAmount?: number;
+      customPersonalAmount?: number;
+      manualCostCenterOverride?: boolean;
+      subcategory?: string;
+    }
+  ) => void;
 }
 
 export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
@@ -1284,17 +1349,69 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
     [debt, transaction]
   );
 
-  const instNum = useMemo(() => extractInstallmentNumber(transaction), [transaction]);
+  const instNum = useMemo(
+    () => extractInstallmentNumber(transaction, debtTransactions),
+    [transaction, debtTransactions]
+  );
   const isDownPayment =
     instNum === 0 || (transaction.description || '').toLowerCase().includes('entrada');
 
+  const startInst = debt?.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
+  const endInst = debt?.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
+  const inMusicRangeByDefault = !isDownPayment && instNum >= startInst && instNum <= endInst;
+
+  // Destinação Customizada por Parcela
+  const [allocationChoice, setAllocationChoice] = useState<'AUTO' | 'FULL_PERSONAL' | 'FULL_MUSIC' | 'CUSTOM_SPLIT'>(() => {
+    if (transaction.manualCostCenterOverride) {
+      if (typeof transaction.customMusicAmount === 'number' && transaction.customMusicAmount > 0) {
+        if (transaction.customMusicAmount >= transaction.amount) return 'FULL_MUSIC';
+        return 'CUSTOM_SPLIT';
+      }
+      if (transaction.scope === 'PERSONAL') return 'FULL_PERSONAL';
+      if (transaction.scope === 'BUSINESS') return 'FULL_MUSIC';
+    }
+    return 'AUTO';
+  });
+
+  const [customMusicInput, setCustomMusicInput] = useState<string>(() => {
+    if (typeof transaction.customMusicAmount === 'number') {
+      return String(transaction.customMusicAmount);
+    }
+    if (isViny && inMusicRangeByDefault) {
+      return String(Math.min(transaction.amount, VINY_MONTHLY_MUSIC_FIXED));
+    }
+    return '';
+  });
+
+  const parsedCustomMusic = Math.min(parsedNewAmount, parseCurrencyInput(customMusicInput));
+
   // Simula o impacto nas demais parcelas pendentes mantendo a integridade do Saldo Devedor Total
   const recalcSimulation = useMemo(() => {
+    const targetOverrides = allocationChoice === 'AUTO'
+      ? undefined
+      : {
+          manualCostCenterOverride: true,
+          scope: allocationChoice === 'FULL_PERSONAL' ? ('PERSONAL' as const) : ('BUSINESS' as const),
+          customMusicAmount:
+            allocationChoice === 'FULL_PERSONAL'
+              ? 0
+              : allocationChoice === 'FULL_MUSIC'
+              ? parsedNewAmount
+              : parsedCustomMusic,
+          customPersonalAmount:
+            allocationChoice === 'FULL_PERSONAL'
+              ? parsedNewAmount
+              : allocationChoice === 'FULL_MUSIC'
+              ? 0
+              : Math.max(0, parsedNewAmount - parsedCustomMusic)
+        };
+
     const res = recalculateInstallmentManualChange(
       debt,
       debtTransactions,
       transaction.id,
-      parsedNewAmount
+      parsedNewAmount,
+      targetOverrides
     );
     const otherPendingAfter = res.updatedTransactions.filter(
       t => t.id !== transaction.id && t.status === 'pending'
@@ -1311,40 +1428,86 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
       otherPendingCount: otherPendingAfter.length,
       nextAvgPending
     };
-  }, [debt, debtTransactions, transaction.id, parsedNewAmount]);
+  }, [debt, debtTransactions, transaction.id, parsedNewAmount, allocationChoice, parsedCustomMusic]);
 
-  // Prévia dinâmica da alocação DRE da Música vs Pessoal desta parcela (sem valores impossíveis)
-  const vinyDynamicPreview = useMemo(() => {
-    if (!isViny) return null;
-    const inSoundRange =
-      !isDownPayment &&
-      instNum >= VINY_MUSIC_START_INSTALLMENT &&
-      instNum <= VINY_MUSIC_END_INSTALLMENT;
-    const musicShare = inSoundRange
-      ? Math.min(parsedNewAmount, VINY_MONTHLY_MUSIC_FIXED)
-      : 0;
-    const personalShare = Math.max(0, Math.round((parsedNewAmount - musicShare) * 100) / 100);
-    return {
-      inSoundRange,
-      musicShare,
-      personalShare
-    };
-  }, [isViny, isDownPayment, instNum, parsedNewAmount]);
+  // Prévia dinâmica da alocação desta parcela específica
+  const dynamicInstallmentAllocation = useMemo(() => {
+    if (allocationChoice === 'FULL_PERSONAL') {
+      return { musicShare: 0, personalShare: parsedNewAmount, label: '100% Pessoal' };
+    }
+    if (allocationChoice === 'FULL_MUSIC') {
+      return { musicShare: parsedNewAmount, personalShare: 0, label: '100% Música / Carreira' };
+    }
+    if (allocationChoice === 'CUSTOM_SPLIT') {
+      const mAmt = Math.min(parsedNewAmount, parsedCustomMusic);
+      const pAmt = Math.max(0, Math.round((parsedNewAmount - mAmt) * 100) / 100);
+      return { musicShare: mAmt, personalShare: pAmt, label: 'Rateio Personalizado' };
+    }
+
+    // AUTO
+    if (isViny) {
+      const musicShare = inMusicRangeByDefault
+        ? Math.min(parsedNewAmount, VINY_MONTHLY_MUSIC_FIXED)
+        : 0;
+      const personalShare = Math.max(0, Math.round((parsedNewAmount - musicShare) * 100) / 100);
+      return {
+        musicShare,
+        personalShare,
+        label: inMusicRangeByDefault
+          ? `Padrão Som (Fev a Nov / P${startInst}-P${endInst})`
+          : 'Padrão 100% Pessoal (Fora do Intervalo)'
+      };
+    }
+
+    if (inMusicRangeByDefault || debt?.scope === 'BUSINESS') {
+      return { musicShare: parsedNewAmount, personalShare: 0, label: 'Padrão Música' };
+    }
+    return { musicShare: 0, personalShare: parsedNewAmount, label: 'Padrão Pessoal' };
+  }, [allocationChoice, isViny, inMusicRangeByDefault, startInst, endInst, parsedNewAmount, parsedCustomMusic, debt?.scope]);
 
   const formatBRL = (val: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
+  const handleConfirmSave = () => {
+    let overrides: {
+      scope?: 'BUSINESS' | 'PERSONAL';
+      customMusicAmount?: number;
+      customPersonalAmount?: number;
+      manualCostCenterOverride?: boolean;
+      subcategory?: string;
+    } | undefined = undefined;
+
+    if (allocationChoice !== 'AUTO') {
+      const mAmt =
+        allocationChoice === 'FULL_PERSONAL'
+          ? 0
+          : allocationChoice === 'FULL_MUSIC'
+          ? parsedNewAmount
+          : parsedCustomMusic;
+      const pAmt = Math.max(0, Math.round((parsedNewAmount - mAmt) * 100) / 100);
+
+      overrides = {
+        manualCostCenterOverride: true,
+        scope: mAmt > 0 ? 'BUSINESS' : 'PERSONAL',
+        customMusicAmount: mAmt,
+        customPersonalAmount: pAmt,
+        subcategory: mAmt > 0 ? (debt?.musicSubcategory || 'Equipamentos/Som') : undefined
+      };
+    }
+
+    onSave(transaction.id, parsedNewAmount, overrides);
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] p-7 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] p-7 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in max-h-[92vh] overflow-y-auto no-scrollbar">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tighter">
-              Ajustar{' '}
-              {instNum > 0 ? `Parcela ${instNum}` : 'Entrada Inicial'}
+              Ajustar {instNum > 0 ? `Parcela ${instNum}` : 'Entrada Inicial'}
             </h3>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-              Redistribuição automática nas parcelas pendentes
+              Edição flexível de valor e centro de custo
             </p>
           </div>
           <button
@@ -1355,10 +1518,11 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
           </button>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
+          {/* Valor da Parcela */}
           <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 px-1">
-              Novo Valor {instNum > 0 ? 'da Parcela' : 'da Entrada Inicial'}
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+              Novo Valor {instNum > 0 ? 'da Parcela' : 'da Entrada Inicial'} (R$)
             </label>
             <div className="relative">
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">
@@ -1369,38 +1533,124 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                 inputMode="decimal"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="w-full pl-14 pr-6 py-4.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] text-3xl font-black outline-none dark:text-white tabular-nums shadow-inner"
+                className="w-full pl-14 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] text-3xl font-black outline-none dark:text-white tabular-nums shadow-inner"
                 autoFocus
               />
             </div>
           </div>
 
-          {/* Preview Dinâmico do Rateio DRE da Música vs Pessoal (Contrato Viny) */}
-          {vinyDynamicPreview && (
-            <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/25 space-y-2">
-              <span className="block text-[10px] font-black uppercase tracking-widest text-purple-500">
-                Rateio Dinâmico desta Parcela (Viny)
-              </span>
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/70">
-                  <span className="text-[9px] font-black uppercase text-purple-500 block">
-                    🎸 DRE Música (Som)
+          {/* Opções de Destinação da Parcela (Música vs Pessoal) */}
+          <div className="space-y-2.5">
+            <label className="block text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
+              <Layers size={13} />
+              Destinação desta Parcela
+            </label>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAllocationChoice('AUTO')}
+                className={`p-2.5 rounded-xl border text-left text-xs font-black transition ${
+                  allocationChoice === 'AUTO'
+                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-500 text-purple-700 dark:text-purple-300'
+                    : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
+                }`}
+              >
+                <span className="block text-[9px] uppercase text-slate-400">Padrão do Contrato</span>
+                <span>Automático</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAllocationChoice('FULL_PERSONAL')}
+                className={`p-2.5 rounded-xl border text-left text-xs font-black transition ${
+                  allocationChoice === 'FULL_PERSONAL'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-500 text-indigo-700 dark:text-indigo-300'
+                    : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
+                }`}
+              >
+                <span className="block text-[9px] uppercase text-slate-400">100% Pessoal</span>
+                <span>Pessoal</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAllocationChoice('FULL_MUSIC')}
+                className={`p-2.5 rounded-xl border text-left text-xs font-black transition ${
+                  allocationChoice === 'FULL_MUSIC'
+                    ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-500 text-purple-700 dark:text-purple-300'
+                    : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
+                }`}
+              >
+                <span className="block text-[9px] uppercase text-slate-400">100% Música</span>
+                <span>Música / DRE</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAllocationChoice('CUSTOM_SPLIT')}
+                className={`p-2.5 rounded-xl border text-left text-xs font-black transition ${
+                  allocationChoice === 'CUSTOM_SPLIT'
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 text-amber-700 dark:text-amber-300'
+                    : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
+                }`}
+              >
+                <span className="block text-[9px] uppercase text-slate-400">Divisão Manual</span>
+                <span>Rateio Misto</span>
+              </button>
+            </div>
+
+            {allocationChoice === 'CUSTOM_SPLIT' && (
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-fade-in">
+                <label className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 block">
+                  Quanto desta parcela vai para a Música? (R$)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-amber-500">
+                    R$
                   </span>
-                  <span className="text-sm font-black text-purple-600 dark:text-purple-400 tabular-nums">
-                    {formatBRL(vinyDynamicPreview.musicShare)}
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/70">
-                  <span className="text-[9px] font-black uppercase text-indigo-500 block">
-                    👤 Centro Pessoal
-                  </span>
-                  <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
-                    {formatBRL(vinyDynamicPreview.personalShare)}
-                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={customMusicInput}
+                    onChange={e => setCustomMusicInput(e.target.value)}
+                    placeholder="650,00"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/40 font-black text-sm text-amber-800 dark:text-amber-200 outline-none tabular-nums"
+                  />
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Preview Dinâmico do Rateio DRE da Música vs Pessoal desta Parcela */}
+          <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/25 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-purple-500">
+                Rateio DRE desta Parcela
+              </span>
+              <span className="text-[9px] font-bold text-slate-400">
+                {dynamicInstallmentAllocation.label}
+              </span>
             </div>
-          )}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/70">
+                <span className="text-[9px] font-black uppercase text-purple-500 block">
+                  🎸 DRE Música
+                </span>
+                <span className="text-sm font-black text-purple-600 dark:text-purple-400 tabular-nums">
+                  {formatBRL(dynamicInstallmentAllocation.musicShare)}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/70">
+                <span className="text-[9px] font-black uppercase text-indigo-500 block">
+                  👤 Centro Pessoal
+                </span>
+                <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+                  {formatBRL(dynamicInstallmentAllocation.personalShare)}
+                </span>
+              </div>
+            </div>
+          </div>
 
           {Math.abs(diff) >= 0.01 && (
             <div
@@ -1425,10 +1675,10 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
           )}
 
           <button
-            onClick={() => onSave(transaction.id, parsedNewAmount)}
+            onClick={handleConfirmSave}
             className="w-full py-4.5 bg-slate-900 dark:bg-indigo-600 hover:scale-[1.01] text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95"
           >
-            Confirmar & Redistribuir
+            Confirmar & Salvar
           </button>
         </div>
       </div>

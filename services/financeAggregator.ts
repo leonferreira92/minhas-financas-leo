@@ -16,10 +16,10 @@ export type AccountVinculo = 'PESSOAL' | 'MUSICO' | 'NEUTRO';
  *   são alocados automaticamente em 'PESSOAL' (Categoria padrão: 'Dívidas / Empréstimo Pessoal').
  */
 export const VINY_MUSIC_START_INSTALLMENT = 2; // Fevereiro (P2)
-export const VINY_MUSIC_END_INSTALLMENT = 11;  // Novembro (P11)
-export const VINY_MONTHLY_MUSIC_FIXED = 650.0; // R$ 650,00/mês fixos na DRE da Música (Fev a Nov)
-export const VINY_MUSIC_MAX_CEILING = 6500.0;  // Teto MÁXIMO acumulado na DRE da Música (10x R$ 650,00 = R$ 6.500,00)
-export const VINY_DEFAULT_TOTAL_AMOUNT = 12435.0; // Valor Total padrão do contrato único do Viny (R$ 12.435,00)
+export const VINY_MUSIC_END_INSTALLMENT = 10;  // Parcelas 2 a 10 (Padrão Som/Música do Viny; P11+ = 100% Pessoal)
+export const VINY_MONTHLY_MUSIC_FIXED = 650.0; // R$ 650,00/mês padrão na DRE da Música (editável pelo usuário)
+export const VINY_MUSIC_MAX_CEILING = 6500.0;  // Teto padrão acumulado na DRE da Música
+export const VINY_DEFAULT_TOTAL_AMOUNT = 12435.0; // Valor Total padrão inicial do contrato único do Viny (editável)
 export const DEFAULT_PERSONAL_DEBT_CATEGORY_ID = 'cat_dividas'; // Categoria padrão: 'Dívidas / Empréstimo Pessoal'
 
 export const VINY_HISTORICAL_PAID_SCHEDULE: Array<{
@@ -185,7 +185,9 @@ export const resolveVinyInstallmentAllocation = (
   personalCategoryId: string = DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
   alreadyAllocatedMusicTotal: number = 0,
   startInstallment: number = VINY_MUSIC_START_INSTALLMENT,
-  endInstallment: number = VINY_MUSIC_END_INSTALLMENT
+  endInstallment: number = VINY_MUSIC_END_INSTALLMENT,
+  customMonthlyMusicLimit?: number,
+  txOverride?: Partial<Transaction>
 ): {
   scope: 'BUSINESS' | 'PERSONAL';
   categoryId: string;
@@ -196,18 +198,83 @@ export const resolveVinyInstallmentAllocation = (
 } => {
   const cleanAmount = Math.round(Math.abs(Number(rawAmount) || 0) * 100) / 100;
   const safePersonalCat = resolveDefaultPersonalDebtCategoryId(undefined, personalCategoryId);
+
+  // Se a parcela possui override manual explícito de valor ou centro de custo definido pelo usuário, respeita estritamente:
+  if (txOverride?.manualCostCenterOverride) {
+    if (typeof txOverride.customMusicAmount === 'number' && !isNaN(txOverride.customMusicAmount)) {
+      const mAmt = Math.min(cleanAmount, Math.max(0, Math.round(txOverride.customMusicAmount * 100) / 100));
+      const pAmt = Math.max(0, Math.round((cleanAmount - mAmt) * 100) / 100);
+      return {
+        scope: mAmt > 0 ? 'BUSINESS' : 'PERSONAL',
+        categoryId: mAmt > 0 ? 'cat_equipamentos' : safePersonalCat,
+        subcategory: mAmt > 0 ? (txOverride.subcategory || 'Equipamentos/Som') : undefined,
+        musicAmount: mAmt,
+        personalAmount: pAmt,
+        isMusicInterval: mAmt > 0
+      };
+    }
+    if (txOverride.scope === 'PERSONAL') {
+      return {
+        scope: 'PERSONAL',
+        categoryId: safePersonalCat,
+        subcategory: undefined,
+        musicAmount: 0,
+        personalAmount: cleanAmount,
+        isMusicInterval: false
+      };
+    }
+    if (txOverride.scope === 'BUSINESS') {
+      const limit =
+        typeof customMonthlyMusicLimit === 'number' && customMonthlyMusicLimit > 0
+          ? customMonthlyMusicLimit
+          : cleanAmount;
+      const mAmt = Math.min(cleanAmount, Math.round(limit * 100) / 100);
+      const pAmt = Math.max(0, Math.round((cleanAmount - mAmt) * 100) / 100);
+      return {
+        scope: 'BUSINESS',
+        categoryId: 'cat_equipamentos',
+        subcategory: txOverride.subcategory || 'Equipamentos/Som',
+        musicAmount: mAmt,
+        personalAmount: pAmt,
+        isMusicInterval: true
+      };
+    }
+  }
+
+  // Parcelas fora do intervalo definido (ex: Entrada 0, Parcela 1, e Parcela 11 em diante quando intervalo é 2 a 10)
+  // são categorizadas automaticamente como 100% 'PESSOAL'
   const isMusicInterval =
+    installmentNumber > 0 &&
     installmentNumber >= startInstallment &&
     installmentNumber <= endInstallment;
 
+  if (!isMusicInterval || cleanAmount <= 0) {
+    return {
+      scope: 'PERSONAL',
+      categoryId: safePersonalCat,
+      subcategory: undefined,
+      musicAmount: 0,
+      personalAmount: cleanAmount,
+      isMusicInterval: false
+    };
+  }
+
+  const effectiveMonthlyLimit =
+    typeof customMonthlyMusicLimit === 'number' && customMonthlyMusicLimit > 0
+      ? customMonthlyMusicLimit
+      : VINY_MONTHLY_MUSIC_FIXED;
+
+  const intervalCount = Math.max(1, endInstallment - startInstallment + 1);
+  const dynamicCeiling = Math.max(VINY_MUSIC_MAX_CEILING, intervalCount * effectiveMonthlyLimit);
   const remainingCeiling = Math.max(
     0,
-    Math.round((VINY_MUSIC_MAX_CEILING - Math.max(0, alreadyAllocatedMusicTotal)) * 100) / 100
+    Math.round((dynamicCeiling - Math.max(0, alreadyAllocatedMusicTotal)) * 100) / 100
   );
 
-  if (isMusicInterval && remainingCeiling > 0 && cleanAmount > 0) {
-    // Regra estrita: Math.min(valorDaParcela, 650.00) respeitando o teto acumulado
-    const musicAmount = Math.round(Math.min(cleanAmount, VINY_MONTHLY_MUSIC_FIXED, remainingCeiling) * 100) / 100;
+  if (remainingCeiling > 0) {
+    const musicAmount = Math.round(
+      Math.min(cleanAmount, effectiveMonthlyLimit, remainingCeiling) * 100
+    ) / 100;
     const personalAmount = Math.max(0, Math.round((cleanAmount - musicAmount) * 100) / 100);
     return {
       scope: musicAmount > 0 ? 'BUSINESS' : 'PERSONAL',
@@ -215,7 +282,7 @@ export const resolveVinyInstallmentAllocation = (
       subcategory: musicAmount > 0 ? 'Equipamentos/Som' : undefined,
       musicAmount,
       personalAmount,
-      isMusicInterval: true
+      isMusicInterval: musicAmount > 0
     };
   }
 
@@ -230,16 +297,16 @@ export const resolveVinyInstallmentAllocation = (
 };
 
 /**
- * Calcula o resumo consolidado e dinâmico de Centro de Custo para o Contrato do Viny,
- * garantindo que cada parcela do intervalo do Som (2 a 11) aloque `Math.min(valorDaParcela, 650.00)`
- * na Música e `Math.max(0, valorDaParcela - 650.00)` no Pessoal, e que o Saldo Restante seja
- * sempre (Valor Total - Soma das Parcelas Pagas).
+ * Calcula o resumo consolidado e dinâmico de Centro de Custo para o Contrato do Viny
+ * (ou qualquer dívida com rateio por intervalo), respeitando o intervalo configurável (padrão 2 a 10)
+ * e garantindo que da Parcela 11 em diante seja 100% 'PESSOAL'.
  */
 export const calculateVinyCostCenterSummary = (
   vinyTransactions: Transaction[],
   totalContractAmount: number = VINY_DEFAULT_TOTAL_AMOUNT,
   startInstallment: number = VINY_MUSIC_START_INSTALLMENT,
-  endInstallment: number = VINY_MUSIC_END_INSTALLMENT
+  endInstallment: number = VINY_MUSIC_END_INSTALLMENT,
+  customMonthlyMusicLimit?: number
 ) => {
   const sorted = [...(Array.isArray(vinyTransactions) ? vinyTransactions : [])].sort((a, b) => {
     const instA = extractInstallmentNumber(a, vinyTransactions);
@@ -261,64 +328,57 @@ export const calculateVinyCostCenterSummary = (
     if (!t || t.status === 'cancelled') return;
     const amt = Math.round(Math.abs(Number(t.amount) || 0) * 100) / 100;
     const instNum = extractInstallmentNumber(t, sorted);
-    const isSoundInstallment =
-      instNum >= startInstallment && instNum <= endInstallment;
+    const currentAllocatedMusic = Math.round((musicPaidTotal + musicPendingTotal) * 100) / 100;
+
+    const alloc = resolveVinyInstallmentAllocation(
+      instNum,
+      amt,
+      DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+      currentAllocatedMusic,
+      startInstallment,
+      endInstallment,
+      customMonthlyMusicLimit,
+      t
+    );
 
     if (t.status === 'paid') {
       totalPaidReal = Math.round((totalPaidReal + amt) * 100) / 100;
+      musicPaidTotal = Math.round((musicPaidTotal + alloc.musicAmount) * 100) / 100;
+      personalPaidTotal = Math.round((personalPaidTotal + alloc.personalAmount) * 100) / 100;
     } else if (t.status === 'pending') {
       totalPendingReal = Math.round((totalPendingReal + amt) * 100) / 100;
+      musicPendingTotal = Math.round((musicPendingTotal + alloc.musicAmount) * 100) / 100;
+      personalPendingTotal = Math.round((personalPendingTotal + alloc.personalAmount) * 100) / 100;
     }
 
-    if (isSoundInstallment) {
+    if (alloc.musicAmount > 0) {
       musicCount += 1;
-      const currentAllocatedMusic = Math.round((musicPaidTotal + musicPendingTotal) * 100) / 100;
-      const remainingCeiling = Math.max(0, Math.round((VINY_MUSIC_MAX_CEILING - currentAllocatedMusic) * 100) / 100);
-      // Nunca supera o valor da própria parcela nem R$ 650,00
-      const musicPortion = Math.round(Math.min(amt, VINY_MONTHLY_MUSIC_FIXED, remainingCeiling) * 100) / 100;
-      const personalPortion = Math.max(0, Math.round((amt - musicPortion) * 100) / 100);
-
-      if (t.status === 'paid') {
-        const remainingPaidCeiling = Math.max(0, Math.round((VINY_MUSIC_MAX_CEILING - musicPaidTotal) * 100) / 100);
-        const paidMusicPortion = Math.round(Math.min(amt, VINY_MONTHLY_MUSIC_FIXED, remainingPaidCeiling) * 100) / 100;
-        const paidPersonalPortion = Math.max(0, Math.round((amt - paidMusicPortion) * 100) / 100);
-        musicPaidTotal = Math.round((musicPaidTotal + paidMusicPortion) * 100) / 100;
-        personalPaidTotal = Math.round((personalPaidTotal + paidPersonalPortion) * 100) / 100;
-      } else if (t.status === 'pending') {
-        musicPendingTotal = Math.round((musicPendingTotal + musicPortion) * 100) / 100;
-        personalPendingTotal = Math.round((personalPendingTotal + personalPortion) * 100) / 100;
-      }
-
-      if (personalPortion > 0) {
-        personalCount += 1;
-      }
-    } else {
+    }
+    if (alloc.personalAmount > 0 || alloc.musicAmount === 0) {
       personalCount += 1;
-      if (t.status === 'paid') {
-        personalPaidTotal = Math.round((personalPaidTotal + amt) * 100) / 100;
-      } else if (t.status === 'pending') {
-        personalPendingTotal = Math.round((personalPendingTotal + amt) * 100) / 100;
-      }
     }
   });
 
-  // Garantia absoluta: Pago + Pendente na Música NUNCA ultrapassa R$ 6.500,00
-  musicPaidTotal = Math.min(VINY_MUSIC_MAX_CEILING, musicPaidTotal);
-  musicPendingTotal = Math.min(Math.max(0, Math.round((VINY_MUSIC_MAX_CEILING - musicPaidTotal) * 100) / 100), musicPendingTotal);
-
-  const safeTotalContract = Number(totalContractAmount) > 0 ? Number(totalContractAmount) : VINY_DEFAULT_TOTAL_AMOUNT;
+  const safeTotalContract =
+    Number(totalContractAmount) >= 0 ? Number(totalContractAmount) : VINY_DEFAULT_TOTAL_AMOUNT;
   const remainingBalance = Math.max(0, Math.round((safeTotalContract - totalPaidReal) * 100) / 100);
   const totalAllocatedMusic = Math.round((musicPaidTotal + musicPendingTotal) * 100) / 100;
+  const personalContractTotal = Math.max(
+    0,
+    Math.round((safeTotalContract - totalAllocatedMusic) * 100) / 100
+  );
 
   return {
     musicPaidTotal,
     musicPendingTotal,
     musicTotalAllocated: totalAllocatedMusic,
+    musicContractTotal: totalAllocatedMusic,
     musicCeiling: VINY_MUSIC_MAX_CEILING,
-    musicCount: Math.min(10, musicCount || 10),
+    musicCount,
     personalPaidTotal,
     personalPendingTotal,
-    personalTotalContract: Math.max(0, Math.round((safeTotalContract - totalAllocatedMusic) * 100) / 100),
+    personalTotalContract: personalContractTotal,
+    personalContractTotal,
     personalCount,
     totalPaidReal,
     totalPendingReal,
@@ -327,7 +387,9 @@ export const calculateVinyCostCenterSummary = (
 };
 
 /**
- * Recalcula proporcionalmente todas as parcelas pendentes de uma dívida quando o Valor Total é alterado.
+ * Recalcula proporcionalmente SOMENTE as parcelas pendentes (status === 'pending') de uma dívida
+ * quando o Valor Total ou o Intervalo de Centro de Custo é alterado.
+ * - NUNCA exclui nem modifica o valor, data ou conta de transações já pagas (status === 'paid').
  * - Saldo Restante = Math.max(0, Valor Total - Soma das Parcelas Pagas).
  * - Redistribui o Saldo Restante proporcionalmente entre todas as parcelas não pagas (status === 'pending').
  */
@@ -337,6 +399,7 @@ export const recalculatePendingInstallmentsProportionally = (
   newTotalAmount: number
 ): {
   paidTotal: number;
+  paidSum: number;
   remainingBalance: number;
   updatedTransactions: Transaction[];
   pendingAmountsMap: Map<string, number>;
@@ -390,15 +453,58 @@ export const recalculatePendingInstallmentsProportionally = (
   const updatedTransactions = debtTransactions.map(t => {
     if (!t || t.status === 'cancelled') return t;
     const instNum = extractInstallmentNumber(t, activeTxs);
-    const nextAmount = pendingAmountsMap.has(t.id) ? pendingAmountsMap.get(t.id)! : Math.abs(Number(t.amount) || 0);
-    const instCC = resolveDebtInstallmentCostCenter(updatedDebtRef, instNum, nextAmount);
     const isDownPayment = instNum === 0 || (t.description || '').toLowerCase().includes('entrada');
     const totalCount = updatedDebtRef.installmentCount || t.installmentTotal || 1;
+
+    // PROTEÇÃO ABSOLUTA DE TRANSAÇÕES PAGAS NO PASSADO:
+    // Jamais altera valor, data, status ou conta de uma transação já paga (status === 'paid')!
+    if (t.status === 'paid') {
+      const paidCC = t.manualCostCenterOverride
+        ? {
+            scope: t.scope || 'PERSONAL',
+            categoryId: t.categoryId,
+            subcategory: t.subcategory
+          }
+        : resolveDebtInstallmentCostCenter(updatedDebtRef, instNum, t.amount, t);
+      return {
+        ...t,
+        installmentNumber: instNum,
+        installmentTotal: totalCount,
+        scope: paidCC.scope,
+        categoryId: paidCC.categoryId,
+        category: paidCC.categoryId,
+        subcategory: paidCC.subcategory
+      };
+    }
+
+    const nextAmount = pendingAmountsMap.has(t.id)
+      ? pendingAmountsMap.get(t.id)!
+      : Math.abs(Number(t.amount) || 0);
+    const instCC = t.manualCostCenterOverride
+      ? {
+          scope: t.scope || 'PERSONAL',
+          categoryId: t.categoryId,
+          subcategory: t.subcategory,
+          musicAmount:
+            typeof t.customMusicAmount === 'number'
+              ? Math.min(nextAmount, t.customMusicAmount)
+              : t.scope === 'BUSINESS'
+              ? nextAmount
+              : 0,
+          personalAmount:
+            typeof t.customMusicAmount === 'number'
+              ? Math.max(0, nextAmount - Math.min(nextAmount, t.customMusicAmount))
+              : t.scope === 'BUSINESS'
+              ? 0
+              : nextAmount
+        }
+      : resolveDebtInstallmentCostCenter(updatedDebtRef, instNum, nextAmount, t);
     const debtName = updatedDebtRef.name || 'Dívida';
 
     return {
       ...t,
       amount: nextAmount,
+      interest: 0,
       installmentNumber: instNum,
       installmentTotal: totalCount,
       description: isDownPayment
@@ -408,6 +514,8 @@ export const recalculatePendingInstallmentsProportionally = (
       categoryId: instCC.categoryId,
       category: instCC.categoryId,
       subcategory: instCC.subcategory,
+      customMusicAmount: t.manualCostCenterOverride ? instCC.musicAmount : instCC.musicAmount,
+      customPersonalAmount: t.manualCostCenterOverride ? instCC.personalAmount : instCC.personalAmount,
       accountId: updatedDebtRef.accountId || t.accountId
     };
   });
@@ -419,6 +527,7 @@ export const recalculatePendingInstallmentsProportionally = (
 
   return {
     paidTotal,
+    paidSum: paidTotal,
     remainingBalance,
     updatedTransactions,
     pendingAmountsMap,
@@ -428,14 +537,22 @@ export const recalculatePendingInstallmentsProportionally = (
 
 /**
  * Ao alterar manualmente o valor de qualquer parcela pendente (para mais ou para menos),
- * recalcula a diferença e redistribui automaticamente o impacto nas demais parcelas pendentes,
- * mantendo a integridade estrita do Saldo Devedor Total (Valor Total - Soma das Parcelas Pagas).
+ * recalcula a diferença e redistribui automaticamente o impacto SOMENTE nas demais parcelas pendentes,
+ * mantendo a integridade estrita do Saldo Devedor Total e sem JAMAIS modificar transações já pagas
+ * nem forçar reatribuição para Música caso a parcela esteja fora do intervalo definido.
  */
 export const recalculateInstallmentManualChange = (
   debt: Partial<Debt> | undefined,
   debtTransactions: Transaction[],
   targetTransactionId: string,
-  newInstallmentAmount: number
+  newInstallmentAmount: number,
+  targetOverrides?: {
+    scope?: 'BUSINESS' | 'PERSONAL';
+    customMusicAmount?: number;
+    customPersonalAmount?: number;
+    manualCostCenterOverride?: boolean;
+    subcategory?: string;
+  }
 ): {
   paidTotal: number;
   remainingBalance: number;
@@ -471,14 +588,18 @@ export const recalculateInstallmentManualChange = (
 
   updatedAmountsMap.set(targetTransactionId, cleanNewAmount);
 
-  const allOtherPending = [...activeTxs.filter(t => t.status === 'pending' && t.id !== targetTransactionId)].sort(
-    (a, b) => {
-      const instA = extractInstallmentNumber(a, activeTxs);
-      const instB = extractInstallmentNumber(b, activeTxs);
-      if (instA !== instB) return instA - instB;
-      return (a.date || '').localeCompare(b.date || '');
-    }
-  );
+  // Só redistribui nas demais parcelas pendentes se a parcela editada for pendente
+  const allOtherPending =
+    targetTx.status === 'pending'
+      ? [...activeTxs.filter(t => t.status === 'pending' && t.id !== targetTransactionId)].sort(
+          (a, b) => {
+            const instA = extractInstallmentNumber(a, activeTxs);
+            const instB = extractInstallmentNumber(b, activeTxs);
+            if (instA !== instB) return instA - instB;
+            return (a.date || '').localeCompare(b.date || '');
+          }
+        )
+      : [];
 
   if (allOtherPending.length > 0) {
     const targetInstNum = extractInstallmentNumber(targetTx, activeTxs);
@@ -488,8 +609,6 @@ export const recalculateInstallmentManualChange = (
       priorPending.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) * 100
     ) / 100;
 
-    // Se houver parcelas pendentes posteriores e o saldo comportar preservar as anteriores (ex: edição sequencial P9 -> P10 -> P11),
-    // redistribui nas posteriores mantendo as anteriores intactas; caso contrário redistribui proporcionalmente em todas as outras pendentes.
     const canRedistributeToSubsequentOnly =
       subsequentPending.length > 0 &&
       Math.round((remainingBalance - priorPendingSum - cleanNewAmount) * 100) / 100 >= 0;
@@ -518,22 +637,94 @@ export const recalculateInstallmentManualChange = (
     });
   }
 
+  const fallbackPersonalCat = resolveDefaultPersonalDebtCategoryId(
+    undefined,
+    debt?.personalCategoryId || debt?.categoryId
+  );
+
   const updatedTransactions = debtTransactions.map(t => {
     if (!t || t.status === 'cancelled') return t;
+    // Jamais modifica transações já pagas que não sejam o próprio alvo
+    if (t.status === 'paid' && t.id !== targetTransactionId) return t;
     if (!updatedAmountsMap.has(t.id)) return t;
 
     const nextAmount = updatedAmountsMap.get(t.id)!;
     const instNum = extractInstallmentNumber(t, activeTxs);
-    const instCC = debt ? resolveDebtInstallmentCostCenter(debt, instNum, nextAmount) : undefined;
+
+    // Se é a própria parcela sendo editada pelo usuário:
+    if (t.id === targetTransactionId) {
+      if (targetOverrides && (targetOverrides.manualCostCenterOverride || targetOverrides.scope || typeof targetOverrides.customMusicAmount === 'number')) {
+        const customMusic =
+          typeof targetOverrides.customMusicAmount === 'number'
+            ? Math.min(nextAmount, Math.max(0, Math.round(targetOverrides.customMusicAmount * 100) / 100))
+            : targetOverrides.scope === 'BUSINESS'
+            ? nextAmount
+            : 0;
+        const customPersonal = Math.max(0, Math.round((nextAmount - customMusic) * 100) / 100);
+        const nextScope: 'BUSINESS' | 'PERSONAL' = customMusic > 0 ? 'BUSINESS' : 'PERSONAL';
+        const meta = resolveCareerSubcategoryMeta(
+          targetOverrides.subcategory || t.subcategory || debt?.musicSubcategory
+        );
+
+        return {
+          ...t,
+          amount: nextAmount,
+          interest: 0,
+          installmentNumber: instNum,
+          scope: nextScope,
+          categoryId: nextScope === 'BUSINESS' ? meta.categoryId : fallbackPersonalCat,
+          category: nextScope === 'BUSINESS' ? meta.categoryId : fallbackPersonalCat,
+          subcategory: nextScope === 'BUSINESS' ? meta.subcategory : undefined,
+          customMusicAmount: customMusic,
+          customPersonalAmount: customPersonal,
+          manualCostCenterOverride: true
+        };
+      }
+
+      // Se a parcela já tinha override manual ou já estava fora do intervalo como PESSOAL, preserva e NÃO força Música!
+      if (t.manualCostCenterOverride) {
+        const prevMusic = typeof t.customMusicAmount === 'number' ? t.customMusicAmount : (t.scope === 'BUSINESS' ? nextAmount : 0);
+        const clampedMusic = Math.min(nextAmount, Math.max(0, prevMusic));
+        const clampedPersonal = Math.max(0, Math.round((nextAmount - clampedMusic) * 100) / 100);
+        return {
+          ...t,
+          amount: nextAmount,
+          interest: 0,
+          installmentNumber: instNum,
+          customMusicAmount: clampedMusic,
+          customPersonalAmount: clampedPersonal
+        };
+      }
+    }
+
+    // Para as demais parcelas (ou quando não há override manual), resolve respeitando estritamente o intervalo (ex: 2 a 10; P11+ = 100% PESSOAL)
+    if (t.manualCostCenterOverride) {
+      const prevMusic = typeof t.customMusicAmount === 'number' ? t.customMusicAmount : (t.scope === 'BUSINESS' ? nextAmount : 0);
+      const clampedMusic = Math.min(nextAmount, Math.max(0, prevMusic));
+      const clampedPersonal = Math.max(0, Math.round((nextAmount - clampedMusic) * 100) / 100);
+      return {
+        ...t,
+        amount: nextAmount,
+        interest: 0,
+        installmentNumber: instNum,
+        customMusicAmount: clampedMusic,
+        customPersonalAmount: clampedPersonal
+      };
+    }
+
+    const instCC = debt ? resolveDebtInstallmentCostCenter(debt, instNum, nextAmount, t) : undefined;
 
     return {
       ...t,
       amount: nextAmount,
+      interest: 0,
       installmentNumber: instNum,
       scope: instCC ? instCC.scope : t.scope,
       categoryId: instCC ? instCC.categoryId : t.categoryId,
       category: instCC ? instCC.categoryId : t.category,
-      subcategory: instCC ? instCC.subcategory : t.subcategory
+      subcategory: instCC ? instCC.subcategory : t.subcategory,
+      customMusicAmount: instCC?.musicAmount,
+      customPersonalAmount: instCC?.personalAmount
     };
   });
 
@@ -546,8 +737,9 @@ export const recalculateInstallmentManualChange = (
 };
 
 /**
- * Remove o card duplicado 'Som Léo' (caso exista) e garante a categoria pessoal 'Dívidas / Empréstimo Pessoal',
- * sem engessar ou sobrescrever o Valor Total ou os valores de parcelas editados pelo usuário.
+ * Remove o card duplicado 'Som Léo' (caso exista), garante a categoria pessoal 'Dívidas / Empréstimo Pessoal',
+ * e ajusta a Parcela 11+ do Viny para 100% PESSOAL por padrão (intervalo padrão 2 a 10),
+ * sem JAMAIS alterar valores, datas ou contas de transações realizadas.
  */
 export const reconcileUnifiedVinyDebt = (
   debts: Debt[],
@@ -584,23 +776,66 @@ export const reconcileUnifiedVinyDebt = (
 
   const remainingTxs = safeTxs.filter(t => !isSomLeoDebtOrTransaction(null, t));
 
-  // 2. Migrar categorias pessoais de todas as dívidas que ainda apontem para 'cat_1' (Alimentação)
+  // 2. Migrar categorias pessoais e ajustar o fim padrão do intervalo do Viny de 11 para 10 (se ainda estava 11)
   remainingDebts.forEach((d, idx) => {
     const resolvedPersonalCat = resolveDefaultPersonalDebtCategoryId(categories, d.personalCategoryId || d.categoryId);
-    if (d.personalCategoryId === 'cat_1' || (!d.personalCategoryId && d.categoryId === 'cat_1')) {
+    const isViny = isVinyDebtOrTransaction(d);
+    const needsCatFix = d.personalCategoryId === 'cat_1' || (!d.personalCategoryId && d.categoryId === 'cat_1');
+    const needsVinyEndFix = isViny && (d.businessEndInstallment === undefined || d.businessEndInstallment === 11);
+
+    if (needsCatFix || needsVinyEndFix) {
       changed = true;
       remainingDebts[idx] = {
         ...d,
         personalCategoryId: resolvedPersonalCat,
-        categoryId: d.scope === 'BUSINESS' ? d.categoryId : resolvedPersonalCat
+        categoryId: d.scope === 'BUSINESS' ? d.categoryId : resolvedPersonalCat,
+        ...(needsVinyEndFix
+          ? {
+              costCenterMode: d.costCenterMode || 'INSTALLMENT_RANGE',
+              businessStartInstallment: d.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT,
+              businessEndInstallment: VINY_MUSIC_END_INSTALLMENT
+            }
+          : {})
       };
     }
+  });
+
+  // 3. Garantir que a Parcela 11 em diante do Viny (sem override manual) seja categorizada como 100% PESSOAL,
+  // sem tocar em amount, date, status ou accountId!
+  const updatedTxs = remainingTxs.map(t => {
+    if (!t || t.status === 'cancelled' || t.manualCostCenterOverride) return t;
+    const parentDebt = t.debtId ? remainingDebts.find(d => d.id === t.debtId) : undefined;
+    if (!isVinyDebtOrTransaction(parentDebt, t)) return t;
+
+    const instNum = extractInstallmentNumber(t, remainingTxs);
+    const startInst = parentDebt?.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
+    const endInst = parentDebt?.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
+
+    if (instNum > endInst || instNum < startInst) {
+      const resolvedPersonalCat = resolveDefaultPersonalDebtCategoryId(
+        categories,
+        parentDebt?.personalCategoryId || t.categoryId
+      );
+      if (t.scope !== 'PERSONAL' || t.subcategory || t.categoryId === 'cat_equipamentos') {
+        changed = true;
+        return {
+          ...t,
+          scope: 'PERSONAL' as ScopeType,
+          categoryId: resolvedPersonalCat,
+          category: resolvedPersonalCat,
+          subcategory: undefined,
+          customMusicAmount: 0,
+          customPersonalAmount: Math.abs(Number(t.amount) || 0)
+        };
+      }
+    }
+    return t;
   });
 
   return {
     changed,
     debts: remainingDebts,
-    transactions: remainingTxs,
+    transactions: updatedTxs,
     deletedDebtIds,
     deletedTransactionIds
   };
@@ -648,7 +883,8 @@ export const resolveCareerSubcategoryMeta = (subcategory?: CareerDebtSubcategory
 export const resolveDebtInstallmentCostCenter = (
   debt: Partial<Debt>,
   installmentNumber: number = 1,
-  rawAmount: number = 0
+  rawAmount: number = 0,
+  txOverride?: Partial<Transaction>
 ): {
   scope: 'BUSINESS' | 'PERSONAL';
   categoryId: string;
@@ -657,29 +893,73 @@ export const resolveDebtInstallmentCostCenter = (
   personalAmount?: number;
   isTransitionInstallment?: boolean;
 } => {
+  const cleanAmount = Math.round(Math.abs(Number(rawAmount) || 0) * 100) / 100;
   const fallbackPersonalCat = resolveDefaultPersonalDebtCategoryId(
     undefined,
     debt.personalCategoryId || debt.categoryId
   );
 
+  // Se o usuário definiu manualmente o centro de custo ou valor de música desta parcela específica:
+  if (txOverride?.manualCostCenterOverride) {
+    const meta = resolveCareerSubcategoryMeta(txOverride.subcategory || debt.musicSubcategory);
+    if (typeof txOverride.customMusicAmount === 'number' && !isNaN(txOverride.customMusicAmount)) {
+      const mAmt = Math.min(cleanAmount, Math.max(0, Math.round(txOverride.customMusicAmount * 100) / 100));
+      const pAmt = Math.max(0, Math.round((cleanAmount - mAmt) * 100) / 100);
+      return {
+        scope: mAmt > 0 ? 'BUSINESS' : 'PERSONAL',
+        categoryId: mAmt > 0 ? meta.categoryId : fallbackPersonalCat,
+        subcategory: mAmt > 0 ? meta.subcategory : undefined,
+        musicAmount: mAmt,
+        personalAmount: pAmt,
+        isTransitionInstallment: mAmt > 0 && pAmt > 0
+      };
+    }
+    if (txOverride.scope === 'PERSONAL') {
+      return {
+        scope: 'PERSONAL',
+        categoryId: fallbackPersonalCat,
+        subcategory: undefined,
+        musicAmount: 0,
+        personalAmount: cleanAmount,
+        isTransitionInstallment: false
+      };
+    }
+    if (txOverride.scope === 'BUSINESS') {
+      return {
+        scope: 'BUSINESS',
+        categoryId: meta.categoryId,
+        subcategory: meta.subcategory,
+        musicAmount: cleanAmount,
+        personalAmount: 0,
+        isTransitionInstallment: false
+      };
+    }
+  }
+
   // Regra de Rateio Dinâmico do Contrato do 'Viny':
-  // Parcelas 2 a 11 (Fev a Nov): Math.min(valorDaParcela, 650.00) na Música ('Equipamentos/Som', teto máx R$ 6.500,00) + excedente Pessoal
-  // Entrada (0), Parcela 1 (Jan) e Parcelas 12+: 100% Pessoal ('Dívidas / Empréstimo Pessoal')
+  // Intervalo padrão: Parcelas 2 a 10 (ajustável pelo usuário em businessStartInstallment / businessEndInstallment).
+  // Parcela 11 em diante (e Parcela 1 / Entrada): categorizada automaticamente como 100% 'PESSOAL'.
   if (isVinyDebtOrTransaction(debt)) {
     const startInst = debt.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
     const endInst = debt.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
+    const monthlyLimit =
+      typeof debt.musicMonthlyAmount === 'number' && debt.musicMonthlyAmount > 0
+        ? debt.musicMonthlyAmount
+        : VINY_MONTHLY_MUSIC_FIXED;
     const priorMusicCount =
-      installmentNumber >= startInst
-        ? Math.min(10, Math.max(0, installmentNumber - startInst))
+      installmentNumber >= startInst && installmentNumber <= endInst
+        ? Math.max(0, installmentNumber - startInst)
         : 0;
-    const alreadyAllocatedMusic = priorMusicCount * VINY_MONTHLY_MUSIC_FIXED;
+    const alreadyAllocatedMusic = priorMusicCount * monthlyLimit;
     const alloc = resolveVinyInstallmentAllocation(
       installmentNumber,
-      rawAmount,
+      cleanAmount,
       fallbackPersonalCat,
       alreadyAllocatedMusic,
       startInst,
-      endInst
+      endInst,
+      monthlyLimit,
+      txOverride
     );
     return {
       scope: alloc.scope,
@@ -713,13 +993,18 @@ export const resolveDebtInstallmentCostCenter = (
 
   if (isBusiness) {
     const meta = resolveCareerSubcategoryMeta(debt.musicSubcategory);
+    const customMonthly =
+      typeof debt.musicMonthlyAmount === 'number' && debt.musicMonthlyAmount > 0
+        ? Math.min(cleanAmount, Math.round(debt.musicMonthlyAmount * 100) / 100)
+        : cleanAmount;
+    const personalRemainder = Math.max(0, Math.round((cleanAmount - customMonthly) * 100) / 100);
     return {
-      scope: 'BUSINESS',
-      categoryId: meta.categoryId,
-      subcategory: meta.subcategory,
-      musicAmount: Math.abs(Number(rawAmount) || 0),
-      personalAmount: 0,
-      isTransitionInstallment: false
+      scope: customMonthly > 0 ? 'BUSINESS' : 'PERSONAL',
+      categoryId: customMonthly > 0 ? meta.categoryId : fallbackPersonalCat,
+      subcategory: customMonthly > 0 ? meta.subcategory : undefined,
+      musicAmount: customMonthly,
+      personalAmount: personalRemainder,
+      isTransitionInstallment: customMonthly > 0 && personalRemainder > 0
     };
   }
 
@@ -728,7 +1013,7 @@ export const resolveDebtInstallmentCostCenter = (
     categoryId: fallbackPersonalCat,
     subcategory: undefined,
     musicAmount: 0,
-    personalAmount: Math.abs(Number(rawAmount) || 0),
+    personalAmount: cleanAmount,
     isTransitionInstallment: false
   };
 };
@@ -736,10 +1021,11 @@ export const resolveDebtInstallmentCostCenter = (
 /**
  * Pré-calcula o mapa de alocação dinâmica de cada transação do contrato 'Viny',
  * garantindo que:
- * 1. As parcelas referentes ao som (Fevereiro a Novembro, Parcelas 2 a 11)
- *    destinem para 'MÚSICA / CARREIRA' o valor de `Math.min(valorDaParcela, 650.00)`.
- * 2. Em NENHUMA hipótese o valor de Música supere o valor da própria parcela nem o teto de R$ 6.500,00.
- * 3. O valor excedente (`Math.max(0, valorDaParcela - 650.00)`) e as demais parcelas sejam alocados em 'PESSOAL'.
+ * 1. As parcelas dentro do intervalo configurado (padrão Parcelas 2 a 10)
+ *    destinem para 'MÚSICA / CARREIRA' o valor de `Math.min(valorDaParcela, limiteMensalMusica)`.
+ * 2. Da Parcela 11 em diante (ou qualquer parcela fora do intervalo sem override manual),
+ *    seja categorizada automaticamente como 100% 'PESSOAL' (musicAmount = 0).
+ * 3. Em NENHUMA hipótese o valor de Música supere o valor da própria parcela.
  */
 export const buildVinyAllocationMap = (
   allTransactions: Transaction[],
@@ -762,7 +1048,6 @@ export const buildVinyAllocationMap = (
       return (a.date || '').localeCompare(b.date || '');
     });
 
-  let cumulativePaidMusic = 0;
   let cumulativeAllMusic = 0;
 
   vinyTxs.forEach(t => {
@@ -771,49 +1056,26 @@ export const buildVinyAllocationMap = (
     const parentDebt = t.debtId ? safeDebts.find(d => d.id === t.debtId) : undefined;
     const startInst = parentDebt?.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
     const endInst = parentDebt?.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
-    const isSoundInstallment = instNum >= startInst && instNum <= endInst;
+    const customMonthly = parentDebt?.musicMonthlyAmount;
 
-    if (isSoundInstallment) {
-      if (t.status === 'paid') {
-        const remainingPaidCeiling = Math.max(
-          0,
-          Math.round((VINY_MUSIC_MAX_CEILING - cumulativePaidMusic) * 100) / 100
-        );
-        // Regra estrita: Math.min(valorDaParcela, 650.00) respeitando o teto acumulado
-        const musicPortion = Math.round(
-          Math.min(rawAmt, VINY_MONTHLY_MUSIC_FIXED, remainingPaidCeiling) * 100
-        ) / 100;
+    const alloc = resolveVinyInstallmentAllocation(
+      instNum,
+      rawAmt,
+      parentDebt?.personalCategoryId || DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+      cumulativeAllMusic,
+      startInst,
+      endInst,
+      customMonthly,
+      t
+    );
 
-        cumulativePaidMusic = Math.min(
-          VINY_MUSIC_MAX_CEILING,
-          Math.round((cumulativePaidMusic + musicPortion) * 100) / 100
-        );
-        cumulativeAllMusic = Math.min(
-          VINY_MUSIC_MAX_CEILING,
-          Math.round((cumulativeAllMusic + musicPortion) * 100) / 100
-        );
-        const personalPortion = Math.max(0, Math.round((rawAmt - musicPortion) * 100) / 100);
-        map.set(t.id, { musicAmount: musicPortion, personalAmount: personalPortion, instNum, isSoundInstallment: true });
-      } else {
-        const remainingCeiling = Math.max(
-          0,
-          Math.round((VINY_MUSIC_MAX_CEILING - cumulativeAllMusic) * 100) / 100
-        );
-        // Regra estrita: Math.min(valorDaParcela, 650.00) respeitando o teto acumulado
-        const musicPortion = Math.round(
-          Math.min(rawAmt, VINY_MONTHLY_MUSIC_FIXED, remainingCeiling) * 100
-        ) / 100;
-
-        cumulativeAllMusic = Math.min(
-          VINY_MUSIC_MAX_CEILING,
-          Math.round((cumulativeAllMusic + musicPortion) * 100) / 100
-        );
-        const personalPortion = Math.max(0, Math.round((rawAmt - musicPortion) * 100) / 100);
-        map.set(t.id, { musicAmount: musicPortion, personalAmount: personalPortion, instNum, isSoundInstallment: true });
-      }
-    } else {
-      map.set(t.id, { musicAmount: 0, personalAmount: rawAmt, instNum, isSoundInstallment: false });
-    }
+    cumulativeAllMusic = Math.round((cumulativeAllMusic + alloc.musicAmount) * 100) / 100;
+    map.set(t.id, {
+      musicAmount: alloc.musicAmount,
+      personalAmount: alloc.personalAmount,
+      instNum,
+      isSoundInstallment: alloc.isMusicInterval
+    });
   });
 
   return map;
@@ -842,6 +1104,12 @@ export const getTransactionCareerAndPersonalSplit = (
     return { musicAmount: 0, careerAmount: 0, personalAmount: 0 };
   }
 
+  if (t.manualCostCenterOverride && typeof t.customMusicAmount === 'number') {
+    const mAmt = Math.min(rawAmt, Math.max(0, Math.round(t.customMusicAmount * 100) / 100));
+    const pAmt = Math.max(0, Math.round((rawAmt - mAmt) * 100) / 100);
+    return { musicAmount: mAmt, careerAmount: mAmt, personalAmount: pAmt };
+  }
+
   if (isVinyDebtOrTransaction(parentDebt, t)) {
     if (Array.isArray(allTransactions) && allTransactions.length > 0) {
       const vinyMap = buildVinyAllocationMap(allTransactions, safeDebts);
@@ -855,12 +1123,29 @@ export const getTransactionCareerAndPersonalSplit = (
       }
     }
     const instNum = extractInstallmentNumber(t, allTransactions);
-    const alloc = resolveVinyInstallmentAllocation(instNum, rawAmt);
+    const alloc = resolveVinyInstallmentAllocation(
+      instNum,
+      rawAmt,
+      parentDebt?.personalCategoryId || DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+      0,
+      parentDebt?.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT,
+      parentDebt?.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT,
+      parentDebt?.musicMonthlyAmount,
+      t
+    );
     return {
       musicAmount: alloc.musicAmount,
       careerAmount: alloc.musicAmount,
       personalAmount: alloc.personalAmount
     };
+  }
+
+  if (parentDebt) {
+    const instNum = extractInstallmentNumber(t, allTransactions);
+    const cc = resolveDebtInstallmentCostCenter(parentDebt, instNum, rawAmt, t);
+    const mAmt = Math.min(rawAmt, Math.max(0, Number(cc.musicAmount) || 0));
+    const pAmt = Math.max(0, Math.round((rawAmt - mAmt) * 100) / 100);
+    return { musicAmount: mAmt, careerAmount: mAmt, personalAmount: pAmt };
   }
 
   if (isCareerExpenseTransaction(t, safeDebts, allTransactions)) {
@@ -899,25 +1184,33 @@ export const isCareerExpenseTransaction = (
     return false;
   }
 
-  // Regra do Contrato Único 'Viny': apenas Parcelas 2 a 11 (Fevereiro a Novembro) entram na DRE da Música
+  // Regra do Contrato Único 'Viny': respeita intervalo configurável (padrão 2 a 10) e overrides manuais
   if (isVinyDebtOrTransaction(parentDebt, t)) {
+    if (t.manualCostCenterOverride && typeof t.customMusicAmount === 'number') {
+      return t.customMusicAmount > 0;
+    }
     if (Array.isArray(allTransactions) && allTransactions.length > 0) {
       const vinyMap = buildVinyAllocationMap(allTransactions, debts || []);
       const entry = vinyMap.get(t.id);
       if (entry) return entry.musicAmount > 0;
     }
     const instNum = extractInstallmentNumber(t, allTransactions);
-    return instNum >= VINY_MUSIC_START_INSTALLMENT && instNum <= VINY_MUSIC_END_INSTALLMENT;
+    const startInst = parentDebt?.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
+    const endInst = parentDebt?.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
+    return instNum >= startInst && instNum <= endInst;
   }
 
   // Se for parcela/lançamento de outras dívidas:
   if (t.debtId) {
+    if (t.manualCostCenterOverride && typeof t.customMusicAmount === 'number') {
+      return t.customMusicAmount > 0;
+    }
     if (t.scope === 'PERSONAL') return false;
     if (t.scope === 'BUSINESS') return true;
 
     if (parentDebt) {
-      const resolved = resolveDebtInstallmentCostCenter(parentDebt, t.installmentNumber ?? 1, t.amount);
-      return resolved.scope === 'BUSINESS';
+      const resolved = resolveDebtInstallmentCostCenter(parentDebt, t.installmentNumber ?? 1, t.amount, t);
+      return resolved.scope === 'BUSINESS' && (resolved.musicAmount ?? 0) > 0;
     }
     return false;
   }
@@ -995,14 +1288,10 @@ export const consolidateCareerExpenses = (
     const parentDebt = t.debtId ? safeDebts.find(d => d.id === t.debtId) : undefined;
     if (isSomLeoDebtOrTransaction(parentDebt, t)) return;
 
-    // Regra de Rateio e Teto do Contrato Único 'Viny':
-    // Parcelas 2 a 11 (Fevereiro a Novembro): exatamente R$ 650,00/mês em 'Equipamentos/Som',
-    // jamais ultrapassando o teto acumulado de R$ 6.500,00.
+    // Regra de Rateio Dinâmico do Contrato 'Viny' (intervalo padrão 2 a 10, P11+ = 100% Pessoal, ou override manual):
     if (isVinyDebtOrTransaction(parentDebt, t)) {
       const alloc = vinyAllocationMap.get(t.id);
-      const allowedFromMap = alloc ? alloc.musicAmount : 0;
-      const remainingPeriodCeiling = Math.max(0, VINY_MUSIC_MAX_CEILING - periodVinyMusicSum);
-      const finalMusicAmount = Math.min(allowedFromMap, remainingPeriodCeiling);
+      const finalMusicAmount = alloc ? alloc.musicAmount : 0;
 
       if (finalMusicAmount > 0) {
         periodVinyMusicSum = Math.round((periodVinyMusicSum + finalMusicAmount) * 100) / 100;
@@ -1011,7 +1300,20 @@ export const consolidateCareerExpenses = (
           amount: finalMusicAmount,
           scope: 'BUSINESS',
           categoryId: 'cat_equipamentos',
-          subcategory: 'Equipamentos/Som'
+          subcategory: t.subcategory || 'Equipamentos/Som'
+        });
+      }
+      return;
+    }
+
+    // Outras dívidas com rateio customizado por parcela ou valor mensal fixo de música
+    if (t.debtId && (t.manualCostCenterOverride || parentDebt)) {
+      const split = getTransactionCareerAndPersonalSplit(t, safeDebts, safeTxs);
+      if (split.musicAmount > 0) {
+        filteredTxs.push({
+          ...t,
+          amount: split.musicAmount,
+          scope: 'BUSINESS'
         });
       }
       return;

@@ -1,1 +1,1 @@
-export { DebtsScreen, DebtList, DebtDetail } from './debts/DebtsScreen';
+export { DebtsScreen, DebtList, DebtDetail, DebtDetailModal } from './debts/DebtsScreen';

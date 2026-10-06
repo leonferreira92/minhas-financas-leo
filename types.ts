@@ -65,6 +65,7 @@ export interface Debt {
   costCenterMode?: DebtCostCenterMode;
   businessStartInstallment?: number;
   businessEndInstallment?: number;
+  musicMonthlyAmount?: number;
   includeDownPaymentInBusiness?: boolean;
   musicSubcategory?: CareerDebtSubcategory;
   categoryId?: string;
@@ -98,6 +99,9 @@ export interface Transaction {
   debtId?: string;
   installmentNumber?: number;
   installmentTotal?: number;
+  customMusicAmount?: number;
+  customPersonalAmount?: number;
+  manualCostCenterOverride?: boolean;
   isFixed?: boolean;
   fixedGroupId?: string;
   interest?: number; // Valor excedente pago considerado como juros
