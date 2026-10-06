@@ -316,7 +316,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     return currentVal - baseAmount;
   }, [amount, baseAmount, transaction]);
 
-  const isAmountInvalid = transaction?.debtId && diffAmount < -0.01;
+  const isAmountInvalid = false;
 
   const handleSelectCategory = (id: string) => {
     setCategoryId(id);
@@ -482,7 +482,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
-      interest: (transaction?.debtId && diffAmount > 0.01) ? diffAmount : 0,
+      interest: 0,
       scope: finalScope,
       showId: finalShowId,
       importedFromBank: transaction?.importedFromBank,
@@ -492,7 +492,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     if (transaction) {
       if (transaction.debtId) {
-        updateDebtTransaction({ ...transaction, ...data }, false);
+        updateDebtTransaction({ ...transaction, ...data }, true);
         onClose();
       } else if (transaction.fixedGroupId) {
         setShowRecurringEditModal(true);

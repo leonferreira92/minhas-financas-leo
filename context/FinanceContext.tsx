@@ -9,7 +9,9 @@ import {
   resolveCareerSubcategoryMeta,
   resolveDefaultPersonalDebtCategoryId,
   DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
-  extractInstallmentNumber
+  extractInstallmentNumber,
+  recalculatePendingInstallmentsProportionally,
+  recalculateInstallmentManualChange
 } from '../services/financeAggregator';
 import {
   normalizeShowFinancials,
@@ -1502,8 +1504,68 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
-  const updateDebtTransaction = (t: Transaction, redistribute: boolean) => {
-    updateTransaction(t);
+  const updateDebtTransaction = (t: Transaction, redistribute: boolean = true) => {
+    const originalT = transactions.find(item => item.id === t.id);
+    if (!originalT || !t.debtId) {
+      updateTransaction(t);
+      return;
+    }
+
+    const oldAmt = Math.abs(Number(originalT.amount) || 0);
+    const newAmt = Math.abs(Number(t.amount) || 0);
+    const amountChanged = Math.abs(newAmt - oldAmt) >= 0.01;
+
+    if (redistribute && amountChanged) {
+      const debt = debts.find(d => d.id === t.debtId);
+      const allDebtTxs = transactions
+        .filter(item => item.debtId === t.debtId && item.status !== 'cancelled')
+        .map(item => (item.id === t.id ? { ...item, ...t, amount: oldAmt, interest: 0 } : item));
+
+      const { updatedTransactions: recalculatedDebtTxs, updatedAmountsMap } =
+        recalculateInstallmentManualChange(debt, allDebtTxs, t.id, newAmt);
+
+      const updatedDebtTxMap = new Map<string, Transaction>();
+      recalculatedDebtTxs.forEach(item => {
+        if (item.id === t.id) {
+          updatedDebtTxMap.set(item.id, { ...t, amount: item.amount, interest: 0 });
+        } else {
+          updatedDebtTxMap.set(item.id, item);
+        }
+      });
+
+      const newTransactions = transactions.map(item => {
+        if (updatedDebtTxMap.has(item.id)) {
+          return updatedDebtTxMap.get(item.id)!;
+        }
+        return item;
+      });
+
+      saveTransactions(newTransactions);
+
+      if (debt) {
+        const pendingAfter = recalculatedDebtTxs.filter(item => item.status === 'pending');
+        if (pendingAfter.length > 0) {
+          const avgPending = Math.round(
+            (pendingAfter.reduce((s, item) => s + Math.abs(Number(item.amount) || 0), 0) / pendingAfter.length) * 100
+          ) / 100;
+          const updatedDebtObj: Debt = { ...debt, installmentAmount: avgPending };
+          const newDebts = debts.map(d => (d.id === debt.id ? updatedDebtObj : d));
+          saveDebts(newDebts);
+          if (currentUser) {
+            saveDebtToFirestore(currentUser.uid, updatedDebtObj);
+          }
+        }
+      }
+
+      if (currentUser) {
+        newTransactions
+          .filter(item => updatedAmountsMap.has(item.id) || item.id === t.id)
+          .forEach(item => saveTransactionToFirestore(currentUser.uid, item));
+      }
+      return;
+    }
+
+    updateTransaction({ ...t, interest: 0 });
   };
 
   const recalculateDebtSeries = (transactionId: string, newAmount: number) => {
@@ -1511,62 +1573,41 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!originalT || !originalT.debtId) return;
 
     const debt = debts.find(d => d.id === originalT.debtId);
-    const allDebtTxs = transactions.filter(t => t.debtId === originalT.debtId);
-    const totalContract = debt ? Number(debt.totalAmount) : allDebtTxs.reduce((s, t) => s + Number(t.amount || 0), 0);
+    const allDebtTxs = transactions.filter(t => t.debtId === originalT.debtId && t.status !== 'cancelled');
 
-    const futureInstallments = allDebtTxs
-      .filter(t => 
-        t.status === 'pending' && 
-        t.id !== transactionId && 
-        (
-          (t.installmentNumber !== undefined && originalT.installmentNumber !== undefined)
-            ? t.installmentNumber > originalT.installmentNumber
-            : new Date(t.date + 'T12:00:00').getTime() >= new Date(originalT.date + 'T12:00:00').getTime()
-        )
-      )
-      .sort((a, b) => {
-        if (a.installmentNumber !== undefined && b.installmentNumber !== undefined) {
-          return a.installmentNumber - b.installmentNumber;
-        }
-        return new Date(a.date + 'T12:00:00').getTime() - new Date(b.date + 'T12:00:00').getTime();
-      });
+    const { updatedTransactions: recalculatedDebtTxs, updatedAmountsMap } =
+      recalculateInstallmentManualChange(debt, allDebtTxs, transactionId, newAmount);
 
-    if (futureInstallments.length === 0) {
-      updateTransaction({ ...originalT, amount: newAmount });
-      return;
-    }
-
-    const otherPaidAmount = allDebtTxs
-      .filter(t => t.id !== transactionId && t.status === 'paid')
-      .reduce((s, t) => s + Number(t.amount || 0), 0);
-
-    const remainingForFuture = Math.max(0, parseFloat((totalContract - otherPaidAmount - newAmount).toFixed(2)));
-    const basePerInstallment = Math.floor((remainingForFuture / futureInstallments.length) * 100) / 100;
-    const allocatedSoFar = parseFloat((basePerInstallment * futureInstallments.length).toFixed(2));
-    const remainderDiff = parseFloat((remainingForFuture - allocatedSoFar).toFixed(2));
-
-    const futureMap = new Map<string, number>();
-    futureInstallments.forEach((fi, idx) => {
-      // Ajusta centavos residuais na última parcela para soma exata sem descartar nada
-      const isLast = idx === futureInstallments.length - 1;
-      const adjustedVal = isLast ? Math.max(0, parseFloat((basePerInstallment + remainderDiff).toFixed(2))) : basePerInstallment;
-      futureMap.set(fi.id, adjustedVal);
-    });
+    const updatedDebtTxMap = new Map<string, Transaction>();
+    recalculatedDebtTxs.forEach(t => updatedDebtTxMap.set(t.id, t));
 
     const newTransactions = transactions.map(t => {
-      if (t.id === transactionId) {
-        return { ...t, amount: newAmount };
-      }
-      if (futureMap.has(t.id)) {
-        return { ...t, amount: futureMap.get(t.id)! };
+      if (updatedDebtTxMap.has(t.id)) {
+        return updatedDebtTxMap.get(t.id)!;
       }
       return t;
     });
 
     saveTransactions(newTransactions);
+
+    if (debt) {
+      const pendingAfter = recalculatedDebtTxs.filter(t => t.status === 'pending');
+      if (pendingAfter.length > 0) {
+        const avgPending = Math.round(
+          (pendingAfter.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) / pendingAfter.length) * 100
+        ) / 100;
+        const updatedDebtObj: Debt = { ...debt, installmentAmount: avgPending };
+        const newDebts = debts.map(d => (d.id === debt.id ? updatedDebtObj : d));
+        saveDebts(newDebts);
+        if (currentUser) {
+          saveDebtToFirestore(currentUser.uid, updatedDebtObj);
+        }
+      }
+    }
+
     if (currentUser) {
       newTransactions
-        .filter(t => t.id === transactionId || futureMap.has(t.id))
+        .filter(t => updatedAmountsMap.has(t.id))
         .forEach(t => saveTransactionToFirestore(currentUser.uid, t));
     }
   };
@@ -1880,55 +1921,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
 
     const debtTxs = transactions.filter(t => t.debtId === id && t.status !== 'cancelled');
-    const paidReal = Math.round(
-      debtTxs
-        .filter(t => t.status === 'paid')
-        .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) * 100
-    ) / 100;
+    const totalContract = Math.max(0, Math.round((Number(mergedDebt.totalAmount) || 0) * 100) / 100);
+    mergedDebt.totalAmount = totalContract;
 
-    const pendingTxs = debtTxs
-      .filter(t => t.status === 'pending')
-      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    // Recalcula sempre o Saldo Restante (Valor Total - Soma das Parcelas Pagas)
+    // e redistribui proporcionalmente entre todas as parcelas não pagas (status === 'pending')
+    const {
+      updatedTransactions: recalculatedDebtTxs,
+      averagePendingInstallment
+    } = recalculatePendingInstallmentsProportionally(mergedDebt, debtTxs, totalContract);
 
-    const totalContract = Number(mergedDebt.totalAmount) || 0;
-    const remainingToPay = Math.max(0, Math.round((totalContract - paidReal) * 100) / 100);
-    const totalChanged = Math.abs((Number(existingDebt.totalAmount) || 0) - totalContract) > 0.009;
-
-    const pendingAmountsMap = new Map<string, number>();
-    if (pendingTxs.length > 0 && totalChanged) {
-      const basePending = Math.floor((remainingToPay / pendingTxs.length) * 100) / 100;
-      const diffPending = Math.round((remainingToPay - basePending * pendingTxs.length) * 100) / 100;
-      pendingTxs.forEach((pt, idx) => {
-        const isLast = idx === pendingTxs.length - 1;
-        pendingAmountsMap.set(
-          pt.id,
-          isLast ? Math.round((basePending + diffPending) * 100) / 100 : basePending
-        );
-      });
-      mergedDebt.installmentAmount = basePending;
+    if (averagePendingInstallment > 0) {
+      mergedDebt.installmentAmount = averagePendingInstallment;
     }
+
+    const updatedDebtTxMap = new Map<string, Transaction>();
+    recalculatedDebtTxs.forEach(t => updatedDebtTxMap.set(t.id, t));
 
     const updatedDebts = debts.map(d => (d.id === id ? mergedDebt : d));
     const updatedTxs = transactions.map(t => {
       if (t.debtId !== id) return t;
-      const instNum = extractInstallmentNumber(t, debtTxs);
-      const nextAmount = pendingAmountsMap.has(t.id) ? pendingAmountsMap.get(t.id)! : t.amount;
-      const instCC = resolveDebtInstallmentCostCenter(mergedDebt, instNum, nextAmount);
-      const isDownPayment = instNum === 0 || (t.description || '').toLowerCase().includes('entrada');
-      return {
-        ...t,
-        amount: nextAmount,
-        installmentNumber: instNum,
-        description: isDownPayment
-          ? `Entrada Inicial - ${mergedDebt.name}`
-          : `${mergedDebt.name} (${instNum}/${mergedDebt.installmentCount})`,
-        installmentTotal: mergedDebt.installmentCount,
-        scope: instCC.scope,
-        categoryId: instCC.categoryId,
-        category: instCC.categoryId,
-        subcategory: instCC.subcategory,
-        accountId: mergedDebt.accountId || t.accountId
-      };
+      return updatedDebtTxMap.get(t.id) || t;
     });
 
     saveDebts(updatedDebts);

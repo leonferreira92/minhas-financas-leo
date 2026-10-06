@@ -2,6 +2,13 @@ import React from 'react';
 import { Transaction, Category, Account } from '../../types';
 import { getIcon } from '../../constants';
 import {
+  isVinyDebtOrTransaction,
+  extractInstallmentNumber,
+  VINY_MUSIC_START_INSTALLMENT,
+  VINY_MUSIC_END_INSTALLMENT,
+  VINY_MONTHLY_MUSIC_FIXED
+} from '../../services/financeAggregator';
+import {
   ArrowDownCircle,
   ArrowRightLeft,
   PiggyBank,
@@ -43,13 +50,25 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   const isExpense = t.type === 'expense' || t.type === 'goal_deposit';
   const isIncome = t.type === 'income' || t.type === 'goal_withdraw';
   const isPending = t.status === 'pending';
-  const isBusiness =
-    t.scope === 'BUSINESS' ||
-    t.categoryId === 'cat_33' ||
-    t.categoryId === 'cat_equipamentos' ||
-    t.categoryId === 'cat_producao_shows' ||
-    t.categoryId === 'cat_logistica_shows' ||
-    Boolean(t.showId);
+  const isVinyTx = isVinyDebtOrTransaction(t);
+  const vinyInstNum = isVinyTx ? extractInstallmentNumber(t) : 0;
+  const isVinySoundRange =
+    isVinyTx &&
+    vinyInstNum >= VINY_MUSIC_START_INSTALLMENT &&
+    vinyInstNum <= VINY_MUSIC_END_INSTALLMENT;
+  const cleanTxAmount = Math.max(0, Math.round((Math.abs(Number(t.amount)) || 0) * 100) / 100);
+  const vinyMusicShare = isVinySoundRange ? Math.min(cleanTxAmount, VINY_MONTHLY_MUSIC_FIXED) : 0;
+  const vinyPersonalShare = isVinyTx
+    ? Math.max(0, Math.round((cleanTxAmount - vinyMusicShare) * 100) / 100)
+    : 0;
+  const isBusiness = isVinyTx
+    ? vinyMusicShare > 0
+    : t.scope === 'BUSINESS' ||
+      t.categoryId === 'cat_33' ||
+      t.categoryId === 'cat_equipamentos' ||
+      t.categoryId === 'cat_producao_shows' ||
+      t.categoryId === 'cat_logistica_shows' ||
+      Boolean(t.showId);
 
   return (
     <div
@@ -107,16 +126,29 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
               {t.type === 'transfer' ? 'Transferência' : category ? category.name : 'Geral'}
             </span>
 
-            {/* Badge Módulo: Pessoal vs Música */}
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 ${
-                isBusiness
-                  ? 'bg-purple-600 text-white border-purple-400/40'
-                  : 'bg-zinc-800 text-zinc-200 border-zinc-700'
-              }`}
-            >
-              {isBusiness ? '🎸 Música' : '👤 Pessoal'}
-            </span>
+            {/* Badge Módulo: Pessoal vs Música (com rateio dinâmico Viny se aplicável) */}
+            {isVinyTx && vinyMusicShare > 0 ? (
+              <>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 bg-purple-600 text-white border-purple-400/40">
+                  🎸 Música {!isBlurred ? formatCurrency(vinyMusicShare) : '••••'}
+                </span>
+                {vinyPersonalShare > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 bg-zinc-800 text-zinc-200 border-zinc-700">
+                    👤 Pessoal {!isBlurred ? formatCurrency(vinyPersonalShare) : '••••'}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 ${
+                  isBusiness
+                    ? 'bg-purple-600 text-white border-purple-400/40'
+                    : 'bg-zinc-800 text-zinc-200 border-zinc-700'
+                }`}
+              >
+                {isBusiness ? '🎸 Música' : '👤 Pessoal'}
+              </span>
+            )}
 
             {/* Badge Status: Pendente vs Efetivado */}
             {isPending ? (

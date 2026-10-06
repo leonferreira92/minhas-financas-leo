@@ -171,17 +171,21 @@ export const extractInstallmentNumber = (
 };
 
 /**
- * Calcula o rateio de uma parcela do contrato único do 'Viny', respeitando estritamente
- * o valor fixo de R$ 650,00/mês (Fevereiro a Novembro, P2 a P11) e o teto acumulado de R$ 6.500,00:
- * - Parcelas 2 a 11 (Fevereiro a Novembro): exatamente R$ 650,00 na Música ('Equipamentos/Som'),
- *   limitado ao teto acumulado de R$ 6.500,00, e todo o valor excedente em 'PESSOAL'.
- * - Entrada (0), Parcela 1 (Janeiro) e Parcelas 12 a 18+ (Dezembro em diante): 100% 'PESSOAL'.
+ * Calcula o rateio dinâmico de uma parcela do contrato do 'Viny', respeitando estritamente:
+ * - Parcelas do intervalo do Som (Fevereiro a Novembro, Parcelas 2 a 11):
+ *   Destina para a DRE da Música ('Equipamentos/Som') o valor de `Math.min(valorDaParcela, 650.00)`,
+ *   limitado também ao teto acumulado de R$ 6.500,00.
+ * - O valor excedente da parcela (`Math.max(0, valorDaParcela - 650.00)`) é alocado em 'PESSOAL'.
+ * - Em NENHUMA hipótese o valor de Música pode ser superior ao valor total da própria parcela.
+ * - Entrada (0), Parcela 1 (Janeiro) e Parcelas 12+ (Dezembro em diante): 100% 'PESSOAL'.
  */
 export const resolveVinyInstallmentAllocation = (
   installmentNumber: number,
   rawAmount: number = 0,
   personalCategoryId: string = DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
-  alreadyAllocatedMusicTotal: number = 0
+  alreadyAllocatedMusicTotal: number = 0,
+  startInstallment: number = VINY_MUSIC_START_INSTALLMENT,
+  endInstallment: number = VINY_MUSIC_END_INSTALLMENT
 ): {
   scope: 'BUSINESS' | 'PERSONAL';
   categoryId: string;
@@ -190,24 +194,25 @@ export const resolveVinyInstallmentAllocation = (
   personalAmount: number;
   isMusicInterval: boolean;
 } => {
-  const cleanAmount = Math.abs(Number(rawAmount) || 0);
+  const cleanAmount = Math.round(Math.abs(Number(rawAmount) || 0) * 100) / 100;
   const safePersonalCat = resolveDefaultPersonalDebtCategoryId(undefined, personalCategoryId);
   const isMusicInterval =
-    installmentNumber >= VINY_MUSIC_START_INSTALLMENT &&
-    installmentNumber <= VINY_MUSIC_END_INSTALLMENT;
+    installmentNumber >= startInstallment &&
+    installmentNumber <= endInstallment;
 
   const remainingCeiling = Math.max(
     0,
     Math.round((VINY_MUSIC_MAX_CEILING - Math.max(0, alreadyAllocatedMusicTotal)) * 100) / 100
   );
 
-  if (isMusicInterval && remainingCeiling > 0) {
-    const musicAmount = Math.min(VINY_MONTHLY_MUSIC_FIXED, remainingCeiling);
+  if (isMusicInterval && remainingCeiling > 0 && cleanAmount > 0) {
+    // Regra estrita: Math.min(valorDaParcela, 650.00) respeitando o teto acumulado
+    const musicAmount = Math.round(Math.min(cleanAmount, VINY_MONTHLY_MUSIC_FIXED, remainingCeiling) * 100) / 100;
     const personalAmount = Math.max(0, Math.round((cleanAmount - musicAmount) * 100) / 100);
     return {
-      scope: 'BUSINESS',
-      categoryId: 'cat_equipamentos',
-      subcategory: 'Equipamentos/Som',
+      scope: musicAmount > 0 ? 'BUSINESS' : 'PERSONAL',
+      categoryId: musicAmount > 0 ? 'cat_equipamentos' : safePersonalCat,
+      subcategory: musicAmount > 0 ? 'Equipamentos/Som' : undefined,
       musicAmount,
       personalAmount,
       isMusicInterval: true
@@ -225,13 +230,16 @@ export const resolveVinyInstallmentAllocation = (
 };
 
 /**
- * Calcula o resumo consolidado de Centro de Custo para o Contrato Único do Viny,
- * garantindo que a soma direcionada para a DRE da Música JAMAIS ultrapasse R$ 6.500,00 (10x R$ 650,00)
- * e que o Saldo Restante seja sempre (Valor Total - Total Amortizado Real).
+ * Calcula o resumo consolidado e dinâmico de Centro de Custo para o Contrato do Viny,
+ * garantindo que cada parcela do intervalo do Som (2 a 11) aloque `Math.min(valorDaParcela, 650.00)`
+ * na Música e `Math.max(0, valorDaParcela - 650.00)` no Pessoal, e que o Saldo Restante seja
+ * sempre (Valor Total - Soma das Parcelas Pagas).
  */
 export const calculateVinyCostCenterSummary = (
   vinyTransactions: Transaction[],
-  totalContractAmount: number = VINY_DEFAULT_TOTAL_AMOUNT
+  totalContractAmount: number = VINY_DEFAULT_TOTAL_AMOUNT,
+  startInstallment: number = VINY_MUSIC_START_INSTALLMENT,
+  endInstallment: number = VINY_MUSIC_END_INSTALLMENT
 ) => {
   const sorted = [...(Array.isArray(vinyTransactions) ? vinyTransactions : [])].sort((a, b) => {
     const instA = extractInstallmentNumber(a, vinyTransactions);
@@ -242,69 +250,304 @@ export const calculateVinyCostCenterSummary = (
 
   let musicPaidTotal = 0;
   let musicPendingTotal = 0;
+  let personalPaidTotal = 0;
+  let personalPendingTotal = 0;
   let musicCount = 0;
   let personalCount = 0;
   let totalPaidReal = 0;
+  let totalPendingReal = 0;
 
   sorted.forEach(t => {
     if (!t || t.status === 'cancelled') return;
-    const amt = Math.abs(Number(t.amount) || 0);
+    const amt = Math.round(Math.abs(Number(t.amount) || 0) * 100) / 100;
     const instNum = extractInstallmentNumber(t, sorted);
     const isSoundInstallment =
-      instNum >= VINY_MUSIC_START_INSTALLMENT && instNum <= VINY_MUSIC_END_INSTALLMENT;
+      instNum >= startInstallment && instNum <= endInstallment;
 
     if (t.status === 'paid') {
       totalPaidReal = Math.round((totalPaidReal + amt) * 100) / 100;
+    } else if (t.status === 'pending') {
+      totalPendingReal = Math.round((totalPendingReal + amt) * 100) / 100;
     }
 
     if (isSoundInstallment) {
       musicCount += 1;
-      const currentAllocatedMusic = musicPaidTotal + musicPendingTotal;
-      const remainingCeiling = Math.max(0, VINY_MUSIC_MAX_CEILING - currentAllocatedMusic);
-      const installmentMusicQuota = Math.min(VINY_MONTHLY_MUSIC_FIXED, remainingCeiling);
+      const currentAllocatedMusic = Math.round((musicPaidTotal + musicPendingTotal) * 100) / 100;
+      const remainingCeiling = Math.max(0, Math.round((VINY_MUSIC_MAX_CEILING - currentAllocatedMusic) * 100) / 100);
+      // Nunca supera o valor da própria parcela nem R$ 650,00
+      const musicPortion = Math.round(Math.min(amt, VINY_MONTHLY_MUSIC_FIXED, remainingCeiling) * 100) / 100;
+      const personalPortion = Math.max(0, Math.round((amt - musicPortion) * 100) / 100);
 
       if (t.status === 'paid') {
-        const remainingPaidCeiling = Math.max(0, VINY_MUSIC_MAX_CEILING - musicPaidTotal);
-        musicPaidTotal = Math.round(
-          (musicPaidTotal + Math.min(VINY_MONTHLY_MUSIC_FIXED, remainingPaidCeiling)) * 100
-        ) / 100;
+        const remainingPaidCeiling = Math.max(0, Math.round((VINY_MUSIC_MAX_CEILING - musicPaidTotal) * 100) / 100);
+        const paidMusicPortion = Math.round(Math.min(amt, VINY_MONTHLY_MUSIC_FIXED, remainingPaidCeiling) * 100) / 100;
+        const paidPersonalPortion = Math.max(0, Math.round((amt - paidMusicPortion) * 100) / 100);
+        musicPaidTotal = Math.round((musicPaidTotal + paidMusicPortion) * 100) / 100;
+        personalPaidTotal = Math.round((personalPaidTotal + paidPersonalPortion) * 100) / 100;
       } else if (t.status === 'pending') {
-        musicPendingTotal = Math.round((musicPendingTotal + installmentMusicQuota) * 100) / 100;
+        musicPendingTotal = Math.round((musicPendingTotal + musicPortion) * 100) / 100;
+        personalPendingTotal = Math.round((personalPendingTotal + personalPortion) * 100) / 100;
       }
 
-      if (amt > VINY_MONTHLY_MUSIC_FIXED) {
+      if (personalPortion > 0) {
         personalCount += 1;
       }
     } else {
       personalCount += 1;
+      if (t.status === 'paid') {
+        personalPaidTotal = Math.round((personalPaidTotal + amt) * 100) / 100;
+      } else if (t.status === 'pending') {
+        personalPendingTotal = Math.round((personalPendingTotal + amt) * 100) / 100;
+      }
     }
   });
 
   // Garantia absoluta: Pago + Pendente na Música NUNCA ultrapassa R$ 6.500,00
   musicPaidTotal = Math.min(VINY_MUSIC_MAX_CEILING, musicPaidTotal);
-  musicPendingTotal = Math.min(Math.max(0, VINY_MUSIC_MAX_CEILING - musicPaidTotal), musicPendingTotal);
+  musicPendingTotal = Math.min(Math.max(0, Math.round((VINY_MUSIC_MAX_CEILING - musicPaidTotal) * 100) / 100), musicPendingTotal);
 
-  const personalPaidTotal = Math.max(0, Math.round((totalPaidReal - musicPaidTotal) * 100) / 100);
   const safeTotalContract = Number(totalContractAmount) > 0 ? Number(totalContractAmount) : VINY_DEFAULT_TOTAL_AMOUNT;
   const remainingBalance = Math.max(0, Math.round((safeTotalContract - totalPaidReal) * 100) / 100);
+  const totalAllocatedMusic = Math.round((musicPaidTotal + musicPendingTotal) * 100) / 100;
 
   return {
     musicPaidTotal,
     musicPendingTotal,
+    musicTotalAllocated: totalAllocatedMusic,
     musicCeiling: VINY_MUSIC_MAX_CEILING,
     musicCount: Math.min(10, musicCount || 10),
     personalPaidTotal,
-    personalTotalContract: Math.max(0, Math.round((safeTotalContract - VINY_MUSIC_MAX_CEILING) * 100) / 100),
+    personalPendingTotal,
+    personalTotalContract: Math.max(0, Math.round((safeTotalContract - totalAllocatedMusic) * 100) / 100),
     personalCount,
     totalPaidReal,
+    totalPendingReal,
     remainingBalance
   };
 };
 
 /**
- * Remove o card duplicado 'Som Léo' (caso exista) e restaura/mantém o contrato único do 'Viny'
- * com todos os lançamentos e valores históricos intactos, categoria pessoal 'Dívidas / Empréstimo Pessoal',
- * Valor Total R$ 12.435,00 e Saldo Restante = (R$ 12.435,00 - Total Amortizado Real).
+ * Recalcula proporcionalmente todas as parcelas pendentes de uma dívida quando o Valor Total é alterado.
+ * - Saldo Restante = Math.max(0, Valor Total - Soma das Parcelas Pagas).
+ * - Redistribui o Saldo Restante proporcionalmente entre todas as parcelas não pagas (status === 'pending').
+ */
+export const recalculatePendingInstallmentsProportionally = (
+  debt: Partial<Debt>,
+  debtTransactions: Transaction[],
+  newTotalAmount: number
+): {
+  paidTotal: number;
+  remainingBalance: number;
+  updatedTransactions: Transaction[];
+  pendingAmountsMap: Map<string, number>;
+  averagePendingInstallment: number;
+} => {
+  const cleanTotal = Math.max(0, Math.round((Number(newTotalAmount) || 0) * 100) / 100);
+  const activeTxs = debtTransactions.filter(t => t && t.status !== 'cancelled');
+
+  const paidTotal = Math.round(
+    activeTxs
+      .filter(t => t.status === 'paid')
+      .reduce((sum, t) => sum + (Math.abs(Number(t.amount) || 0) - Math.max(0, Number(t.interest) || 0)), 0) * 100
+  ) / 100;
+
+  const remainingBalance = Math.max(0, Math.round((cleanTotal - paidTotal) * 100) / 100);
+
+  const pendingTxs = [...activeTxs.filter(t => t.status === 'pending')].sort((a, b) => {
+    const instA = extractInstallmentNumber(a, activeTxs);
+    const instB = extractInstallmentNumber(b, activeTxs);
+    if (instA !== instB) return instA - instB;
+    return (a.date || '').localeCompare(b.date || '');
+  });
+
+  const pendingAmountsMap = new Map<string, number>();
+
+  if (pendingTxs.length > 0) {
+    const currentPendingSum = pendingTxs.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+    let allocatedSoFar = 0;
+
+    pendingTxs.forEach((pt, idx) => {
+      const isLast = idx === pendingTxs.length - 1;
+      if (isLast) {
+        const lastVal = Math.max(0, Math.round((remainingBalance - allocatedSoFar) * 100) / 100);
+        pendingAmountsMap.set(pt.id, lastVal);
+      } else {
+        const weight = currentPendingSum > 0
+          ? Math.abs(Number(pt.amount) || 0) / currentPendingSum
+          : 1 / pendingTxs.length;
+        const share = Math.max(0, Math.round(remainingBalance * weight * 100) / 100);
+        allocatedSoFar = Math.round((allocatedSoFar + share) * 100) / 100;
+        pendingAmountsMap.set(pt.id, share);
+      }
+    });
+  }
+
+  const updatedDebtRef: Partial<Debt> = {
+    ...debt,
+    totalAmount: cleanTotal
+  };
+
+  const updatedTransactions = debtTransactions.map(t => {
+    if (!t || t.status === 'cancelled') return t;
+    const instNum = extractInstallmentNumber(t, activeTxs);
+    const nextAmount = pendingAmountsMap.has(t.id) ? pendingAmountsMap.get(t.id)! : Math.abs(Number(t.amount) || 0);
+    const instCC = resolveDebtInstallmentCostCenter(updatedDebtRef, instNum, nextAmount);
+    const isDownPayment = instNum === 0 || (t.description || '').toLowerCase().includes('entrada');
+    const totalCount = updatedDebtRef.installmentCount || t.installmentTotal || 1;
+    const debtName = updatedDebtRef.name || 'Dívida';
+
+    return {
+      ...t,
+      amount: nextAmount,
+      installmentNumber: instNum,
+      installmentTotal: totalCount,
+      description: isDownPayment
+        ? `Entrada Inicial - ${debtName}`
+        : `${debtName} (${instNum}/${totalCount})`,
+      scope: instCC.scope,
+      categoryId: instCC.categoryId,
+      category: instCC.categoryId,
+      subcategory: instCC.subcategory,
+      accountId: updatedDebtRef.accountId || t.accountId
+    };
+  });
+
+  const averagePendingInstallment =
+    pendingTxs.length > 0
+      ? Math.round((remainingBalance / pendingTxs.length) * 100) / 100
+      : 0;
+
+  return {
+    paidTotal,
+    remainingBalance,
+    updatedTransactions,
+    pendingAmountsMap,
+    averagePendingInstallment
+  };
+};
+
+/**
+ * Ao alterar manualmente o valor de qualquer parcela pendente (para mais ou para menos),
+ * recalcula a diferença e redistribui automaticamente o impacto nas demais parcelas pendentes,
+ * mantendo a integridade estrita do Saldo Devedor Total (Valor Total - Soma das Parcelas Pagas).
+ */
+export const recalculateInstallmentManualChange = (
+  debt: Partial<Debt> | undefined,
+  debtTransactions: Transaction[],
+  targetTransactionId: string,
+  newInstallmentAmount: number
+): {
+  paidTotal: number;
+  remainingBalance: number;
+  updatedTransactions: Transaction[];
+  updatedAmountsMap: Map<string, number>;
+} => {
+  const activeTxs = debtTransactions.filter(t => t && t.status !== 'cancelled');
+  const targetTx = activeTxs.find(t => t.id === targetTransactionId);
+  const cleanNewAmount = Math.max(0, Math.round((Number(newInstallmentAmount) || 0) * 100) / 100);
+
+  const totalContract =
+    debt && Number(debt.totalAmount) > 0
+      ? Math.round(Number(debt.totalAmount) * 100) / 100
+      : Math.round(activeTxs.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) * 100) / 100;
+
+  const paidTotal = Math.round(
+    activeTxs
+      .filter(t => t.status === 'paid' && t.id !== targetTransactionId)
+      .reduce((s, t) => s + (Math.abs(Number(t.amount) || 0) - Math.max(0, Number(t.interest) || 0)), 0) * 100
+  ) / 100;
+
+  const remainingBalance = Math.max(0, Math.round((totalContract - paidTotal) * 100) / 100);
+  const updatedAmountsMap = new Map<string, number>();
+
+  if (!targetTx) {
+    return {
+      paidTotal,
+      remainingBalance,
+      updatedTransactions: debtTransactions,
+      updatedAmountsMap
+    };
+  }
+
+  updatedAmountsMap.set(targetTransactionId, cleanNewAmount);
+
+  const allOtherPending = [...activeTxs.filter(t => t.status === 'pending' && t.id !== targetTransactionId)].sort(
+    (a, b) => {
+      const instA = extractInstallmentNumber(a, activeTxs);
+      const instB = extractInstallmentNumber(b, activeTxs);
+      if (instA !== instB) return instA - instB;
+      return (a.date || '').localeCompare(b.date || '');
+    }
+  );
+
+  if (allOtherPending.length > 0) {
+    const targetInstNum = extractInstallmentNumber(targetTx, activeTxs);
+    const subsequentPending = allOtherPending.filter(t => extractInstallmentNumber(t, activeTxs) > targetInstNum);
+    const priorPending = allOtherPending.filter(t => extractInstallmentNumber(t, activeTxs) <= targetInstNum);
+    const priorPendingSum = Math.round(
+      priorPending.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) * 100
+    ) / 100;
+
+    // Se houver parcelas pendentes posteriores e o saldo comportar preservar as anteriores (ex: edição sequencial P9 -> P10 -> P11),
+    // redistribui nas posteriores mantendo as anteriores intactas; caso contrário redistribui proporcionalmente em todas as outras pendentes.
+    const canRedistributeToSubsequentOnly =
+      subsequentPending.length > 0 &&
+      Math.round((remainingBalance - priorPendingSum - cleanNewAmount) * 100) / 100 >= 0;
+
+    const poolToRedistribute = canRedistributeToSubsequentOnly ? subsequentPending : allOtherPending;
+    const poolTargetSum = canRedistributeToSubsequentOnly
+      ? Math.max(0, Math.round((remainingBalance - priorPendingSum - cleanNewAmount) * 100) / 100)
+      : Math.max(0, Math.round((remainingBalance - cleanNewAmount) * 100) / 100);
+
+    const currentPoolSum = poolToRedistribute.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+    let allocatedSoFar = 0;
+
+    poolToRedistribute.forEach((pt, idx) => {
+      const isLast = idx === poolToRedistribute.length - 1;
+      if (isLast) {
+        const lastVal = Math.max(0, Math.round((poolTargetSum - allocatedSoFar) * 100) / 100);
+        updatedAmountsMap.set(pt.id, lastVal);
+      } else {
+        const weight = currentPoolSum > 0
+          ? Math.abs(Number(pt.amount) || 0) / currentPoolSum
+          : 1 / poolToRedistribute.length;
+        const share = Math.max(0, Math.round(poolTargetSum * weight * 100) / 100);
+        allocatedSoFar = Math.round((allocatedSoFar + share) * 100) / 100;
+        updatedAmountsMap.set(pt.id, share);
+      }
+    });
+  }
+
+  const updatedTransactions = debtTransactions.map(t => {
+    if (!t || t.status === 'cancelled') return t;
+    if (!updatedAmountsMap.has(t.id)) return t;
+
+    const nextAmount = updatedAmountsMap.get(t.id)!;
+    const instNum = extractInstallmentNumber(t, activeTxs);
+    const instCC = debt ? resolveDebtInstallmentCostCenter(debt, instNum, nextAmount) : undefined;
+
+    return {
+      ...t,
+      amount: nextAmount,
+      installmentNumber: instNum,
+      scope: instCC ? instCC.scope : t.scope,
+      categoryId: instCC ? instCC.categoryId : t.categoryId,
+      category: instCC ? instCC.categoryId : t.category,
+      subcategory: instCC ? instCC.subcategory : t.subcategory
+    };
+  });
+
+  return {
+    paidTotal,
+    remainingBalance,
+    updatedTransactions,
+    updatedAmountsMap
+  };
+};
+
+/**
+ * Remove o card duplicado 'Som Léo' (caso exista) e garante a categoria pessoal 'Dívidas / Empréstimo Pessoal',
+ * sem engessar ou sobrescrever o Valor Total ou os valores de parcelas editados pelo usuário.
  */
 export const reconcileUnifiedVinyDebt = (
   debts: Debt[],
@@ -339,7 +582,7 @@ export const reconcileUnifiedVinyDebt = (
     somLeoTxs.forEach(t => deletedTransactionIds.push(t.id));
   }
 
-  let remainingTxs = safeTxs.filter(t => !isSomLeoDebtOrTransaction(null, t));
+  const remainingTxs = safeTxs.filter(t => !isSomLeoDebtOrTransaction(null, t));
 
   // 2. Migrar categorias pessoais de todas as dívidas que ainda apontem para 'cat_1' (Alimentação)
   remainingDebts.forEach((d, idx) => {
@@ -354,250 +597,6 @@ export const reconcileUnifiedVinyDebt = (
     }
   });
 
-  // 3. Verificar e preservar/restaurar o contrato único do 'Viny'
-  const vinyIdx = remainingDebts.findIndex(d => isVinyDebtOrTransaction(d));
-  if (vinyIdx !== -1) {
-    const vinyDebt = { ...remainingDebts[vinyIdx] };
-    const personalCatId = resolveDefaultPersonalDebtCategoryId(
-      categories,
-      vinyDebt.personalCategoryId || vinyDebt.categoryId
-    );
-
-    const vinyTxs = remainingTxs
-      .filter(t => t.debtId === vinyDebt.id)
-      .sort((a, b) => {
-        const aIsDown = a.installmentNumber === 0 || (a.description || '').toLowerCase().includes('entrada');
-        const bIsDown = b.installmentNumber === 0 || (b.description || '').toLowerCase().includes('entrada');
-        if (aIsDown && !bIsDown) return -1;
-        if (!aIsDown && bIsDown) return 1;
-        return (a.date || '').localeCompare(b.date || '');
-      });
-
-    const paidTxs = vinyTxs.filter(t => t.status === 'paid');
-    const paidSum = Math.round(paidTxs.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0) * 100) / 100;
-
-    // Detecta se a separação anterior ('Som Léo') havia deduzido R$ 647 das parcelas históricas do Viny
-    const wasAlteredBySplit =
-      somLeoDebts.length > 0 ||
-      somLeoTxs.length > 0 ||
-      vinyTxs.some(t => (t.description || '').toLowerCase().includes('camisa do brasil')) ||
-      (paidTxs.length > 0 && paidSum < 6100 && vinyTxs.some(t => [353, 53, 36, 120, 57].includes(Math.round(Number(t.amount) || 0))));
-
-    // Se o valor total estava com o resíduo da migração anterior (5965, 6470 ou 12603), corrige para R$ 12.435,00
-    const currentTotalRounded = Math.round((Number(vinyDebt.totalAmount) || 0) * 100) / 100;
-    const isSyntheticOldTotal =
-      !currentTotalRounded ||
-      currentTotalRounded === 5965 ||
-      currentTotalRounded === 6470 ||
-      currentTotalRounded === 12603;
-
-    const targetTotalAmount = isSyntheticOldTotal ? VINY_DEFAULT_TOTAL_AMOUNT : currentTotalRounded;
-    const targetInstallmentCount = vinyDebt.installmentCount || 18;
-
-    let finalVinyTxs = [...vinyTxs];
-
-    if (wasAlteredBySplit) {
-      changed = true;
-      const pendingTxs = vinyTxs
-        .filter(t => t.status === 'pending')
-        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-
-      const firstRefDate =
-        somLeoTxs[0]?.date ||
-        vinyTxs.find(t => t.installmentNumber !== 0)?.date ||
-        vinyDebt.startDate ||
-        `${new Date().getFullYear()}-01-10`;
-      const [baseY, , baseD] = firstRefDate.split('-').map(Number);
-      const year = baseY || new Date().getFullYear();
-      const day = String(baseD || 10).padStart(2, '0');
-      const accountId = vinyDebt.accountId || vinyTxs[0]?.accountId || 'acc_bb';
-
-      let runningMusic = 0;
-      const restoredPaidTxs: Transaction[] = VINY_HISTORICAL_PAID_SCHEDULE.map((item, idx) => {
-        const existingMatch =
-          item.installmentNumber === 0
-            ? paidTxs.find(
-                t =>
-                  t.installmentNumber === 0 ||
-                  (t.description || '').toLowerCase().includes('entrada') ||
-                  Math.round(Number(t.amount) || 0) === 300
-              )
-            : paidTxs[idx];
-
-        const monthStr = String(item.monthOffset + 1).padStart(2, '0');
-        const txDate = existingMatch?.date || `${year}-${monthStr}-${day}`;
-        const alloc = resolveVinyInstallmentAllocation(item.installmentNumber, item.amount, personalCatId, runningMusic);
-        runningMusic += alloc.musicAmount;
-
-        return {
-          id: existingMatch?.id || `tx_viny_hist_${item.installmentNumber}`,
-          debtId: vinyDebt.id,
-          description:
-            item.installmentNumber === 0
-              ? `Entrada Inicial - ${vinyDebt.name}`
-              : `${vinyDebt.name} (${item.installmentNumber}/18)`,
-          amount: item.amount,
-          type: 'expense',
-          status: 'paid',
-          date: txDate,
-          categoryId: alloc.categoryId,
-          category: alloc.categoryId,
-          subcategory: alloc.subcategory,
-          scope: alloc.scope,
-          accountId: existingMatch?.accountId || accountId,
-          installmentNumber: item.installmentNumber,
-          installmentTotal: 18,
-          createdAt: existingMatch?.createdAt || Date.now() + idx
-        };
-      });
-
-      const restoredPaidSum = restoredPaidTxs.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
-      const remainingToDistribute = Math.max(0, Math.round((targetTotalAmount - restoredPaidSum) * 100) / 100);
-      const totalPendingCount = Math.max(10, pendingTxs.length);
-      const basePendingVal = Math.floor((remainingToDistribute / totalPendingCount) * 100) / 100;
-      const pendingRemainder = Math.round((remainingToDistribute - basePendingVal * totalPendingCount) * 100) / 100;
-
-      const restoredPendingTxs: Transaction[] = [];
-      for (let i = 0; i < totalPendingCount; i++) {
-        const instNum = 9 + i; // P9 a P18
-        const existingPending = pendingTxs[i];
-        const d = new Date(year, 8 + i, Number(day) || 10, 12, 0, 0);
-        const txDate = existingPending?.date || d.toISOString().slice(0, 10);
-        const isLast = i === totalPendingCount - 1;
-        const pendingAmt = isLast
-          ? Math.round((basePendingVal + pendingRemainder) * 100) / 100
-          : basePendingVal;
-
-        const alloc = resolveVinyInstallmentAllocation(instNum, pendingAmt, personalCatId, runningMusic);
-        runningMusic += alloc.musicAmount;
-
-        restoredPendingTxs.push({
-          id: existingPending?.id || `tx_viny_pend_${instNum}`,
-          debtId: vinyDebt.id,
-          description: `${vinyDebt.name} (${instNum}/18)`,
-          amount: pendingAmt,
-          type: 'expense',
-          status: 'pending',
-          date: txDate,
-          categoryId: alloc.categoryId,
-          category: alloc.categoryId,
-          subcategory: alloc.subcategory,
-          scope: alloc.scope,
-          accountId: existingPending?.accountId || accountId,
-          installmentNumber: instNum,
-          installmentTotal: 18,
-          createdAt: existingPending?.createdAt || Date.now() + 100 + instNum
-        });
-      }
-
-      const keptIds = new Set([...restoredPaidTxs, ...restoredPendingTxs].map(t => t.id));
-      vinyTxs.forEach(t => {
-        if (!keptIds.has(t.id)) {
-          deletedTransactionIds.push(t.id);
-        }
-      });
-
-      finalVinyTxs = [...restoredPaidTxs, ...restoredPendingTxs];
-    } else {
-      // Garante metadados de escopo/categoria (incluindo troca de 'cat_1' para 'cat_dividas') sem tocar nos valores pagos
-      let nonDownCounter = 0;
-      let runningMusic = 0;
-      const totalCount = vinyDebt.installmentCount || 18;
-      finalVinyTxs = vinyTxs.map(t => {
-        const isDown =
-          t.installmentNumber === 0 ||
-          (t.description || '').toLowerCase().includes('entrada') ||
-          (Math.round(Number(t.amount) || 0) === 300 && nonDownCounter === 0);
-
-        const instNum = isDown ? 0 : ++nonDownCounter;
-        const alloc = resolveVinyInstallmentAllocation(instNum, t.amount, personalCatId, runningMusic);
-        runningMusic += alloc.musicAmount;
-
-        const cleanDesc = (t.description || '')
-          .replace(/\s*•?\s*incl\.\s*R\$\s*57,00\s*Camisa do Brasil/gi, '')
-          .replace(/\s*\(incl\.\s*R\$\s*57,00\s*Camisa do Brasil\)/gi, '');
-
-        if (
-          t.installmentNumber !== instNum ||
-          t.scope !== alloc.scope ||
-          t.categoryId !== alloc.categoryId ||
-          t.subcategory !== alloc.subcategory ||
-          t.description !== cleanDesc
-        ) {
-          changed = true;
-        }
-
-        return {
-          ...t,
-          installmentNumber: instNum,
-          installmentTotal: totalCount,
-          description: cleanDesc,
-          scope: alloc.scope,
-          categoryId: alloc.categoryId,
-          category: alloc.categoryId,
-          subcategory: alloc.subcategory
-        };
-      });
-
-      // Se o totalAmount foi corrigido de 12603/5965 para 12435, ajusta as parcelas pendentes para fechar exatamente com (12435 - pago)
-      if (isSyntheticOldTotal && currentTotalRounded !== targetTotalAmount) {
-        const realPaidSum = finalVinyTxs
-          .filter(t => t.status === 'paid')
-          .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
-        const pendingList = finalVinyTxs.filter(t => t.status === 'pending');
-        if (pendingList.length > 0) {
-          const remainingForPending = Math.max(0, Math.round((targetTotalAmount - realPaidSum) * 100) / 100);
-          const basePerPend = Math.floor((remainingForPend(remainingForPending, pendingList.length)) * 100) / 100;
-          const diffPend = Math.round((remainingForPending - basePerPend * pendingList.length) * 100) / 100;
-          let pIdx = 0;
-          finalVinyTxs = finalVinyTxs.map(t => {
-            if (t.status !== 'pending') return t;
-            const isLast = pIdx === pendingList.length - 1;
-            pIdx++;
-            const newAmt = isLast ? Math.round((basePerPend + diffPend) * 100) / 100 : basePerPend;
-            if (Math.abs(Number(t.amount) - newAmt) > 0.009) {
-              changed = true;
-            }
-            return { ...t, amount: newAmt };
-          });
-        }
-      }
-    }
-
-    if (
-      vinyDebt.costCenterMode !== 'INSTALLMENT_RANGE' ||
-      vinyDebt.businessStartInstallment !== VINY_MUSIC_START_INSTALLMENT ||
-      vinyDebt.businessEndInstallment !== VINY_MUSIC_END_INSTALLMENT ||
-      vinyDebt.includeDownPaymentInBusiness !== false ||
-      vinyDebt.musicSubcategory !== 'Equipamentos/Som' ||
-      vinyDebt.scope !== 'BOTH' ||
-      vinyDebt.personalCategoryId !== personalCatId ||
-      vinyDebt.totalAmount !== targetTotalAmount ||
-      vinyDebt.installmentCount !== targetInstallmentCount
-    ) {
-      changed = true;
-    }
-
-    if (changed) {
-      remainingDebts[vinyIdx] = {
-        ...vinyDebt,
-        scope: 'BOTH',
-        costCenterMode: 'INSTALLMENT_RANGE',
-        businessStartInstallment: VINY_MUSIC_START_INSTALLMENT,
-        businessEndInstallment: VINY_MUSIC_END_INSTALLMENT,
-        includeDownPaymentInBusiness: false,
-        musicSubcategory: 'Equipamentos/Som',
-        categoryId: 'cat_equipamentos',
-        personalCategoryId: personalCatId,
-        totalAmount: targetTotalAmount,
-        installmentCount: targetInstallmentCount
-      };
-
-      const otherTxs = remainingTxs.filter(t => t.debtId !== vinyDebt.id);
-      remainingTxs = [...otherTxs, ...finalVinyTxs];
-    }
-  }
-
   return {
     changed,
     debts: remainingDebts,
@@ -606,10 +605,6 @@ export const reconcileUnifiedVinyDebt = (
     deletedTransactionIds
   };
 };
-
-function remainingForPend(remaining: number, count: number): number {
-  return count > 0 ? remaining / count : 0;
-}
 
 /**
  * Resolve a categoria financeira (categoryId) e a chave de custo musical (musicCostKey)
@@ -667,20 +662,24 @@ export const resolveDebtInstallmentCostCenter = (
     debt.personalCategoryId || debt.categoryId
   );
 
-  // Regra de Rateio e Teto do Contrato Único do 'Viny':
-  // Parcelas 2 a 11 (Fev a Nov): R$ 650,00 fixos na Música ('Equipamentos/Som', teto máx R$ 6.500,00) + excedente Pessoal
-  // Entrada (0), Parcela 1 (Jan) e Parcelas 12 a 18+: 100% Pessoal ('Dívidas / Empréstimo Pessoal')
+  // Regra de Rateio Dinâmico do Contrato do 'Viny':
+  // Parcelas 2 a 11 (Fev a Nov): Math.min(valorDaParcela, 650.00) na Música ('Equipamentos/Som', teto máx R$ 6.500,00) + excedente Pessoal
+  // Entrada (0), Parcela 1 (Jan) e Parcelas 12+: 100% Pessoal ('Dívidas / Empréstimo Pessoal')
   if (isVinyDebtOrTransaction(debt)) {
+    const startInst = debt.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
+    const endInst = debt.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
     const priorMusicCount =
-      installmentNumber >= VINY_MUSIC_START_INSTALLMENT
-        ? Math.min(10, Math.max(0, installmentNumber - VINY_MUSIC_START_INSTALLMENT))
+      installmentNumber >= startInst
+        ? Math.min(10, Math.max(0, installmentNumber - startInst))
         : 0;
     const alreadyAllocatedMusic = priorMusicCount * VINY_MONTHLY_MUSIC_FIXED;
     const alloc = resolveVinyInstallmentAllocation(
       installmentNumber,
       rawAmount,
       fallbackPersonalCat,
-      alreadyAllocatedMusic
+      alreadyAllocatedMusic,
+      startInst,
+      endInst
     );
     return {
       scope: alloc.scope,
@@ -735,18 +734,18 @@ export const resolveDebtInstallmentCostCenter = (
 };
 
 /**
- * Pré-calcula o mapa de alocação de cada transação do contrato único 'Viny',
+ * Pré-calcula o mapa de alocação dinâmica de cada transação do contrato 'Viny',
  * garantindo que:
- * 1. Apenas as parcelas pagas referentes ao som (Fevereiro a Novembro, Parcelas 2 a 11)
- *    recebam exatamente R$ 650,00/mês em 'MÚSICA / CARREIRA'.
- * 2. Em NENHUMA hipótese a soma direcionada para a DRE da Música ultrapasse o teto máximo de R$ 6.500,00.
- * 3. Todo o valor excedente pago em cada parcela seja alocado automaticamente em 'PESSOAL'.
+ * 1. As parcelas referentes ao som (Fevereiro a Novembro, Parcelas 2 a 11)
+ *    destinem para 'MÚSICA / CARREIRA' o valor de `Math.min(valorDaParcela, 650.00)`.
+ * 2. Em NENHUMA hipótese o valor de Música supere o valor da própria parcela nem o teto de R$ 6.500,00.
+ * 3. O valor excedente (`Math.max(0, valorDaParcela - 650.00)`) e as demais parcelas sejam alocados em 'PESSOAL'.
  */
 export const buildVinyAllocationMap = (
   allTransactions: Transaction[],
   debts: Debt[] = []
-): Map<string, { musicAmount: number; personalAmount: number; instNum: number }> => {
-  const map = new Map<string, { musicAmount: number; personalAmount: number; instNum: number }>();
+): Map<string, { musicAmount: number; personalAmount: number; instNum: number; isSoundInstallment: boolean }> => {
+  const map = new Map<string, { musicAmount: number; personalAmount: number; instNum: number; isSoundInstallment: boolean }>();
   const safeTxs = Array.isArray(allTransactions) ? allTransactions : [];
   const safeDebts = Array.isArray(debts) ? debts : [];
 
@@ -765,29 +764,26 @@ export const buildVinyAllocationMap = (
 
   let cumulativePaidMusic = 0;
   let cumulativeAllMusic = 0;
-  const allocatedPaidMonths = new Set<string>();
 
   vinyTxs.forEach(t => {
-    const rawAmt = Math.abs(Number(t.amount) || 0);
+    const rawAmt = Math.round(Math.abs(Number(t.amount) || 0) * 100) / 100;
     const instNum = extractInstallmentNumber(t, safeTxs);
-    const monthKey = (t.date || '').slice(0, 7);
-    const isSoundInstallment =
-      instNum >= VINY_MUSIC_START_INSTALLMENT && instNum <= VINY_MUSIC_END_INSTALLMENT;
+    const parentDebt = t.debtId ? safeDebts.find(d => d.id === t.debtId) : undefined;
+    const startInst = parentDebt?.businessStartInstallment ?? VINY_MUSIC_START_INSTALLMENT;
+    const endInst = parentDebt?.businessEndInstallment ?? VINY_MUSIC_END_INSTALLMENT;
+    const isSoundInstallment = instNum >= startInst && instNum <= endInst;
 
     if (isSoundInstallment) {
       if (t.status === 'paid') {
-        const alreadyUsedMonth = monthKey ? allocatedPaidMonths.has(monthKey) : false;
         const remainingPaidCeiling = Math.max(
           0,
           Math.round((VINY_MUSIC_MAX_CEILING - cumulativePaidMusic) * 100) / 100
         );
-        const musicPortion = alreadyUsedMonth
-          ? 0
-          : Math.min(VINY_MONTHLY_MUSIC_FIXED, remainingPaidCeiling);
+        // Regra estrita: Math.min(valorDaParcela, 650.00) respeitando o teto acumulado
+        const musicPortion = Math.round(
+          Math.min(rawAmt, VINY_MONTHLY_MUSIC_FIXED, remainingPaidCeiling) * 100
+        ) / 100;
 
-        if (musicPortion > 0 && monthKey) {
-          allocatedPaidMonths.add(monthKey);
-        }
         cumulativePaidMusic = Math.min(
           VINY_MUSIC_MAX_CEILING,
           Math.round((cumulativePaidMusic + musicPortion) * 100) / 100
@@ -797,22 +793,26 @@ export const buildVinyAllocationMap = (
           Math.round((cumulativeAllMusic + musicPortion) * 100) / 100
         );
         const personalPortion = Math.max(0, Math.round((rawAmt - musicPortion) * 100) / 100);
-        map.set(t.id, { musicAmount: musicPortion, personalAmount: personalPortion, instNum });
+        map.set(t.id, { musicAmount: musicPortion, personalAmount: personalPortion, instNum, isSoundInstallment: true });
       } else {
         const remainingCeiling = Math.max(
           0,
           Math.round((VINY_MUSIC_MAX_CEILING - cumulativeAllMusic) * 100) / 100
         );
-        const musicPortion = Math.min(VINY_MONTHLY_MUSIC_FIXED, remainingCeiling);
+        // Regra estrita: Math.min(valorDaParcela, 650.00) respeitando o teto acumulado
+        const musicPortion = Math.round(
+          Math.min(rawAmt, VINY_MONTHLY_MUSIC_FIXED, remainingCeiling) * 100
+        ) / 100;
+
         cumulativeAllMusic = Math.min(
           VINY_MUSIC_MAX_CEILING,
           Math.round((cumulativeAllMusic + musicPortion) * 100) / 100
         );
         const personalPortion = Math.max(0, Math.round((rawAmt - musicPortion) * 100) / 100);
-        map.set(t.id, { musicAmount: musicPortion, personalAmount: personalPortion, instNum });
+        map.set(t.id, { musicAmount: musicPortion, personalAmount: personalPortion, instNum, isSoundInstallment: true });
       }
     } else {
-      map.set(t.id, { musicAmount: 0, personalAmount: rawAmt, instNum });
+      map.set(t.id, { musicAmount: 0, personalAmount: rawAmt, instNum, isSoundInstallment: false });
     }
   });
 
@@ -826,20 +826,20 @@ export const getTransactionCareerAndPersonalSplit = (
   t: Transaction,
   debts?: Debt[],
   allTransactions?: Transaction[]
-): { musicAmount: number; personalAmount: number } => {
+): { musicAmount: number; careerAmount: number; personalAmount: number } => {
   if (!t || t.type !== 'expense' || t.status === 'cancelled') {
-    return { musicAmount: 0, personalAmount: 0 };
+    return { musicAmount: 0, careerAmount: 0, personalAmount: 0 };
   }
   if (isSomLeoDebtOrTransaction(null, t)) {
-    return { musicAmount: 0, personalAmount: 0 };
+    return { musicAmount: 0, careerAmount: 0, personalAmount: 0 };
   }
 
-  const rawAmt = Math.abs(Number(t.amount) || 0);
+  const rawAmt = Math.round(Math.abs(Number(t.amount) || 0) * 100) / 100;
   const safeDebts = Array.isArray(debts) ? debts : [];
   const parentDebt = t.debtId ? safeDebts.find(d => d.id === t.debtId) : undefined;
 
   if (isSomLeoDebtOrTransaction(parentDebt, t)) {
-    return { musicAmount: 0, personalAmount: 0 };
+    return { musicAmount: 0, careerAmount: 0, personalAmount: 0 };
   }
 
   if (isVinyDebtOrTransaction(parentDebt, t)) {
@@ -847,19 +847,27 @@ export const getTransactionCareerAndPersonalSplit = (
       const vinyMap = buildVinyAllocationMap(allTransactions, safeDebts);
       const entry = vinyMap.get(t.id);
       if (entry) {
-        return { musicAmount: entry.musicAmount, personalAmount: entry.personalAmount };
+        return {
+          musicAmount: entry.musicAmount,
+          careerAmount: entry.musicAmount,
+          personalAmount: entry.personalAmount
+        };
       }
     }
     const instNum = extractInstallmentNumber(t, allTransactions);
     const alloc = resolveVinyInstallmentAllocation(instNum, rawAmt);
-    return { musicAmount: alloc.musicAmount, personalAmount: alloc.personalAmount };
+    return {
+      musicAmount: alloc.musicAmount,
+      careerAmount: alloc.musicAmount,
+      personalAmount: alloc.personalAmount
+    };
   }
 
   if (isCareerExpenseTransaction(t, safeDebts, allTransactions)) {
-    return { musicAmount: rawAmt, personalAmount: 0 };
+    return { musicAmount: rawAmt, careerAmount: rawAmt, personalAmount: 0 };
   }
 
-  return { musicAmount: 0, personalAmount: rawAmt };
+  return { musicAmount: 0, careerAmount: 0, personalAmount: rawAmt };
 };
 
 /**

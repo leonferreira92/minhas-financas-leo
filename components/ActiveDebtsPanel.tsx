@@ -24,7 +24,7 @@ import {
   saveTransactionToFirestore,
   deleteTransactionFromFirestore
 } from '../services/firebaseService';
-import { DebtForm } from './DebtForm';
+import { DebtModal } from './debts/DebtModal';
 
 interface ActiveDebtItem {
   debt: Debt;
@@ -305,6 +305,11 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
           {parsedDebtsData.items.map(item => {
             const pct = item.totalCount > 0 ? (item.paidCount / item.totalCount) * 100 : 0;
             const isViny = isVinyDebtOrTransaction(item.debt);
+            const vinyMonthlyMusic = Math.min(item.installmentAmount, VINY_MONTHLY_MUSIC_FIXED);
+            const vinyMonthlyPersonal = Math.max(
+              0,
+              Math.round((item.installmentAmount - vinyMonthlyMusic) * 100) / 100
+            );
 
             return (
               <div 
@@ -327,7 +332,10 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                         {isViny ? (
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
                             <Music size={10} />
-                            <span>Rateio DRE: {formatBRL(VINY_MONTHLY_MUSIC_FIXED)}/mês (Teto {formatBRL(VINY_MUSIC_MAX_CEILING)}) + Pessoal</span>
+                            <span>
+                              Rateio DRE: Música {formatBRL(vinyMonthlyMusic)}
+                              {vinyMonthlyPersonal > 0 ? ` + Pessoal ${formatBRL(vinyMonthlyPersonal)}` : ' (Som)'}
+                            </span>
                           </span>
                         ) : (item.debt.costCenterMode === 'TOTAL_BUSINESS' || item.debt.scope === 'BUSINESS') ? (
                           <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
@@ -366,10 +374,10 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                         setEditingDebt(item.debt);
                       }}
                       className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 hover:bg-purple-100 text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95"
-                      title="Editar Centro de Custo e Subcategoria"
+                      title="Editar Valor Total, Parcelas e Centro de Custo"
                     >
                       <SlidersHorizontal size={12} />
-                      <span>Centro de Custo</span>
+                      <span>Editar / Rateio</span>
                     </button>
 
                     <div className="sm:text-right">
@@ -433,10 +441,13 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                   <div className="mb-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] text-slate-600 dark:text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <span className="font-black text-purple-600 dark:text-purple-300 uppercase tracking-wider block text-[10px]">
-                        Contrato Único Viny • Teto DRE da Música: {formatBRL(VINY_MUSIC_MAX_CEILING)} (10x de {formatBRL(VINY_MONTHLY_MUSIC_FIXED)})
+                        Rateio Dinâmico Viny • Parcelas {VINY_MUSIC_START_INSTALLMENT} a {VINY_MUSIC_END_INSTALLMENT} (Fev a Nov)
                       </span>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Parcelas <strong>{VINY_MUSIC_START_INSTALLMENT} a {VINY_MUSIC_END_INSTALLMENT}</strong> (Fev a Nov): destina exatamente <strong>{formatBRL(VINY_MONTHLY_MUSIC_FIXED)}/mês</strong> para <strong>MÚSICA / CARREIRA</strong> (<em>Equipamentos/Som</em>, teto máx. {formatBRL(VINY_MUSIC_MAX_CEILING)}) • Excedente de cada parcela e demais meses alocados em <strong>PESSOAL (Dívidas / Empréstimo Pessoal)</strong>.
+                        Destina <strong>{formatBRL(vinyMonthlyMusic)}/parcela</strong> para a <strong>DRE da Música (Equipamentos/Som)</strong>{' '}
+                        {vinyMonthlyPersonal > 0
+                          ? `e o excedente de ${formatBRL(vinyMonthlyPersonal)}/parcela + demais meses para PESSOAL.`
+                          : '• Parcelas 1 e 12 alocadas em PESSOAL.'}
                       </p>
                     </div>
                   </div>
@@ -466,7 +477,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
       </div>
 
       {editingDebt && (
-        <DebtForm
+        <DebtModal
           initialDebt={editingDebt}
           onClose={() => setEditingDebt(null)}
         />
