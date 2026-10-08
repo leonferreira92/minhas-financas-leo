@@ -357,7 +357,7 @@ export interface MusicianCrewMember {
 export interface MusicLocomotionExpense {
   id: string;
   date: string;
-  type: 'uber' | 'fuel' | 'mileage' | 'toll' | 'parking';
+  type: 'uber' | 'fuel' | 'mileage' | 'toll' | 'parking' | 'lodging';
   title: string;
   amount: number;
   km?: number;

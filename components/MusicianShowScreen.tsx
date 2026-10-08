@@ -7,7 +7,7 @@ import {
   Archive, Plus, Sparkles, AlertTriangle, Bell, CheckCircle2, 
   ChevronRight, X, Clock, FilePlus, TrendingUp, DollarSign, 
   ArrowUpRight, ChevronLeft, Calculator, Building2, Users, 
-  Car, Hammer, Layers, BarChart3
+  Car, Hammer, Layers, BarChart3, Download, Database
 } from 'lucide-react';
 import { PerformanceDashboard } from './career/PerformanceDashboard';
 import { CalendarWithDrawer } from './career/CalendarWithDrawer';
@@ -21,8 +21,10 @@ import { ShowDetailModal } from './shows/ShowDetailModal';
 import { ShowFormModal } from './shows/ShowFormModal';
 import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
 import { GoogleCalendarSyncModal } from './shows/GoogleCalendarSyncModal';
+import { ExportShowsERPModal } from './shows/ExportShowsERPModal';
 import { checkScheduleConflict } from './shows/conflictHelper';
 import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
+import { downloadShowsERPMigrationJSON } from '../services/showExportService';
 import { generateUUID } from '../services/uuidHelper';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
@@ -61,6 +63,7 @@ export const MusicianShowScreen: React.FC = () => {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [isGoogleCalendarOpen, setIsGoogleCalendarOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
   const [initialStatusForNewShow, setInitialStatusForNewShow] = useState<ShowStatus>('Confirmado');
   const [prefilledVenueData, setPrefilledVenueData] = useState<{ location?: string; city?: string; totalCache?: number } | undefined>();
@@ -182,6 +185,12 @@ export const MusicianShowScreen: React.FC = () => {
     }
   };
 
+  const handleExportERP = () => {
+    // Dispara o download automático do arquivo 'shows_migracao_leo_ferreira.json'
+    downloadShowsERPMigrationJSON(safeShows, transactions, settings);
+    setIsExportModalOpen(true);
+  };
+
   // 8 ABAS DO MÓDULO EMPRESA / MÚSICO DEDICADO
   const careerTabs: { id: CareerTab; label: string; icon: any; badge?: number; badgeColor?: string }[] = [
     { id: 'performance', label: 'Performance', icon: TrendingUp },
@@ -227,6 +236,15 @@ export const MusicianShowScreen: React.FC = () => {
 
           {/* BOTÕES DE AÇÃO RÁPIDA */}
           <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
+            <button
+              onClick={handleExportERP}
+              className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-900/50 via-purple-800/40 to-purple-900/50 hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/40 flex items-center space-x-1.5 shadow-md shadow-purple-950/30 group"
+              title="Exportar Todos os Shows (Migração ERP) - Gera shows_migracao_leo_ferreira.json"
+            >
+              <Download size={15} strokeWidth={2.5} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+              <span>Exportar Todos os Shows (Migração ERP)</span>
+            </button>
+
             <button
               onClick={() => setIsGoogleCalendarOpen(true)}
               className="px-3.5 py-2.5 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 text-[#1ed760] text-xs font-black uppercase tracking-wider transition active:scale-95 border border-emerald-500/30 flex items-center space-x-1.5 shadow-sm"
@@ -345,6 +363,7 @@ export const MusicianShowScreen: React.FC = () => {
           shows={safeShows}
           onSelectShow={show => setSelectedShowId(show.id)}
           onOpenCreateShow={status => handleOpenCreateModal(undefined, status || 'Confirmado')}
+          onExportERP={handleExportERP}
         />
       )}
 
@@ -450,6 +469,15 @@ export const MusicianShowScreen: React.FC = () => {
         onClose={() => setIsGoogleCalendarOpen(false)}
         shows={safeShows}
         onUpdateShow={updateShow}
+      />
+
+      {/* FERRAMENTA: EXPORTAÇÃO COMPLETA ERP (shows_migracao_leo_ferreira.json) */}
+      <ExportShowsERPModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        shows={safeShows}
+        transactions={transactions}
+        settings={settings}
       />
 
     </div>

@@ -2376,7 +2376,7 @@ export const ShowDetailModal: React.FC<Props> = ({
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <select
                               value={editOtherCat}
-                              onChange={e => setEditOtherCat(e.target.value)}
+                              onChange={e => setEditOtherCat(e.target.value as "Aluguel" | "Manutenção" | "Insumos do Show")}
                               className="bg-zinc-800 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs text-amber-200 font-bold"
                             >
                               <option value="Aluguel">Aluguel</option>

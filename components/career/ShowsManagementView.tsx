@@ -4,24 +4,28 @@ import { useFinance } from '../../context/FinanceContext';
 import { 
   Calendar, MapPin, DollarSign, Clock, Users, Fuel, 
   ArrowRight, Plus, Search, Filter, CheckCircle2, 
-  AlertTriangle, TrendingUp, Sparkles, FileText, ChevronRight
+  AlertTriangle, TrendingUp, Sparkles, FileText, ChevronRight,
+  Download, Database
 } from 'lucide-react';
 import { getStatusConfig, getShowDisplayHierarchy } from '../shows/types';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
+import { downloadShowsERPMigrationJSON } from '../../services/showExportService';
 import { useDraggableScroll } from '../../hooks/useDraggableScroll';
 
 interface Props {
   shows: Show[];
   onSelectShow: (show: Show) => void;
   onOpenCreateShow: (status?: ShowStatus) => void;
+  onExportERP?: () => void;
 }
 
 export const ShowsManagementView: React.FC<Props> = ({
   shows,
   onSelectShow,
-  onOpenCreateShow
+  onOpenCreateShow,
+  onExportERP
 }) => {
-  const { transactions, isBlurred } = useFinance();
+  const { transactions, isBlurred, settings } = useFinance();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'cache_desc' | 'profit_desc'>('date_desc');
@@ -79,7 +83,17 @@ export const ShowsManagementView: React.FC<Props> = ({
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 self-start sm:self-auto">
+        <div className="flex items-center space-x-2 self-start sm:self-auto flex-wrap gap-y-2">
+          <button
+            onClick={onExportERP || (() => downloadShowsERPMigrationJSON(shows, transactions, settings))}
+            className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-900/40 to-purple-800/40 hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider border border-purple-500/40 transition active:scale-95 flex items-center space-x-1.5 shadow-sm group"
+            title="Exportar Todos os Shows (Migração ERP) - Gera shows_migracao_leo_ferreira.json"
+          >
+            <Download size={14} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+            <span className="hidden sm:inline">Exportar Todos os Shows (Migração ERP)</span>
+            <span className="sm:hidden">Exportar ERP</span>
+          </button>
+
           <button
             onClick={() => onOpenCreateShow('Orçamento')}
             className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider border border-amber-500/30 transition active:scale-95 flex items-center space-x-1"

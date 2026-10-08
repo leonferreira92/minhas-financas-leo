@@ -1345,7 +1345,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
   const diff = Math.round((parsedNewAmount - transaction.amount) * 100) / 100;
 
   const isViny = useMemo(
-    () => isVinyDebtOrTransaction(debt) || isVinyDebtOrTransaction(transaction),
+    () => isVinyDebtOrTransaction(debt) || isVinyDebtOrTransaction(undefined, transaction),
     [debt, transaction]
   );
 

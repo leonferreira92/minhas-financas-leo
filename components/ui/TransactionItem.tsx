@@ -50,7 +50,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   const isExpense = t.type === 'expense' || t.type === 'goal_deposit';
   const isIncome = t.type === 'income' || t.type === 'goal_withdraw';
   const isPending = t.status === 'pending';
-  const isVinyTx = isVinyDebtOrTransaction(t);
+  const isVinyTx = isVinyDebtOrTransaction(undefined, t);
   const vinyInstNum = isVinyTx ? extractInstallmentNumber(t) : 0;
   const isVinySoundRange =
     isVinyTx &&

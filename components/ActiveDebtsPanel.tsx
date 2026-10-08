@@ -39,6 +39,7 @@ interface ActiveDebtItem {
 
 interface Props {
   onSelectDebt?: (debtId: string) => void;
+  onNewDebt?: () => void;
 }
 
 export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
