@@ -396,32 +396,32 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
       return createDemoDataset().accounts;
     }
-    return [];
+    return StorageService.getAccounts();
   });
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
       return createDemoDataset().transactions;
     }
-    return [];
+    return StorageService.getTransactions();
   });
   const [categories, setCategories] = useState<Category[]>(() => {
     if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
       return createDemoDataset().categories;
     }
-    return DEFAULT_CATEGORIES;
+    return StorageService.getCategories();
   });
   const [debts, setDebts] = useState<Debt[]>(() => {
     if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
       return createDemoDataset().debts;
     }
-    return [];
+    return StorageService.getDebts();
   });
-  const [budgets, setBudgets] = useState<Budget[]>(() => []);
+  const [budgets, setBudgets] = useState<Budget[]>(() => StorageService.getBudgets());
   const [shows, setShows] = useState<Show[]>(() => {
     if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
       return createDemoDataset().shows;
     }
-    return [];
+    return StorageService.getShows();
   });
   const [venues, setVenues] = useState<Venue[]>(() => []);
   const [crew, setCrew] = useState<MusicianCrewMember[]>(() => []);
@@ -449,12 +449,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (!currentUser) {
       StorageService.setActiveUser(null);
-      setAccounts([]);
-      setTransactions([]);
-      setShows([]);
-      setDebts([]);
-      setCategories(DEFAULT_CATEGORIES);
-      setBudgets([]);
+      setAccounts(StorageService.getAccounts());
+      setTransactions(StorageService.getTransactions());
+      setShows(StorageService.getShows());
+      setDebts(StorageService.getDebts());
+      setCategories(StorageService.getCategories());
+      setBudgets(StorageService.getBudgets());
       setVenues([]);
       setCrew([]);
       setLocomotionExpenses([]);

@@ -23,6 +23,7 @@ import {
 } from 'firebase/firestore';
 import { Account, Transaction, Show, ShowStatus, Category, Debt, Budget, AppSettings } from '../types';
 import { app, auth, db, oldDb, googleProvider, firebaseConfig } from '../src/firebase/config';
+import { BACKUP_DATA } from './backupImporter';
 
 export { app, auth, db, oldDb, googleProvider, firebaseConfig };
 
@@ -747,7 +748,31 @@ export const migrateAllDataToDefaultDatabase = async (
       }
     }
 
-    // 2. Mescla dados locais (localStorage / memória)
+    // 2. Mescla dados do backup oficial
+    if (BACKUP_DATA) {
+      if (BACKUP_DATA.transactions) {
+        BACKUP_DATA.transactions.forEach(tx => {
+          if (tx && tx.id) transactionsMap.set(tx.id, tx);
+        });
+      }
+      if (BACKUP_DATA.accounts) {
+        BACKUP_DATA.accounts.forEach(acc => {
+          if (acc && acc.id) accountsMap.set(acc.id, acc);
+        });
+      }
+      if (BACKUP_DATA.debts) {
+        BACKUP_DATA.debts.forEach(d => {
+          if (d && d.id) debtsMap.set(d.id, d);
+        });
+      }
+      if (BACKUP_DATA.categories) {
+        BACKUP_DATA.categories.forEach(c => {
+          if (c && c.id) categoriesMap.set(c.id, c);
+        });
+      }
+    }
+
+    // 3. Mescla dados locais (localStorage / memória)
     if (localData) {
       if (localData.transactions) {
         localData.transactions.forEach(tx => {

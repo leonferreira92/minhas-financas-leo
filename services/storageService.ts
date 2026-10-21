@@ -1,5 +1,6 @@
 import { Transaction, Category, AppSettings, Debt, Account, Budget, Show, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
+import { BACKUP_DATA } from './backupImporter';
 
 const BASE_KEYS = {
   TRANSACTIONS: 'fin_app_transactions',
@@ -99,10 +100,15 @@ export const StorageService = {
     if (isDemoModeActive) return [];
     try {
       const data = safeGetItem(getKey(BASE_KEYS.TRANSACTIONS));
-      const parsed = data ? JSON.parse(data) : [];
-      return deduplicateById<Transaction>(parsed);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return deduplicateById<Transaction>(parsed);
+        }
+      }
+      return deduplicateById<Transaction>(BACKUP_DATA.transactions);
     } catch {
-      return [];
+      return deduplicateById<Transaction>(BACKUP_DATA.transactions);
     }
   },
 
@@ -112,13 +118,18 @@ export const StorageService = {
   },
 
   getCategories: (): Category[] => {
-    if (isDemoModeActive) return DEFAULT_CATEGORIES;
+    if (isDemoModeActive) return BACKUP_DATA.categories;
     try {
       const data = safeGetItem(getKey(BASE_KEYS.CATEGORIES));
-      const parsed = data ? JSON.parse(data) : DEFAULT_CATEGORIES;
-      return deduplicateById<Category>(parsed);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return deduplicateById<Category>(parsed);
+        }
+      }
+      return deduplicateById<Category>(BACKUP_DATA.categories);
     } catch {
-      return DEFAULT_CATEGORIES;
+      return deduplicateById<Category>(BACKUP_DATA.categories);
     }
   },
 
@@ -129,34 +140,13 @@ export const StorageService = {
 
   getSettings: (): AppSettings => {
     if (isDemoModeActive) {
-      return { 
-        theme: 'dark',
-        dashboardLayout: [
-          { id: 'balance', visible: true, label: 'Patrimônio' },
-          { id: 'shortcuts', visible: true, label: 'Ações Rápidas' },
-          { id: 'status', visible: true, label: 'Fluxo Mensal' },
-          { id: 'debts', visible: true, label: 'Dívidas' },
-          { id: 'recent', visible: true, label: 'Recentes' }
-        ]
-      } as any;
+      return BACKUP_DATA.settings;
     }
     try {
       const data = safeGetItem(getKey(BASE_KEYS.SETTINGS));
-      return data ? JSON.parse(data) : { 
-        theme: 'dark',
-        dashboardLayout: [
-          { id: 'balance', visible: true, label: 'Patrimônio' },
-          { id: 'shortcuts', visible: true, label: 'Ações Rápidas' },
-          { id: 'status', visible: true, label: 'Fluxo Mensal' },
-          { id: 'debts', visible: true, label: 'Dívidas' },
-          { id: 'recent', visible: true, label: 'Recentes' }
-        ]
-      } as any;
+      return data ? JSON.parse(data) : BACKUP_DATA.settings;
     } catch {
-      return { 
-        theme: 'dark',
-        dashboardLayout: []
-      } as any;
+      return BACKUP_DATA.settings;
     }
   },
 
@@ -169,10 +159,15 @@ export const StorageService = {
     if (isDemoModeActive) return [];
     try {
       const data = safeGetItem(getKey(BASE_KEYS.DEBTS));
-      const parsed = data ? JSON.parse(data) : [];
-      return deduplicateById<Debt>(parsed);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return deduplicateById<Debt>(parsed);
+        }
+      }
+      return deduplicateById<Debt>(BACKUP_DATA.debts);
     } catch {
-      return [];
+      return deduplicateById<Debt>(BACKUP_DATA.debts);
     }
   },
 
@@ -185,16 +180,15 @@ export const StorageService = {
     if (isDemoModeActive) return [];
     try {
       const data = safeGetItem(getKey(BASE_KEYS.ACCOUNTS));
-      if (!data) {
-        return [];
+      if (data) {
+        const parsed: Account[] = deduplicateById<Account>(JSON.parse(data));
+        if (parsed && parsed.length > 0) {
+          return deduplicateById(parsed);
+        }
       }
-      const parsed: Account[] = deduplicateById<Account>(JSON.parse(data));
-      if (!parsed || parsed.length === 0) {
-        return [];
-      }
-      return deduplicateById(parsed);
+      return deduplicateById(BACKUP_DATA.accounts);
     } catch {
-      return [];
+      return deduplicateById(BACKUP_DATA.accounts);
     }
   },
 
