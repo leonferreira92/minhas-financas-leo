@@ -226,11 +226,12 @@ export const MoreHubScreen: React.FC = () => {
       items: [
         {
           id: 'config_gerais',
-          title: 'Conta Firebase & Sincronização',
-          desc: 'Status de conexão em nuvem e login Google',
+          title: 'Banco de Dados (default) & Sincronização',
+          desc: 'Direcionamento de transações para o banco (default) e nuvem',
           icon: Database,
+          badge: '(default)',
           action: () => setActiveSubScreen('settings'),
-          keywords: 'firebase nuvem conta google sync sincronizacao'
+          keywords: 'firebase nuvem conta google sync sincronizacao banco default'
         },
         {
           id: 'backup_json',

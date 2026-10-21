@@ -31,6 +31,9 @@ import { User } from 'firebase/auth';
 import { 
   subscribeToAuth, 
   signInWithGoogle, 
+  signInWithEmail,
+  registerWithEmail,
+  resetPassword,
   logoutUser, 
   subscribeToUserAccounts, 
   subscribeToUserTransactions, 
@@ -53,8 +56,11 @@ import {
   deleteBudgetFromFirestore,
   saveSettingsToFirestore,
   syncLocalDataToFirestore,
+  migrateAllDataToDefaultDatabase,
+  MigrationStats,
   testFirestoreConnection,
-  checkUserInitialized
+  checkUserInitialized,
+  initializeNewUserInFirestore
 } from '../services/firebaseService';
 
 interface ExtendedSummary extends BalanceSummary {
@@ -154,11 +160,18 @@ interface FinanceContextType {
   getBackupInfo: () => { timestamp: number; date: Date } | null;
   requestNotificationPermission: () => Promise<boolean>;
 
-  // Firebase Auth & Cloud Sync
+  // Firebase Auth & Cloud Sync & Multi-Tenant
   currentUser: User | null;
   isAuthLoading: boolean;
+  isDemoMode: boolean;
+  enterDemoMode: () => void;
+  exitDemoMode: () => void;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<User>;
+  registerWithEmail: (email: string, password: string, name?: string) => Promise<User>;
+  resetPassword: (email: string) => Promise<void>;
   logoutUser: () => Promise<void>;
+  consolidateToDefaultDatabase: () => Promise<MigrationStats>;
 }
 
 const DEFAULT_DASHBOARD_LAYOUT: DashboardWidgetConfig[] = [
@@ -252,23 +265,168 @@ const normalizeTransactionRecord = (t: Transaction, accountsList: Account[]): Tr
   };
 };
 
+const createDemoDataset = () => {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const twoDaysAgo = new Date(Date.now() - 172800000).toISOString().slice(0, 10);
+  const inThreeDays = new Date(Date.now() + 259200000).toISOString().slice(0, 10);
+
+  const demoAccounts: Account[] = [
+    { id: 'acc_demo_nubank', name: 'Nubank • Conta Digital', type: 'bank', color: '#8b5cf6', initialBalance: 3850, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
+    { id: 'acc_demo_pj', name: 'Mercado Pago • Shows (PJ)', type: 'bank', color: '#06b6d4', initialBalance: 1450, enabled: true, scope: 'BUSINESS', vinculo: 'MUSICO' },
+    { id: 'acc_demo_wallet', name: 'Carteira / Dinheiro', type: 'wallet', color: '#10b981', initialBalance: 250, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' }
+  ];
+
+  const demoTransactions: Transaction[] = [
+    {
+      id: 'tx_demo_1',
+      description: 'Cachê Apresentação Acústica • Bar & Bistrô Sunset',
+      amount: 1500,
+      type: 'income',
+      categoryId: 'cat_33',
+      accountId: 'acc_demo_pj',
+      date: todayStr,
+      status: 'paid',
+      scope: 'BUSINESS',
+      createdAt: Date.now() - 10000,
+      showId: 'show_demo_1'
+    },
+    {
+      id: 'tx_demo_2',
+      description: 'Supermercado Semanal',
+      amount: 420,
+      type: 'expense',
+      categoryId: 'cat_1',
+      accountId: 'acc_demo_nubank',
+      date: yesterday,
+      status: 'paid',
+      scope: 'PERSONAL',
+      createdAt: Date.now() - 80000000
+    },
+    {
+      id: 'tx_demo_3',
+      description: 'Combustível p/ Deslocamento de Show',
+      amount: 110,
+      type: 'expense',
+      categoryId: 'cat_logistica_shows',
+      costGroup: 'logistica',
+      subcategory: 'Combustível',
+      accountId: 'acc_demo_nubank',
+      date: twoDaysAgo,
+      status: 'paid',
+      scope: 'BUSINESS',
+      createdAt: Date.now() - 160000000,
+      showId: 'show_demo_1'
+    }
+  ];
+
+  const demoDebts: Debt[] = [
+    {
+      id: 'debt_demo_1',
+      name: 'Financiamento Equipamento Som & PA',
+      type: 'card_installment',
+      totalAmount: 2400,
+      startDate: new Date(Date.now() - 120 * 86400000).toISOString().slice(0, 10),
+      installmentCount: 12,
+      installmentAmount: 200,
+      scope: 'BUSINESS',
+      musicSubcategory: 'Equipamentos / Instrumentos',
+      description: '12 parcelas de R$ 200,00 (4 quitadas, 8 restantes)'
+    }
+  ];
+
+  const demoShows: Show[] = [
+    {
+      id: 'show_demo_1',
+      name: 'Show Acústico • Deck Sunset Lounge',
+      contractorName: 'Deck Lounge Bar & Restaurante',
+      contractorPhone: '(11) 98765-4321',
+      location: 'Deck Sunset Lounge',
+      city: 'São Paulo - SP',
+      date: inThreeDays,
+      time: '20:30',
+      endTime: '23:30',
+      duration: '3h',
+      totalCache: 2200,
+      status: 'Confirmado',
+      eventType: 'Bar / Restaurante / Pub',
+      scope: 'BUSINESS',
+      createdAt: Date.now() - 200000,
+      payments: [
+        { id: 'pay_demo_1', type: 'Sinal', amount: 500, expectedDate: todayStr, status: 'Recebido', accountId: 'acc_demo_pj' },
+        { id: 'pay_demo_2', type: 'Restante', amount: 1700, expectedDate: inThreeDays, status: 'Agendado', accountId: 'acc_demo_pj' }
+      ],
+      crewMembers: [
+        { id: 'crew_d_1', name: 'Rodrigo Bateria', role: 'Bateria / Cajón', cacheAmount: 350, status: 'pending', pixKey: 'rodrigo@pix.me' }
+      ],
+      logistics: [
+        { id: 'log_d_1', type: 'fuel', description: 'Gasolina ida e volta', amount: 110, status: 'paid' }
+      ]
+    }
+  ];
+
+  const demoSettings: AppSettings = {
+    theme: 'dark',
+    primaryColor: 'lime',
+    userName: 'Visitante (Demo)',
+    careerProjectName: 'Leo Ferreira • Demonstração',
+    notificationInterval: 12,
+    dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
+    financialSettings: DEFAULT_FINANCIAL_SETTINGS
+  };
+
+  return {
+    accounts: demoAccounts,
+    transactions: demoTransactions,
+    debts: demoDebts,
+    shows: demoShows,
+    categories: DEFAULT_CATEGORIES,
+    settings: demoSettings
+  };
+};
+
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-
-  const [accounts, setAccounts] = useState<Account[]>(() => loadPersistedAccountsRaw());
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const initialAccs = loadPersistedAccountsRaw();
-    return deduplicateItemsById(StorageService.getTransactions()).map(t => normalizeTransactionRecord(t, initialAccs));
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    return sessionStorage.getItem('fin_app_demo_mode') === 'true';
   });
-  const [categories, setCategories] = useState<Category[]>(() => deduplicateItemsById(StorageService.getCategories()));
-  const [debts, setDebts] = useState<Debt[]>(() => deduplicateItemsById(StorageService.getDebts()));
-  const [budgets, setBudgets] = useState<Budget[]>(() => StorageService.getBudgets());
-  const [shows, setShows] = useState<Show[]>(() => deduplicateItemsById(StorageService.getShows()));
-  const [venues, setVenues] = useState<Venue[]>(() => StorageService.getVenues());
-  const [crew, setCrew] = useState<MusicianCrewMember[]>(() => StorageService.getCrew());
-  const [locomotionExpenses, setLocomotionExpenses] = useState<MusicLocomotionExpense[]>(() => StorageService.getLocomotionExpenses());
-  const [musicCostItems, setMusicCostItems] = useState<MusicCostItem[]>(() => StorageService.getMusicCostItems());
+
+  const [accounts, setAccounts] = useState<Account[]>(() => {
+    if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
+      return createDemoDataset().accounts;
+    }
+    return [];
+  });
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
+      return createDemoDataset().transactions;
+    }
+    return [];
+  });
+  const [categories, setCategories] = useState<Category[]>(() => {
+    if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
+      return createDemoDataset().categories;
+    }
+    return DEFAULT_CATEGORIES;
+  });
+  const [debts, setDebts] = useState<Debt[]>(() => {
+    if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
+      return createDemoDataset().debts;
+    }
+    return [];
+  });
+  const [budgets, setBudgets] = useState<Budget[]>(() => []);
+  const [shows, setShows] = useState<Show[]>(() => {
+    if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
+      return createDemoDataset().shows;
+    }
+    return [];
+  });
+  const [venues, setVenues] = useState<Venue[]>(() => []);
+  const [crew, setCrew] = useState<MusicianCrewMember[]>(() => []);
+  const [locomotionExpenses, setLocomotionExpenses] = useState<MusicLocomotionExpense[]>(() => []);
+  const [musicCostItems, setMusicCostItems] = useState<MusicCostItem[]>(() => []);
 
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
@@ -282,33 +440,65 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (isDemoMode) {
+      StorageService.setDemoMode(true);
+      return;
+    }
+
+    StorageService.setDemoMode(false);
+
+    if (!currentUser) {
+      StorageService.setActiveUser(null);
+      setAccounts([]);
+      setTransactions([]);
+      setShows([]);
+      setDebts([]);
+      setCategories(DEFAULT_CATEGORIES);
+      setBudgets([]);
+      setVenues([]);
+      setCrew([]);
+      setLocomotionExpenses([]);
+      setMusicCostItems([]);
+      return;
+    }
 
     const uid = currentUser.uid;
+    const isLeo = currentUser.email === 'leobov2@gmail.com';
+    StorageService.setActiveUser(uid, isLeo);
 
-    // Sincronização inicial inteligente: Se o usuário ainda não tiver sido inicializado no Firestore,
-    // envia os dados locais existentes (localStorage) para a nuvem
-    checkUserInitialized(uid).then((isInit) => {
-      if (!isInit) {
-        const localAccounts = StorageService.getAccounts();
-        const localTransactions = StorageService.getTransactions();
-        const localShows = StorageService.getShows();
-        const localDebts = StorageService.getDebts();
-        const localCategories = StorageService.getCategories();
-        const localBudgets = StorageService.getBudgets();
-        const localSettings = StorageService.getSettings();
+    // Sincronização e consolidação automática para o banco de dados (default)
+    const consolidationFlag = `fin_consolidated_default_${uid}`;
+    const hasConsolidated = localStorage.getItem(consolidationFlag);
 
-        syncLocalDataToFirestore(uid, {
-          accounts: localAccounts,
-          transactions: localTransactions,
-          shows: localShows,
-          debts: localDebts,
-          categories: localCategories,
-          budgets: localBudgets,
-          settings: localSettings
-        });
-      }
-    });
+    if (!hasConsolidated) {
+      const localAccounts = StorageService.getAccounts();
+      const localTransactions = StorageService.getTransactions();
+      const localShows = StorageService.getShows();
+      const localDebts = StorageService.getDebts();
+      const localCategories = StorageService.getCategories();
+      const localBudgets = StorageService.getBudgets();
+      const localSettings = StorageService.getSettings();
+
+      migrateAllDataToDefaultDatabase(uid, {
+        accounts: localAccounts,
+        transactions: localTransactions,
+        shows: localShows,
+        debts: localDebts,
+        categories: localCategories,
+        budgets: localBudgets,
+        settings: localSettings
+      }).then((stats) => {
+        console.log('[FinanceContext] Consolidação no banco (default) concluída:', stats);
+      }).catch((err) => {
+        console.warn('[FinanceContext] Falha na auto-migração para (default):', err);
+      });
+    } else {
+      checkUserInitialized(uid).then((isInit) => {
+        if (!isInit) {
+          initializeNewUserInFirestore(uid, currentUser.email, currentUser.displayName);
+        }
+      });
+    }
 
     // 1. Escutador em tempo real: Contas Bancárias (filtrando contas arquivadas/ocultas)
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
@@ -402,7 +592,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       unsubBudgets && unsubBudgets();
       unsubSettings && unsubSettings();
     };
-  }, [currentUser]);
+  }, [currentUser, isDemoMode]);
   const [settings, setSettings] = useState<AppSettings>({ 
     theme: 'light', 
     primaryColor: 'lime', 
@@ -2855,9 +3045,80 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     await signInWithGoogle();
   };
 
+  const enterDemoMode = () => {
+    sessionStorage.setItem('fin_app_demo_mode', 'true');
+    setIsDemoMode(true);
+    StorageService.setDemoMode(true);
+    const demoData = createDemoDataset();
+    setAccounts(demoData.accounts);
+    setTransactions(demoData.transactions);
+    setDebts(demoData.debts);
+    setShows(demoData.shows);
+    setCategories(demoData.categories);
+    setSettings(demoData.settings);
+    setBudgets([]);
+    setVenues([]);
+    setCrew([]);
+    setLocomotionExpenses([]);
+    setMusicCostItems([]);
+  };
+
+  const exitDemoMode = () => {
+    sessionStorage.removeItem('fin_app_demo_mode');
+    setIsDemoMode(false);
+    StorageService.setDemoMode(false);
+    if (!currentUser) {
+      setAccounts([]);
+      setTransactions([]);
+      setDebts([]);
+      setShows([]);
+      setCategories(DEFAULT_CATEGORIES);
+      setBudgets([]);
+      setVenues([]);
+      setCrew([]);
+      setLocomotionExpenses([]);
+      setMusicCostItems([]);
+    }
+  };
+
+  const handleLogout = async () => {
+    sessionStorage.removeItem('fin_app_demo_mode');
+    setIsDemoMode(false);
+    StorageService.setDemoMode(false);
+    await logoutUser();
+  };
+
   const restoreAutoBackup = () => { if (StorageService.restoreAutoBackup()) { refreshData(); return true; } return false; };
   const getBackupInfo = () => StorageService.getAutoBackupInfo();
   const requestNotificationPermission = () => NotificationService.requestPermission();
+
+  const consolidateToDefaultDatabase = async (): Promise<MigrationStats> => {
+    if (!currentUser) {
+      return {
+        success: false,
+        transactionsMigrated: 0,
+        accountsMigrated: 0,
+        debtsMigrated: 0,
+        showsMigrated: 0,
+        categoriesMigrated: 0,
+        targetDatabase: '(default)',
+        message: 'Faça login para consolidar os dados no banco de dados (default).'
+      };
+    }
+
+    const stats = await migrateAllDataToDefaultDatabase(currentUser.uid, {
+      accounts: StorageService.getAccounts(),
+      transactions: StorageService.getTransactions(),
+      shows: StorageService.getShows(),
+      debts: StorageService.getDebts(),
+      categories: StorageService.getCategories(),
+      budgets: StorageService.getBudgets(),
+      settings: StorageService.getSettings()
+    });
+
+    refreshData();
+    return stats;
+  };
 
   return (
     <FinanceContext.Provider value={{
@@ -2875,7 +3136,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addMusicCostItem, updateMusicCostItem, deleteMusicCostItem,
       getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission,
-      currentUser, isAuthLoading, signInWithGoogle: handleSignInWithGoogle, logoutUser
+      currentUser, 
+      isAuthLoading, 
+      isDemoMode,
+      enterDemoMode,
+      exitDemoMode,
+      signInWithGoogle: handleSignInWithGoogle, 
+      signInWithEmail,
+      registerWithEmail,
+      resetPassword,
+      logoutUser: handleLogout,
+      consolidateToDefaultDatabase
     }}>
       {children}
     </FinanceContext.Provider>

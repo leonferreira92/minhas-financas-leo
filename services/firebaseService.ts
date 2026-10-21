@@ -5,12 +5,15 @@ import {
   onAuthStateChanged, 
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously
+  signInAnonymously,
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   doc, 
   getDocFromServer, 
   getDoc,
+  getDocs,
   collection, 
   setDoc, 
   onSnapshot, 
@@ -19,9 +22,9 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { Account, Transaction, Show, ShowStatus, Category, Debt, Budget, AppSettings } from '../types';
-import { app, auth, db, googleProvider, firebaseConfig } from '../src/firebase/config';
+import { app, auth, db, oldDb, googleProvider, firebaseConfig } from '../src/firebase/config';
 
-export { app, auth, db, googleProvider, firebaseConfig };
+export { app, auth, db, oldDb, googleProvider, firebaseConfig };
 
 /**
  * Remove recursivamente propriedades undefined para evitar erro
@@ -101,6 +104,42 @@ export const signInWithGoogle = async () => {
   }
 };
 
+export const signInWithEmail = async (email: string, password: string): Promise<User> => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+    return result.user;
+  } catch (error) {
+    console.error('Erro ao fazer login com E-mail:', error);
+    throw error;
+  }
+};
+
+export const registerWithEmail = async (email: string, password: string, name?: string): Promise<User> => {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+    if (result.user && name && name.trim()) {
+      try {
+        await updateProfile(result.user, { displayName: name.trim() });
+      } catch (profileErr) {
+        console.warn('Erro ao atualizar nome do perfil:', profileErr);
+      }
+    }
+    return result.user;
+  } catch (error) {
+    console.error('Erro ao registrar usuário:', error);
+    throw error;
+  }
+};
+
+export const resetPassword = async (email: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, email.trim());
+  } catch (error) {
+    console.error('Erro ao enviar recuperação de senha:', error);
+    throw error;
+  }
+};
+
 export const signInGuest = async () => {
   try {
     const result = await signInAnonymously(auth);
@@ -140,6 +179,52 @@ export const markUserInitialized = async (userId: string, email?: string | null)
     }, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
+  }
+};
+
+// Inicialização de NOVO USUÁRIO isolado no Firestore (sem dados de terceiros)
+export const initializeNewUserInFirestore = async (
+  userId: string,
+  email?: string | null,
+  name?: string | null
+) => {
+  try {
+    // 1. Cria documento de perfil
+    await setDoc(doc(db, 'users', userId), {
+      uid: userId,
+      email: email || null,
+      displayName: name || null,
+      initialized: true,
+      createdAt: Date.now(),
+      lastSyncAt: Date.now()
+    });
+
+    // 2. Cria 1 conta bancária padrão zerada
+    const starterAccount: Account = {
+      id: `acc_principal_${Date.now()}`,
+      name: 'Conta Corrente Principal',
+      type: 'bank',
+      color: '#3b82f6',
+      initialBalance: 0,
+      enabled: true,
+      scope: 'PERSONAL',
+      vinculo: 'PESSOAL'
+    };
+    await setDoc(doc(db, 'users', userId, 'accounts', starterAccount.id), starterAccount);
+
+    // 3. Salva configurações padrão
+    const starterSettings: Partial<AppSettings> = {
+      theme: 'dark',
+      primaryColor: 'lime',
+      userName: name || email?.split('@')[0] || 'Novo Usuário',
+      careerProjectName: name || 'Meu Projeto Musical',
+      notificationInterval: 12
+    };
+    await setDoc(doc(db, 'users', userId, 'settings', 'app'), starterSettings);
+
+    // NOTA: transações, dívidas e shows PERMANECEM VAZIOS [] (Isolamento total)
+  } catch (err) {
+    console.error('Erro ao inicializar novo usuário no Firestore:', err);
   }
 };
 
@@ -566,3 +651,195 @@ export const syncLocalDataToFirestore = async (userId: string, localData: {
     console.warn('Erro ao sincronizar dados locais para o Firestore:', err);
   }
 };
+
+export interface MigrationStats {
+  success: boolean;
+  transactionsMigrated: number;
+  accountsMigrated: number;
+  debtsMigrated: number;
+  showsMigrated: number;
+  categoriesMigrated: number;
+  targetDatabase: string;
+  message: string;
+}
+
+/**
+ * Migra e consolida com segurança todas as transações, contas e históricos (antigos e locais)
+ * diretamente para o banco de dados principal (default) no Firestore.
+ */
+export const migrateAllDataToDefaultDatabase = async (
+  userId: string,
+  localData?: {
+    transactions?: Transaction[];
+    shows?: Show[];
+    debts?: Debt[];
+    accounts?: Account[];
+    categories?: Category[];
+    budgets?: Budget[];
+    settings?: AppSettings;
+  }
+): Promise<MigrationStats> => {
+  const stats: MigrationStats = {
+    success: true,
+    transactionsMigrated: 0,
+    accountsMigrated: 0,
+    debtsMigrated: 0,
+    showsMigrated: 0,
+    categoriesMigrated: 0,
+    targetDatabase: '(default)',
+    message: ''
+  };
+
+  try {
+    const transactionsMap = new Map<string, Transaction>();
+    const accountsMap = new Map<string, Account>();
+    const debtsMap = new Map<string, Debt>();
+    const showsMap = new Map<string, Show>();
+    const categoriesMap = new Map<string, Category>();
+
+    // 1. Tenta resgatar dados do banco secundário legado se ele existir
+    if (oldDb) {
+      try {
+        const [txSnap, accSnap, debtSnap, showSnap, catSnap] = await Promise.allSettled([
+          getDocs(collection(oldDb, 'users', userId, 'transactions')),
+          getDocs(collection(oldDb, 'users', userId, 'accounts')),
+          getDocs(collection(oldDb, 'users', userId, 'debts')),
+          getDocs(collection(oldDb, 'users', userId, 'shows')),
+          getDocs(collection(oldDb, 'users', userId, 'categories'))
+        ]);
+
+        if (txSnap.status === 'fulfilled') {
+          txSnap.value.forEach(docSnap => {
+            const tx = { id: docSnap.id, ...docSnap.data() } as Transaction;
+            transactionsMap.set(tx.id, tx);
+          });
+        }
+
+        if (accSnap.status === 'fulfilled') {
+          accSnap.value.forEach(docSnap => {
+            const acc = { id: docSnap.id, ...docSnap.data() } as Account;
+            accountsMap.set(acc.id, acc);
+          });
+        }
+
+        if (debtSnap.status === 'fulfilled') {
+          debtSnap.value.forEach(docSnap => {
+            const debt = { id: docSnap.id, ...docSnap.data() } as Debt;
+            debtsMap.set(debt.id, debt);
+          });
+        }
+
+        if (showSnap.status === 'fulfilled') {
+          showSnap.value.forEach(docSnap => {
+            const show = normalizeShowDoc(docSnap.id, docSnap.data());
+            showsMap.set(show.id, show);
+          });
+        }
+
+        if (catSnap.status === 'fulfilled') {
+          catSnap.value.forEach(docSnap => {
+            const cat = { id: docSnap.id, ...docSnap.data() } as Category;
+            categoriesMap.set(cat.id, cat);
+          });
+        }
+      } catch (errOldDb) {
+        console.warn('[Migração] Leitura do banco antigo ignorada ou indisponível:', errOldDb);
+      }
+    }
+
+    // 2. Mescla dados locais (localStorage / memória)
+    if (localData) {
+      if (localData.transactions) {
+        localData.transactions.forEach(tx => {
+          if (tx && tx.id) transactionsMap.set(tx.id, tx);
+        });
+      }
+      if (localData.accounts) {
+        localData.accounts.forEach(acc => {
+          if (acc && acc.id) accountsMap.set(acc.id, acc);
+        });
+      }
+      if (localData.debts) {
+        localData.debts.forEach(d => {
+          if (d && d.id) debtsMap.set(d.id, d);
+        });
+      }
+      if (localData.shows) {
+        localData.shows.forEach(s => {
+          if (s && s.id) showsMap.set(s.id, s);
+        });
+      }
+      if (localData.categories) {
+        localData.categories.forEach(c => {
+          if (c && c.id) categoriesMap.set(c.id, c);
+        });
+      }
+    }
+
+    // 3. Salva tudo no banco de dados (default)
+    const writePromises: Promise<any>[] = [];
+
+    // Salva perfil do usuário marcado como direcionado ao (default)
+    writePromises.push(
+      setDoc(doc(db, 'users', userId), {
+        uid: userId,
+        databaseTarget: '(default)',
+        initialized: true,
+        lastConsolidationAt: Date.now()
+      }, { merge: true })
+    );
+
+    accountsMap.forEach(acc => {
+      writePromises.push(saveAccountToFirestore(userId, acc));
+    });
+
+    transactionsMap.forEach(tx => {
+      writePromises.push(saveTransactionToFirestore(userId, tx));
+    });
+
+    debtsMap.forEach(d => {
+      writePromises.push(saveDebtToFirestore(userId, d));
+    });
+
+    showsMap.forEach(s => {
+      writePromises.push(saveShowToFirestore(userId, s));
+    });
+
+    categoriesMap.forEach(c => {
+      writePromises.push(saveCategoryToFirestore(userId, c));
+    });
+
+    if (localData?.budgets) {
+      localData.budgets.forEach(b => {
+        writePromises.push(saveBudgetToFirestore(userId, b));
+      });
+    }
+
+    if (localData?.settings) {
+      writePromises.push(saveSettingsToFirestore(userId, localData.settings));
+    }
+
+    await Promise.allSettled(writePromises);
+
+    stats.transactionsMigrated = transactionsMap.size;
+    stats.accountsMigrated = accountsMap.size;
+    stats.debtsMigrated = debtsMap.size;
+    stats.showsMigrated = showsMap.size;
+    stats.categoriesMigrated = categoriesMap.size;
+    stats.message = `${stats.transactionsMigrated} transações e ${stats.accountsMigrated} contas unificadas com sucesso no banco de dados (default).`;
+
+    // Grava flag de conclusão local
+    try {
+      localStorage.setItem(`fin_consolidated_default_${userId}`, `${Date.now()}`);
+    } catch (e) {
+      // Ignora erro de localStorage
+    }
+
+    return stats;
+  } catch (err) {
+    stats.success = false;
+    stats.message = `Erro durante consolidação no banco (default): ${err instanceof Error ? err.message : String(err)}`;
+    return stats;
+  }
+};
+

@@ -1,10 +1,8 @@
 import React, { useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Home, Receipt, Music, CreditCard, Menu, 
-  Plus, TrendingUp, Sparkles, User, Landmark, 
-  UploadCloud, Settings, Bell, ShieldCheck, ChevronRight,
-  LogOut, LogIn
+  Home, Receipt, CreditCard, Menu, 
+  Plus, Sparkles, LogOut, ChevronRight
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 
@@ -18,10 +16,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   const navigate = useNavigate();
   const { 
     getSystemAlerts, 
-    activeScope, 
-    setActiveScope, 
     settings, 
     currentUser, 
+    isDemoMode,
+    exitDemoMode,
     signInWithGoogle, 
     logoutUser 
   } = useFinance();
@@ -29,110 +27,63 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
   const hasAlerts = alerts.length > 0;
 
-  // Determine active states for navigation tabs
+  // Active state determination for the 4 personal tabs
   const isHomeActive = location.pathname === '/';
   
   const isLancamentosActive = [
     '/lancamentos', '/extrato', '/financeiro', '/transactions', '/flow'
-  ].some(path => location.pathname === path || location.pathname.startsWith('/lancamentos') || location.pathname.startsWith('/financeiro'));
-
-  const isShowsActive = location.pathname.startsWith('/shows');
+  ].some(path => location.pathname === path || location.pathname.startsWith('/lancamentos') || location.pathname.startsWith('/extrato') || location.pathname.startsWith('/financeiro'));
 
   const isDividasActive = [
     '/dividas', '/debts'
   ].some(path => location.pathname === path || location.pathname.startsWith('/dividas') || location.pathname.startsWith('/debts'));
 
   const isMaisActive = [
-    '/mais', '/settings', '/financial-settings', '/categories', '/alerts', '/gastos', '/contas', '/relatorios'
+    '/mais', '/settings', '/financial-settings', '/categories', '/alerts', '/gastos', '/analise-gastos', '/contas', '/relatorios'
   ].some(path => location.pathname === path || location.pathname.startsWith('/mais') || location.pathname.startsWith('/relatorios'));
 
+  // 4 Abas Pessoais - Estilo Banco do Brasil
   const navItems = [
     { to: '/', label: 'Início', icon: Home, isActive: isHomeActive },
     { to: '/lancamentos', label: 'Lançamentos', icon: Receipt, isActive: isLancamentosActive },
-    { to: '/shows', label: 'Shows & Carreira', icon: Music, isActive: isShowsActive, badge: 'Sou Artista' },
     { to: '/dividas', label: 'Dívidas', icon: CreditCard, isActive: isDividasActive },
-    { to: '/mais', label: 'Menu / Ajustes', icon: Menu, isActive: isMaisActive, hasBadge: hasAlerts },
+    { to: '/mais', label: 'Mais/Ajustes', icon: Menu, isActive: isMaisActive, hasBadge: hasAlerts },
   ];
 
   return (
-    <div className="min-h-screen bg-[#09090b] font-sans text-white selection:bg-[#003882]/50 selection:text-[#fcca00] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-800 selection:bg-blue-900/20 selection:text-blue-900 flex flex-col">
       
       {/* ========================================================================= */}
-      {/* 1. SIDEBAR DESKTOP (VISÍVEL APENAS EM TELAS MÉDIAS/GRANDES - md:)          */}
+      {/* CABEÇALHO SUPERIOR - AZUL BANCÁRIO BANCO DO BRASIL COM DETALHES AMARELOS   */}
       {/* ========================================================================= */}
-      <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-[#121214] border-r border-zinc-800 shrink-0 min-h-screen fixed left-0 top-0 bottom-0 z-30 justify-between p-4 lg:p-5 overflow-y-auto">
-        
-        <div className="space-y-6">
-          {/* Logo & Brand */}
-          <div className="flex items-center space-x-3 px-2 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#003882] to-[#002d6c] border border-blue-500/40 p-0.5 shadow-md flex items-center justify-center text-[#fcca00] font-black text-lg">
-              FP
+      <header className="sticky top-0 z-30 bg-blue-900 border-b border-blue-950 shadow-md text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          
+          {/* Logo & Identidade do Banco */}
+          <div 
+            className="flex items-center space-x-3 cursor-pointer group select-none" 
+            onClick={() => navigate('/')}
+          >
+            <div className="w-10 h-10 rounded-xl bg-yellow-400 text-blue-950 font-black text-xl flex items-center justify-center shadow-md transition group-hover:scale-105">
+              BB
             </div>
             <div>
-              <div className="flex items-center space-x-1.5">
-                <span className="font-black text-white text-base tracking-tight leading-none">Finanças Pro</span>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-[#fcca00]/20 text-[#fcca00] border border-[#fcca00]/30">
-                  v2.5
+              <div className="flex items-center space-x-2">
+                <span className="font-extrabold text-white text-base tracking-tight leading-none">
+                  Minhas Finanças
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-yellow-400 text-blue-950 font-sans shadow-sm">
+                  Pessoal
                 </span>
               </div>
-              <span className="text-[11px] text-zinc-400 font-medium">Fintech & Sou Artista</span>
+              <span className="text-[11px] text-blue-200 font-medium">
+                Controle Financeiro Bancário
+              </span>
             </div>
           </div>
 
-          {/* Seletor Rápido de Módulo (Pessoal vs Carreira) */}
-          <div className="p-1 rounded-2xl bg-zinc-900 border border-zinc-800 grid grid-cols-2 gap-1 text-xs font-bold">
-            <button
-              onClick={() => {
-                setActiveScope('PERSONAL');
-                navigate('/');
-              }}
-              className={`py-2 px-2.5 rounded-xl transition flex items-center justify-center space-x-1.5 ${
-                activeScope === 'PERSONAL'
-                  ? 'bg-[#003882] text-[#fcca00] font-black shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <User size={13} />
-              <span>Pessoal</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveScope('BUSINESS');
-                navigate('/shows');
-              }}
-              className={`py-2 px-2.5 rounded-xl transition flex items-center justify-center space-x-1.5 ${
-                activeScope === 'BUSINESS'
-                  ? 'bg-purple-600 text-white font-black shadow-md shadow-purple-600/30'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Music size={13} />
-              <span>Música</span>
-            </button>
-          </div>
-
-          {/* Botão de Lançamento Rápido */}
-          <div className="space-y-2">
-            <button
-              onClick={() => onOpenAdd('expense')}
-              className="w-full py-3 px-4 rounded-2xl bg-[#003882] hover:bg-blue-700 text-[#fcca00] font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-lg shadow-blue-900/40 flex items-center justify-center space-x-2 border border-blue-500/40"
-            >
-              <Plus size={16} strokeWidth={3} />
-              <span>Novo Lançamento</span>
-            </button>
-            
-            <button
-              onClick={() => navigate('/shows')}
-              className="w-full py-2.5 px-4 rounded-2xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 font-black text-xs uppercase tracking-wider transition active:scale-95 flex items-center justify-center space-x-2 border border-purple-500/30"
-            >
-              <Music size={15} />
-              <span>Gestão de Shows</span>
-            </button>
-          </div>
-
-          {/* Menu Links */}
-          <nav className="space-y-1 pt-2">
+          {/* Navegação Desktop (4 Abas) */}
+          <nav className="hidden md:flex items-center space-x-1 bg-blue-950/60 p-1.5 rounded-2xl border border-blue-800/50">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -140,130 +91,146 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                   key={item.to}
                   to={item.to}
                   className={`
-                    flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all
-                    ${item.isActive 
-                      ? 'bg-zinc-800 text-[#fcca00] font-black border border-zinc-700 shadow-sm' 
-                      : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+                    flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all
+                    ${item.isActive
+                      ? 'bg-yellow-400 text-blue-950 shadow-sm'
+                      : 'text-blue-100 hover:text-white hover:bg-blue-900/60'
                     }
                   `}
                 >
-                  <div className="flex items-center space-x-3">
-                    <Icon size={18} strokeWidth={item.isActive ? 2.5 : 2} className={item.isActive ? 'text-[#fcca00]' : 'text-zinc-400'} />
-                    <span>{item.label}</span>
-                  </div>
-
-                  {item.badge && (
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                      {item.badge}
-                    </span>
-                  )}
-
+                  <Icon size={16} strokeWidth={item.isActive ? 2.5 : 2} />
+                  <span>{item.label}</span>
                   {item.hasBadge && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#fcca00] shadow-[0_0_6px_#fcca00] animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse ml-1" />
                   )}
                 </NavLink>
               );
             })}
           </nav>
-        </div>
 
-        {/* Footer do Sidebar Desktop (Perfil / Auth) */}
-        <div className="pt-4 border-t border-zinc-800/80 space-y-3">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center space-x-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#fcca00] to-amber-300 text-zinc-950 font-black text-xs flex items-center justify-center shrink-0">
-                {(settings.userName || 'Leo').charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-black text-white truncate block">
-                  {settings.userName || 'Leo Ferreira'}
-                </span>
-                <span className="text-[10px] text-zinc-400 block truncate">
-                  {currentUser ? 'Sincronizado na Nuvem' : 'Armazenamento Local'}
-                </span>
-              </div>
-            </div>
+          {/* Ações da Direita (Novo Lançamento + Usuário) */}
+          <div className="flex items-center space-x-2.5">
+            <button
+              onClick={() => onOpenAdd('expense')}
+              className="py-2 px-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-extrabold text-xs uppercase tracking-wide transition active:scale-95 shadow-sm flex items-center space-x-1.5"
+            >
+              <Plus size={15} strokeWidth={3} />
+              <span className="hidden sm:inline">Novo Lançamento</span>
+              <span className="sm:hidden">Novo</span>
+            </button>
 
-            {currentUser ? (
-              <button
-                onClick={() => logoutUser()}
-                className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-rose-400 transition"
-                title="Sair da Conta"
-              >
-                <LogOut size={14} />
-              </button>
+            {/* Perfil / Sessão */}
+            {isDemoMode ? (
+              <div className="flex items-center space-x-1.5 bg-blue-950/70 border border-blue-800/60 px-2 py-1 rounded-xl">
+                <span className="text-[11px] text-yellow-300 font-bold hidden sm:inline">Demo</span>
+                <button
+                  onClick={() => exitDemoMode()}
+                  className="p-1 rounded-lg text-blue-200 hover:text-white transition"
+                  title="Sair do Modo Demo"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
+            ) : currentUser ? (
+              <div className="flex items-center space-x-1.5 bg-blue-950/70 border border-blue-800/60 px-2.5 py-1 rounded-xl">
+                <div className="w-6 h-6 rounded-full bg-yellow-400 text-blue-950 font-black text-xs flex items-center justify-center">
+                  {(settings.userName || 'U').charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-bold text-white max-w-[90px] truncate hidden sm:inline">
+                  {settings.userName || 'Leo'}
+                </span>
+                <button
+                  onClick={() => logoutUser()}
+                  className="p-1 text-blue-200 hover:text-rose-300 transition"
+                  title="Sair"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => signInWithGoogle()}
-                className="p-1.5 rounded-xl bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 transition text-[10px] font-bold"
-                title="Conectar com Google"
+                className="py-1.5 px-3 rounded-xl bg-blue-800 hover:bg-blue-700 text-white font-bold text-xs transition border border-blue-700"
               >
                 Entrar
               </button>
             )}
           </div>
+
         </div>
-
-      </aside>
+      </header>
 
       {/* ========================================================================= */}
-      {/* 2. ÁREA DE CONTEÚDO PRINCIPAL (100% RESPONSIVO EM TODAS AS TELAS)         */}
+      {/* ÁREA PRINCIPAL DE CONTEÚDO (FUNDO SUAVE SLATE-100)                        */}
       {/* ========================================================================= */}
-      <main className="w-full md:pl-64 lg:pl-72 min-h-screen bg-[#09090b] text-white relative pb-28 md:pb-12 overflow-x-hidden flex-1">
+      <main className="w-full flex-1 max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-10">
         
-        {/* Container Central com Expansão Ampla no Desktop */}
-        <div className="p-3.5 sm:p-6 lg:p-8 w-full max-w-7xl mx-auto overflow-x-hidden">
-          {children}
-        </div>
+        {/* Banner de Demonstração (se ativo) */}
+        {isDemoMode && (
+          <div className="mb-5 p-3.5 rounded-2xl bg-white border border-yellow-300 shadow-sm flex items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-xl bg-yellow-100 text-yellow-800 shrink-0">
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-extrabold text-slate-800">Modo Demonstração Pessoal</p>
+                <p className="text-[11px] text-slate-500">Dados temporários em memória para navegação sem afetar o banco principal.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => exitDemoMode()}
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition border border-slate-300 shrink-0"
+            >
+              Sair
+            </button>
+          </div>
+        )}
+
+        {children}
       </main>
 
       {/* ========================================================================= */}
-      {/* 3. BARRA INFERIOR FLUTUANTE FINTECH (VISÍVEL APENAS NO CELULAR - md:hidden) */}
+      {/* BARRA INFERIOR MOBILE - 4 ABAS PESSOAIS (ESTILO APP BANCO DO BRASIL)     */}
       {/* ========================================================================= */}
-      <div className="fixed bottom-3 left-0 right-0 z-40 px-3 sm:px-4 pointer-events-none md:hidden">
-        <div className="max-w-md mx-auto pointer-events-auto">
-          <nav className="bg-[#121214]/95 backdrop-blur-2xl border border-zinc-800/90 rounded-2xl sm:rounded-3xl p-1.5 shadow-2xl shadow-black/90 flex items-center justify-between gap-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={`
-                    relative flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl transition-all duration-200 active:scale-95 group
-                    ${item.isActive 
-                      ? 'text-[#fcca00] font-black' 
-                      : 'text-zinc-400 hover:text-zinc-200 font-medium'
-                    }
-                  `}
-                >
-                  {/* Subtle active container */}
-                  <div className={`
-                    relative p-1 rounded-xl transition-all duration-200
-                    ${item.isActive ? 'bg-[#003882] text-[#fcca00] shadow-[0_0_12px_rgba(0,56,130,0.5)] border border-blue-500/40' : 'group-hover:bg-zinc-800/40'}
-                  `}>
-                    <Icon size={19} strokeWidth={item.isActive ? 2.5 : 2} />
-
-                    {/* Badge de Alerta no Menu */}
-                    {item.hasBadge && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#fcca00] border-2 border-[#121214] shadow-sm animate-pulse" />
-                    )}
-                  </div>
-
-                  <span className="text-[10px] tracking-tight mt-0.5 whitespace-nowrap">
-                    {item.label}
-                  </span>
-
-                  {/* Active dot indicator */}
-                  {item.isActive && (
-                    <span className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-[#fcca00] shadow-[0_0_6px_#fcca00]" />
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-2 py-1.5 md:hidden">
+        <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={`
+                  relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-150 active:scale-95
+                  ${item.isActive 
+                    ? 'text-blue-900 font-extrabold' 
+                    : 'text-slate-500 hover:text-slate-700 font-medium'
+                  }
+                `}
+              >
+                <div className={`
+                  relative p-1 rounded-xl transition-colors
+                  ${item.isActive ? 'bg-blue-50 text-blue-900' : ''}
+                `}>
+                  <Icon size={20} strokeWidth={item.isActive ? 2.5 : 2} />
+                  
+                  {item.hasBadge && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-yellow-400 border-2 border-white shadow-sm animate-pulse" />
                   )}
-                </NavLink>
-              );
-            })}
-          </nav>
+                </div>
+
+                <span className="text-[11px] tracking-tight mt-0.5 whitespace-nowrap">
+                  {item.label}
+                </span>
+
+                {item.isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 mt-0.5" />
+                )}
+              </NavLink>
+            );
+          })}
         </div>
-      </div>
+      </nav>
 
     </div>
   );

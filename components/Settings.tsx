@@ -20,8 +20,12 @@ export const Settings = () => {
     refreshData, settings, updateSettings, transactions, categories, 
     debts, accounts, budgets, 
     addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance, 
-    restoreAutoBackup, getBackupInfo 
+    restoreAutoBackup, getBackupInfo,
+    currentUser, consolidateToDefaultDatabase 
   } = useFinance();
+  
+  const [isConsolidating, setIsConsolidating] = useState(false);
+  const [consolidationResult, setConsolidationResult] = useState<string | null>(null);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false);
@@ -461,6 +465,60 @@ export const Settings = () => {
                 );
               })}
            </div>
+        </section>
+
+        {/* --- Centralização Banco de Dados (default) --- */}
+        <section className="bg-[#18181b] rounded-[2.2rem] p-5 border border-zinc-800 space-y-4">
+           <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center">
+                 <Database size={15} className="mr-2 text-yellow-400" /> Banco de Dados Principal
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase flex items-center gap-1">
+                 <CheckCircle2 size={11} /> (default) Ativo
+              </span>
+           </div>
+
+           <p className="text-xs text-zinc-300 leading-relaxed">
+              O backend está configurado para que <strong>todas as transações</strong> (antigas e novas) sejam salvas no banco de dados <strong>(default)</strong> do seu projeto Firebase.
+           </p>
+
+           <div className="p-3.5 rounded-2xl bg-[#121214] border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Destino Atual</span>
+                 <span className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
+                    <span>Firestore Database:</span>
+                    <code className="text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded text-[11px] font-mono">(default)</code>
+                 </span>
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (isConsolidating) return;
+                  setIsConsolidating(true);
+                  setConsolidationResult(null);
+                  try {
+                    const res = await consolidateToDefaultDatabase();
+                    setConsolidationResult(res.message);
+                  } catch (e) {
+                    setConsolidationResult('Erro ao consolidar no banco (default).');
+                  } finally {
+                    setIsConsolidating(false);
+                  }
+                }}
+                disabled={isConsolidating}
+                className="py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-yellow-400 font-extrabold text-xs transition active:scale-95 shadow-sm flex items-center justify-center space-x-2 border border-blue-700 disabled:opacity-60 shrink-0"
+              >
+                <RefreshCw size={14} className={isConsolidating ? 'animate-spin text-yellow-400' : ''} />
+                <span>{isConsolidating ? 'Consolidando...' : 'Consolidar Tudo no (default)'}</span>
+              </button>
+           </div>
+
+           {consolidationResult && (
+              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                 <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                 <span>{consolidationResult}</span>
+              </div>
+           )}
         </section>
 
         {/* --- Data & Security --- */}
