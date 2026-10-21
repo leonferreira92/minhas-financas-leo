@@ -560,36 +560,6 @@ export const Settings = () => {
                  <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
               </div>
 
-              {/* Botão de Restauração Direta do Backup Oficial */}
-              <button
-                onClick={() => {
-                  setConfirmation({
-                    title: 'Restaurar Backup Oficial',
-                    message: 'Deseja carregar o backup completo (687 transações, 3 contas e 10 dívidas)? Seus lançamentos serão restaurados exatamente como no arquivo.',
-                    onConfirm: () => {
-                      loadBackupIntoStorage(currentUser?.uid);
-                      refreshData();
-                      setConfirmation({
-                        title: 'Backup Restaurado!',
-                        message: '687 transações, 3 contas (Banco do Brasil, Mercado Pago, Carteira) e 10 dívidas foram carregadas com sucesso!',
-                        isAlert: true
-                      });
-                    }
-                  });
-                }}
-                className="w-full mt-3 p-3.5 bg-blue-900/30 hover:bg-blue-900/50 border border-blue-700/50 rounded-2xl flex items-center justify-between text-yellow-400 font-bold text-xs transition active:scale-95 shadow-sm"
-              >
-                <div className="flex items-center space-x-2.5">
-                  <ShieldCheck size={18} className="text-yellow-400 shrink-0" />
-                  <div className="text-left">
-                    <span className="block text-white text-xs font-black">Restaurar Backup Oficial</span>
-                    <span className="block text-[10px] text-zinc-400 font-normal">687 lançamentos • 3 contas • 10 dívidas</span>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-lg bg-yellow-400 text-blue-950 text-[10px] font-black uppercase shrink-0">
-                  Restaurar
-                </span>
-              </button>
            </div>
 
            {/* Danger Zone */}
