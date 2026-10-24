@@ -14,14 +14,17 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Sparkles,
-  Filter
+  Filter,
+  CalendarRange,
+  Link2
 } from 'lucide-react';
 import {
   readBankFileAsText,
   parseBankStatement,
   detectDuplicates,
   suggestCategoryFromHistory,
-  StagingBankTransaction
+  StagingBankTransaction,
+  MatchConfidence
 } from '../services/bankStatementParser';
 import { getAccountVinculo } from '../services/financeAggregator';
 
@@ -31,7 +34,14 @@ interface BankImportModalProps {
   defaultAccountId?: string;
 }
 
-type StagingFilter = 'all' | 'selected' | 'duplicates' | 'income' | 'expense';
+type StagingFilter =
+  | 'all'
+  | 'selected'
+  | 'new'
+  | 'duplicates'
+  | 'possible'
+  | 'income'
+  | 'expense';
 
 export const BankImportModal: React.FC<BankImportModalProps> = ({
   isOpen,
@@ -88,6 +98,12 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
   const [stagingSearch, setStagingSearch] = useState('');
   const [batchAccountId, setBatchAccountId] = useState('');
   const [batchCategoryId, setBatchCategoryId] = useState('');
+  /** Importar a partir desta data (inclusive) */
+  const [dateFrom, setDateFrom] = useState('');
+  /** Até esta data (inclusive) */
+  const [dateTo, setDateTo] = useState('');
+  const [fileDateMin, setFileDateMin] = useState('');
+  const [fileDateMax, setFileDateMax] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -117,10 +133,27 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
       };
     });
 
-  const filteredStagingList = useMemo(() => {
+  const dateFilteredList = useMemo(() => {
     return stagingList.filter(item => {
+      if (dateFrom && item.date < dateFrom) return false;
+      if (dateTo && item.date > dateTo) return false;
+      return true;
+    });
+  }, [stagingList, dateFrom, dateTo]);
+
+  const filteredStagingList = useMemo(() => {
+    return dateFilteredList.filter(item => {
       if (stagingFilter === 'selected' && !item.selected) return false;
-      if (stagingFilter === 'duplicates' && !item.isDuplicate) return false;
+      if (stagingFilter === 'new' && item.matchConfidence && item.matchConfidence !== 'none') {
+        return false;
+      }
+      if (
+        stagingFilter === 'duplicates' &&
+        !(item.matchConfidence === 'exact' || item.matchConfidence === 'likely')
+      ) {
+        return false;
+      }
+      if (stagingFilter === 'possible' && item.matchConfidence !== 'possible') return false;
       if (stagingFilter === 'income' && item.type !== 'income') return false;
       if (stagingFilter === 'expense' && item.type !== 'expense') return false;
 
@@ -137,25 +170,37 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
           .toLowerCase()
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '');
+        const matched = (item.matchedAppDescription || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
         const amtStr = item.amount.toFixed(2);
         return (
           desc.includes(q) ||
           orig.includes(q) ||
+          matched.includes(q) ||
           amtStr.includes(q) ||
           item.date.includes(q)
         );
       }
       return true;
     });
-  }, [stagingList, stagingFilter, stagingSearch]);
+  }, [dateFilteredList, stagingFilter, stagingSearch]);
 
   const selectedItems = useMemo(
-    () => stagingList.filter(i => i.selected),
-    [stagingList]
+    () => dateFilteredList.filter(i => i.selected),
+    [dateFilteredList]
   );
-  const duplicateCount = useMemo(
-    () => stagingList.filter(i => i.isDuplicate).length,
-    [stagingList]
+  const exactLikelyCount = useMemo(
+    () =>
+      dateFilteredList.filter(
+        i => i.matchConfidence === 'exact' || i.matchConfidence === 'likely'
+      ).length,
+    [dateFilteredList]
+  );
+  const possibleCount = useMemo(
+    () => dateFilteredList.filter(i => i.matchConfidence === 'possible').length,
+    [dateFilteredList]
   );
 
   const stats = useMemo(() => {
@@ -213,6 +258,14 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
         setSelectedAccountId(targetAccId);
       }
 
+      const dates = parsed.map(p => p.date).filter(Boolean).sort();
+      const minD = dates[0] || '';
+      const maxD = dates[dates.length - 1] || '';
+      setFileDateMin(minD);
+      setFileDateMax(maxD);
+      setDateFrom(minD);
+      setDateTo(maxD);
+
       const staged = enrichStaging(
         detectDuplicates(parsed, transactions, targetAccId),
         targetAccId
@@ -261,13 +314,58 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
   };
 
   const toggleSelectAll = () => {
-    const allSelected = stagingList.every(item => item.selected);
-    setStagingList(prev => prev.map(item => ({ ...item, selected: !allSelected })));
+    const visibleIds = new Set(dateFilteredList.map(i => i.tempId));
+    const allSelected =
+      dateFilteredList.length > 0 && dateFilteredList.every(item => item.selected);
+    setStagingList(prev =>
+      prev.map(item =>
+        visibleIds.has(item.tempId) ? { ...item, selected: !allSelected } : item
+      )
+    );
   };
 
   const selectOnlyNew = () => {
     setStagingList(prev =>
-      prev.map(item => ({ ...item, selected: !item.isDuplicate }))
+      prev.map(item => ({
+        ...item,
+        selected:
+          item.matchConfidence !== 'exact' && item.matchConfidence !== 'likely'
+      }))
+    );
+  };
+
+  const deselectMatches = () => {
+    setStagingList(prev =>
+      prev.map(item =>
+        item.matchConfidence && item.matchConfidence !== 'none'
+          ? { ...item, selected: false }
+          : item
+      )
+    );
+  };
+
+  const useAppName = (tempId: string) => {
+    setStagingList(prev =>
+      prev.map(item =>
+        item.tempId === tempId && item.matchedAppDescription
+          ? { ...item, description: item.matchedAppDescription }
+          : item
+      )
+    );
+  };
+
+  const applyDateRangeToSelection = () => {
+    // Desmarca o que está fora do período; mantém seleção dos que estão dentro (exceto exact/likely)
+    setStagingList(prev =>
+      prev.map(item => {
+        const inRange =
+          (!dateFrom || item.date >= dateFrom) && (!dateTo || item.date <= dateTo);
+        if (!inRange) return { ...item, selected: false };
+        if (item.matchConfidence === 'exact' || item.matchConfidence === 'likely') {
+          return { ...item, selected: false };
+        }
+        return { ...item, selected: true };
+      })
     );
   };
 
@@ -488,9 +586,9 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                   <Sparkles size={12} /> Como funciona
                 </p>
                 <p>
-                  1) Escolha a conta · 2) Envie o arquivo · 3) Revise categorias (o app
-                  sugere pelo texto e pelo seu histórico) · 4) Confirme. Duplicatas são
-                  desmarcadas automaticamente.
+                  1) Conta · 2) Arquivo · 3) Escolha as datas · 4) O app limpa o nome do
+                  banco (Pix/TED…) e avisa o que já parece cadastrado — mesmo com nome
+                  diferente · 5) Confirme só o que falta.
                 </p>
               </div>
 
@@ -507,7 +605,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
           {step === 'staging' && (
             <div className="space-y-3.5">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <StatCard label="No arquivo" value={String(stagingList.length)} />
+                <StatCard label="No período" value={String(dateFilteredList.length)} />
                 <StatCard
                   label="A importar"
                   value={`${selectedItems.length}`}
@@ -527,30 +625,101 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                 />
               </div>
 
-              {duplicateCount > 0 && (
-                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-900">
+              {/* Filtro por data */}
+              <div className="p-3.5 rounded-2xl border border-[#003882]/15 bg-[#003882]/5 space-y-2.5">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-[#003882]">
+                  <CalendarRange size={13} />
+                  Importar a partir de qual período?
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <label className="flex-1 text-[10px] font-bold text-slate-600 space-y-1">
+                    <span>De</span>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      min={fileDateMin || undefined}
+                      max={dateTo || fileDateMax || undefined}
+                      onChange={e => setDateFrom(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 outline-none focus:border-[#003882]"
+                    />
+                  </label>
+                  <label className="flex-1 text-[10px] font-bold text-slate-600 space-y-1">
+                    <span>Até</span>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      min={dateFrom || fileDateMin || undefined}
+                      max={fileDateMax || undefined}
+                      onChange={e => setDateTo(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 outline-none focus:border-[#003882]"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={applyDateRangeToSelection}
+                    className="px-3 py-2 rounded-xl bg-[#003882] text-[#fcca00] text-[10px] font-black uppercase tracking-wide shrink-0"
+                  >
+                    Aplicar no período
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-snug">
+                  Arquivo: {fileDateMin || '—'} → {fileDateMax || '—'}. O que ficar fora das
+                  datas some da lista abaixo. “Aplicar” marca só o período e tira o que já
+                  parece cadastrado.
+                </p>
+              </div>
+
+              {(exactLikelyCount > 0 || possibleCount > 0) && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-950">
                   <div className="flex items-start gap-2">
                     <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600" />
                     <span>
-                      <strong>{duplicateCount}</strong> possível
-                      {duplicateCount === 1 ? ' duplicata' : 's duplicatas'} — já
-                      desmarcada{duplicateCount === 1 ? '' : 's'} para não repetir.
+                      {exactLikelyCount > 0 && (
+                        <>
+                          <strong>{exactLikelyCount}</strong> bem parecido
+                          {exactLikelyCount === 1 ? '' : 's'} com o que já está no app
+                          (desmarcado{exactLikelyCount === 1 ? '' : 's'}).
+                        </>
+                      )}
+                      {exactLikelyCount > 0 && possibleCount > 0 ? ' ' : ''}
+                      {possibleCount > 0 && (
+                        <>
+                          <strong>{possibleCount}</strong> com o mesmo valor em data
+                          próxima — confira o aviso em cada linha.
+                        </>
+                      )}
                     </span>
                   </div>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex flex-wrap gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => setStagingFilter('duplicates')}
-                      className="text-[10px] font-black uppercase underline"
+                      className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-amber-200"
                     >
-                      Ver
+                      Já no app
                     </button>
+                    {possibleCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setStagingFilter('possible')}
+                        className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-amber-200"
+                      >
+                        Conferir
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={selectOnlyNew}
-                      className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-amber-200"
+                      className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-[#003882] text-[#fcca00]"
                     >
                       Só novos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deselectMatches}
+                      className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-white border border-amber-200"
+                    >
+                      Tirar suspeitos
                     </button>
                   </div>
                 </div>
@@ -564,7 +733,8 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     onClick={toggleSelectAll}
                     className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-700"
                   >
-                    {stagingList.every(i => i.selected)
+                    {dateFilteredList.length > 0 &&
+                    dateFilteredList.every(i => i.selected)
                       ? 'Desmarcar todos'
                       : 'Selecionar todos'}
                   </button>
@@ -601,23 +771,22 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                   <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                     {(
                       [
-                        { id: 'all', label: `Todos (${stagingList.length})` },
+                        { id: 'all', label: `Período (${dateFilteredList.length})` },
+                        { id: 'new', label: 'Só novos' },
                         {
                           id: 'selected',
-                          label: `Selecionados (${selectedItems.length})`
-                        },
-                        {
-                          id: 'income',
-                          label: `Entradas (${stagingList.filter(i => i.type === 'income').length})`
-                        },
-                        {
-                          id: 'expense',
-                          label: `Saídas (${stagingList.filter(i => i.type === 'expense').length})`
+                          label: `Marcados (${selectedItems.length})`
                         },
                         {
                           id: 'duplicates',
-                          label: `Duplicatas (${duplicateCount})`
-                        }
+                          label: `Já no app (${exactLikelyCount})`
+                        },
+                        {
+                          id: 'possible',
+                          label: `Conferir (${possibleCount})`
+                        },
+                        { id: 'income', label: 'Entradas' },
+                        { id: 'expense', label: 'Saídas' }
                       ] as { id: StagingFilter; label: string }[]
                     ).map(f => (
                       <button
@@ -667,6 +836,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       onToggle={() => toggleSelectRow(item.tempId)}
                       onChange={updateRowField}
                       onRemove={() => removeRow(item.tempId)}
+                      onUseAppName={() => useAppName(item.tempId)}
                     />
                   ))
                 )}
@@ -681,8 +851,8 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                           <input
                             type="checkbox"
                             checked={
-                              stagingList.length > 0 &&
-                              stagingList.every(i => i.selected)
+                              dateFilteredList.length > 0 &&
+                              dateFilteredList.every(i => i.selected)
                             }
                             onChange={toggleSelectAll}
                             className="rounded text-[#003882] cursor-pointer"
@@ -716,7 +886,11 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 item.selected
                                   ? 'bg-blue-50/40'
                                   : 'opacity-55 hover:opacity-100'
-                              } ${item.isDuplicate ? 'border-l-4 border-l-amber-400' : ''}`}
+                              } ${
+                                item.matchConfidence && item.matchConfidence !== 'none'
+                                  ? 'border-l-4 border-l-amber-400'
+                                  : ''
+                              }`}
                             >
                               <td className="p-3 text-center">
                                 <input
@@ -759,15 +933,21 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                   >
                                     {isIncome ? 'Entrada' : 'Saída'}
                                   </span>
-                                  {item.isDuplicate && (
-                                    <span className="text-amber-700 font-bold">
-                                      Duplicata
-                                    </span>
-                                  )}
-                                  <span className="truncate max-w-[220px]" title={item.originalDescription}>
-                                    {item.originalDescription}
+                                  <MatchBadge confidence={item.matchConfidence} />
+                                  <span
+                                    className="truncate max-w-[200px] text-slate-400"
+                                    title={item.originalDescription}
+                                  >
+                                    Banco: {item.originalDescription}
                                   </span>
                                 </div>
+                                {item.duplicateReason && (
+                                  <MatchHint
+                                    reason={item.duplicateReason}
+                                    canUseAppName={Boolean(item.matchedAppDescription)}
+                                    onUseAppName={() => useAppName(item.tempId)}
+                                  />
+                                )}
                               </td>
                               <td className="p-3">
                                 <select
@@ -956,6 +1136,46 @@ const StatCard: React.FC<{
   );
 };
 
+const MatchBadge: React.FC<{ confidence?: MatchConfidence }> = ({ confidence }) => {
+  if (!confidence || confidence === 'none') return null;
+  const map = {
+    exact: { label: 'Já no app', className: 'bg-rose-100 text-rose-800' },
+    likely: { label: 'Provável igual', className: 'bg-amber-100 text-amber-900' },
+    possible: { label: 'Conferir valor', className: 'bg-sky-100 text-sky-800' }
+  } as const;
+  const m = map[confidence];
+  return (
+    <span className={`px-1.5 py-0.5 rounded font-black uppercase ${m.className}`}>
+      {m.label}
+    </span>
+  );
+};
+
+const MatchHint: React.FC<{
+  reason: string;
+  canUseAppName?: boolean;
+  onUseAppName?: () => void;
+}> = ({ reason, canUseAppName, onUseAppName }) => (
+  <div className="mt-1.5 p-2 rounded-xl bg-amber-50/90 border border-amber-100 text-[10px] text-amber-950 leading-snug space-y-1">
+    <p className="flex items-start gap-1">
+      <Link2 size={11} className="shrink-0 mt-0.5 text-amber-600" />
+      <span>{reason}</span>
+    </p>
+    {canUseAppName && onUseAppName && (
+      <button
+        type="button"
+        onClick={e => {
+          e.stopPropagation();
+          onUseAppName();
+        }}
+        className="text-[9px] font-black uppercase text-[#003882] hover:underline"
+      >
+        Usar o nome que já está no app
+      </button>
+    )}
+  </div>
+);
+
 const MobileStagingCard: React.FC<{
   item: StagingBankTransaction;
   accounts: { id: string; name: string }[];
@@ -968,7 +1188,17 @@ const MobileStagingCard: React.FC<{
     value: StagingBankTransaction[K]
   ) => void;
   onRemove: () => void;
-}> = ({ item, accounts, categories, formatCurrency, onToggle, onChange, onRemove }) => {
+  onUseAppName?: () => void;
+}> = ({
+  item,
+  accounts,
+  categories,
+  formatCurrency,
+  onToggle,
+  onChange,
+  onRemove,
+  onUseAppName
+}) => {
   const isIncome = item.type === 'income';
   const cats = categories.filter(
     c => c.type === item.type || c.type === 'transfer' || c.id === item.categoryId
@@ -978,7 +1208,11 @@ const MobileStagingCard: React.FC<{
     <div
       className={`rounded-2xl border p-3 space-y-2.5 ${
         item.selected ? 'border-[#003882]/30 bg-blue-50/30' : 'border-slate-200 opacity-70'
-      } ${item.isDuplicate ? 'border-l-4 border-l-amber-400' : ''}`}
+      } ${
+        item.matchConfidence && item.matchConfidence !== 'none'
+          ? 'border-l-4 border-l-amber-400'
+          : ''
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <label className="flex items-start gap-2 min-w-0 cursor-pointer">
@@ -995,7 +1229,12 @@ const MobileStagingCard: React.FC<{
               onChange={e => onChange(item.tempId, 'description', e.target.value)}
               className="w-full bg-transparent font-bold text-xs text-slate-900 outline-none"
             />
-            <p className="text-[10px] text-slate-500 truncate">{item.originalDescription}</p>
+            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+              <MatchBadge confidence={item.matchConfidence} />
+              <p className="text-[10px] text-slate-400 truncate">
+                Banco: {item.originalDescription}
+              </p>
+            </div>
           </div>
         </label>
         <span
@@ -1007,6 +1246,13 @@ const MobileStagingCard: React.FC<{
           {formatCurrency(item.amount)}
         </span>
       </div>
+      {item.duplicateReason && (
+        <MatchHint
+          reason={item.duplicateReason}
+          canUseAppName={Boolean(item.matchedAppDescription)}
+          onUseAppName={onUseAppName}
+        />
+      )}
       <div className="grid grid-cols-2 gap-2">
         <input
           type="date"
@@ -1046,9 +1292,6 @@ const MobileStagingCard: React.FC<{
           <Trash2 size={14} />
         </button>
       </div>
-      {item.isDuplicate && (
-        <p className="text-[10px] text-amber-700 font-bold">Possível duplicata</p>
-      )}
     </div>
   );
 };

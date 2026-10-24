@@ -15,6 +15,8 @@ export interface ParsedBankTransaction {
   bankName?: string;
 }
 
+export type MatchConfidence = 'exact' | 'likely' | 'possible' | 'none';
+
 export interface StagingBankTransaction extends ParsedBankTransaction {
   selected: boolean;
   categoryId: string;
@@ -22,7 +24,13 @@ export interface StagingBankTransaction extends ParsedBankTransaction {
   accountId: string;
   isDuplicate?: boolean;
   duplicateReason?: string;
-  showId?: string; // ID do Show vinculado
+  /** Nível de correspondência com lançamento já existente no app */
+  matchConfidence?: MatchConfidence;
+  /** Descrição do lançamento do app que parece ser o mesmo */
+  matchedAppDescription?: string;
+  matchedAppDate?: string;
+  matchedAppAmount?: number;
+  showId?: string;
 }
 
 /**
@@ -50,12 +58,11 @@ export async function readBankFileAsText(file: File): Promise<string> {
 }
 
 /**
- * Limpa e formata texto de descrição (Pix, TED, DOC, Cartão)
+ * Limpa e formata texto de descrição (Pix, TED, DOC, Cartão) → nome legível.
  */
 export function sanitizeDescription(raw: string): string {
   if (!raw) return 'Lançamento Bancário';
-  
-  // Decodifica entidades comuns em OFX/XML
+
   let text = raw
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -64,11 +71,137 @@ export function sanitizeDescription(raw: string): string {
     .replace(/&apos;/g, "'")
     .replace(/&#39;/g, "'");
 
-  // Remove quebras de linha e múltiplos espaços
   text = text.replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
-
-  return text || 'Lançamento Bancário';
+  return humanizeBankDescription(text);
 }
+
+/**
+ * Converte jargão de extrato bancário em texto fácil de reconhecer.
+ */
+export function humanizeBankDescription(raw: string): string {
+  if (!raw?.trim()) return 'Lançamento Bancário';
+
+  let text = raw.replace(/[\r\n\t]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+
+  // Prefixo de tipo → rótulo curto (mantém o restante útil)
+  const prefixRules: { re: RegExp; label: string }[] = [
+    { re: /^pix\s*(enviado|enviada)\s*(para|a|ao)?\s*/i, label: 'Pix enviado · ' },
+    { re: /^pix\s*(recebido|recebida)\s*(de|da|do)?\s*/i, label: 'Pix recebido · ' },
+    { re: /^pix\s*(qr\s*code|troco)?\s*/i, label: 'Pix · ' },
+    { re: /^ted\s*(enviad[oa]|enviada)?\s*/i, label: 'TED · ' },
+    { re: /^doc\s*(enviad[oa])?\s*/i, label: 'DOC · ' },
+    { re: /^tef\s*/i, label: 'Cartão · ' },
+    { re: /^compra\s*(no\s*)?(cartao|cartão)\s*/i, label: 'Cartão · ' },
+    { re: /^pagamento\s*(de\s*)?(boleto|titulo|título)\s*/i, label: 'Boleto · ' },
+    { re: /^debito\s*automatico\s*/i, label: 'Débito automático · ' },
+    { re: /^débito\s*automático\s*/i, label: 'Débito automático · ' },
+    { re: /^tarifa\s*/i, label: 'Tarifa · ' },
+    { re: /^pagamento\s*/i, label: 'Pagamento · ' }
+  ];
+
+  let prefix = '';
+  for (const rule of prefixRules) {
+    if (rule.re.test(text)) {
+      prefix = rule.label;
+      text = text.replace(rule.re, '');
+      break;
+    }
+  }
+
+  // Remove ruído típico de OFX/banco
+  text = text
+    .replace(/\b\d{2}\/\d{2}\/\d{2,4}\b/g, ' ')
+    .replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, ' ') // CPF
+    .replace(/\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g, ' ') // CNPJ
+    .replace(/\b(ag(encia)?|cc|conta|banco)\s*[:.]?\s*\d+\b/gi, ' ')
+    .replace(/\b(id|nsu|auth|autorizacao|autorização|fitid)\s*[:.]?\s*[\w-]+\b/gi, ' ')
+    .replace(/\b\d{6,}\b/g, ' ') // códigos longos
+    .replace(/[-_/|]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  // Marcas conhecidas → nome amigável
+  const brands: [RegExp, string][] = [
+    [/\bifood\b/i, 'iFood'],
+    [/\brappi\b/i, 'Rappi'],
+    [/\buber\s*eats\b/i, 'Uber Eats'],
+    [/\buber\b/i, 'Uber'],
+    [/\b99\s*(app|pop|pay)?\b/i, '99'],
+    [/\bnetflix\b/i, 'Netflix'],
+    [/\bspotify\b/i, 'Spotify'],
+    [/\bamazon\b/i, 'Amazon'],
+    [/\bmercado\s*livre\b|\bmlivre\b/i, 'Mercado Livre'],
+    [/\bshopee\b/i, 'Shopee'],
+    [/\bmagazine\s*luiza\b|\bmagalu\b/i, 'Magazine Luiza'],
+    [/\bcarrefour\b/i, 'Carrefour'],
+    [/\bpao\s*de\s*acucar\b|\bpão\s*de\s*açúcar\b/i, 'Pão de Açúcar'],
+    [/\bassai\b|\bassaí\b/i, 'Assaí'],
+    [/\bdrogasil\b/i, 'Drogasil'],
+    [/\bdroga\s*raia\b/i, 'Droga Raia'],
+    [/\bpague\s*menos\b/i, 'Pague Menos'],
+    [/\benel\b/i, 'Enel (energia)'],
+    [/\bcpfl\b/i, 'CPFL (energia)'],
+    [/\bsabesp\b/i, 'Sabesp (água)'],
+    [/\bclaro\b/i, 'Claro'],
+    [/\bvivo\b/i, 'Vivo'],
+    [/\btim\b/i, 'TIM'],
+    [/\bsem\s*parar\b/i, 'Sem Parar'],
+    [/\bshell\b/i, 'Shell'],
+    [/\bipiranga\b/i, 'Ipiranga'],
+    [/\bsteam\b/i, 'Steam'],
+    [/\bdisney(\+|plus)?\b/i, 'Disney+'],
+    [/\bhbo\b/i, 'HBO'],
+    [/\byoutube\s*premium\b/i, 'YouTube Premium']
+  ];
+
+  for (const [re, nice] of brands) {
+    if (re.test(text) || re.test(raw)) {
+      text = nice;
+      break;
+    }
+  }
+
+  // Title Case leve se ainda for texto genérico
+  if (text && text === text.toUpperCase() && text.length > 3) {
+    text = text
+      .toLowerCase()
+      .split(' ')
+      .map(w => (w.length <= 2 ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+      .join(' ');
+  }
+
+  const result = (prefix + text).replace(/\s{2,}/g, ' ').trim();
+  return result || 'Lançamento Bancário';
+}
+
+const daysBetween = (a: string, b: string): number => {
+  const da = new Date(a + 'T12:00:00').getTime();
+  const db = new Date(b + 'T12:00:00').getTime();
+  if (Number.isNaN(da) || Number.isNaN(db)) return 999;
+  return Math.abs(Math.round((da - db) / 86400000));
+};
+
+const significantTokens = (s: string): string[] => {
+  const stop = new Set([
+    'pix', 'enviado', 'enviada', 'recebido', 'recebida', 'para', 'de', 'da', 'do',
+    'pagamento', 'compra', 'cartao', 'cartão', 'ted', 'doc', 'the', 'and', 'com',
+    'ltda', 'me', 'sa', 'eireli', 'pag', 'pagto'
+  ]);
+  return normalizeText(s)
+    .split(' ')
+    .filter(t => t.length >= 3 && !stop.has(t) && !/^\d+$/.test(t));
+};
+
+const tokenOverlapScore = (a: string, b: string): number => {
+  const ta = significantTokens(a);
+  const tb = significantTokens(b);
+  if (ta.length === 0 || tb.length === 0) return 0;
+  let hits = 0;
+  ta.forEach(t => {
+    if (tb.some(x => x.includes(t) || t.includes(x))) hits += 1;
+  });
+  return hits / Math.max(ta.length, tb.length);
+};
 
 const normalizeText = (s: string) =>
   (s || '')
@@ -749,72 +882,153 @@ export function parseBankStatement(
   }
 }
 
+type ExistingTx = {
+  date: string;
+  amount: number;
+  type?: string;
+  description?: string;
+  fitId?: string;
+  bankFitId?: string;
+  status?: string;
+  accountId?: string;
+  categoryId?: string;
+};
+
+const fmtBRL = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+const fmtDateBR = (iso: string) => {
+  if (!iso || iso.length < 10) return iso;
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+};
+
 /**
- * Verifica duplicidades comparando com as transações já existentes no LocalStorage/App
- * Regra: Data exata + Valor (com tolerância de 0.01) + Tipo compatível + Similaridade de descrição
+ * Cruza o arquivo do banco com o que já está no app.
+ * - exact: FITID ou mesmo dia + mesmo valor
+ * - likely: mesmo valor ±2 dias + nomes parecidos (mesmo com textos diferentes)
+ * - possible: mesmo valor ±3 dias (só valor — você decide)
  */
 export function detectDuplicates(
   parsed: ParsedBankTransaction[],
-  existingTransactions: Array<{ date: string; amount: number; type?: string; description?: string; fitId?: string }>,
+  existingTransactions: ExistingTx[],
   targetAccountId: string
 ): StagingBankTransaction[] {
+  const existing = existingTransactions.filter(t => t.status !== 'cancelled');
+
   return parsed.map(item => {
-    // 1. Verificação por FITID se existir no OFX
+    const baseCategory =
+      item.suggestedCategoryId || (item.type === 'income' ? 'cat_7' : 'cat_1');
+
+    const base: StagingBankTransaction = {
+      ...item,
+      selected: true,
+      categoryId: baseCategory,
+      scope: 'PERSONAL',
+      accountId: targetAccountId,
+      isDuplicate: false,
+      matchConfidence: 'none'
+    };
+
+    // 1) FITID
     if (item.fitId) {
-      const matchFit = existingTransactions.find(t => (t as any).fitId === item.fitId || (t as any).bankFitId === item.fitId);
+      const matchFit = existing.find(
+        t => t.fitId === item.fitId || t.bankFitId === item.fitId
+      );
       if (matchFit) {
         return {
-          ...item,
+          ...base,
           selected: false,
-          categoryId: item.suggestedCategoryId || 'cat_7',
-          scope: 'PERSONAL',
-          accountId: targetAccountId,
           isDuplicate: true,
-          duplicateReason: 'Identificador bancário único (FITID) já registrado anteriormente.'
+          matchConfidence: 'exact',
+          matchedAppDescription: matchFit.description,
+          matchedAppDate: matchFit.date,
+          matchedAppAmount: Math.abs(Number(matchFit.amount) || 0),
+          duplicateReason: `Já no app: “${matchFit.description || 'lançamento'}” (${fmtBRL(Math.abs(Number(matchFit.amount) || 0))} em ${fmtDateBR(matchFit.date)}) — mesmo ID do banco.`
         };
       }
     }
 
-    // 2. Verificação por Data + Valor exato + Tipo
-    const matchSameDayAndAmount = existingTransactions.find(t => {
-      const sameDate = t.date === item.date;
-      const sameAmount = Math.abs(Number(t.amount) - item.amount) < 0.01;
-      const sameType = !t.type || t.type === item.type;
+    type Cand = {
+      t: ExistingTx;
+      confidence: MatchConfidence;
+      score: number;
+      reason: string;
+    };
+    const candidates: Cand[] = [];
 
-      if (!sameDate || !sameAmount || !sameType) return false;
+    existing.forEach(t => {
+      const amt = Math.abs(Number(t.amount) || 0);
+      const sameAmount = Math.abs(amt - item.amount) < 0.02;
+      if (!sameAmount) return;
 
-      // Se data e valor batem, compara semelhança de texto ou considera duplicata de alta chance
-      const normExisting = (t.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const normItem = (item.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      // Só compara entrada↔entrada e saída↔saída
+      if (t.type === 'income' || t.type === 'expense') {
+        if (t.type !== item.type) return;
+      }
 
-      // Se um texto contiver o outro ou forem idênticos
-      const textMatch = normExisting.includes(normItem) || normItem.includes(normExisting) || 
-                        normExisting.slice(0, 10) === normItem.slice(0, 10);
+      const gap = daysBetween(t.date, item.date);
+      if (gap > 3) return;
 
-      return textMatch || true; // Mesma data + mesmo valor + mesmo tipo no mesmo extrato
+      const overlap = tokenOverlapScore(
+        `${item.description} ${item.originalDescription}`,
+        t.description || ''
+      );
+      const humanApp = humanizeBankDescription(t.description || '');
+      const nameClose =
+        overlap >= 0.35 ||
+        normalizeText(humanApp) === normalizeText(item.description) ||
+        (humanApp.length >= 4 &&
+          normalizeText(item.description).includes(normalizeText(humanApp).slice(0, 8)));
+
+      if (gap === 0) {
+        candidates.push({
+          t,
+          confidence: nameClose ? 'exact' : 'likely',
+          score: 100 - gap + overlap * 20,
+          reason: nameClose
+            ? `Já no app como “${t.description}” no mesmo dia e valor (${fmtBRL(amt)}).`
+            : `Mesmo dia e valor (${fmtBRL(amt)}). No app: “${t.description || 'sem nome'}” — nomes diferentes, mas parece a mesma.`
+        });
+        return;
+      }
+
+      if (gap <= 2 && nameClose) {
+        candidates.push({
+          t,
+          confidence: 'likely',
+          score: 80 - gap + overlap * 25,
+          reason: `Valor igual (${fmtBRL(amt)}), ${gap} dia(s) de diferença. No app: “${t.description}” (${fmtDateBR(t.date)}). Pode ser o mesmo com nome diferente.`
+        });
+        return;
+      }
+
+      if (gap <= 3) {
+        candidates.push({
+          t,
+          confidence: 'possible',
+          score: 40 - gap + overlap * 10,
+          reason: `Valor igual (${fmtBRL(amt)}) perto da data (${fmtDateBR(t.date)} → ${fmtDateBR(item.date)}). No app: “${t.description || 'sem nome'}”. Confira se já registrou.`
+        });
+      }
     });
 
-    if (matchSameDayAndAmount) {
-      return {
-        ...item,
-        selected: false, // Desmarca duplicata por padrão para proteger o usuário
-        categoryId:
-          item.suggestedCategoryId || (item.type === 'income' ? 'cat_7' : 'cat_1'),
-        scope: 'PERSONAL',
-        accountId: targetAccountId,
-        isDuplicate: true,
-        duplicateReason: `Transação idêntica (R$ ${item.amount.toFixed(2)} em ${item.date}) já existe no extrato.`
-      };
-    }
+    if (candidates.length === 0) return base;
+
+    candidates.sort((a, b) => b.score - a.score);
+    const best = candidates[0];
+    const isStrong = best.confidence === 'exact' || best.confidence === 'likely';
 
     return {
-      ...item,
-      selected: true, // Itens novos vêm selecionados
-      categoryId:
-        item.suggestedCategoryId || (item.type === 'income' ? 'cat_7' : 'cat_1'),
-      scope: 'PERSONAL',
-      accountId: targetAccountId,
-      isDuplicate: false
+      ...base,
+      selected: !isStrong, // exact/likely desmarcados; possible fica marcado mas avisado
+      isDuplicate: isStrong || best.confidence === 'possible',
+      matchConfidence: best.confidence,
+      matchedAppDescription: best.t.description,
+      matchedAppDate: best.t.date,
+      matchedAppAmount: Math.abs(Number(best.t.amount) || 0),
+      duplicateReason: best.reason,
+      categoryId: best.t.categoryId || base.categoryId
     };
   });
 }
