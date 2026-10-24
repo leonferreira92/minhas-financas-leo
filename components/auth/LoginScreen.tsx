@@ -125,7 +125,7 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden font-sans select-none">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden font-sans select-none">
       
       {/* GLOW BACKGROUND EFEITO DARK PREMIUM / BANCO DO BRASIL VIP & SPOTIFY */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
@@ -137,7 +137,7 @@ export const LoginScreen: React.FC = () => {
         
         {/* LOGO & BRAND HEADER */}
         <div className="text-center mb-6 space-y-2">
-          <div className="inline-flex items-center justify-center space-x-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/10 via-[#fcca00]/10 to-purple-500/10 border border-[#fcca00]/25 text-[11px] font-black uppercase tracking-[0.2em] text-[#fcca00] shadow-sm">
+          <div className="inline-flex items-center justify-center space-x-2 px-3 py-1 rounded-full bg-gradient-to-r from-white via-white to-white border border-[#fcca00]/25 text-[11px] font-black uppercase tracking-[0.2em] text-[#fcca00] shadow-sm">
             <Sparkles size={12} className="text-[#fcca00] animate-pulse" />
             <span>Finanças Pro • Multi-Tenant</span>
           </div>
@@ -147,10 +147,10 @@ export const LoginScreen: React.FC = () => {
               FP
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-black text-white tracking-tight leading-none">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
                 Finanças Pro
               </h1>
-              <p className="text-xs text-zinc-400 font-medium mt-0.5">
+              <p className="text-xs text-slate-600 font-medium mt-0.5">
                 Fintech & Gestão de Carreira Musical
               </p>
             </div>
@@ -161,7 +161,7 @@ export const LoginScreen: React.FC = () => {
         <div className="backdrop-blur-2xl bg-[#121215]/85 border border-zinc-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 space-y-5">
           
           {/* SELETOR DE ABAS: ENTRAR vs CRIAR CONTA */}
-          <div className="grid grid-cols-2 p-1 bg-zinc-900/90 rounded-2xl border border-zinc-800/80 text-xs font-bold">
+          <div className="grid grid-cols-2 p-1 bg-white/90 rounded-2xl border border-slate-200/80 text-xs font-bold">
             <button
               type="button"
               onClick={() => {
@@ -199,15 +199,15 @@ export const LoginScreen: React.FC = () => {
 
           {/* MENSAGENS DE FEEDBACK */}
           {errorMessage && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start space-x-2.5 animate-slide-up">
-              <AlertCircle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 text-xs flex items-start space-x-2.5 animate-slide-up">
+              <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
               <span className="font-semibold leading-relaxed">{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-start space-x-2.5 animate-slide-up">
-              <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs flex items-start space-x-2.5 animate-slide-up">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
               <span className="font-semibold leading-relaxed">{successMessage}</span>
             </div>
           )}
@@ -217,42 +217,42 @@ export const LoginScreen: React.FC = () => {
             
             {mode === 'register' && (
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 block">
                   Nome Completo
                 </label>
                 <div className="relative">
-                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Seu nome ou nome artístico"
-                    className="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition"
+                    className="w-full bg-white/90 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
                   />
                 </div>
               </div>
             )}
 
             <div className="space-y-1">
-              <label className="text-[11px] font-black uppercase tracking-wider text-zinc-300 block">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 block">
                 E-mail
               </label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu.email@exemplo.com"
-                  className="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition"
+                  className="w-full bg-white/90 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
                 />
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 block">
                   Senha
                 </label>
                 {mode === 'login' && (
@@ -263,26 +263,26 @@ export const LoginScreen: React.FC = () => {
                       setIsResetModalOpen(true);
                       setErrorMessage(null);
                     }}
-                    className="text-[10px] text-purple-400 hover:text-purple-300 font-bold transition"
+                    className="text-[10px] text-purple-600 hover:text-purple-700 font-bold transition"
                   >
                     Esqueceu a senha?
                   </button>
                 )}
               </div>
               <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
-                  className="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl pl-10 pr-11 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition"
+                  className="w-full bg-white/90 border border-slate-200 rounded-2xl pl-10 pr-11 py-3 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-600 transition"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -291,18 +291,18 @@ export const LoginScreen: React.FC = () => {
 
             {mode === 'register' && (
               <div className="space-y-1">
-                <label className="text-[11px] font-black uppercase tracking-wider text-zinc-300 block">
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 block">
                   Confirmar Senha
                 </label>
                 <div className="relative">
-                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repita sua senha"
-                    className="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl pl-10 pr-4 py-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition"
+                    className="w-full bg-white/90 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500 transition"
                   />
                 </div>
               </div>
@@ -331,9 +331,9 @@ export const LoginScreen: React.FC = () => {
 
           {/* DIVISOR */}
           <div className="flex items-center space-x-3 my-2">
-            <div className="flex-1 h-px bg-zinc-800" />
-            <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">ou continue com</span>
-            <div className="flex-1 h-px bg-zinc-800" />
+            <div className="flex-1 h-px bg-slate-50" />
+            <span className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">ou continue com</span>
+            <div className="flex-1 h-px bg-slate-50" />
           </div>
 
           {/* LOGIN COM GOOGLE */}
@@ -341,7 +341,7 @@ export const LoginScreen: React.FC = () => {
             type="button"
             onClick={handleGoogleLogin}
             disabled={isGoogleLoading}
-            className="w-full py-3 px-4 rounded-2xl bg-zinc-900/90 hover:bg-zinc-850 border border-zinc-750 text-xs font-bold text-zinc-200 transition flex items-center justify-center space-x-3 active:scale-98 disabled:opacity-50 shadow-sm"
+            className="w-full py-3 px-4 rounded-2xl bg-white/90 hover:bg-zinc-850 border border-zinc-750 text-xs font-bold text-slate-600 transition flex items-center justify-center space-x-3 active:scale-98 disabled:opacity-50 shadow-sm"
           >
             {isGoogleLoading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -360,19 +360,19 @@ export const LoginScreen: React.FC = () => {
 
           {/* SEÇÃO DESTACADA: MODO DEMONSTRAÇÃO / VISITANTE */}
           <div className="pt-2">
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-purple-500/10 to-amber-500/10 border border-[#fcca00]/30 space-y-3">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-white via-white to-white border border-[#fcca00]/30 space-y-3">
               <div className="flex items-center space-x-2">
                 <div className="p-1.5 rounded-xl bg-[#fcca00]/20 text-[#fcca00]">
                   <PlayCircle size={16} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black text-white flex items-center space-x-1.5">
+                  <h3 className="text-xs font-black text-slate-900 flex items-center space-x-1.5">
                     <span>Modo Demonstração (Visitante)</span>
                     <span className="text-[9px] bg-[#fcca00]/20 text-[#fcca00] font-black uppercase px-1.5 py-0.2 rounded">
                       Sem Cadastro
                     </span>
                   </h3>
-                  <p className="text-[10px] text-zinc-400">
+                  <p className="text-[10px] text-slate-600">
                     Avalie o sistema com saldo organizado, 3 lançamentos e 1 dívida de teste carregados em memória local.
                   </p>
                 </div>
@@ -381,9 +381,9 @@ export const LoginScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={() => enterDemoMode()}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#fcca00] via-amber-400 to-[#fcca00] hover:brightness-105 text-zinc-950 font-black text-xs uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20 active:scale-95"
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-white via-white to-white hover:brightness-105 text-blue-950 font-black text-xs uppercase tracking-wider transition flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20 active:scale-95"
               >
-                <Sparkles size={14} className="text-zinc-950" />
+                <Sparkles size={14} className="text-slate-900" />
                 <span>Acessar Modo Demonstração (Visitante)</span>
               </button>
             </div>
@@ -391,8 +391,8 @@ export const LoginScreen: React.FC = () => {
 
           {/* NOTA DE PRIVACIDADE E SEGURANÇA */}
           <div className="text-center pt-1">
-            <div className="flex items-center justify-center space-x-1 text-[10px] text-zinc-500 font-medium">
-              <ShieldCheck size={12} className="text-emerald-500" />
+            <div className="flex items-center justify-center space-x-1 text-[10px] text-slate-600 font-medium">
+              <ShieldCheck size={12} className="text-emerald-600" />
               <span>Isolamento Total de Dados • Multi-Tenant Seguro</span>
             </div>
           </div>
@@ -400,7 +400,7 @@ export const LoginScreen: React.FC = () => {
         </div>
 
         {/* RODAPÉ INFORMATIVO */}
-        <p className="text-center text-[11px] text-zinc-500 mt-5">
+        <p className="text-center text-[11px] text-slate-600 mt-5">
           Finanças Pro &copy; 2026 • Painel de Gestão Financeira Pessoal & Carreira
         </p>
 
@@ -408,28 +408,28 @@ export const LoginScreen: React.FC = () => {
 
       {/* MODAL: RECUPERAÇÃO DE SENHA */}
       {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#121215] border border-zinc-800 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/90 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#121215] border border-slate-200 rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-purple-500/20 text-purple-400 rounded-xl">
+              <div className="p-2.5 bg-purple-500/20 text-purple-600 rounded-xl">
                 <KeyRound size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white">Recuperar Senha</h3>
-                <p className="text-[11px] text-zinc-400">Enviaremos um link de redefinição para o seu e-mail.</p>
+                <h3 className="text-sm font-black text-slate-900">Recuperar Senha</h3>
+                <p className="text-[11px] text-slate-600">Enviaremos um link de redefinição para o seu e-mail.</p>
               </div>
             </div>
 
             <form onSubmit={handlePasswordReset} className="space-y-3 pt-1">
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase text-zinc-400 block">E-mail Cadastrado</label>
+                <label className="text-[10px] font-black uppercase text-slate-600 block">E-mail Cadastrado</label>
                 <input
                   type="email"
                   required
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
                   placeholder="seu.email@exemplo.com"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
@@ -437,7 +437,7 @@ export const LoginScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsResetModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 transition"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-600 transition"
                 >
                   Cancelar
                 </button>

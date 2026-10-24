@@ -252,20 +252,20 @@ export const FinancialOverviewSection: React.FC = () => {
   };
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+    <section className="bg-white  rounded-[2.2rem] p-5 sm:p-6 border border-slate-200/80  shadow-sm space-y-5">
       
       {/* HEADER DA SEÇÃO COM INDICADOR DE SITUAÇÃO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 ">
         <div>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600  flex items-center justify-center font-black">
               <Activity size={18} strokeWidth={2.5} />
             </div>
-            <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-base font-black text-slate-900  tracking-tight">
               Visão Financeira
             </h2>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 mt-0.5">
             Diagnóstico consolidado de liquidez, obrigações e blindagem patrimonial
           </p>
         </div>
@@ -279,7 +279,7 @@ export const FinancialOverviewSection: React.FC = () => {
 
           <Link
             to="/financial-settings"
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition active:scale-95 shadow-xs"
+            className="p-2 rounded-xl bg-slate-100  hover:bg-slate-200 text-slate-600  transition active:scale-95 shadow-xs"
             title="Configurações Financeiras"
           >
             <Sliders size={16} />
@@ -288,10 +288,10 @@ export const FinancialOverviewSection: React.FC = () => {
       </div>
 
       {/* EXPLICAÇÃO DO INDICADOR */}
-      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center space-x-2.5 text-xs text-slate-600 dark:text-slate-300">
+      <div className="p-3 rounded-2xl bg-slate-50  border border-slate-100  flex items-center space-x-2.5 text-xs text-slate-600 ">
         <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${financialStatusIndicator.dotColor}`} />
         <span className="leading-snug">
-          <strong className="text-slate-800 dark:text-white">Diagnóstico de Caixa: </strong>
+          <strong className="text-slate-800 ">Diagnóstico de Caixa: </strong>
           {financialStatusIndicator.reason}
         </span>
       </div>
@@ -300,57 +300,57 @@ export const FinancialOverviewSection: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         
         {/* 1. DINHEIRO DISPONÍVEL HOJE */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
-              <Wallet size={14} className="text-indigo-500" />
+              <Wallet size={14} className="text-indigo-600" />
               <span>Dinheiro Disponível Hoje</span>
             </span>
-            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-indigo-600  bg-indigo-50  px-2 py-0.5 rounded-full">
               Caixa Efetivo
             </span>
           </div>
           <div>
-            <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums block">
+            <span className="text-lg font-black text-slate-900  tabular-nums block">
               {formatBRL(cashAvailableToday)}
             </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600 block mt-0.5">
               Contas operacionais livres (exclui poupança/reserva)
             </span>
           </div>
         </div>
 
         {/* 2. COMPROMISSOS FUTUROS JÁ CONHECIDOS */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
-              <Calendar size={14} className="text-rose-500" />
+              <Calendar size={14} className="text-rose-600" />
               <span>Compromissos Futuros</span>
             </span>
-            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-rose-600  bg-rose-50  px-2 py-0.5 rounded-full">
               {futureCommitments.countFromToday} pendentes
             </span>
           </div>
           <div>
-            <span className="text-lg font-black text-rose-600 dark:text-rose-400 tabular-nums block">
+            <span className="text-lg font-black text-rose-600  tabular-nums block">
               {formatBRL(futureCommitments.totalKnown)}
             </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600 block mt-0.5">
               Despesas pendentes cadastradas a vencer
             </span>
           </div>
         </div>
 
         {/* 3. RESERVA MÍNIMA CONFIGURADA */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
-              <ShieldCheck size={14} className="text-amber-500" />
+              <ShieldCheck size={14} className="text-amber-700" />
               <span>Reserva Mínima Configurada</span>
             </span>
             <Link 
               to="/financial-settings"
-              className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center space-x-0.5"
+              className="text-[10px] font-bold text-amber-600  hover:underline flex items-center space-x-0.5"
             >
               <span>{reserveCoveragePct}% coberta</span>
               <ChevronRight size={12} />
@@ -358,85 +358,85 @@ export const FinancialOverviewSection: React.FC = () => {
           </div>
           <div>
             <div className="flex items-baseline space-x-2">
-              <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
+              <span className="text-lg font-black text-slate-900  tabular-nums">
                 {formatBRL(targetTotalReserve)}
               </span>
-              <span className="text-[11px] text-slate-400 font-bold">
+              <span className="text-[11px] text-slate-600 font-bold">
                 ({targetReserveMonths} meses)
               </span>
             </div>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600 block mt-0.5">
               Guardado: {formatBRL(actualReservedMoney)} na poupança/reserva
             </span>
           </div>
         </div>
 
         {/* 4. CUSTO ESSENCIAL MENSAL */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
               <Layers size={14} className="text-amber-600" />
               <span>Custo Essencial Mensal</span>
             </span>
-            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-amber-700  bg-amber-50  px-2 py-0.5 rounded-full">
               Subsistência
             </span>
           </div>
           <div>
-            <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums block">
+            <span className="text-lg font-black text-slate-900  tabular-nums block">
               {formatBRL(monthlyEssentialCost)}
             </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600 block mt-0.5">
               Moradia, alimentação, saúde e contas básicas
             </span>
           </div>
         </div>
 
         {/* 5. CUSTO MENSAL COM DÍVIDAS ATIVAS */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
-              <CreditCard size={14} className="text-rose-500" />
+              <CreditCard size={14} className="text-rose-600" />
               <span>Custo Mensal Dívidas Ativas</span>
             </span>
-            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-slate-600  bg-slate-200  px-2 py-0.5 rounded-full">
               {activeDebtsSummary.activeCount} ativas
             </span>
           </div>
           <div>
-            <span className="text-lg font-black text-rose-600 dark:text-rose-400 tabular-nums block">
+            <span className="text-lg font-black text-rose-600  tabular-nums block">
               {formatBRL(activeDebtsSummary.monthlyTotal)}
             </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600 block mt-0.5">
               Soma das parcelas mensais de empréstimos/dívidas
             </span>
           </div>
         </div>
 
         {/* 6. CUSTO DE VIDA ATUAL */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
-              <Activity size={14} className="text-purple-500" />
+              <Activity size={14} className="text-purple-600" />
               <span>Custo de Vida Atual</span>
             </span>
-            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-purple-600  bg-purple-50  px-2 py-0.5 rounded-full">
               Por Mês
             </span>
           </div>
           <div>
-            <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums block">
+            <span className="text-lg font-black text-slate-900  tabular-nums block">
               {formatBRL(currentCostOfLiving)}
             </span>
-            <span className="text-[11px] text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600 block mt-0.5">
               Essencial ({formatBRL(monthlyEssentialCost)}) + Dívidas ({formatBRL(activeDebtsSummary.monthlyTotal)}) + Fixas
             </span>
           </div>
         </div>
 
         {/* 7. SALDO REALMENTE LIVRE */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-indigo-500/10 border border-emerald-500/20 dark:border-emerald-500/30 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-emerald-800 dark:text-emerald-300 mb-2">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-white via-white to-white border border-emerald-500/20  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-emerald-800  mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
               <Sparkles size={14} className="text-emerald-600" />
               <span>Saldo Realmente Livre</span>
@@ -446,10 +446,10 @@ export const FinancialOverviewSection: React.FC = () => {
             </span>
           </div>
           <div>
-            <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 tabular-nums block">
+            <span className="text-xl font-black text-emerald-700  tabular-nums block">
               {formatBRL(trulyFreeBalance)}
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+            <span className="text-[11px] text-slate-600  block mt-0.5">
               {reserveDeficit > 0 
                 ? `Livre após contas e retenção de ${formatBRL(reserveDeficit)} para reserva`
                 : 'Livre de qualquer compromisso ou déficit de reserva'}
@@ -458,13 +458,13 @@ export const FinancialOverviewSection: React.FC = () => {
         </div>
 
         {/* 8. PRÓXIMA REDUÇÃO RELEVANTE DE DESPESAS/DÍVIDAS */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-100  flex flex-col justify-between">
+          <div className="flex items-center justify-between text-slate-600 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
-              <TrendingDown size={14} className="text-indigo-500" />
+              <TrendingDown size={14} className="text-indigo-600" />
               <span>Próxima Redução Relevante</span>
             </span>
-            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-indigo-600  bg-indigo-50  px-2 py-0.5 rounded-full">
               Alívio Futuro
             </span>
           </div>
@@ -472,23 +472,23 @@ export const FinancialOverviewSection: React.FC = () => {
             {nextRelevantReduction ? (
               <>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-black text-slate-900 dark:text-white truncate">
+                  <span className="text-sm font-black text-slate-900  truncate">
                     {nextRelevantReduction.name}
                   </span>
-                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 ml-2">
+                  <span className="text-xs font-black text-emerald-600  ml-2">
                     +{formatBRL(nextRelevantReduction.monthlyRelief)}/mês
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 block mt-0.5">
+                <span className="text-[11px] text-slate-600 block mt-0.5">
                   Término previsto: {new Date(nextRelevantReduction.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })} ({nextRelevantReduction.remainingCount} parcelas restantes)
                 </span>
               </>
             ) : (
               <>
-                <span className="text-sm font-black text-slate-800 dark:text-slate-200 block">
+                <span className="text-sm font-black text-slate-800  block">
                   Sem parcelamentos ativos
                 </span>
-                <span className="text-[11px] text-slate-400 block mt-0.5">
+                <span className="text-[11px] text-slate-600 block mt-0.5">
                   Nenhuma dívida com término previsto nos próximos meses.
                 </span>
               </>
@@ -502,7 +502,7 @@ export const FinancialOverviewSection: React.FC = () => {
       <div className="pt-2 flex items-center justify-between text-xs">
         <Link 
           to="/financial-settings"
-          className="inline-flex items-center space-x-1.5 text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+          className="inline-flex items-center space-x-1.5 text-indigo-600  font-bold hover:underline"
         >
           <Sliders size={14} />
           <span>Personalizar Reserva e Categorias Essenciais</span>
@@ -511,7 +511,7 @@ export const FinancialOverviewSection: React.FC = () => {
 
         <Link
           to="/ai-report"
-          className="inline-flex items-center space-x-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium"
+          className="inline-flex items-center space-x-1 text-slate-600 hover:text-slate-600  font-medium"
         >
           <span>Gerar Relatório Completo para IA</span>
           <ChevronRight size={14} />

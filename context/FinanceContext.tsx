@@ -44,6 +44,7 @@ import {
   subscribeToUserSettings,
   saveAccountToFirestore,
   deleteAccountFromFirestore,
+  deleteUserAccountDocumentsExcept,
   saveTransactionToFirestore,
   deleteTransactionFromFirestore,
   saveShowToFirestore,
@@ -463,15 +464,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     const uid = currentUser.uid;
-    const isLeo = currentUser.email === 'leobov2@gmail.com';
+    const isLeo = currentUser.email?.trim().toLowerCase() === 'leobov2@gmail.com';
     StorageService.setActiveUser(uid, isLeo);
+    const localAccounts = deduplicateItemsById(StorageService.getAccounts()).filter(isAccountActive);
+    const normalizedAccountNames = localAccounts.map(account =>
+      account.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    );
+    const hasCurrentAccountSet =
+      localAccounts.length === 3 &&
+      normalizedAccountNames.some(name => name.includes('carteira')) &&
+      normalizedAccountNames.some(name => name.includes('mercado pago')) &&
+      normalizedAccountNames.some(name => name.includes('banco do brasil'));
 
     // Sincronização e consolidação automática para o banco de dados (default)
     const consolidationFlag = `fin_consolidated_default_${uid}`;
     const hasConsolidated = localStorage.getItem(consolidationFlag);
 
     if (!hasConsolidated) {
-      const localAccounts = StorageService.getAccounts();
       const localTransactions = StorageService.getTransactions();
       const localShows = StorageService.getShows();
       const localDebts = StorageService.getDebts();
@@ -501,8 +510,37 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
 
     // 1. Escutador em tempo real: Contas Bancárias (filtrando contas arquivadas/ocultas)
+    let accountCleanupInProgress = false;
+    let accountCleanupCompleted = false;
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
-      const cleanAccounts = deduplicateItemsById(cloudAccounts).filter(isAccountActive);
+      const activeCloudAccounts = deduplicateItemsById(cloudAccounts).filter(isAccountActive);
+      let cleanAccounts = activeCloudAccounts;
+
+      if (isLeo && hasCurrentAccountSet) {
+        const retainedIds = new Set(localAccounts.map(account => account.id));
+        const accountsById = new Map(localAccounts.map(account => [account.id, account]));
+        activeCloudAccounts.forEach(account => {
+          if (retainedIds.has(account.id)) accountsById.set(account.id, account);
+        });
+        cleanAccounts = [...accountsById.values()];
+
+        const hasObsoleteCloudAccounts = activeCloudAccounts.some(account => !retainedIds.has(account.id));
+        if (!accountCleanupInProgress && (!accountCleanupCompleted || hasObsoleteCloudAccounts)) {
+          accountCleanupInProgress = true;
+          void deleteUserAccountDocumentsExcept(uid, [...retainedIds])
+            .then(() => Promise.all(localAccounts.map(account => saveAccountToFirestore(uid, account))))
+            .then(() => {
+              accountCleanupCompleted = true;
+            })
+            .catch(error => {
+              console.error('[FinanceContext] Falha na limpeza das contas obsoletas do Firestore:', error);
+            })
+            .finally(() => {
+              accountCleanupInProgress = false;
+            });
+        }
+      }
+
       setAccounts(cleanAccounts);
       StorageService.saveAccounts(cleanAccounts);
     });
@@ -704,11 +742,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   useEffect(() => {
     refreshData();
-  }, []);
-
-  useEffect(() => {
-    // Pure Dark Spotify / Fintech theme permanent enforcement
-    document.documentElement.classList.add('dark');
   }, []);
 
   useEffect(() => {

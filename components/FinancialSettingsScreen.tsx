@@ -134,28 +134,28 @@ export const FinancialSettingsScreen: React.FC = () => {
   };
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-xl mx-auto px-2 sm:px-4">
+    <div className="pb-32 animate-fade-in text-slate-900  max-w-xl mx-auto px-2 sm:px-4">
       
       {/* Header com Navegação */}
       <div className="flex items-center justify-between mb-6 pt-2">
         <div className="flex items-center space-x-3">
           <Link 
             to="/settings" 
-            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition active:scale-95 shadow-xs"
+            className="p-2.5 rounded-2xl bg-white  border border-slate-200  text-slate-600 hover:text-slate-800  transition active:scale-95 shadow-xs"
             title="Voltar aos Ajustes"
           >
             <ChevronLeft size={20} />
           </Link>
           <div>
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-indigo-600 text-white flex items-center justify-center shadow-md">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-white via-white to-white text-slate-900 flex items-center justify-center shadow-md">
                 <Sliders size={18} />
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-800  tracking-tight">
                 Configurações Financeiras
               </h1>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600  mt-0.5">
               Parâmetros de reserva, meses de sobrevivência e classificação de despesas
             </p>
           </div>
@@ -175,22 +175,22 @@ export const FinancialSettingsScreen: React.FC = () => {
       </div>
 
       {savedSuccess && (
-        <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center space-x-2 animate-slide-up">
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-50  border border-emerald-200  text-emerald-800  text-xs font-semibold flex items-center space-x-2 animate-slide-up">
           <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           <span>Configurações atualizadas com sucesso! Os cálculos de capacidade de compra e visão financeira já foram recalculados.</span>
         </div>
       )}
 
       {/* CARD RESUMO DE RESERVA */}
-      <div className="p-5 rounded-[2rem] bg-gradient-to-br from-slate-900 to-indigo-950 text-white shadow-xl border border-slate-800 relative overflow-hidden mb-6">
+      <div className="p-5 rounded-[2rem] bg-gradient-to-br from-white to-slate-100 text-slate-900 shadow-xl border border-slate-200 relative overflow-hidden mb-6">
         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
         
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 flex items-center space-x-1">
+          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 flex items-center space-x-1">
             <ShieldCheck size={14} />
             <span>Diagnóstico de Proteção</span>
           </span>
-          <span className="text-xs font-bold text-slate-300">
+          <span className="text-xs font-bold text-slate-600">
             {reserveCoveragePct}% Coberto
           </span>
         </div>
@@ -210,13 +210,13 @@ export const FinancialSettingsScreen: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-            <span className="text-[10px] text-slate-400 block mb-0.5">Reservado Hoje (Poupança)</span>
-            <span className="text-base font-black text-white">{formatBRL(totalReservedToday)}</span>
+          <div className="p-3 rounded-xl bg-white/5 border border-slate-200">
+            <span className="text-[10px] text-slate-600 block mb-0.5">Reservado Hoje (Poupança)</span>
+            <span className="text-base font-black text-slate-900">{formatBRL(totalReservedToday)}</span>
           </div>
-          <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-            <span className="text-[10px] text-slate-400 block mb-0.5">Meta Total Adotada</span>
-            <span className="text-base font-black text-amber-300">{formatBRL(targetSafetyReserve)}</span>
+          <div className="p-3 rounded-xl bg-white/5 border border-slate-200">
+            <span className="text-[10px] text-slate-600 block mb-0.5">Meta Total Adotada</span>
+            <span className="text-base font-black text-amber-700">{formatBRL(targetSafetyReserve)}</span>
           </div>
         </div>
       </div>
@@ -224,26 +224,26 @@ export const FinancialSettingsScreen: React.FC = () => {
       <div className="space-y-6">
         
         {/* SEÇÃO 1: RESERVA MÍNIMA E MESES */}
-        <div className="p-5 rounded-[2rem] bg-[#18181b] border border-zinc-800 shadow-xs space-y-5">
+        <div className="p-5 rounded-[2rem] bg-slate-50 border border-slate-200 shadow-xs space-y-5">
           <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center font-black text-xs border border-amber-500/30">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-700 flex items-center justify-center font-black text-xs border border-amber-500/30">
               1
             </div>
-            <h2 className="text-sm font-black text-white uppercase tracking-wider">
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
               Reserva Financeira e Sobrevivência
             </h2>
           </div>
 
           {/* Campo 1: Valor da Reserva Mínima em R$ */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">
               Reserva Mínima Desejada (R$)
             </label>
-            <p className="text-[11px] text-zinc-400 mb-2">
+            <p className="text-[11px] text-slate-600 mb-2">
               Patrimônio intocável em reservas e poupança que protege contra imprevistos. O sistema só autoriza gastos discricionários quando esse montante estiver guarnecido.
             </p>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500 font-bold text-sm">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-600 font-bold text-sm">
                 R$
               </div>
               <input
@@ -251,7 +251,7 @@ export const FinancialSettingsScreen: React.FC = () => {
                 value={minReserve}
                 onChange={(e) => setMinReserve(e.target.value)}
                 placeholder="5000"
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#121212] border border-zinc-700/80 text-white font-black text-base outline-none focus:border-emerald-500"
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-white border border-slate-300/80 text-slate-900 font-black text-base outline-none focus:border-emerald-500"
               />
             </div>
           </div>
@@ -259,14 +259,14 @@ export const FinancialSettingsScreen: React.FC = () => {
           {/* Campo 2: Quantidade de Meses de Reserva */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-zinc-300">
+              <label className="text-xs font-bold text-slate-600">
                 Quantidade de Meses de Reserva Desejada
               </label>
-              <span className="text-xs font-black text-emerald-400">
+              <span className="text-xs font-black text-emerald-600">
                 {targetMonths} meses
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 mb-2.5">
+            <p className="text-[11px] text-slate-600 mb-2.5">
               Quantos meses de despesas essenciais você deseja ter garantidos de reserva para emergências.
             </p>
 
@@ -288,9 +288,9 @@ export const FinancialSettingsScreen: React.FC = () => {
             </div>
 
             {monthlyEssentialEstimate > 0 && (
-              <div className="mt-3 p-3 rounded-xl bg-[#121212] border border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
+              <div className="mt-3 p-3 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
                 <span>Custo Essencial Estimado ({targetMonths}m):</span>
-                <span className="font-bold text-white">
+                <span className="font-bold text-slate-900">
                   {formatBRL(targetFromMonths)} ({formatBRL(monthlyEssentialEstimate)}/mês)
                 </span>
               </div>
@@ -299,34 +299,34 @@ export const FinancialSettingsScreen: React.FC = () => {
         </div>
 
         {/* SEÇÃO 2: CLASSIFICAÇÃO DE CATEGORIAS */}
-        <div className="p-5 rounded-[2rem] bg-[#18181b] border border-zinc-800 shadow-xs space-y-5">
+        <div className="p-5 rounded-[2rem] bg-slate-50 border border-slate-200 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center font-black text-xs border border-purple-500/30">
+              <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-600 flex items-center justify-center font-black text-xs border border-purple-500/30">
                 2
               </div>
-              <h2 className="text-sm font-black text-white uppercase tracking-wider">
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">
                 Classificação de Categorias
               </h2>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">
+            <span className="text-[10px] text-slate-600 font-bold">
               {expenseCategories.length} categorias
             </span>
           </div>
 
-          <p className="text-xs text-zinc-400 leading-relaxed">
+          <p className="text-xs text-slate-600 leading-relaxed">
             Selecione em qual pilar cada categoria de despesa se enquadra. Essa classificação é usada para calcular seu custo básico de subsistência, seus investimentos de trabalho e seu saldo realmente livre.
           </p>
 
           {/* Legenda dos 3 pilares */}
           <div className="grid grid-cols-3 gap-2 text-[10px] font-black uppercase tracking-wider text-center">
-            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-700 border border-amber-500/30">
               Essencial
             </div>
-            <div className="p-2 rounded-xl bg-purple-500/15 text-purple-300 border border-purple-500/30">
+            <div className="p-2 rounded-xl bg-purple-500/15 text-purple-700 border border-purple-500/30">
               Estilo de Vida
             </div>
-            <div className="p-2 rounded-xl bg-sky-500/15 text-sky-300 border border-sky-500/30">
+            <div className="p-2 rounded-xl bg-sky-500/15 text-sky-700 border border-sky-500/30">
               Profissional
             </div>
           </div>
@@ -342,17 +342,17 @@ export const FinancialSettingsScreen: React.FC = () => {
               return (
                 <div 
                   key={cat.id}
-                  className="p-3 rounded-2xl bg-[#121212] border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                  className="p-3 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                 >
                   <div className="flex items-center space-x-2.5">
                     <div 
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-950 font-bold shrink-0 shadow-xs"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-900 font-bold shrink-0 shadow-xs"
                       style={{ backgroundColor: cat.color || '#10b981' }}
                     >
                       <IconComp size={16} />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-white block">
+                      <span className="text-xs font-bold text-slate-900 block">
                         {cat.name}
                       </span>
                     </div>

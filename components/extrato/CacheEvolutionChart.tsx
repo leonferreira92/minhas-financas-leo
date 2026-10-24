@@ -50,17 +50,17 @@ export const CacheEvolutionChart: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-[2rem] p-5 sm:p-6 shadow-xl border border-indigo-900/50 space-y-5">
+    <div className="bg-gradient-to-br from-white via-indigo-50 to-slate-100 text-slate-900 rounded-[2rem] p-5 sm:p-6 shadow-xl border border-indigo-900/50 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300">
+          <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-700">
             <Music size={18} />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">
               Análise de Carreira Musical
             </span>
-            <h3 className="text-base font-black text-white tracking-tight">
+            <h3 className="text-base font-black text-slate-900 tracking-tight">
               Evolução do Cachê Médio x Custos de Produção (Últimos 6 Meses)
             </h3>
           </div>
@@ -74,42 +74,42 @@ export const CacheEvolutionChart: React.FC = () => {
           const costHeight = Math.min(100, Math.max(12, Math.round((m.totalCosts / monthlyEvolution.maxVal) * 100)));
 
           return (
-            <div key={m.key} className="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-col justify-between space-y-3">
+            <div key={m.key} className="bg-white/5 border border-slate-200 rounded-2xl p-3 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-purple-300">{m.label}</span>
-                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded-md font-bold text-slate-300">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-700">{m.label}</span>
+                <span className="text-[9px] bg-white/10 px-1.5 py-0.5 rounded-md font-bold text-slate-600">
                   {m.count} shows
                 </span>
               </div>
 
               {/* Barras comparativas */}
-              <div className="flex items-end justify-center space-x-2 h-28 pt-2 pb-1 border-b border-white/10">
+              <div className="flex items-end justify-center space-x-2 h-28 pt-2 pb-1 border-b border-slate-200">
                 {/* Barra Cachê Médio */}
                 <div className="flex flex-col items-center h-full justify-end group relative">
                   <div 
-                    className="w-5 bg-gradient-to-t from-emerald-600 to-emerald-400 rounded-t-lg transition-all duration-500 hover:opacity-90"
+                    className="w-5 bg-gradient-to-t from-white via-white to-white rounded-t-lg transition-all duration-500 hover:opacity-90"
                     style={{ height: `${cacheHeight}%` }}
                     title={`Cachê Médio: ${formatCurrency(m.avgCache)}`}
                   />
-                  <span className="text-[8px] font-bold text-emerald-400 mt-1">Cachê</span>
+                  <span className="text-[8px] font-bold text-emerald-600 mt-1">Cachê</span>
                 </div>
 
                 {/* Barra Custos */}
                 <div className="flex flex-col items-center h-full justify-end group relative">
                   <div 
-                    className="w-5 bg-gradient-to-t from-rose-600 to-rose-400 rounded-t-lg transition-all duration-500 hover:opacity-90"
+                    className="w-5 bg-gradient-to-t from-white via-white to-white rounded-t-lg transition-all duration-500 hover:opacity-90"
                     style={{ height: `${costHeight}%` }}
                     title={`Custos: ${formatCurrency(m.totalCosts)}`}
                   />
-                  <span className="text-[8px] font-bold text-rose-400 mt-1">Custos</span>
+                  <span className="text-[8px] font-bold text-rose-600 mt-1">Custos</span>
                 </div>
               </div>
 
               <div className="space-y-1 text-center">
-                <div className="text-[10px] font-black text-emerald-300 tabular-nums">
+                <div className="text-[10px] font-black text-emerald-700 tabular-nums">
                   {!isBlurred ? formatCurrency(m.avgCache) : '••••'}
                 </div>
-                <div className="text-[10px] font-black text-rose-300 tabular-nums">
+                <div className="text-[10px] font-black text-rose-700 tabular-nums">
                   {!isBlurred ? formatCurrency(m.totalCosts) : '••••'}
                 </div>
               </div>

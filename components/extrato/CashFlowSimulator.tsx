@@ -93,19 +93,19 @@ export const CashFlowSimulator: React.FC = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 sm:p-6 shadow-xl border border-slate-200/80 dark:border-slate-800 space-y-6">
+    <div className="bg-white  rounded-[2rem] p-5 sm:p-6 shadow-xl border border-slate-200/80  space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 ">
             Simulador de Caixa Futuro
           </span>
-          <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight mt-0.5">
+          <h3 className="text-base font-black text-slate-900  tracking-tight mt-0.5">
             Projeções por Cenários de Shows
           </h3>
         </div>
 
         {/* Seletor de Cenários */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center bg-slate-100  p-1 rounded-2xl border border-slate-200 ">
           <button
             type="button"
             onClick={() => setScenario('conservative')}
@@ -152,20 +152,20 @@ export const CashFlowSimulator: React.FC = () => {
       {/* Grid de Projeção para os próximos meses */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         {simulationMonths.map((m, idx) => (
-          <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex flex-col justify-between space-y-3">
+          <div key={idx} className="p-3.5 rounded-2xl bg-slate-50  border border-slate-200/70  flex flex-col justify-between space-y-3">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">{m.label}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">{m.label}</span>
               <div className={`text-sm sm:text-base font-black tracking-tight tabular-nums mt-1 ${m.projectedBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-600'}`}>
                 {!isBlurred ? formatCurrency(m.projectedBalance) : '••••'}
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1 text-[10px]">
-              <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+            <div className="pt-2 border-t border-slate-200/60  space-y-1 text-[10px]">
+              <div className="flex justify-between text-emerald-600  font-bold">
                 <span>Rec:</span>
                 <span>{!isBlurred ? formatCurrency(m.showRevenue) : '••'}</span>
               </div>
-              <div className="flex justify-between text-rose-500 font-bold">
+              <div className="flex justify-between text-rose-600 font-bold">
                 <span>Desp:</span>
                 <span>{!isBlurred ? formatCurrency(m.expenses) : '••'}</span>
               </div>

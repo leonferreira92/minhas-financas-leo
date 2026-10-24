@@ -102,11 +102,11 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
 
   return (
     <div id="account-balance-modal" className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[80] flex items-center justify-center p-4 animate-fade-in">
-      <div id="account-balance-modal-content" className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-md shadow-2xl border border-slate-100 dark:border-slate-800/80 overflow-hidden animate-scale-in">
+      <div id="account-balance-modal-content" className="bg-white  rounded-[2.5rem] w-full max-w-md shadow-2xl border border-slate-100  overflow-hidden animate-scale-in">
         
         {/* Header da Conta */}
         <div 
-          className="p-6 text-white relative overflow-hidden"
+          className="p-6 text-slate-900 relative overflow-hidden"
           style={{ backgroundColor: color }}
         >
           {/* Luz ambiente sutil */}
@@ -114,7 +114,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
           
           <div className="flex justify-between items-start relative z-10">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/10 shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-slate-200 shadow-sm">
                 {getAccountIcon(type)}
               </div>
               <div>
@@ -128,7 +128,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
             <button 
               id="account-modal-close-btn"
               onClick={onClose}
-              className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 transition-all text-white active:scale-95 border border-white/5"
+              className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 transition-all text-slate-900 active:scale-95 border border-slate-200"
             >
               <X size={16} />
             </button>
@@ -141,7 +141,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
         </div>
 
         {/* Tabs de Controle */}
-        <div id="account-modal-tabs" className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-1">
+        <div id="account-modal-tabs" className="flex border-b border-slate-100  bg-slate-50/50  p-1">
           <button
             id="tab-balance"
             onClick={() => setActiveTab('balance')}
@@ -171,11 +171,11 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
           {activeTab === 'balance' ? (
             <form id="adjust-balance-form" onSubmit={handleSaveBalance} className="space-y-5">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 ml-1">
                   Novo Saldo Real
                 </label>
                 <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black text-xl">
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600  font-black text-xl">
                     R$
                   </span>
                   <input
@@ -184,7 +184,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                     step="any"
                     value={newBalanceInput}
                     onChange={e => setNewBalanceInput(e.target.value)}
-                    className="w-full pl-14 pr-5 py-4.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl dark:text-white outline-none font-black text-2xl shadow-inner transition-all"
+                    className="w-full pl-14 pr-5 py-4.5 bg-slate-50  border border-slate-200  focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl  outline-none font-black text-2xl shadow-inner transition-all"
                     placeholder="0,00"
                     required
                   />
@@ -222,12 +222,12 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
               </div>
 
               {/* Ações */}
-              <div id="balance-actions" className="flex items-center space-x-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/60">
+              <div id="balance-actions" className="flex items-center space-x-2.5 pt-4 border-t border-slate-100 ">
                 <button
                   id="cancel-balance-btn"
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider transition-all"
+                  className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200   text-slate-600  font-bold text-xs uppercase tracking-wider transition-all"
                 >
                   Cancelar
                 </button>
@@ -235,7 +235,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                   id="save-balance-btn"
                   type="submit"
                   disabled={Math.abs(difference) < 0.01}
-                  className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:pointer-events-none text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/15 dark:shadow-none transition-all active:scale-[0.98]"
+                  className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:pointer-events-none text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/15  transition-all active:scale-[0.98]"
                 >
                   Salvar Ajuste
                 </button>
@@ -244,7 +244,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
           ) : (
             <form id="edit-details-form" onSubmit={handleSaveDetails} className="space-y-4">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5 ml-1">
                   Nome da Conta
                 </label>
                 <input
@@ -252,21 +252,21 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-slate-50  border border-slate-200  text-sm font-bold text-slate-800  rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                   placeholder="Ex: Santander, NuConta"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5 ml-1">
                   Tipo de Conta
                 </label>
                 <select
                   id="account-type-select"
                   value={type}
                   onChange={e => setType(e.target.value as AccountType)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-4 py-3 bg-slate-50  border border-slate-200  text-sm font-bold text-slate-800  rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 >
                   {accountTypes.map(opt => (
                     <option key={opt.value} value={opt.value}>
@@ -277,7 +277,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5 ml-1">
                   Vínculo / Módulo Pertencente
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -321,7 +321,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 ml-1">
                   Cor de Identificação
                 </label>
                 <div id="color-palette" className="flex flex-wrap gap-2.5">
@@ -341,20 +341,20 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
               </div>
 
               {/* Botões de Ação */}
-              <div id="details-actions" className="flex flex-col gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/60">
+              <div id="details-actions" className="flex flex-col gap-2 pt-4 border-t border-slate-100 ">
                 <div className="flex items-center space-x-2.5">
                   <button
                     id="cancel-details-btn"
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider transition-all"
+                    className="flex-1 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200   text-slate-600  font-bold text-xs uppercase tracking-wider transition-all"
                   >
                     Cancelar
                   </button>
                   <button
                     id="save-details-btn"
                     type="submit"
-                    className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/15 dark:shadow-none transition-all active:scale-[0.98]"
+                    className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/15  transition-all active:scale-[0.98]"
                   >
                     Salvar Dados
                   </button>
@@ -364,7 +364,7 @@ export const AccountBalanceModal: React.FC<AccountBalanceModalProps> = ({ accoun
                   id="delete-account-btn"
                   type="button"
                   onClick={handleDelete}
-                  className="w-full py-2.5 text-rose-500 hover:text-rose-600 dark:text-rose-400/80 dark:hover:text-rose-400 font-bold text-[10px] uppercase tracking-widest hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all mt-2"
+                  className="w-full py-2.5 text-rose-600 hover:text-rose-600   font-bold text-[10px] uppercase tracking-widest hover:bg-rose-50  rounded-xl transition-all mt-2"
                 >
                   Excluir Conta
                 </button>

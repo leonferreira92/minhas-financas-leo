@@ -300,24 +300,24 @@ export const FinancialProjectionSection: React.FC = () => {
   ]);
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+    <section className="bg-white  rounded-[2.5rem] p-6 border border-slate-200/80  shadow-sm space-y-6">
       
       {/* HEADER DA SEÇÃO COM SELETOR DE HORIZONTE */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600  flex items-center justify-center">
             <Calendar size={22} strokeWidth={2.5} />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base font-black text-slate-900  tracking-tight">
                 Projeção Financeira
               </h2>
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700  border border-indigo-200 ">
                 Horizonte {horizonMonths}M
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600  mt-0.5">
               Simulação de fluxo de caixa, receitas confirmadas e pontos de estresse
             </p>
           </div>
@@ -327,7 +327,7 @@ export const FinancialProjectionSection: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Seletor de Meses */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-xs font-bold">
+          <div className="flex items-center bg-slate-100  p-1 rounded-2xl border border-slate-200  text-xs font-bold">
             <button
               onClick={() => setHorizonMonths(3)}
               className={`px-3 py-1.5 rounded-xl transition ${
@@ -361,7 +361,7 @@ export const FinancialProjectionSection: React.FC = () => {
           </div>
 
           {/* Seletor de Modo de Exibição */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-xs font-bold">
+          <div className="flex items-center bg-slate-100  p-1 rounded-2xl border border-slate-200  text-xs font-bold">
             <button
               onClick={() => setDisplayMode('cards')}
               className={`px-2.5 py-1.5 rounded-xl transition ${
@@ -399,35 +399,35 @@ export const FinancialProjectionSection: React.FC = () => {
             : 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60'
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               Risco Negativo
             </span>
             {projectionData.firstNegativeMonth ? (
-              <AlertTriangle size={16} className="text-rose-600 dark:text-rose-400" />
+              <AlertTriangle size={16} className="text-rose-600 " />
             ) : (
-              <ShieldCheck size={16} className="text-emerald-600 dark:text-emerald-400" />
+              <ShieldCheck size={16} className="text-emerald-600 " />
             )}
           </div>
 
           <div>
             {projectionData.firstNegativeMonth ? (
               <>
-                <span className="text-xs font-bold text-rose-700 dark:text-rose-300 block">
+                <span className="text-xs font-bold text-rose-700  block">
                   1º Mês em Risco:
                 </span>
-                <span className="text-base font-black text-rose-600 dark:text-rose-400 tabular-nums block">
+                <span className="text-base font-black text-rose-600  tabular-nums block">
                   {projectionData.firstNegativeMonth.monthLabel}
                 </span>
-                <span className="text-[11px] text-rose-600/80 dark:text-rose-400/80 font-bold block mt-0.5">
+                <span className="text-[11px] text-rose-600/80  font-bold block mt-0.5">
                   Saldo final: {formatBRL(projectionData.firstNegativeMonth.projectedEndBalance)}
                 </span>
               </>
             ) : (
               <>
-                <span className="text-base font-black text-emerald-600 dark:text-emerald-400 block">
+                <span className="text-base font-black text-emerald-600  block">
                   Sem Risco
                 </span>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                <p className="text-[11px] text-slate-600  leading-tight mt-0.5">
                   Nenhum mês projeta saldo negativo no horizonte de {horizonMonths} meses.
                 </p>
               </>
@@ -436,12 +436,12 @@ export const FinancialProjectionSection: React.FC = () => {
         </div>
 
         {/* 2. MENOR SALDO PROJETADO */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-200  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               Menor Saldo Projetado
             </span>
-            <ArrowDownRight size={16} className="text-amber-500" />
+            <ArrowDownRight size={16} className="text-amber-700" />
           </div>
 
           <div>
@@ -454,26 +454,26 @@ export const FinancialProjectionSection: React.FC = () => {
                 {formatBRL(projectionData.lowestRow.projectedEndBalance)}
               </span>
             </div>
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mt-0.5">
+            <span className="text-[11px] font-bold text-slate-600  block mt-0.5">
               Em {projectionData.lowestRow.monthLabel}
             </span>
           </div>
         </div>
 
         {/* 3. MESES COM DÉFICIT */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-200  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               Meses com Déficit
             </span>
-            <TrendingDown size={16} className="text-rose-500" />
+            <TrendingDown size={16} className="text-rose-600" />
           </div>
 
           <div>
-            <span className="text-base font-black text-slate-900 dark:text-white tabular-nums block">
+            <span className="text-base font-black text-slate-900  tabular-nums block">
               {projectionData.deficitMonths.length} {projectionData.deficitMonths.length === 1 ? 'mês' : 'meses'}
             </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block mt-0.5">
+            <span className="text-[11px] text-slate-600  truncate block mt-0.5">
               {projectionData.deficitMonths.length > 0 
                 ? projectionData.deficitMonths.map(m => m.monthLabel.split('/')[0]).join(', ') 
                 : 'Nenhum déficit registrado'}
@@ -482,26 +482,26 @@ export const FinancialProjectionSection: React.FC = () => {
         </div>
 
         {/* 4. MESES COM MAIOR SOBRA */}
-        <div className="p-4 rounded-2xl bg-emerald-50/30 dark:bg-emerald-950/10 border border-emerald-200/70 dark:border-emerald-900/40 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-emerald-50/30  border border-emerald-200/70  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               Maior Sobra Mensal
             </span>
-            <ArrowUpRight size={16} className="text-emerald-500" />
+            <ArrowUpRight size={16} className="text-emerald-600" />
           </div>
 
           <div>
             {projectionData.bestSurplusRow ? (
               <>
-                <span className="text-base font-black text-emerald-600 dark:text-emerald-400 tabular-nums block">
+                <span className="text-base font-black text-emerald-600  tabular-nums block">
                   +{formatBRL(projectionData.bestSurplusRow.netResult)}
                 </span>
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mt-0.5">
+                <span className="text-[11px] font-bold text-slate-600  block mt-0.5">
                   Em {projectionData.bestSurplusRow.monthLabel}
                 </span>
               </>
             ) : (
-              <span className="text-xs text-slate-400">Sem sobras no período</span>
+              <span className="text-xs text-slate-600">Sem sobras no período</span>
             )}
           </div>
         </div>
@@ -525,25 +525,25 @@ export const FinancialProjectionSection: React.FC = () => {
               }`}
             >
               {/* Header do Mês */}
-              <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/60 pb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200/50  pb-2.5">
                 <div>
                   <div className="flex items-center space-x-1.5">
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white capitalize">
+                    <h3 className="text-sm font-black text-slate-900  capitalize">
                       {row.monthLabel}
                     </h3>
                     {row.isCurrentMonth && (
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-600  border border-indigo-200 ">
                         Atual
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                  <span className="text-[10px] text-slate-600 block mt-0.5">
                     Saldo Inicial: <strong>{formatBRL(row.initialBalance)}</strong>
                   </span>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                  <span className="text-[10px] font-bold uppercase text-slate-600 block">
                     Resultado
                   </span>
                   <span className={`text-xs font-black tabular-nums ${
@@ -558,7 +558,7 @@ export const FinancialProjectionSection: React.FC = () => {
               <div className="space-y-1.5 text-xs">
                 
                 {/* (+) Receitas Confirmadas */}
-                <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400">
+                <div className="flex items-center justify-between text-emerald-700 ">
                   <span className="text-[11px] font-bold flex items-center">
                     (+) Receitas Confirmadas
                   </span>
@@ -569,10 +569,10 @@ export const FinancialProjectionSection: React.FC = () => {
 
                 {/* (~) Receitas Estimadas (Separadas!) */}
                 {row.estimatedIncomes > 0 && (
-                  <div className="flex items-center justify-between text-amber-600 dark:text-amber-400 text-[11px]">
+                  <div className="flex items-center justify-between text-amber-600  text-[11px]">
                     <span className="flex items-center space-x-1">
                       <span>(~) Receitas Estimadas</span>
-                      <span className="text-[8px] font-black uppercase px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                      <span className="text-[8px] font-black uppercase px-1 rounded bg-amber-100  text-amber-700 ">
                         Não Garantida
                       </span>
                     </span>
@@ -583,7 +583,7 @@ export const FinancialProjectionSection: React.FC = () => {
                 )}
 
                 {/* (-) Despesas Essenciais */}
-                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300 text-[11px]">
+                <div className="flex items-center justify-between text-slate-600  text-[11px]">
                   <span>(-) Despesas Essenciais</span>
                   <span className="font-bold tabular-nums">
                     {formatBRL(row.essentialExpenses)}
@@ -592,7 +592,7 @@ export const FinancialProjectionSection: React.FC = () => {
 
                 {/* (-) Estilo de Vida */}
                 {row.lifestyleExpenses > 0 && (
-                  <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                  <div className="flex items-center justify-between text-slate-600  text-[11px]">
                     <span>(-) Estilo de Vida</span>
                     <span className="font-medium tabular-nums">
                       {formatBRL(row.lifestyleExpenses)}
@@ -602,7 +602,7 @@ export const FinancialProjectionSection: React.FC = () => {
 
                 {/* (-) Parcelas de Dívidas Ativas */}
                 {row.debtInstallments > 0 && (
-                  <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-[11px]">
+                  <div className="flex items-center justify-between text-rose-600  text-[11px]">
                     <span>(-) Dívidas Ativas</span>
                     <span className="font-bold tabular-nums">
                       {formatBRL(row.debtInstallments)}
@@ -612,7 +612,7 @@ export const FinancialProjectionSection: React.FC = () => {
 
                 {/* (-) Investimentos Profissionais */}
                 {row.professionalInvestments > 0 && (
-                  <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 text-[11px]">
+                  <div className="flex items-center justify-between text-indigo-600  text-[11px]">
                     <span>(-) Invest. Profissional</span>
                     <span className="font-medium tabular-nums">
                       {formatBRL(row.professionalInvestments)}
@@ -623,8 +623,8 @@ export const FinancialProjectionSection: React.FC = () => {
               </div>
 
               {/* Saldo Final Projetado */}
-              <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800/60 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+              <div className="pt-2 border-t border-slate-200/50  flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-600 ">
                   Saldo Final Projetado:
                 </span>
                 <span className={`text-sm font-black tabular-nums ${
@@ -643,31 +643,31 @@ export const FinancialProjectionSection: React.FC = () => {
       {/* MODO 2: TABELA DETALHADA COMPARATIVA                                  */}
       {/* --------------------------------------------------------------------- */}
       {displayMode === 'table' && (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 ">
           <table className="w-full text-xs text-left">
-            <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase font-black text-[10px]">
+            <thead className="bg-slate-50  text-slate-600  border-b border-slate-200  uppercase font-black text-[10px]">
               <tr>
                 <th className="py-3 px-3">Mês</th>
                 <th className="py-3 px-3 text-right">Saldo Inicial</th>
-                <th className="py-3 px-3 text-right text-emerald-600 dark:text-emerald-400">Rec. Confirmada</th>
-                <th className="py-3 px-3 text-right text-amber-600 dark:text-amber-400">Rec. Estimada</th>
+                <th className="py-3 px-3 text-right text-emerald-600 ">Rec. Confirmada</th>
+                <th className="py-3 px-3 text-right text-amber-600 ">Rec. Estimada</th>
                 <th className="py-3 px-3 text-right">Essenciais</th>
                 <th className="py-3 px-3 text-right">Estilo de Vida</th>
-                <th className="py-3 px-3 text-right text-rose-600 dark:text-rose-400">Dívidas</th>
+                <th className="py-3 px-3 text-right text-rose-600 ">Dívidas</th>
                 <th className="py-3 px-3 text-right">Invest. Prof.</th>
                 <th className="py-3 px-3 text-right">Resultado</th>
                 <th className="py-3 px-3 text-right">Saldo Final</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <tbody className="divide-y divide-slate-100 ">
               {projectionData.rows.map(row => (
                 <tr 
                   key={row.monthStr}
-                  className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition ${
+                  className={`hover:bg-slate-50/50  transition ${
                     row.isNegative ? 'bg-rose-50/30 dark:bg-rose-950/20' : ''
                   }`}
                 >
-                  <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  <td className="py-2.5 px-3 font-bold text-slate-800  whitespace-nowrap">
                     {row.monthLabel}
                     {row.isCurrentMonth && (
                       <span className="ml-1.5 text-[9px] px-1 py-0.2 rounded bg-indigo-500/10 text-indigo-600">
@@ -675,25 +675,25 @@ export const FinancialProjectionSection: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-medium text-slate-500 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-medium text-slate-600 tabular-nums">
                     {formatBRL(row.initialBalance)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-600  tabular-nums">
                     {formatBRL(row.confirmedIncomes)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-medium text-amber-600 dark:text-amber-400 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-medium text-amber-600  tabular-nums">
                     {row.estimatedIncomes > 0 ? formatBRL(row.estimatedIncomes) : '—'}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-medium text-slate-700  tabular-nums">
                     {formatBRL(row.essentialExpenses)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-medium text-slate-500 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-medium text-slate-600 tabular-nums">
                     {row.lifestyleExpenses > 0 ? formatBRL(row.lifestyleExpenses) : '—'}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-bold text-rose-600  tabular-nums">
                     {row.debtInstallments > 0 ? formatBRL(row.debtInstallments) : '—'}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-medium text-indigo-600 dark:text-indigo-400 tabular-nums">
+                  <td className="py-2.5 px-3 text-right font-medium text-indigo-600  tabular-nums">
                     {row.professionalInvestments > 0 ? formatBRL(row.professionalInvestments) : '—'}
                   </td>
                   <td className={`py-2.5 px-3 text-right font-black tabular-nums ${
@@ -714,9 +714,9 @@ export const FinancialProjectionSection: React.FC = () => {
       )}
 
       {/* RODA-PÉ METODOLÓGICO */}
-      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
+      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-600 border-t border-slate-100 ">
         <div className="flex items-center space-x-1.5">
-          <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
           <span>
             Receitas estimadas não foram incorporadas ao saldo projetado garantido. Transferências entre contas e aportes foram desconsiderados.
           </span>

@@ -333,26 +333,26 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fade-in max-w-full overflow-x-hidden">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto">
+      <div className="bg-white  border border-slate-200  rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden my-auto">
         
         {/* CABEÇALHO DO MODAL */}
-        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="p-4 sm:p-6 border-b border-slate-100  flex items-center justify-between shrink-0 bg-slate-50/50 ">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
               <UploadCloud size={22} strokeWidth={2.5} />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 ">
                   Conciliação Inteligente & Vínculo com Shows
                 </span>
                 {step === 'staging' && (
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-50  text-indigo-700  border border-indigo-200 ">
                     {fileName} ({fileSize})
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base sm:text-lg font-black text-slate-900  tracking-tight">
                 Importação de Extrato Bancário (.OFX / .CSV)
               </h2>
             </div>
@@ -360,7 +360,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-2 rounded-xl text-slate-600 hover:text-slate-700  hover:bg-slate-100  transition"
             title="Fechar"
           >
             <X size={20} />
@@ -375,12 +375,12 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
             <div className="space-y-6 max-w-2xl mx-auto py-4">
               
               {/* Seleção de Conta Bancária Padrão */}
-              <div className="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-indigo-50/50  border border-indigo-100  flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 block">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700  block">
                     Conta Bancária de Destino
                   </label>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-slate-600 ">
                     Selecione qual conta receberá os lançamentos por padrão
                   </p>
                 </div>
@@ -388,7 +388,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                 <select
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-white  border border-slate-200  text-xs font-bold text-slate-900  outline-none focus:border-indigo-500 shadow-xs"
                 >
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>
@@ -419,24 +419,24 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                   className="hidden"
                 />
 
-                <div className="w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-inner">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-100  text-indigo-600  flex items-center justify-center shadow-inner">
                   <UploadCloud size={32} strokeWidth={2} />
                 </div>
 
                 <div className="space-y-1">
-                  <h3 className="text-sm sm:text-base font-black text-slate-800 dark:text-white">
+                  <h3 className="text-sm sm:text-base font-black text-slate-800 ">
                     Arraste e solte seu arquivo .OFX ou .CSV aqui
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
+                  <p className="text-xs text-slate-600  max-w-md">
                     Ou clique neste quadro para selecionar no seu dispositivo. Compatível com Nubank, Itaú, Banco do Brasil, Bradesco, Santander, Inter, C6 e outros.
                   </p>
                 </div>
 
                 <div className="flex items-center space-x-2 pt-2">
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100  text-emerald-700 ">
                     Formato .OFX (Recomendado)
                   </span>
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-sky-100  text-sky-700 ">
                     Formato .CSV
                   </span>
                 </div>
@@ -444,24 +444,24 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
               {/* Mensagem de Erro */}
               {errorMessage && (
-                <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 flex items-center space-x-3 text-rose-700 dark:text-rose-300 text-xs font-bold animate-shake">
+                <div className="p-4 rounded-2xl bg-rose-50  border border-rose-200  flex items-center space-x-3 text-rose-700  text-xs font-bold animate-shake">
                   <AlertCircle size={18} className="shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {/* Guia Rápido dos Bancos */}
-              <div className="p-4 rounded-2xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+              <div className="p-4 rounded-2xl bg-slate-100/70  border border-slate-200/60  space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-600  block">
                   💡 Dica para exportar seu extrato bancário
                 </span>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-slate-600  leading-relaxed">
                   No Internet Banking ou App do seu banco, acesse a opção <strong>Extrato</strong>, selecione o período desejado e clique em <strong>Exportar / Salvar</strong> escolhendo a opção <strong>OFX</strong> (Money/Financeiro) ou <strong>CSV</strong> (Excel). O arquivo OFX é o mais preciso, pois preserva datas, IDs e descrições exatas do Pix.
                 </p>
               </div>
 
               {isLoading && (
-                <div className="flex items-center justify-center space-x-2 py-4 text-indigo-600 dark:text-indigo-400 text-xs font-bold">
+                <div className="flex items-center justify-center space-x-2 py-4 text-indigo-600  text-xs font-bold">
                   <RefreshCw size={18} className="animate-spin" />
                   <span>Lendo e analisando extrato...</span>
                 </div>
@@ -475,30 +475,30 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
               
               {/* BARRA DE AVISOS E ESTATÍSTICAS */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Itens no Arquivo</span>
-                  <p className="text-base font-black text-slate-900 dark:text-white mt-0.5">
-                    {stagingList.length} <span className="text-[10px] font-medium text-slate-500">encontrados</span>
+                <div className="p-3 rounded-2xl bg-slate-100  border border-slate-200 ">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">Itens no Arquivo</span>
+                  <p className="text-base font-black text-slate-900  mt-0.5">
+                    {stagingList.length} <span className="text-[10px] font-medium text-slate-600">encontrados</span>
                   </p>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">Selecionados p/ Importar</span>
-                  <p className="text-base font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+                <div className="p-3 rounded-2xl bg-indigo-50  border border-indigo-100 ">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600  block">Selecionados p/ Importar</span>
+                  <p className="text-base font-black text-indigo-600  mt-0.5">
                     {selectedItems.length} <span className="text-[10px] font-medium opacity-80">de {stagingList.length}</span>
                   </p>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">Total Entradas</span>
-                  <p className="text-base font-black text-emerald-600 dark:text-emerald-400 tabular-nums mt-0.5">
+                <div className="p-3 rounded-2xl bg-emerald-50  border border-emerald-100 ">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600  block">Total Entradas</span>
+                  <p className="text-base font-black text-emerald-600  tabular-nums mt-0.5">
                     {formatCurrency(stats.incomeTotal)}
                   </p>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 block">Total Saídas</span>
-                  <p className="text-base font-black text-rose-600 dark:text-rose-400 tabular-nums mt-0.5">
+                <div className="p-3 rounded-2xl bg-rose-50  border border-rose-200 ">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600  block">Total Saídas</span>
+                  <p className="text-base font-black text-rose-600  tabular-nums mt-0.5">
                     {formatCurrency(stats.expenseTotal)}
                   </p>
                 </div>
@@ -506,16 +506,16 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
               {/* AVISO DE DUPLICATAS DETECTADAS */}
               {duplicateCount > 0 && (
-                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 flex items-center justify-between text-xs text-amber-800 dark:text-amber-300">
+                <div className="p-3 rounded-2xl bg-amber-50  border border-amber-200  flex items-center justify-between text-xs text-amber-800 ">
                   <div className="flex items-center space-x-2">
-                    <AlertTriangle size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                    <AlertTriangle size={16} className="shrink-0 text-amber-600 " />
                     <span>
                       <strong>{duplicateCount} {duplicateCount === 1 ? 'duplicata identificada' : 'duplicatas identificadas'}</strong> já existentes no seu extrato foram desmarcadas automaticamente para evitar repetição.
                     </span>
                   </div>
                   <button
                     onClick={() => setStagingFilter('duplicates')}
-                    className="text-[10px] font-black uppercase tracking-wider underline hover:text-amber-950 dark:hover:text-white shrink-0 ml-2"
+                    className="text-[10px] font-black uppercase tracking-wider underline hover:text-amber-950  shrink-0 ml-2"
                   >
                     Ver Duplicatas
                   </button>
@@ -523,32 +523,32 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
               )}
 
               {/* BARRA DE AÇÕES EM LOTE */}
-              <div className="p-3.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="p-3.5 bg-slate-100/90  rounded-2xl border border-slate-200  space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={toggleSelectAll}
-                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition shadow-xs"
+                      className="px-3 py-1.5 rounded-xl bg-white  border border-slate-200  text-xs font-bold text-slate-700  hover:bg-slate-50 transition shadow-xs"
                     >
                       {stagingList.every(i => i.selected) ? 'Desmarcar Todos' : 'Selecionar Todos'}
                     </button>
-                    <span className="text-[11px] text-slate-500 font-medium">
+                    <span className="text-[11px] text-slate-600 font-medium">
                       ({selectedItems.length} selecionados)
                     </span>
                   </div>
 
                   {/* Ações em lote aplicáveis aos selecionados */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 mr-1">
                       Aplicar nos Marcados:
                     </span>
 
                     {/* Módulo em Lote */}
-                    <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center space-x-1 bg-white  p-0.5 rounded-xl border border-slate-200 ">
                       <button
                         type="button"
                         onClick={() => applyBatchScope('PERSONAL')}
-                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 flex items-center space-x-1 transition"
+                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600  hover:bg-indigo-50  hover:text-indigo-600 flex items-center space-x-1 transition"
                         title="Definir Módulo Pessoal para os itens selecionados"
                       >
                         <User size={11} />
@@ -557,7 +557,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       <button
                         type="button"
                         onClick={() => applyBatchScope('BUSINESS')}
-                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 flex items-center space-x-1 transition"
+                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600  hover:bg-purple-50  hover:text-purple-600 flex items-center space-x-1 transition"
                         title="Definir Módulo Músico / Empresa para os itens selecionados"
                       >
                         <Music size={11} />
@@ -569,7 +569,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     <select
                       value={batchAccountId}
                       onChange={(e) => applyBatchAccount(e.target.value)}
-                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 outline-none shadow-xs"
+                      className="px-2.5 py-1 rounded-xl bg-white  border border-slate-200  text-[11px] font-bold text-slate-700  outline-none shadow-xs"
                       title="Definir Conta Bancária para os itens selecionados"
                     >
                       <option value="">Definir Conta...</option>
@@ -582,7 +582,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     <select
                       value={batchCategoryId}
                       onChange={(e) => applyBatchCategory(e.target.value)}
-                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 outline-none shadow-xs max-w-[130px] truncate"
+                      className="px-2.5 py-1 rounded-xl bg-white  border border-slate-200  text-[11px] font-bold text-slate-700  outline-none shadow-xs max-w-[130px] truncate"
                       title="Definir Categoria para os itens selecionados"
                     >
                       <option value="">Definir Categoria...</option>
@@ -595,7 +595,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     <select
                       value={batchShowId}
                       onChange={(e) => applyBatchShow(e.target.value)}
-                      className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[11px] font-bold text-purple-900 dark:text-purple-200 outline-none shadow-xs max-w-[140px] truncate"
+                      className="px-2.5 py-1 rounded-xl bg-purple-50  border border-purple-200  text-[11px] font-bold text-purple-900  outline-none shadow-xs max-w-[140px] truncate"
                       title="Vincular Show em lote para receitas marcadas"
                     >
                       <option value="">Vincular Show...</option>
@@ -609,7 +609,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                 </div>
 
                 {/* Filtros da Visualização e Busca */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-200/60 ">
                   <div className="flex items-center space-x-1 overflow-x-auto no-scrollbar">
                     {[
                       { id: 'all', label: `Todos (${stagingList.length})` },
@@ -633,23 +633,23 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                   </div>
 
                   <div className="relative w-full sm:w-56">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600" size={13} />
                     <input
                       type="text"
                       placeholder="Filtrar por texto ou valor..."
                       value={stagingSearch}
                       onChange={(e) => setStagingSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white outline-none focus:border-indigo-500"
+                      className="w-full pl-8 pr-3 py-1 bg-white  border border-slate-200  rounded-xl text-xs text-slate-800  outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
               </div>
 
               {/* TABELA DE PRÉ-VISUALIZAÇÃO / STAGING */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+              <div className="border border-slate-200  rounded-2xl overflow-hidden shadow-xs">
                 <div className="overflow-x-auto max-h-[46vh]">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-100/80 dark:bg-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
+                    <thead className="bg-slate-100/80  text-[10px] font-black uppercase tracking-wider text-slate-600  sticky top-0 z-10 border-b border-slate-200 ">
                       <tr>
                         <th className="p-3 w-10 text-center">
                           <input
@@ -668,10 +668,10 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                         <th className="p-3 w-10 text-center">Ações</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs font-medium bg-white dark:bg-slate-900">
+                    <tbody className="divide-y divide-slate-100  text-xs font-medium bg-white ">
                       {filteredStagingList.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="p-8 text-center text-slate-400">
+                          <td colSpan={8} className="p-8 text-center text-slate-600">
                             Nenhuma movimentação corresponde aos filtros ativos.
                           </td>
                         </tr>
@@ -706,7 +706,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                   type="date"
                                   value={item.date}
                                   onChange={(e) => updateRowField(item.tempId, 'date', e.target.value)}
-                                  className="bg-transparent border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-500 rounded px-1.5 py-0.5 text-xs text-slate-800 dark:text-slate-200 outline-none w-full"
+                                  className="bg-transparent border border-transparent hover:border-slate-200  focus:border-indigo-500 rounded px-1.5 py-0.5 text-xs text-slate-800  outline-none w-full"
                                 />
                               </td>
 
@@ -717,10 +717,10 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                     type="text"
                                     value={item.description}
                                     onChange={(e) => updateRowField(item.tempId, 'description', e.target.value)}
-                                    className="w-full bg-transparent border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-500 rounded px-1.5 py-0.5 font-bold text-slate-900 dark:text-white outline-none"
+                                    className="w-full bg-transparent border border-transparent hover:border-slate-200  focus:border-indigo-500 rounded px-1.5 py-0.5 font-bold text-slate-900  outline-none"
                                     placeholder="Nome do lançamento..."
                                   />
-                                  <div className="flex items-center space-x-1.5 px-1.5 text-[10px] text-slate-400 truncate">
+                                  <div className="flex items-center space-x-1.5 px-1.5 text-[10px] text-slate-600 truncate">
                                     <span className={`px-1 rounded text-[8px] font-black uppercase ${
                                       isIncome ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
                                     }`}>
@@ -730,7 +730,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                       Original: {item.originalDescription}
                                     </span>
                                     {item.isDuplicate && (
-                                      <span className="text-amber-600 dark:text-amber-400 font-bold shrink-0" title={item.duplicateReason}>
+                                      <span className="text-amber-600  font-bold shrink-0" title={item.duplicateReason}>
                                         ⚠️ Duplicata
                                       </span>
                                     )}
@@ -738,8 +738,8 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
                                   {/* SELETOR DE VÍNCULO COM O SHOW (SE MÚSICO E RECEITA/ENTRADA) */}
                                   {isIncome && isMusician && (
-                                    <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center space-x-1.5">
-                                      <span className="text-[9px] font-black uppercase text-purple-600 dark:text-purple-400 flex items-center shrink-0">
+                                    <div className="mt-1 pt-1 border-t border-slate-100  flex items-center space-x-1.5">
+                                      <span className="text-[9px] font-black uppercase text-purple-600  flex items-center shrink-0">
                                         <Music size={10} className="mr-0.5" /> Show:
                                       </span>
                                       <select
@@ -755,7 +755,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                             }
                                           }
                                         }}
-                                        className="bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/80 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-purple-900 dark:text-purple-200 outline-none focus:border-purple-500 w-full truncate"
+                                        className="bg-purple-50  border border-purple-200  rounded-md px-1.5 py-0.5 text-[10px] font-bold text-purple-900  outline-none focus:border-purple-500 w-full truncate"
                                       >
                                         <option value="">Sem vínculo / Receita avulsa</option>
                                         <option value="__NEW_SHOW__">➕ Criar Novo Show...</option>
@@ -776,7 +776,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 <select
                                   value={item.categoryId}
                                   onChange={(e) => updateRowField(item.tempId, 'categoryId', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 truncate"
+                                  className="w-full bg-slate-50  border border-slate-200  rounded-lg px-2 py-1 text-[11px] font-medium text-slate-800  outline-none focus:border-indigo-500 truncate"
                                 >
                                   {categories.map(cat => (
                                     <option key={cat.id} value={cat.id}>
@@ -788,7 +788,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
                               {/* Módulo / Conta Pertencente */}
                               <td className="p-3">
-                                <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center space-x-1 bg-slate-100  p-0.5 rounded-lg border border-slate-200 ">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -824,7 +824,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 <select
                                   value={item.accountId}
                                   onChange={(e) => updateRowField(item.tempId, 'accountId', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 truncate"
+                                  className="w-full bg-slate-50  border border-slate-200  rounded-lg px-2 py-1 text-[11px] font-medium text-slate-800  outline-none focus:border-indigo-500 truncate"
                                 >
                                   {accounts.map(acc => (
                                     <option key={acc.id} value={acc.id}>{acc.name}</option>
@@ -843,7 +843,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                               <td className="p-3 text-center">
                                 <button
                                   onClick={() => removeRow(item.tempId)}
-                                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                                  className="p-1 rounded text-slate-600 hover:text-rose-600 hover:bg-rose-50  transition"
                                   title="Remover deste lote"
                                 >
                                   <Trash2 size={13} />
@@ -864,14 +864,14 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
           {/* PASSO 3: SUCESSO */}
           {step === 'success' && (
             <div className="py-12 text-center space-y-4 max-w-md mx-auto">
-              <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto shadow-inner">
+              <div className="w-20 h-20 rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 size={42} strokeWidth={2.5} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                <h3 className="text-xl font-black text-slate-900 ">
                   Importação Concluída com Sucesso!
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-600 ">
                   Foram importados <strong>{importedCount} lançamentos</strong> para o seu extrato financeiro. Se você vinculou receitas a shows, os cachês foram atualizados dinamicamente sem gerar duplicidades no caixa.
                 </p>
               </div>
@@ -879,7 +879,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
               <div className="pt-4 flex items-center justify-center space-x-3">
                 <button
                   onClick={handleReset}
-                  className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition"
+                  className="px-4 py-2.5 rounded-2xl bg-slate-100  text-slate-700  font-bold text-xs uppercase tracking-wider hover:bg-slate-200 transition"
                 >
                   Importar Outro Arquivo
                 </button>
@@ -897,10 +897,10 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
         {/* RODAPÉ DO MODAL (BARRAS DE AÇÃO) */}
         {step === 'staging' && (
-          <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="p-4 sm:p-5 border-t border-slate-100  flex items-center justify-between shrink-0 bg-slate-50/50 ">
             <button
               onClick={handleReset}
-              className="px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition"
+              className="px-4 py-2.5 rounded-2xl border border-slate-200  text-slate-600  font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition"
             >
               Cancelar / Novo Arquivo
             </button>
@@ -908,7 +908,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
             <button
               onClick={handleConfirmImport}
               disabled={selectedItems.length === 0}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/25 active:scale-95 transition disabled:opacity-40 flex items-center space-x-2"
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-white via-white to-white hover:from-indigo-700 hover:to-purple-700 text-slate-900 font-black text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/25 active:scale-95 transition disabled:opacity-40 flex items-center space-x-2"
             >
               <Check size={16} strokeWidth={3} />
               <span>Confirmar e Importar {selectedItems.length} Lançamentos</span>
@@ -921,20 +921,20 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
       {/* MODAL SIMPLES DE CRIAÇÃO RÁPIDA DE SHOW AO VINCULAR */}
       {quickShowTargetItem && (
         <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 w-full max-w-md shadow-2xl space-y-4 animate-scale-in">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white  rounded-3xl p-6 border border-slate-200  w-full max-w-md shadow-2xl space-y-4 animate-scale-in">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 ">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-600  flex items-center justify-center">
                   <Music size={16} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white">Criar Novo Show & Vincular</h3>
-                  <p className="text-[10px] text-slate-400">Associa a receita de {formatCurrency(quickShowTargetItem.amount)} imediatamente</p>
+                  <h3 className="text-sm font-black text-slate-900 ">Criar Novo Show & Vincular</h3>
+                  <p className="text-[10px] text-slate-600">Associa a receita de {formatCurrency(quickShowTargetItem.amount)} imediatamente</p>
                 </div>
               </div>
               <button 
                 onClick={() => setQuickShowTargetItem(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+                className="p-1 rounded-lg text-slate-600 hover:text-slate-600"
               >
                 <X size={18} />
               </button>
@@ -942,7 +942,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
             <form onSubmit={handleSaveQuickShow} className="space-y-3.5">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-600 mb-1">
                   Nome do Show / Contratante
                 </label>
                 <input
@@ -951,13 +951,13 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                   value={quickShowContractor}
                   onChange={e => setQuickShowContractor(e.target.value)}
                   placeholder="Ex: Show Aniversário Marina"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2 bg-slate-50  border border-slate-200  rounded-xl text-xs font-bold text-slate-900  outline-none focus:border-purple-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-600 mb-1">
                     Data do Show
                   </label>
                   <input
@@ -965,12 +965,12 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     required
                     value={quickShowDate}
                     onChange={e => setQuickShowDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                    className="w-full px-3 py-2 bg-slate-50  border border-slate-200  rounded-xl text-xs font-bold text-slate-900  outline-none focus:border-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-600 mb-1">
                     Cachê Total (R$)
                   </label>
                   <input
@@ -979,14 +979,14 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     required
                     value={quickShowTotalCache}
                     onChange={e => setQuickShowTotalCache(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                    className="w-full px-3 py-2 bg-slate-50  border border-slate-200  rounded-xl text-xs font-black text-slate-900  outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-600 mb-1">
                     Local / Casa de Evento
                   </label>
                   <input
@@ -994,12 +994,12 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     value={quickShowLocation}
                     onChange={e => setQuickShowLocation(e.target.value)}
                     placeholder="Ex: Espaço Gardens"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                    className="w-full px-3 py-2 bg-slate-50  border border-slate-200  rounded-xl text-xs font-medium text-slate-900  outline-none focus:border-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-600 mb-1">
                     Cidade
                   </label>
                   <input
@@ -1007,7 +1007,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                     value={quickShowCity}
                     onChange={e => setQuickShowCity(e.target.value)}
                     placeholder="Ex: São Paulo"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white outline-none focus:border-purple-500"
+                    className="w-full px-3 py-2 bg-slate-50  border border-slate-200  rounded-xl text-xs font-medium text-slate-900  outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
@@ -1016,7 +1016,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setQuickShowTargetItem(null)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200  text-xs font-bold text-slate-600  hover:bg-slate-100"
                 >
                   Cancelar
                 </button>

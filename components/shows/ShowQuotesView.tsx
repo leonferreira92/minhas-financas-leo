@@ -56,10 +56,10 @@ export const ShowQuotesView: React.FC<Props> = ({
       {/* Top Banner */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-600 dark:text-sky-400 block">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-600  block">
             Oportunidades em Negociação
           </span>
-          <h3 className="text-base font-black text-slate-900 dark:text-white">
+          <h3 className="text-base font-black text-slate-900 ">
             {quotes.length} {quotes.length === 1 ? 'Orçamento Pendente' : 'Orçamentos Pendentes'}
           </h3>
         </div>
@@ -74,12 +74,12 @@ export const ShowQuotesView: React.FC<Props> = ({
       </div>
 
       {quotes.length === 0 ? (
-        <div className="p-8 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-center space-y-3 shadow-xs">
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 flex items-center justify-center mx-auto">
+        <div className="p-8 rounded-[2rem] bg-white  border border-slate-200/80  text-center space-y-3 shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-sky-50  text-sky-600 flex items-center justify-center mx-auto">
             <FileText size={24} />
           </div>
-          <h4 className="text-sm font-black text-slate-800 dark:text-white">Nenhum orçamento pendente</h4>
-          <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto">
+          <h4 className="text-sm font-black text-slate-800 ">Nenhum orçamento pendente</h4>
+          <p className="text-xs text-slate-600 font-medium max-w-xs mx-auto">
             Cadastre propostas e orçamentos para acompanhar oportunidades antes de fechar a data oficial.
           </p>
           <button
@@ -100,7 +100,7 @@ export const ShowQuotesView: React.FC<Props> = ({
               <div
                 key={show.id}
                 onClick={() => onSelectShow(show)}
-                className="p-4 rounded-[1.8rem] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700/60 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
+                className="p-4 rounded-[1.8rem] bg-white  border border-slate-200/80  hover:border-sky-300  transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
               >
                 {/* Header: Status + Tag Cidade/UF + Cachê Proposto */}
                 <div className="flex items-center justify-between gap-2">
@@ -108,43 +108,43 @@ export const ShowQuotesView: React.FC<Props> = ({
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${statusCfg.badgeClass}`}>
                       {show.status}
                     </span>
-                    <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                      <MapPin size={10} className="text-sky-500 shrink-0" />
+                    <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100  text-slate-700  border border-slate-200 ">
+                      <MapPin size={10} className="text-sky-600 shrink-0" />
                       <span>{hierarchy.cityTag}</span>
                     </span>
                   </div>
 
-                  <span className="text-base font-black text-slate-900 dark:text-white tabular-nums">
+                  <span className="text-base font-black text-slate-900  tabular-nums">
                     {formatCurrency(show.totalCache ?? show.cacheCombined ?? 0)}
                   </span>
                 </div>
 
                 {/* Hierarquia Estrita: 1. TÍTULO PRINCIPAL (Nome do Evento / Casa) + 2. SUBTÍTULO (Contratante) */}
                 <div>
-                  <h4 className="text-base font-black text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                  <h4 className="text-base font-black text-slate-900  group-hover:text-sky-600  transition-colors">
                     {hierarchy.eventTitle}
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                  <p className="text-xs text-slate-600  font-bold mt-0.5">
                     {hierarchy.contractorSubtitle}
                   </p>
                 </div>
 
                 {/* Data e Cidade */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100  text-xs text-slate-600  font-medium">
                   <div className="flex items-center space-x-1.5">
                     <Calendar size={13} className="text-sky-600 shrink-0" />
                     <span className="capitalize">{formatDateLabel(show.date)}</span>
                   </div>
 
                   <div className="flex items-center space-x-1.5">
-                    <MapPin size={13} className="text-slate-400 shrink-0" />
+                    <MapPin size={13} className="text-slate-600 shrink-0" />
                     <span className="truncate">{show.city || show.location || 'Cidade a definir'}</span>
                   </div>
                 </div>
 
                 {/* BOTÃO DE AÇÃO DIRETA: CONFIRMAR SHOW (TRANSFORMA ORÇAMENTO EM CONFIRMADO) */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 font-medium">
+                <div className="pt-2 border-t border-slate-100  flex items-center justify-between">
+                  <span className="text-[10px] text-slate-600 font-medium">
                     Proposta pronta para fechar?
                   </span>
                   

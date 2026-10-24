@@ -215,21 +215,21 @@ export const MusicianShowScreen: React.FC = () => {
       {/* ========================================================================= */}
       {/* 1. HEADER EXCLUSIVO "SOU ARTISTA" / GESTÃO DE CARREIRA                    */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-[#1c122c] via-[#16131f] to-[#121214] p-4 sm:p-6 rounded-3xl border border-purple-500/30 shadow-xl space-y-4">
+      <div className="bg-gradient-to-r from-white via-slate-50 to-slate-100 p-4 sm:p-6 rounded-3xl border border-purple-500/30 shadow-xl space-y-4">
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30 flex items-center space-x-1.5 shadow-sm">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30 flex items-center space-x-1.5 shadow-sm">
                 <Music size={11} />
                 <span>Módulo Sou Artista • Gestão de Carreira</span>
               </span>
             </div>
             
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {settings.careerProjectName || settings.musicianArtisticName || 'Leo Ferreira • Carreira Musical'}
             </h1>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-slate-600">
               Controle completo de cachês, equipe, logística, locomoção e lucratividade real.
             </p>
           </div>
@@ -238,10 +238,10 @@ export const MusicianShowScreen: React.FC = () => {
           <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap gap-y-2">
             <button
               onClick={handleExportERP}
-              className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-900/50 via-purple-800/40 to-purple-900/50 hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/40 flex items-center space-x-1.5 shadow-md shadow-purple-950/30 group"
+              className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-white via-white to-white hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/40 flex items-center space-x-1.5 shadow-md shadow-purple-950/30 group"
               title="Exportar Todos os Shows (Migração ERP) - Gera shows_migracao_leo_ferreira.json"
             >
-              <Download size={15} strokeWidth={2.5} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+              <Download size={15} strokeWidth={2.5} className="text-purple-600 group-hover:translate-y-0.5 transition-transform" />
               <span>Exportar Todos os Shows (Migração ERP)</span>
             </button>
 
@@ -256,7 +256,7 @@ export const MusicianShowScreen: React.FC = () => {
 
             <button
               onClick={() => setIsCalculatorOpen(true)}
-              className="px-3.5 py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/30 flex items-center space-x-1.5"
+              className="px-3.5 py-2.5 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/30 flex items-center space-x-1.5"
               title="Calculadora Smart Cachê 360"
             >
               <Calculator size={15} strokeWidth={2.5} />
@@ -278,7 +278,7 @@ export const MusicianShowScreen: React.FC = () => {
           <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-900/60 text-xs flex items-center justify-between">
             <div className="flex items-center space-x-2 truncate">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-              <span className="font-bold text-zinc-200 truncate">
+              <span className="font-bold text-slate-600 truncate">
                 {smartAlerts[0].title}: {smartAlerts[0].description}
               </span>
             </div>
@@ -301,7 +301,7 @@ export const MusicianShowScreen: React.FC = () => {
         ref={tabsScrollRef}
         className="overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 cursor-grab active:cursor-grabbing select-none"
       >
-        <div className="flex items-center space-x-2 border-b border-zinc-800/80 pb-2 min-w-max">
+        <div className="flex items-center space-x-2 border-b border-slate-200/80 pb-2 min-w-max">
           {careerTabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

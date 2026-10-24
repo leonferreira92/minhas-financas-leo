@@ -219,19 +219,19 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 pb-28 animate-fade-in text-white -mx-3.5 sm:mx-0">
+    <div className="space-y-5 pb-28 animate-fade-in text-slate-900 -mx-3.5 sm:mx-0">
       
       {/* ========================================================================= */}
       {/* CAMADA 1: HEADER PRINCIPAL COM ESTILO BANCO DO BRASIL (HEADER AZUL)       */}
       {/* ========================================================================= */}
-      <div className="relative bg-gradient-to-b from-[#002d6c] via-[#003882] to-[#09090b] px-4 pt-3 pb-6 rounded-b-[2.5rem] shadow-2xl overflow-hidden border-b border-blue-900/40">
+      <div className="relative bg-gradient-to-b from-[#002d6c] via-[#003882] to-[#001838] px-4 pt-3 pb-6 rounded-b-[2.5rem] shadow-2xl overflow-hidden border-b border-blue-900/40">
         
         {/* Barra Superior: Saudação, Notificações e Perfil */}
         <div className="flex items-center justify-between pt-1 mb-5">
           <div className="flex items-center space-x-3">
             <div 
               onClick={() => navigate('/mais')}
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#fcca00] to-amber-300 p-0.5 shadow-md cursor-pointer active:scale-95 transition"
+              className="w-10 h-10 rounded-full bg-gradient-to-tr from-white via-white to-white p-0.5 shadow-md cursor-pointer active:scale-95 transition"
             >
               <div className="w-full h-full rounded-full bg-[#002d6c] flex items-center justify-center text-[#fcca00] font-black text-sm">
                 {userName.charAt(0).toUpperCase()}
@@ -250,7 +250,7 @@ export const Dashboard: React.FC = () => {
             {/* Botão de Ocultar/Revelar Valores */}
             <button
               onClick={() => toggleBlur()}
-              className="p-2.5 rounded-2xl bg-blue-950/60 border border-blue-500/30 text-blue-200 hover:text-white transition active:scale-95"
+              className="p-2.5 rounded-2xl bg-blue-950/60 border border-blue-500/30 text-blue-200 hover:text-slate-900 transition active:scale-95"
               title={isBlurred ? "Exibir Valores" : "Ocultar Valores"}
             >
               {isBlurred ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -259,7 +259,7 @@ export const Dashboard: React.FC = () => {
             {/* Central de Notificações */}
             <button
               onClick={() => navigate('/mais?tab=alerts')}
-              className="p-2.5 rounded-2xl bg-blue-950/60 border border-blue-500/30 text-blue-200 hover:text-white transition active:scale-95 relative"
+              className="p-2.5 rounded-2xl bg-blue-950/60 border border-blue-500/30 text-blue-200 hover:text-slate-900 transition active:scale-95 relative"
               title="Notificações"
             >
               <Bell size={16} />
@@ -309,7 +309,7 @@ export const Dashboard: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 mt-4 pt-3.5 border-t border-blue-700/40">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleOpenAddExpense(); }}
-                  className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-black text-xs transition active:scale-95 flex items-center justify-center space-x-1"
+                  className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-700 border border-rose-500/30 font-black text-xs transition active:scale-95 flex items-center justify-center space-x-1"
                 >
                   <Plus size={14} />
                   <span>Nova Despesa</span>
@@ -317,7 +317,7 @@ export const Dashboard: React.FC = () => {
 
                 <button
                   onClick={(e) => { e.stopPropagation(); handleOpenAddIncome(); }}
-                  className="py-2 px-3 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-zinc-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
+                  className="py-2 px-3 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-blue-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
                 >
                   <Plus size={14} />
                   <span>Nova Receita</span>
@@ -348,14 +348,14 @@ export const Dashboard: React.FC = () => {
                 <h2 className="text-3xl font-black text-[#fcca00] tracking-tight">
                   {formatCurrency(musicCash)}
                 </h2>
-                <div className="flex items-center space-x-2 text-[10px] text-zinc-300 mt-1 font-medium">
+                <div className="flex items-center space-x-2 text-[10px] text-slate-600 mt-1 font-medium">
                   <span>A receber no mês:</span>
-                  <span className="font-bold text-emerald-400">+{formatCurrency(monthMusicReceivables)}</span>
+                  <span className="font-bold text-emerald-600">+{formatCurrency(monthMusicReceivables)}</span>
                 </div>
               </div>
 
               {/* Botões de Ação Rápida */}
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-zinc-800">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-slate-200">
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/shows'); }}
                   className="py-2 px-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
@@ -367,7 +367,7 @@ export const Dashboard: React.FC = () => {
 
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsNewShowModalOpen(true); }}
-                  className="py-2 px-2 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-zinc-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
+                  className="py-2 px-2 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-blue-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
                 >
                   <Plus size={13} />
                   <span>Novo Show</span>
@@ -375,7 +375,7 @@ export const Dashboard: React.FC = () => {
 
                 <button
                   onClick={(e) => { e.stopPropagation(); handleOpenAddMusicExpense(); }}
-                  className="py-2 px-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
+                  className="py-2 px-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-300 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
                 >
                   <Plus size={13} />
                   <span>Despesa</span>
@@ -394,21 +394,21 @@ export const Dashboard: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider font-black text-rose-200 flex items-center gap-1.5">
-                  <CreditCard size={14} className="text-rose-400" />
+                  <CreditCard size={14} className="text-rose-600" />
                   Visão Passivos & Dívidas
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-700 border border-rose-500/30">
                   {debtsMonthMetrics.activeDebtsCount} ativas
                 </span>
               </div>
 
               <div className="mt-3">
-                <h2 className="text-3xl font-black text-rose-400 tracking-tight">
+                <h2 className="text-3xl font-black text-rose-600 tracking-tight">
                   {formatCurrency(debtsMonthMetrics.totalRemainingDebts)}
                 </h2>
-                <div className="flex items-center space-x-2 text-[10px] text-zinc-300 mt-1 font-medium">
+                <div className="flex items-center space-x-2 text-[10px] text-slate-600 mt-1 font-medium">
                   <span>Parcelas do mês a pagar:</span>
-                  <span className="font-bold text-amber-300">{formatCurrency(debtsMonthMetrics.monthDebtPending)}</span>
+                  <span className="font-bold text-amber-700">{formatCurrency(debtsMonthMetrics.monthDebtPending)}</span>
                 </div>
               </div>
 
@@ -416,7 +416,7 @@ export const Dashboard: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 mt-4 pt-3.5 border-t border-rose-900/30">
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate('/dividas'); }}
-                  className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-black text-xs transition active:scale-95 flex items-center justify-center space-x-1"
+                  className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-700 border border-rose-500/30 font-black text-xs transition active:scale-95 flex items-center justify-center space-x-1"
                 >
                   <ShieldAlert size={14} />
                   <span>Gerenciar Dívidas</span>
@@ -424,7 +424,7 @@ export const Dashboard: React.FC = () => {
 
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsBankImportOpen(true); }}
-                  className="py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
+                  className="py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-300 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
                 >
                   <UploadCloud size={14} />
                   <span>Conciliar Extrato</span>
@@ -456,22 +456,22 @@ export const Dashboard: React.FC = () => {
         {/* ========================================================================= */}
         <div className="space-y-2.5">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-600">
               Serviços Rápidos
             </h3>
-            <span className="text-[10px] text-zinc-400 font-medium">Funções frequentes</span>
+            <span className="text-[10px] text-slate-600 font-medium">Funções frequentes</span>
           </div>
 
           <div className="grid grid-cols-4 gap-2.5">
             {/* 1. Extrato */}
             <button
               onClick={() => navigate('/lancamentos')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 group-hover:bg-[#003882] group-hover:text-[#fcca00] flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 group-hover:bg-[#003882] group-hover:text-[#fcca00] flex items-center justify-center mb-1.5 transition">
                 <Receipt size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Extrato
               </span>
             </button>
@@ -479,12 +479,12 @@ export const Dashboard: React.FC = () => {
             {/* 2. Agenda Shows */}
             <button
               onClick={() => navigate('/shows')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-[#fcca00] group-hover:bg-amber-500 group-hover:text-zinc-950 flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-[#fcca00] group-hover:bg-amber-500 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <Music size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Agenda Shows
               </span>
             </button>
@@ -492,12 +492,12 @@ export const Dashboard: React.FC = () => {
             {/* 3. Dívidas */}
             <button
               onClick={() => navigate('/dividas')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 group-hover:bg-rose-500 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 group-hover:bg-rose-500 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <CreditCard size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Dívidas
               </span>
             </button>
@@ -505,12 +505,12 @@ export const Dashboard: React.FC = () => {
             {/* 4. Conciliação OFX/CSV */}
             <button
               onClick={() => setIsBankImportOpen(true)}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <UploadCloud size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Conciliação
               </span>
             </button>
@@ -518,12 +518,12 @@ export const Dashboard: React.FC = () => {
             {/* 5. Relatório IA */}
             <button
               onClick={() => navigate('/relatorios?tab=ai')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <Sparkles size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Relatório IA
               </span>
             </button>
@@ -531,12 +531,12 @@ export const Dashboard: React.FC = () => {
             {/* 6. Categorias */}
             <button
               onClick={() => navigate('/mais?tab=categories')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <FolderTree size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Categorias
               </span>
             </button>
@@ -544,12 +544,12 @@ export const Dashboard: React.FC = () => {
             {/* 7. Gráficos/Gastos */}
             <button
               onClick={() => navigate('/gastos')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 group-hover:bg-sky-600 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 group-hover:bg-sky-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <BarChart3 size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Meus Gastos
               </span>
             </button>
@@ -557,12 +557,12 @@ export const Dashboard: React.FC = () => {
             {/* 8. Saldo das Contas */}
             <button
               onClick={() => navigate('/contas')}
-              className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
+              className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 group-hover:bg-teal-600 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-700 group-hover:bg-teal-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
                 <Landmark size={18} />
               </div>
-              <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
+              <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
                 Contas
               </span>
             </button>
@@ -575,12 +575,12 @@ export const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           
           {/* PAINEL "SALDO DAS CONTAS" (RESUMO CONSOLIDADO) */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#141416] border border-zinc-800 shadow-sm space-y-3 flex flex-col justify-between">
+          <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Landmark size={16} className="text-[#003882] dark:text-[#fcca00]" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  <Landmark size={16} className="text-[#003882] " />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                     Saldo das Contas
                   </h3>
                 </div>
@@ -601,7 +601,7 @@ export const Dashboard: React.FC = () => {
                     <div 
                       key={acc.id}
                       onClick={() => setSelectedAccountForEdit(acc)}
-                      className="py-2.5 flex items-center justify-between hover:bg-zinc-800/40 px-1 rounded-xl transition cursor-pointer group"
+                      className="py-2.5 flex items-center justify-between hover:bg-slate-50/40 px-1 rounded-xl transition cursor-pointer group"
                     >
                       <div className="flex items-center space-x-3 min-w-0">
                         <div 
@@ -611,16 +611,16 @@ export const Dashboard: React.FC = () => {
                           <Landmark size={15} />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate block">
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate block">
                             {acc.name}
                           </span>
-                          <span className="text-[10px] text-zinc-400 block capitalize">
+                          <span className="text-[10px] text-slate-600 block capitalize">
                             {acc.vinculo === 'MUSICO' ? 'Música' : 'Pessoal'}
                           </span>
                         </div>
                       </div>
 
-                      <span className="text-xs font-black text-white">
+                      <span className="text-xs font-black text-slate-900">
                         {formatCurrency(balance)}
                       </span>
                     </div>
@@ -630,7 +630,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <div className="pt-2 border-t border-zinc-800/60 flex items-center justify-between text-xs">
-              <span className="text-[10px] uppercase font-bold text-zinc-400">Total Consolidado:</span>
+              <span className="text-[10px] uppercase font-bold text-slate-600">Total Consolidado:</span>
               <span className="text-sm font-black text-[#fcca00]">
                 {formatCurrency(consolidatedPatrimony)}
               </span>
@@ -638,11 +638,11 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {/* PAINEL ANÁLISE DE GASTOS ("MEUS GASTOS / GRÁFICOS") */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#141416] border border-zinc-800 shadow-sm space-y-4">
+          <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <BarChart3 size={16} className="text-[#fcca00]" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                   Meus Gastos do Mês
                 </h3>
               </div>
@@ -657,14 +657,14 @@ export const Dashboard: React.FC = () => {
 
             <div className="flex items-baseline justify-between">
               <div>
-                <span className="text-2xl font-black text-white tracking-tight">
+                <span className="text-2xl font-black text-slate-900 tracking-tight">
                   {formatCurrency(topCategories.totalExpense)}
                 </span>
-                <p className="text-[10px] text-zinc-400 mt-0.5">Total gasto em {new Date().toLocaleDateString('pt-BR', { month: 'long' })}</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">Total gasto em {new Date().toLocaleDateString('pt-BR', { month: 'long' })}</p>
               </div>
               <button
                 onClick={() => navigate('/gastos')}
-                className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold hover:bg-blue-500/20 transition"
+                className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-[10px] font-bold hover:bg-blue-500/20 transition"
               >
                 Gráficos completos
               </button>
@@ -672,27 +672,27 @@ export const Dashboard: React.FC = () => {
 
             {/* Mini Gráfico de Barras Verticais */}
             {topCategories.list.length === 0 ? (
-              <div className="py-6 text-center text-zinc-400 text-xs">
+              <div className="py-6 text-center text-slate-600 text-xs">
                 Nenhuma despesa registrada neste mês.
               </div>
             ) : (
               <div className="space-y-3 pt-1">
-                <div className="h-28 flex items-end justify-between gap-2 px-1 border-b border-zinc-800 pb-2">
+                <div className="h-28 flex items-end justify-between gap-2 px-1 border-b border-slate-200 pb-2">
                   {topCategories.list.map(item => {
                     const maxAmt = topCategories.list[0]?.amount || 1;
                     const heightPct = Math.max(15, Math.round((item.amount / maxAmt) * 100));
                     return (
                       <div key={item.cat.id} className="flex-1 flex flex-col items-center h-full justify-end group">
-                        <span className="text-[9px] font-bold text-zinc-400 mb-1">
+                        <span className="text-[9px] font-bold text-slate-600 mb-1">
                           {item.percentage.toFixed(0)}%
                         </span>
-                        <div className="w-full max-w-[28px] bg-zinc-800 rounded-t-md overflow-hidden flex flex-col justify-end" style={{ height: `${heightPct}%` }}>
+                        <div className="w-full max-w-[28px] bg-slate-50 rounded-t-md overflow-hidden flex flex-col justify-end" style={{ height: `${heightPct}%` }}>
                           <div 
                             className="w-full h-full rounded-t-md transition"
                             style={{ backgroundColor: item.cat.color || '#3b82f6' }}
                           />
                         </div>
-                        <span className="text-[9px] font-bold text-zinc-400 mt-1 truncate w-full text-center">
+                        <span className="text-[9px] font-bold text-slate-600 mt-1 truncate w-full text-center">
                           {item.cat.name.slice(0, 5)}
                         </span>
                       </div>
@@ -709,11 +709,11 @@ export const Dashboard: React.FC = () => {
                           className="w-2.5 h-2.5 rounded-full shrink-0"
                           style={{ backgroundColor: item.cat.color || '#3b82f6' }}
                         />
-                        <span className="text-zinc-300 font-bold truncate text-[11px]">{item.cat.name}</span>
+                        <span className="text-slate-600 font-bold truncate text-[11px]">{item.cat.name}</span>
                       </div>
                       <div className="text-right shrink-0">
-                        <span className="font-black text-white text-[11px]">{formatCurrency(item.amount)}</span>
-                        <span className="text-[9px] text-zinc-400 ml-1.5">({item.percentage.toFixed(0)}%)</span>
+                        <span className="font-black text-slate-900 text-[11px]">{formatCurrency(item.amount)}</span>
+                        <span className="text-[9px] text-slate-600 ml-1.5">({item.percentage.toFixed(0)}%)</span>
                       </div>
                     </div>
                   ))}
@@ -729,7 +729,7 @@ export const Dashboard: React.FC = () => {
         {/* ========================================================================= */}
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-400">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-600">
               Atividade Recente
             </h3>
             <button
@@ -742,11 +742,11 @@ export const Dashboard: React.FC = () => {
           </div>
 
           {recentTransactions.length === 0 ? (
-            <div className="p-6 rounded-2xl bg-[#141416] border border-zinc-800 text-center text-xs text-zinc-400">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200 text-center text-xs text-slate-600">
               Nenhuma movimentação registrada recentemente.
             </div>
           ) : (
-            <div className="rounded-2xl bg-[#141416] border border-zinc-800 overflow-hidden divide-y divide-zinc-800/60 shadow-xs">
+            <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden divide-y divide-zinc-800/60 shadow-xs">
               {recentTransactions.map(t => {
                 const cat = categories.find(c => c.id === t.categoryId);
                 const Icon = getIcon(cat?.icon || 'Tag');
@@ -756,7 +756,7 @@ export const Dashboard: React.FC = () => {
                   <div
                     key={t.id}
                     onClick={() => navigate(`/lancamentos?highlightId=${t.id}`)}
-                    className="p-3.5 hover:bg-zinc-800/40 transition flex items-center justify-between cursor-pointer group"
+                    className="p-3.5 hover:bg-slate-50/40 transition flex items-center justify-between cursor-pointer group"
                   >
                     <div className="flex items-center space-x-3 min-w-0">
                       <div 
@@ -766,10 +766,10 @@ export const Dashboard: React.FC = () => {
                         <Icon size={16} />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate block">
+                        <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate block">
                           {t.description}
                         </span>
-                        <span className="text-[10px] text-zinc-400 block">
+                        <span className="text-[10px] text-slate-600 block">
                           {cat?.name || 'Geral'} · {t.date}
                         </span>
                       </div>

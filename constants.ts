@@ -1,4 +1,4 @@
-import { Category, Account, FinancialSettings, MusicCostCategory } from './types';
+import { Category, FinancialSettings, MusicCostCategory } from './types';
 import { 
   ShoppingBag, Utensils, Home, Car, HeartPulse, 
   Zap, Smartphone, Briefcase, DollarSign, Coffee,
@@ -83,13 +83,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_producao_shows', name: 'Músicos / Apoio (Equipe)', type: 'expense', color: '#a855f7', icon: 'Users', classification: 'professional', scope: 'BUSINESS' },
   { id: 'cat_marketing', name: 'Mídia / Marketing & Divulgação', type: 'expense', color: '#ec4899', icon: 'Sparkles', classification: 'professional', scope: 'BUSINESS' },
   { id: 'cat_prolabore_out', name: 'Retirada de Pró-Labore', type: 'expense', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'professional', scope: 'BUSINESS' },
-];
-
-export const DEFAULT_ACCOUNTS: Account[] = [
-  { id: 'acc_bb', name: 'Banco do Brasil', type: 'bank', color: '#f59e0b', initialBalance: 1500, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
-  { id: 'acc_mp', name: 'Mercado Pago (Shows / PJ)', type: 'bank', color: '#06b6d4', initialBalance: 3200, enabled: true, scope: 'BUSINESS', vinculo: 'MUSICO' },
-  { id: 'acc_wallet', name: 'Carteira (Dinheiro)', type: 'wallet', color: '#10b981', initialBalance: 250, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
-  { id: 'acc_savings', name: 'Reserva de Emergência', type: 'savings', color: '#8b5cf6', initialBalance: 5000, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
 ];
 
 export const ICON_MAP: Record<string, any> = {

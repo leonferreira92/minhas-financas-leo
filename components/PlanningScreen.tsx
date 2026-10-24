@@ -257,21 +257,21 @@ export const PlanningScreen = () => {
   };
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-md mx-auto">
+    <div className="pb-32 animate-fade-in text-slate-900  max-w-md mx-auto">
       
       {/* HEADER & MONTH SELECTOR */}
-      <div className="sticky top-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md z-30 pt-4 pb-3 border-b border-slate-200/50 dark:border-slate-800/50 mb-6">
+      <div className="sticky top-0 bg-slate-50/95  backdrop-blur-md z-30 pt-4 pb-3 border-b border-slate-200/50  mb-6">
         
         {/* Title + Action */}
         <div className="flex justify-between items-center mb-4 px-1">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl font-black text-slate-800  tracking-tight flex items-center gap-2">
               Planejamento
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600  border border-indigo-500/20">
                 Adaptativo
               </span>
             </h1>
-            <p className="text-[11px] font-medium text-slate-400">Orçamento focado em Renda Variável</p>
+            <p className="text-[11px] font-medium text-slate-600">Orçamento focado em Renda Variável</p>
           </div>
 
           <button 
@@ -287,27 +287,27 @@ export const PlanningScreen = () => {
         </div>
 
         {/* Month Selector Bar */}
-        <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm mb-3">
+        <div className="flex items-center justify-between bg-white  p-2 rounded-2xl border border-slate-200/80  shadow-sm mb-3">
           <button 
             onClick={handlePrevMonth} 
-            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition active:scale-90"
+            className="p-2 text-slate-600  hover:bg-slate-100  rounded-xl transition active:scale-90"
             aria-label="Mês Anterior"
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
           
           <div className="text-center">
-            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600  block">
               Mês Selecionado
             </span>
-            <span className="text-sm font-black text-slate-800 dark:text-white tracking-tight">
+            <span className="text-sm font-black text-slate-800  tracking-tight">
               {formattedMonthLabel}
             </span>
           </div>
 
           <button 
             onClick={handleNextMonth} 
-            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition active:scale-90"
+            className="p-2 text-slate-600  hover:bg-slate-100  rounded-xl transition active:scale-90"
             aria-label="Próximo Mês"
           >
             <ChevronRight size={20} strokeWidth={2.5} />
@@ -315,7 +315,7 @@ export const PlanningScreen = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex bg-slate-200/60 dark:bg-slate-900/90 p-1 rounded-2xl border border-slate-200/50 dark:border-slate-800/80">
+        <div className="flex bg-slate-200/60  p-1 rounded-2xl border border-slate-200/50 ">
           {[
             { id: 'overview', label: 'Decisão' },
             { id: 'groups', label: 'Grupos' },
@@ -341,10 +341,10 @@ export const PlanningScreen = () => {
 
       {/* BANNER EXPLICATIVO DO MODO ADAPTATIVO */}
       <div className="mb-6 px-1">
-        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-start space-x-3 text-indigo-900 dark:text-indigo-200">
-          <Info size={20} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-start space-x-3 text-indigo-900 ">
+          <Info size={20} className="text-indigo-600  flex-shrink-0 mt-0.5" />
           <p className="text-xs font-medium leading-relaxed">
-            <strong className="font-black text-indigo-700 dark:text-indigo-300">Regra de Renda Variável:</strong> O planejamento prioriza o <u className="decoration-indigo-400 underline-offset-2">dinheiro disponível hoje</u>. Entradas futuras entram na projeção, mas nunca liberam saldo para gastos antes de serem recebidas.
+            <strong className="font-black text-indigo-700 ">Regra de Renda Variável:</strong> O planejamento prioriza o <u className="decoration-indigo-400 underline-offset-2">dinheiro disponível hoje</u>. Entradas futuras entram na projeção, mas nunca liberam saldo para gastos antes de serem recebidas.
           </p>
         </div>
       </div>
@@ -357,7 +357,7 @@ export const PlanningScreen = () => {
           
           {/* OS 4 QUADROS FUNDAMENTAIS */}
           <div className="space-y-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block px-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 block px-1">
               Quadro de Liquidez & Obrigações
             </span>
 
@@ -365,54 +365,54 @@ export const PlanningScreen = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               
               {/* 1. DINHEIRO DISPONÍVEL */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
+              <div className="bg-white  rounded-2xl p-4 shadow-sm border border-slate-200/80  flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Dinheiro Disponível</span>
-                  <div className="w-7 h-7 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">Dinheiro Disponível</span>
+                  <div className="w-7 h-7 rounded-xl bg-indigo-500/10 text-indigo-600  flex items-center justify-center">
                     <Wallet size={16} strokeWidth={2.5} />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
+                  <h3 className="text-xl font-black text-slate-800  tracking-tight">
                     {formatCurrency(availableCash)}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  <p className="text-[10px] text-slate-600 font-medium mt-0.5">
                     Saldo real nas contas hoje
                   </p>
                 </div>
               </div>
 
               {/* 2. DINHEIRO COMPROMETIDO */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
+              <div className="bg-white  rounded-2xl p-4 shadow-sm border border-slate-200/80  flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-500">Comprometido</span>
-                  <div className="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">Comprometido</span>
+                  <div className="w-7 h-7 rounded-xl bg-rose-500/10 text-rose-600  flex items-center justify-center">
                     <AlertCircle size={16} strokeWidth={2.5} />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
+                  <h3 className="text-xl font-black text-slate-800  tracking-tight">
                     {formatCurrency(committedAmount)}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  <p className="text-[10px] text-slate-600 font-medium mt-0.5">
                     Despesas e dívidas pendentes
                   </p>
                 </div>
               </div>
 
               {/* 3. METAS / RESERVAS */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
+              <div className="bg-white  rounded-2xl p-4 shadow-sm border border-slate-200/80  flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-500">Reservas</span>
-                  <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">Reservas</span>
+                  <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-600  flex items-center justify-center">
                     <PiggyBank size={16} strokeWidth={2.5} />
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">
+                  <h3 className="text-xl font-black text-slate-800  tracking-tight">
                     {formatCurrency(goalsTotal)}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                  <p className="text-[10px] text-slate-600 font-medium mt-0.5">
                     Poupança e reservas
                   </p>
                 </div>
@@ -424,30 +424,30 @@ export const PlanningScreen = () => {
             <div className={`
               rounded-[2.2rem] p-6 shadow-xl relative overflow-hidden transition-all duration-300 border-2
               ${freeToSpend >= 0 
-                ? 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border-indigo-500/40' 
-                : 'bg-gradient-to-br from-rose-950 via-slate-900 to-rose-950 text-white border-rose-500/50'
+                ? 'bg-gradient-to-br from-blue-50 via-white to-slate-50 text-slate-900 border-blue-200'
+                : 'bg-gradient-to-br from-rose-50 via-white to-rose-50 text-slate-900 border-rose-200'
               }
             `}>
               <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full -mr-20 -mt-20 blur-3xl pointer-events-none" />
 
               <div className="flex items-center justify-between mb-3 relative z-10">
                 <div className="flex items-center space-x-2">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${freeToSpend >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${freeToSpend >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
                     <Sparkles size={18} strokeWidth={2.5} />
                   </div>
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-200">
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-800">
                     Principal Indicador de Decisão
                   </span>
                 </div>
 
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${freeToSpend >= 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border-rose-500/30'}`}>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${freeToSpend >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
                   {freeToSpend >= 0 ? 'Saldo Livre' : 'Déficit no Mês'}
                 </span>
               </div>
 
               <div className="relative z-10 mb-2">
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">Livre para Gastar</span>
-                <h2 className="text-4xl font-black tracking-tight text-white mt-1">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Livre para Gastar</span>
+                <h2 className="text-4xl font-black tracking-tight text-slate-900 mt-1">
                   {formatCurrency(freeToSpend)}
                 </h2>
               </div>
@@ -464,13 +464,13 @@ export const PlanningScreen = () => {
           {/* ========================================== */}
           {/* SEÇÃO: TAXA DE COBERTURA DO MÊS            */}
           {/* ========================================== */}
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-4">
+          <div className="bg-white  rounded-[2rem] p-6 shadow-sm border border-slate-200/80  space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 block">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600  block">
                   Indicador de Segurança
                 </span>
-                <h3 className="text-base font-black text-slate-800 dark:text-white">Cobertura do Mês</h3>
+                <h3 className="text-base font-black text-slate-800 ">Cobertura do Mês</h3>
               </div>
 
               <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl font-black text-xs border ${coverageData.isCovered ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
@@ -482,13 +482,13 @@ export const PlanningScreen = () => {
             {/* Barra de Progresso de Cobertura */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-black">
-                <span className="text-slate-400">Compromissos pendentes: {formatCurrency(committedAmount)}</span>
-                <span className={coverageData.isCovered ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                <span className="text-slate-600">Compromissos pendentes: {formatCurrency(committedAmount)}</span>
+                <span className={coverageData.isCovered ? 'text-emerald-600 ' : 'text-amber-600 '}>
                   {coverageData.pct}% COBERTO
                 </span>
               </div>
 
-              <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 relative">
+              <div className="h-3 bg-slate-100  rounded-full overflow-hidden p-0.5 relative">
                 <div 
                   className={`h-full rounded-full transition-all duration-700 ${coverageData.isCovered ? 'bg-emerald-500' : 'bg-amber-500'}`}
                   style={{ width: `${Math.min(100, coverageData.pct)}%` }}
@@ -496,7 +496,7 @@ export const PlanningScreen = () => {
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 font-medium leading-normal">
+            <p className="text-[11px] text-slate-600 font-medium leading-normal">
               Mostra quanto das suas contas e dívidas pendentes já está garantido pelo seu dinheiro em conta. Receitas previstas não entram no cálculo.
             </p>
           </div>
@@ -507,23 +507,23 @@ export const PlanningScreen = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-800  flex items-center gap-2">
                   Próximas Entradas
-                  <span className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-extrabold">
+                  <span className="text-xs bg-emerald-500/10 text-emerald-600  px-2 py-0.5 rounded-full font-extrabold">
                     {monthPendingIncomes.length}
                   </span>
                 </h3>
-                <p className="text-[11px] font-medium text-slate-400">Receitas previstas para o período</p>
+                <p className="text-[11px] font-medium text-slate-600">Receitas previstas para o período</p>
               </div>
 
-              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase bg-amber-500/10 px-2.5 py-1 rounded-xl">
+              <span className="text-[10px] font-black text-amber-600  uppercase bg-amber-500/10 px-2.5 py-1 rounded-xl">
                 Previsto: {formatCurrency(totalPendingIncomeMonth)}
               </span>
             </div>
 
             {monthPendingIncomes.length === 0 ? (
-              <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center">
-                <p className="text-xs font-medium text-slate-400">Nenhuma receita futura/prevista cadastrada para este mês.</p>
+              <div className="p-6 bg-white  rounded-2xl border border-slate-200/80  text-center">
+                <p className="text-xs font-medium text-slate-600">Nenhuma receita futura/prevista cadastrada para este mês.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -534,15 +534,15 @@ export const PlanningScreen = () => {
                   return (
                     <div 
                       key={t.id}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-sm hover:border-indigo-500/40 transition"
+                      className="p-4 rounded-2xl bg-white  border border-slate-200/80  flex items-center justify-between shadow-sm hover:border-indigo-500/40 transition"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xs flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600  flex items-center justify-center font-black text-xs flex-shrink-0">
                           {new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}
                         </div>
                         <div>
-                          <h4 className="text-xs font-black text-slate-800 dark:text-white line-clamp-1">{t.description}</h4>
-                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
+                          <h4 className="text-xs font-black text-slate-800  line-clamp-1">{t.description}</h4>
+                          <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1 mt-0.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             {cat?.name || 'Receita Variável'}
                           </span>
@@ -551,17 +551,17 @@ export const PlanningScreen = () => {
 
                       <div className="text-right flex items-center space-x-3">
                         <div>
-                          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 block">
+                          <span className="text-xs font-black text-emerald-600  block">
                             +{formatCurrency(Number(t.amount))}
                           </span>
-                          <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded">
                             PREVISTO
                           </span>
                         </div>
 
                         <button
                           onClick={() => handleToggleStatus(t)}
-                          className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95"
+                          className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95"
                           title="Marcar como recebido"
                         >
                           Efetivar
@@ -580,23 +580,23 @@ export const PlanningScreen = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <div>
-                <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-800  flex items-center gap-2">
                   Próximos Compromissos
-                  <span className="text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-full font-extrabold">
+                  <span className="text-xs bg-rose-500/10 text-rose-600  px-2 py-0.5 rounded-full font-extrabold">
                     {monthPendingExpenses.length}
                   </span>
                 </h3>
-                <p className="text-[11px] font-medium text-slate-400">Contas e obrigações a pagar</p>
+                <p className="text-[11px] font-medium text-slate-600">Contas e obrigações a pagar</p>
               </div>
 
-              <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase bg-rose-500/10 px-2.5 py-1 rounded-xl">
+              <span className="text-[10px] font-black text-rose-600  uppercase bg-rose-500/10 px-2.5 py-1 rounded-xl">
                 Total: {formatCurrency(committedAmount)}
               </span>
             </div>
 
             {monthPendingExpenses.length === 0 ? (
-              <div className="p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center">
-                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 font-bold">
+              <div className="p-6 bg-white  rounded-2xl border border-slate-200/80  text-center">
+                <p className="text-xs font-medium text-emerald-600  font-bold">
                   ✓ Nenhuma conta pendente para este mês!
                 </p>
               </div>
@@ -608,15 +608,15 @@ export const PlanningScreen = () => {
                   return (
                     <div 
                       key={t.id}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-sm hover:border-rose-500/40 transition"
+                      className="p-4 rounded-2xl bg-white  border border-slate-200/80  flex items-center justify-between shadow-sm hover:border-rose-500/40 transition"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black text-xs flex-shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600  flex items-center justify-center font-black text-xs flex-shrink-0">
                           {new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).toUpperCase()}
                         </div>
                         <div>
-                          <h4 className="text-xs font-black text-slate-800 dark:text-white line-clamp-1">{t.description}</h4>
-                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
+                          <h4 className="text-xs font-black text-slate-800  line-clamp-1">{t.description}</h4>
+                          <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1 mt-0.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                             {cat?.name || 'Compromisso'}
                           </span>
@@ -625,17 +625,17 @@ export const PlanningScreen = () => {
 
                       <div className="text-right flex items-center space-x-3">
                         <div>
-                          <span className="text-xs font-black text-slate-800 dark:text-white block">
+                          <span className="text-xs font-black text-slate-800  block">
                             {formatCurrency(Number(t.amount))}
                           </span>
-                          <span className="text-[9px] font-black uppercase text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-black uppercase text-rose-600 bg-rose-500/10 px-1.5 py-0.5 rounded">
                             PENDENTE
                           </span>
                         </div>
 
                         <button
                           onClick={() => handleToggleStatus(t)}
-                          className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95"
+                          className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-wider transition active:scale-95"
                           title="Marcar como pago"
                         >
                           Pagar
@@ -651,27 +651,27 @@ export const PlanningScreen = () => {
           {/* ========================================== */}
           {/* SEÇÃO: SALDO PROJETADO DO MÊS             */}
           {/* ========================================== */}
-          <div className="bg-slate-900 text-white rounded-[2rem] p-6 shadow-xl space-y-4 border border-slate-800 relative overflow-hidden">
+          <div className="bg-white text-slate-900 rounded-[2rem] p-6 shadow-xl space-y-4 border border-slate-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-2xl" />
 
             <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 block mb-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 block mb-1">
                 Visão de Futuro
               </span>
               <h3 className="text-lg font-black tracking-tight">Projeção do Mês (Saldo Projetado)</h3>
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Disponível Agora</span>
-                <span className="text-base font-black text-emerald-400 mt-1 block">
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Disponível Agora</span>
+                <span className="text-base font-black text-emerald-600 mt-1 block">
                   {formatCurrency(availableCash)}
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Projeção Final</span>
-                <span className="text-base font-black text-indigo-300 mt-1 block">
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Projeção Final</span>
+                <span className="text-base font-black text-indigo-700 mt-1 block">
                   {formatCurrency(projectedBalanceMonth)}
                 </span>
               </div>
@@ -792,10 +792,10 @@ export const PlanningScreen = () => {
       {/* ======================================================== */}
       {activeTab === 'rule' && (
         <div className="space-y-6 animate-fade-in px-1">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 text-center relative overflow-hidden">
+          <div className="bg-white  rounded-[2.2rem] p-6 shadow-sm border border-slate-200/80  text-center relative overflow-hidden">
             <Sparkles className="text-indigo-600 mx-auto mb-2" size={28} />
             <h2 className="text-xl font-black mb-1 tracking-tight">Regra 50/30/20 (Referência)</h2>
-            <p className="text-xs text-slate-400">Guia proporcional clássico para análise de distribuição</p>
+            <p className="text-xs text-slate-600">Guia proporcional clássico para análise de distribuição</p>
           </div>
 
           <div className="space-y-4">
@@ -809,12 +809,12 @@ export const PlanningScreen = () => {
       {/* MODAL CRIAÇÃO DE TETO */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-950/60 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-6 shadow-2xl animate-slide-up border border-slate-200 dark:border-slate-800">
+          <div className="bg-white  w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-6 shadow-2xl animate-slide-up border border-slate-200 ">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black tracking-tight dark:text-white">
+              <h2 className="text-xl font-black tracking-tight ">
                 Novo Teto de Gasto
               </h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition">
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-600 hover:bg-slate-100  rounded-full transition">
                 <X size={20}/>
               </button>
             </div>
@@ -829,28 +829,28 @@ export const PlanningScreen = () => {
 };
 
 const EmptyState = ({ icon: Icon, title, desc }: any) => (
-  <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-    {Icon && <Icon className="mx-auto text-slate-400 mb-2" size={32} />}
-    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">{title}</p>
-    <p className="text-xs text-slate-400 mt-1">{desc}</p>
+  <div className="text-center py-8 px-4 bg-slate-50  rounded-2xl border border-dashed border-slate-200 ">
+    {Icon && <Icon className="mx-auto text-slate-600 mb-2" size={32} />}
+    <p className="font-bold text-sm text-slate-700 ">{title}</p>
+    <p className="text-xs text-slate-600 mt-1">{desc}</p>
   </div>
 );
 
 const RuleCard = ({ label, ideal, actual, value, color, icon: Icon, desc, formatCurrency }: any) => (
-  <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-3">
+  <div className="bg-white  rounded-[2rem] p-5 shadow-sm border border-slate-200/80  space-y-3">
     <div className="flex justify-between items-center">
       <div className="flex items-center space-x-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${color}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-slate-900 shadow-sm ${color}`}>
           <Icon size={20} />
         </div>
         <div>
-          <h4 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight">{label}</h4>
-          <p className="text-[10px] text-slate-400 font-medium">{desc}</p>
+          <h4 className="font-black text-sm text-slate-800  uppercase tracking-tight">{label}</h4>
+          <p className="text-[10px] text-slate-600 font-medium">{desc}</p>
         </div>
       </div>
       <div className="text-right">
-        <span className="text-sm font-black text-slate-800 dark:text-white block">{formatCurrency(value)}</span>
-        <span className="text-[10px] font-bold text-slate-400">Ideal: {ideal}% | Real: {actual.toFixed(0)}%</span>
+        <span className="text-sm font-black text-slate-800  block">{formatCurrency(value)}</span>
+        <span className="text-[10px] font-bold text-slate-600">Ideal: {ideal}% | Real: {actual.toFixed(0)}%</span>
       </div>
     </div>
   </div>
@@ -861,27 +861,27 @@ const RuleCard = ({ label, ideal, actual, value, color, icon: Icon, desc, format
 // ==========================================
 
 const GroupCard = ({ title, icon: Icon, color, amount, pct, desc, formatCurrency }: any) => (
-  <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-3">
+  <div className="bg-white  rounded-[2rem] p-5 shadow-sm border border-slate-200/80  space-y-3">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
-        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-sm ${color.split(' ')[0]}`}>
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-slate-900 shadow-sm ${color.split(' ')[0]}`}>
           <Icon size={20} strokeWidth={2.5} />
         </div>
         <div>
-          <h4 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight">{title}</h4>
-          <p className="text-[10px] text-slate-400 font-medium">{desc}</p>
+          <h4 className="font-black text-sm text-slate-800  uppercase tracking-tight">{title}</h4>
+          <p className="text-[10px] text-slate-600 font-medium">{desc}</p>
         </div>
       </div>
 
       <div className="text-right">
-        <span className="text-sm font-black text-slate-800 dark:text-white block">{formatCurrency(amount)}</span>
-        <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+        <span className="text-sm font-black text-slate-800  block">{formatCurrency(amount)}</span>
+        <span className="text-[10px] font-extrabold text-indigo-600  bg-indigo-500/10 px-2 py-0.5 rounded-full">
           {pct.toFixed(0)}% do total
         </span>
       </div>
     </div>
 
-    <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+    <div className="h-2 bg-slate-100  rounded-full overflow-hidden">
       <div className={`h-full transition-all duration-700 ${color.split(' ')[0]}`} style={{ width: `${Math.min(100, pct)}%` }} />
     </div>
   </div>
@@ -904,15 +904,15 @@ const AdaptiveBudgetCard = ({ budget, usage, categories, onDelete, formatCurrenc
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-sm border border-slate-200/80 dark:border-slate-800 space-y-3">
+    <div className="bg-white  rounded-[2rem] p-5 shadow-sm border border-slate-200/80  space-y-3">
       <div className="flex justify-between items-start">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: cat?.color || '#6366f1' }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-900 shadow-sm" style={{ backgroundColor: cat?.color || '#6366f1' }}>
             <Icon size={20} />
           </div>
           <div>
-            <h4 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight">{cat?.name || 'Categoria'}</h4>
-            <span className="text-[10px] text-slate-400 font-bold block">
+            <h4 className="font-black text-sm text-slate-800  uppercase tracking-tight">{cat?.name || 'Categoria'}</h4>
+            <span className="text-[10px] text-slate-600 font-bold block">
               {formatCurrency(usage)} de {formatCurrency(budget.limit)}
             </span>
           </div>
@@ -923,19 +923,19 @@ const AdaptiveBudgetCard = ({ budget, usage, categories, onDelete, formatCurrenc
             {alertBadge.label}
           </span>
 
-          <button onClick={() => onDelete(budget.categoryId)} className="text-slate-300 hover:text-rose-500 transition p-1">
+          <button onClick={() => onDelete(budget.categoryId)} className="text-slate-600 hover:text-rose-600 transition p-1">
             <X size={18} />
           </button>
         </div>
       </div>
 
-      <div className="h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-slate-100  rounded-full overflow-hidden">
         <div className={`h-full transition-all duration-700 ${alertBadge.bar}`} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
 
-      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-slate-400">
+      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-slate-600">
         <span>{pct.toFixed(0)}% Usado</span>
-        <span className={remaining < 0 ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400'}>
+        <span className={remaining < 0 ? 'text-rose-600' : 'text-slate-600 '}>
           {remaining >= 0 ? `Resta: ${formatCurrency(remaining)}` : `Excedido: ${formatCurrency(Math.abs(remaining))}`}
         </span>
       </div>
@@ -950,17 +950,17 @@ const BudgetForm = ({ categories, onSave }: any) => {
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Categoria</label>
-        <select value={catId} onChange={e => setCatId(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm dark:text-white transition">
+        <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">Categoria</label>
+        <select value={catId} onChange={e => setCatId(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-sm  transition">
           <option value="">Selecione...</option>
           {categories.filter((c: any) => c.type === 'expense').map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
       <div>
-        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Teto Mensal</label>
+        <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">Teto Mensal</label>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-base">R$</span>
-          <input type="number" step="any" value={limit} onChange={e => setLimit(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-base dark:text-white transition" placeholder="0" />
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 font-black text-base">R$</span>
+          <input type="number" step="any" value={limit} onChange={e => setLimit(e.target.value)} className="w-full pl-11 pr-4 py-3.5 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-base  transition" placeholder="0" />
         </div>
       </div>
       <button onClick={() => onSave({ categoryId: catId, limit: parseCurrencyInput(limit) })} disabled={!catId || !limit} className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 disabled:opacity-30 transition-all">

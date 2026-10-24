@@ -47,10 +47,10 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-full border border-purple-100 dark:border-purple-900/50">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600  bg-purple-50  px-2.5 py-1 rounded-full border border-purple-100 ">
             Relatórios & Exportações
           </span>
-          <h1 className="text-xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
+          <h1 className="text-xl font-black text-slate-900  mt-1 tracking-tight">
             Relatórios
           </h1>
         </div>
@@ -66,7 +66,7 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
 
       {/* SUB-MENU DE ABAS ROLÁVEL */}
       <div className="overflow-x-auto no-scrollbar w-full">
-        <div className="flex space-x-2 border-b border-slate-200/80 dark:border-slate-800 pb-2 min-w-max">
+        <div className="flex space-x-2 border-b border-slate-200/80  pb-2 min-w-max">
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

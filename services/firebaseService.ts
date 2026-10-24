@@ -23,7 +23,6 @@ import {
 } from 'firebase/firestore';
 import { Account, Transaction, Show, ShowStatus, Category, Debt, Budget, AppSettings } from '../types';
 import { app, auth, db, oldDb, googleProvider, firebaseConfig } from '../src/firebase/config';
-import { BACKUP_DATA } from './backupImporter';
 
 export { app, auth, db, oldDb, googleProvider, firebaseConfig };
 
@@ -200,18 +199,21 @@ export const initializeNewUserInFirestore = async (
       lastSyncAt: Date.now()
     });
 
-    // 2. Cria 1 conta bancária padrão zerada
-    const starterAccount: Account = {
-      id: `acc_principal_${Date.now()}`,
-      name: 'Conta Corrente Principal',
-      type: 'bank',
-      color: '#3b82f6',
-      initialBalance: 0,
-      enabled: true,
-      scope: 'PERSONAL',
-      vinculo: 'PESSOAL'
-    };
-    await setDoc(doc(db, 'users', userId, 'accounts', starterAccount.id), starterAccount);
+    // Não injeta uma conta padrão em usuários que já possuem contas cadastradas.
+    const existingAccounts = await getDocs(collection(db, 'users', userId, 'accounts'));
+    if (existingAccounts.empty) {
+      const starterAccount: Account = {
+        id: `acc_principal_${Date.now()}`,
+        name: 'Conta Corrente Principal',
+        type: 'bank',
+        color: '#3b82f6',
+        initialBalance: 0,
+        enabled: true,
+        scope: 'PERSONAL',
+        vinculo: 'PESSOAL'
+      };
+      await setDoc(doc(db, 'users', userId, 'accounts', starterAccount.id), starterAccount);
+    }
 
     // 3. Salva configurações padrão
     const starterSettings: Partial<AppSettings> = {
@@ -506,6 +508,35 @@ export const deleteAccountFromFirestore = async (userId: string, accountId: stri
   }
 };
 
+export const deleteUserAccountDocumentsExcept = async (userId: string, retainedAccountIds: string[]) => {
+  const retainedIds = new Set(retainedAccountIds);
+  const databases = [db, ...(oldDb ? [oldDb] : [])];
+  let failedDatabases = 0;
+
+  for (let databaseIndex = 0; databaseIndex < databases.length; databaseIndex++) {
+    const database = databases[databaseIndex];
+    try {
+      const snapshot = await getDocs(collection(database, 'users', userId, 'accounts'));
+      const obsoleteDocs = snapshot.docs.filter(accountDoc => !retainedIds.has(accountDoc.id));
+      for (let offset = 0; offset < obsoleteDocs.length; offset += 450) {
+        const batch = writeBatch(database);
+        obsoleteDocs.slice(offset, offset + 450).forEach(accountDoc => batch.delete(accountDoc.ref));
+        await batch.commit();
+      }
+    } catch (error) {
+      failedDatabases++;
+      console.error(
+        `[Firestore] Falha ao remover contas obsoletas do usuário ${userId} no banco ${databaseIndex === 0 ? '(default)' : 'legado'}:`,
+        error
+      );
+    }
+  }
+
+  if (failedDatabases > 0) {
+    throw new Error(`A limpeza de contas falhou em ${failedDatabases} banco(s) Firestore.`);
+  }
+};
+
 export const saveTransactionToFirestore = async (userId: string, transaction: Transaction) => {
   const path = `users/${userId}/transactions/${transaction.id}`;
   try {
@@ -701,9 +732,8 @@ export const migrateAllDataToDefaultDatabase = async (
     // 1. Tenta resgatar dados do banco secundário legado se ele existir
     if (oldDb) {
       try {
-        const [txSnap, accSnap, debtSnap, showSnap, catSnap] = await Promise.allSettled([
+        const [txSnap, debtSnap, showSnap, catSnap] = await Promise.allSettled([
           getDocs(collection(oldDb, 'users', userId, 'transactions')),
-          getDocs(collection(oldDb, 'users', userId, 'accounts')),
           getDocs(collection(oldDb, 'users', userId, 'debts')),
           getDocs(collection(oldDb, 'users', userId, 'shows')),
           getDocs(collection(oldDb, 'users', userId, 'categories'))
@@ -713,13 +743,6 @@ export const migrateAllDataToDefaultDatabase = async (
           txSnap.value.forEach(docSnap => {
             const tx = { id: docSnap.id, ...docSnap.data() } as Transaction;
             transactionsMap.set(tx.id, tx);
-          });
-        }
-
-        if (accSnap.status === 'fulfilled') {
-          accSnap.value.forEach(docSnap => {
-            const acc = { id: docSnap.id, ...docSnap.data() } as Account;
-            accountsMap.set(acc.id, acc);
           });
         }
 
@@ -748,31 +771,7 @@ export const migrateAllDataToDefaultDatabase = async (
       }
     }
 
-    // 2. Mescla dados do backup oficial
-    if (BACKUP_DATA) {
-      if (BACKUP_DATA.transactions) {
-        BACKUP_DATA.transactions.forEach(tx => {
-          if (tx && tx.id) transactionsMap.set(tx.id, tx);
-        });
-      }
-      if (BACKUP_DATA.accounts) {
-        BACKUP_DATA.accounts.forEach(acc => {
-          if (acc && acc.id) accountsMap.set(acc.id, acc);
-        });
-      }
-      if (BACKUP_DATA.debts) {
-        BACKUP_DATA.debts.forEach(d => {
-          if (d && d.id) debtsMap.set(d.id, d);
-        });
-      }
-      if (BACKUP_DATA.categories) {
-        BACKUP_DATA.categories.forEach(c => {
-          if (c && c.id) categoriesMap.set(c.id, c);
-        });
-      }
-    }
-
-    // 3. Mescla dados locais (localStorage / memória)
+    // 2. Mescla dados locais (localStorage / memória)
     if (localData) {
       if (localData.transactions) {
         localData.transactions.forEach(tx => {
@@ -867,4 +866,3 @@ export const migrateAllDataToDefaultDatabase = async (
     return stats;
   }
 };
-

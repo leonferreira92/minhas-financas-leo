@@ -285,11 +285,11 @@ export const MoreHubScreen: React.FC = () => {
   // Se uma sub-tela específica estiver ativa (Configurações, Categorias, etc.)
   if (activeSubScreen) {
     return (
-      <div className="space-y-4 pb-28 animate-fade-in text-white">
+      <div className="space-y-4 pb-28 animate-fade-in text-slate-900">
         <div className="flex items-center justify-between pt-1">
           <button
             onClick={() => setActiveSubScreen(null)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white transition active:scale-95"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 transition active:scale-95"
           >
             <ChevronLeft size={16} />
             <span>Voltar ao Menu</span>
@@ -305,22 +305,22 @@ export const MoreHubScreen: React.FC = () => {
   }
 
   return (
-    <div className="space-y-5 pb-28 animate-fade-in text-white">
+    <div className="space-y-5 pb-28 animate-fade-in text-slate-900">
       {/* ========================================================================= */}
       {/* 1. TOPO DO MENU: CAMPO DE PESQUISA & ENGRENAGEM DE CONFIGURAÇÕES          */}
       {/* ========================================================================= */}
       <div className="flex items-center justify-between pt-1 gap-3">
         <div>
-          <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>Menu & Serviços</span>
           </h1>
-          <p className="text-[11px] text-zinc-400 font-medium">Acesso rápido a todas as funções do app</p>
+          <p className="text-[11px] text-slate-600 font-medium">Acesso rápido a todas as funções do app</p>
         </div>
 
         {/* Botão de Engrenagem Direto para Configurações Gerais */}
         <button
           onClick={() => setActiveSubScreen('settings')}
-          className="p-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-[#fcca00] transition active:scale-95 shadow-md shrink-0"
+          className="p-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-[#fcca00] transition active:scale-95 shadow-md shrink-0"
           title="Configurações Gerais (Firebase, Backup, Exportação)"
         >
           <SettingsIcon size={19} />
@@ -329,18 +329,18 @@ export const MoreHubScreen: React.FC = () => {
 
       {/* CAMPO DE PESQUISA EM TEMPO REAL: "O que você procura?" */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-3 text-zinc-400" size={17} />
+        <Search className="absolute left-3.5 top-3 text-slate-600" size={17} />
         <input
           type="text"
           placeholder="O que você procura? (ex: extrato, shows, dívidas, backup...)"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-[#141416] border border-zinc-800 text-white placeholder-zinc-400 text-xs focus:border-blue-500 outline-none shadow-inner"
+          className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-xs focus:border-blue-500 outline-none shadow-inner"
         />
         {searchTerm && (
           <button
             onClick={() => setSearchTerm('')}
-            className="absolute right-3 top-3 text-zinc-400 hover:text-white"
+            className="absolute right-3 top-3 text-slate-600 hover:text-slate-900"
           >
             <X size={15} />
           </button>
@@ -356,13 +356,13 @@ export const MoreHubScreen: React.FC = () => {
       {filteredResults !== null ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-zinc-400">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-600">
               Resultados da Busca ({filteredResults.length})
             </span>
           </div>
 
           {filteredResults.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs">
+            <div className="p-8 text-center rounded-2xl bg-white border border-slate-200 text-slate-600 text-xs">
               Nenhuma função encontrada para "{searchTerm}".
             </div>
           ) : (
@@ -373,27 +373,27 @@ export const MoreHubScreen: React.FC = () => {
                   <div
                     key={item.id}
                     onClick={item.action}
-                    className="p-3.5 rounded-2xl bg-[#141416] border border-zinc-800 hover:border-blue-500/50 transition flex items-center justify-between cursor-pointer group active:scale-[0.99]"
+                    className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-500/50 transition flex items-center justify-between cursor-pointer group active:scale-[0.99]"
                   >
                     <div className="flex items-center space-x-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
                         <Icon size={18} />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate">
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate">
                             {item.title}
                           </span>
                           {item.badge && (
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-700 border border-blue-500/30">
                               {item.badge}
                             </span>
                           )}
                         </div>
-                        <span className="text-[10px] text-zinc-400 block truncate">{item.desc}</span>
+                        <span className="text-[10px] text-slate-600 block truncate">{item.desc}</span>
                       </div>
                     </div>
-                    <ChevronRight size={16} className="text-zinc-400 group-hover:text-white transition shrink-0" />
+                    <ChevronRight size={16} className="text-slate-600 group-hover:text-slate-900 transition shrink-0" />
                   </div>
                 );
               })}
@@ -412,50 +412,50 @@ export const MoreHubScreen: React.FC = () => {
             return (
               <div 
                 key={category.id}
-                className="rounded-3xl bg-[#141416] border border-zinc-800/90 overflow-hidden shadow-xs transition"
+                className="rounded-3xl bg-white border border-zinc-800/90 overflow-hidden shadow-xs transition"
               >
                 {/* Cabeçalho do Accordion */}
                 <button
                   onClick={() => toggleSection(category.id)}
-                  className="w-full p-4 flex items-center justify-between bg-zinc-900/60 hover:bg-zinc-800/40 transition text-left"
+                  className="w-full p-4 flex items-center justify-between bg-white/80 hover:bg-slate-50/40 transition text-left"
                 >
                   <div className="flex items-center space-x-3 min-w-0">
-                    <div className={`p-2 rounded-xl bg-zinc-800 ${category.color} shrink-0`}>
+                    <div className={`p-2 rounded-xl bg-slate-50 ${category.color} shrink-0`}>
                       <CategoryIcon size={18} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-black text-white tracking-wide">
+                      <h3 className="text-xs font-black text-slate-900 tracking-wide">
                         {category.title}
                       </h3>
-                      <span className="text-[10px] text-zinc-400">
+                      <span className="text-[10px] text-slate-600">
                         {category.items.length} opções disponíveis
                       </span>
                     </div>
                   </div>
 
-                  <div className={`p-1 rounded-lg text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-white' : ''}`}>
+                  <div className={`p-1 rounded-lg text-slate-600 transition-transform duration-200 ${isOpen ? 'rotate-180 text-white' : ''}`}>
                     <ChevronDown size={17} />
                   </div>
                 </button>
 
                 {/* Itens Internos do Accordion */}
                 {isOpen && (
-                  <div className="divide-y divide-zinc-800/60 border-t border-zinc-800/60 bg-[#121214]">
+                  <div className="divide-y divide-zinc-800/60 border-t border-zinc-800/60 bg-white">
                     {category.items.map(item => {
                       const ItemIcon = item.icon;
                       return (
                         <div
                           key={item.id}
                           onClick={item.action}
-                          className="p-3.5 px-4 hover:bg-zinc-800/30 transition flex items-center justify-between cursor-pointer group active:scale-[0.99]"
+                          className="p-3.5 px-4 hover:bg-slate-50/30 transition flex items-center justify-between cursor-pointer group active:scale-[0.99]"
                         >
                           <div className="flex items-center space-x-3.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-800/80 text-zinc-300 group-hover:text-blue-400 group-hover:bg-blue-500/10 flex items-center justify-center shrink-0 transition">
+                            <div className="w-8 h-8 rounded-lg bg-slate-50/80 text-slate-600 group-hover:text-blue-600 group-hover:bg-blue-500/10 flex items-center justify-center shrink-0 transition">
                               <ItemIcon size={16} />
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center space-x-2">
-                                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate">
+                                <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate">
                                   {item.title}
                                 </span>
                                 {item.badge && (
@@ -464,11 +464,11 @@ export const MoreHubScreen: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-zinc-400 block truncate">{item.desc}</span>
+                              <span className="text-[10px] text-slate-600 block truncate">{item.desc}</span>
                             </div>
                           </div>
 
-                          <ChevronRight size={15} className="text-zinc-400 group-hover:text-white transition shrink-0" />
+                          <ChevronRight size={15} className="text-slate-600 group-hover:text-slate-900 transition shrink-0" />
                         </div>
                       );
                     })}

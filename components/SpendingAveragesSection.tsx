@@ -299,25 +299,25 @@ export const SpendingAveragesSection: React.FC = () => {
   };
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+    <section className="bg-white  rounded-[2.5rem] p-6 border border-slate-200/80  shadow-sm space-y-6">
       
       {/* CABEÇALHO DA SEÇÃO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600  flex items-center justify-center font-black">
               <TrendingUp size={22} strokeWidth={2.5} />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+                <h2 className="text-base font-black text-slate-900  tracking-tight">
                   Médias de Gastos
                 </h2>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100  text-slate-600  border border-slate-200 ">
                   {pastMonths.length} {pastMonths.length === 1 ? 'mês base' : 'meses anteriores'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-600  mt-0.5">
                 Comparativo automático entre seu padrão histórico e o consumo do mês atual
               </p>
             </div>
@@ -325,7 +325,7 @@ export const SpendingAveragesSection: React.FC = () => {
         </div>
 
         {/* TOGGLE VISÃO PRINCIPAL / VISÃO DETALHADA */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-start sm:self-auto border border-slate-200 dark:border-slate-700/60">
+        <div className="flex items-center bg-slate-100  p-1 rounded-2xl self-start sm:self-auto border border-slate-200 ">
           <button
             onClick={() => setViewMode('groups')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
@@ -351,11 +351,11 @@ export const SpendingAveragesSection: React.FC = () => {
 
       {/* AVISO DE HISTÓRICO GERAL (CASO INSUFICIENTE) */}
       {hasOverallInsufficientHistory && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-900/60 flex items-start space-x-3 text-xs text-amber-800 dark:text-amber-300">
-          <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300  flex items-start space-x-3 text-xs text-amber-800 ">
+          <AlertCircle size={18} className="text-amber-600  shrink-0 mt-0.5" />
           <div className="space-y-1">
             <span className="font-bold block">Histórico Insuficiente para Cálculo de Médias</span>
-            <p className="text-[11px] leading-relaxed text-amber-700/90 dark:text-amber-400/90">
+            <p className="text-[11px] leading-relaxed text-amber-700/90 ">
               O aplicativo registrou apenas movimentações do mês atual ({currentMonthPrefix}). Para não inventar médias artificiais, o sistema exige pelo menos 1 mês anterior fechado no histórico. Os valores abaixo mostram estritamente o gasto realizado no mês atual.
             </p>
           </div>
@@ -376,23 +376,23 @@ export const SpendingAveragesSection: React.FC = () => {
             return (
               <div 
                 key={group.id}
-                className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200/70 dark:border-slate-800/80 flex flex-col justify-between space-y-3 transition hover:border-slate-300 dark:hover:border-slate-700"
+                className="p-4 rounded-2xl bg-slate-50/70  border border-slate-200/70  flex flex-col justify-between space-y-3 transition hover:border-slate-300 "
               >
                 {/* Top bar: Icon, Name and Status Pill */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
                     <div 
-                      className="w-8 h-8 rounded-xl flex items-center justify-center text-white"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-900"
                       style={{ backgroundColor: group.color }}
                     >
                       <IconComp size={16} strokeWidth={2.5} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-800 dark:text-white">
+                      <h3 className="text-sm font-black text-slate-800 ">
                         {group.name}
                       </h3>
                       {group.subcategories.length > 0 && (
-                        <span className="text-[10px] text-slate-400 block truncate max-w-[200px]">
+                        <span className="text-[10px] text-slate-600 block truncate max-w-[200px]">
                           {group.subcategories.slice(0, 3).join(', ')}
                         </span>
                       )}
@@ -401,54 +401,54 @@ export const SpendingAveragesSection: React.FC = () => {
 
                   {/* Tag de comparação com a média */}
                   {group.hasInsufficientHistory ? (
-                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200  text-slate-600 ">
                       Histórico Insuficiente
                     </span>
                   ) : isAbove ? (
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-900/50 flex items-center space-x-0.5">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-700  border border-rose-300  flex items-center space-x-0.5">
                       <TrendingUp size={10} className="mr-0.5" />
                       <span>+{formatBRL(group.diferenca)} ({Math.round(group.diffPercent || 0)}%)</span>
                     </span>
                   ) : isBelow ? (
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-900/50 flex items-center space-x-0.5">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700  border border-emerald-300  flex items-center space-x-0.5">
                       <TrendingDown size={10} className="mr-0.5" />
                       <span>{formatBRL(group.diferenca)} ({Math.round(group.diffPercent || 0)}%)</span>
                     </span>
                   ) : (
-                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200  text-slate-600 ">
                       Na Média
                     </span>
                   )}
                 </div>
 
                 {/* 3 Valores: Média Mensal | Gasto no Mês Atual | Diferença */}
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/60 text-xs">
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/50  text-xs">
                   
                   {/* 1. MÉDIA MENSAL */}
                   <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">
                       Média Mensal
                     </span>
-                    <span className="font-bold text-slate-700 dark:text-slate-300 tabular-nums text-xs sm:text-sm mt-0.5 block">
+                    <span className="font-bold text-slate-700  tabular-nums text-xs sm:text-sm mt-0.5 block">
                       {group.hasInsufficientHistory 
-                        ? <span className="text-[10px] text-slate-400 font-normal italic">Insuficiente</span>
+                        ? <span className="text-[10px] text-slate-600 font-normal italic">Insuficiente</span>
                         : formatBRL(group.mediaMensal)}
                     </span>
                   </div>
 
                   {/* 2. GASTO NO MÊS ATUAL */}
                   <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">
                       Mês Atual
                     </span>
-                    <span className="font-black text-slate-900 dark:text-white tabular-nums text-xs sm:text-sm mt-0.5 block">
+                    <span className="font-black text-slate-900  tabular-nums text-xs sm:text-sm mt-0.5 block">
                       {formatBRL(group.gastoMesAtual)}
                     </span>
                   </div>
 
                   {/* 3. DIFERENÇA EM RELAÇÃO À MÉDIA */}
                   <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 block">
                       Diferença
                     </span>
                     <span className={`font-bold tabular-nums text-xs sm:text-sm mt-0.5 block ${
@@ -478,11 +478,11 @@ export const SpendingAveragesSection: React.FC = () => {
       {viewMode === 'detailed' && (
         <div className="space-y-2">
           {detailedCategoryAnalyses.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-400">
+            <div className="p-6 text-center text-xs text-slate-600">
               Nenhuma movimentação de despesa cadastrada nas categorias até o momento.
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <div className="divide-y divide-slate-100 ">
               {detailedCategoryAnalyses.map(cat => {
                 const isAbove = cat.diferenca !== null && cat.diferenca > 1;
                 const isBelow = cat.diferenca !== null && cat.diferenca < -1;
@@ -490,35 +490,35 @@ export const SpendingAveragesSection: React.FC = () => {
                 return (
                   <div 
                     key={cat.id}
-                    className="py-3 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 rounded-xl transition"
+                    className="py-3 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/50  rounded-xl transition"
                   >
                     <div className="flex items-center space-x-2.5">
                       <div 
                         className="w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: cat.color }}
                       />
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                      <span className="text-xs font-black text-slate-800 ">
                         {cat.name}
                       </span>
                     </div>
 
                     <div className="flex items-center space-x-4 text-xs ml-5 sm:ml-0">
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Média</span>
-                        <span className="font-bold text-slate-600 dark:text-slate-300 tabular-nums">
+                        <span className="text-[9px] text-slate-600 uppercase tracking-wider block">Média</span>
+                        <span className="font-bold text-slate-600  tabular-nums">
                           {cat.hasInsufficientHistory ? '—' : formatBRL(cat.mediaMensal)}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Mês Atual</span>
-                        <span className="font-black text-slate-900 dark:text-white tabular-nums">
+                        <span className="text-[9px] text-slate-600 uppercase tracking-wider block">Mês Atual</span>
+                        <span className="font-black text-slate-900  tabular-nums">
                           {formatBRL(cat.gastoMesAtual)}
                         </span>
                       </div>
 
                       <div className="min-w-[80px] text-right">
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Diferença</span>
+                        <span className="text-[9px] text-slate-600 uppercase tracking-wider block">Diferença</span>
                         <span className={`font-bold tabular-nums ${
                           cat.hasInsufficientHistory 
                             ? 'text-slate-400 italic text-[10px]'
@@ -541,14 +541,14 @@ export const SpendingAveragesSection: React.FC = () => {
       )}
 
       {/* RODA-PÉ DA SEÇÃO COM NOTA METODOLÓGICA */}
-      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
+      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-600 border-t border-slate-100 ">
         <div className="flex items-center space-x-1.5">
-          <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
           <span>
             Transferências entre contas e aportes em reservas são excluídos das médias.
           </span>
         </div>
-        <span className="text-[10px] text-slate-400">
+        <span className="text-[10px] text-slate-600">
           Base: despesas líquidas realizadas
         </span>
       </div>

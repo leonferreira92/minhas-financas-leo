@@ -559,20 +559,20 @@ export const ShowFormModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="w-full max-w-3xl bg-[#141416] border border-zinc-800 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto">
         
         {/* HEADER DO MODAL */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-600 border border-purple-500/30 flex items-center justify-center">
               <TrendingUp size={20} />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
                 {existingShow ? 'Editar Ficha do Show' : 'Novo Show & Gestão de Custos'}
               </h2>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-slate-600">
                 Preencha os dados do evento, equipe, logística e acompanhe o lucro real instantaneamente.
               </p>
             </div>
@@ -580,7 +580,7 @@ export const ShowFormModal: React.FC<Props> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl bg-zinc-800 text-zinc-400 hover:text-white transition active:scale-95"
+            className="p-2 rounded-2xl bg-slate-50 text-slate-600 hover:text-slate-900 transition active:scale-95"
           >
             <X size={18} />
           </button>
@@ -588,10 +588,10 @@ export const ShowFormModal: React.FC<Props> = ({
 
         {/* ALERTA DE CONFLITO EM TEMPO REAL */}
         {liveConflict.hasConflict && (
-          <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-300 flex items-start space-x-2.5 text-xs">
-            <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 text-amber-700 flex items-start space-x-2.5 text-xs">
+            <AlertTriangle size={16} className="text-amber-700 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-white block">Aviso de Agenda:</span>
+              <span className="font-bold text-slate-900 block">Aviso de Agenda:</span>
               <span className="text-[11px] opacity-90">{liveConflict.message}</span>
             </div>
           </div>
@@ -602,21 +602,21 @@ export const ShowFormModal: React.FC<Props> = ({
           {/* ========================================================================= */}
           {/* 1. BLOCO A: IDENTIFICAÇÃO HIERÁRQUICA DO EVENTO (FLUXO 1 A 4)             */}
           {/* ========================================================================= */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#18181b] border border-zinc-800 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+              <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 flex items-center gap-1.5">
                 <Calendar size={13} />
                 BLOCO A • Identificação Estruturada do Show (1 → 4)
               </span>
-              <span className="text-[10px] text-zinc-400 font-bold">Hierarquia Sincronizada com o Card</span>
+              <span className="text-[10px] text-slate-600 font-bold">Hierarquia Sincronizada com o Card</span>
             </div>
 
             {/* PASSOS 1 E 2: 1. NOME DO EVENTO / CASA  &  2. CONTRATANTE / CLIENTE */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {/* 1. Nome do Evento / Casa (Título Principal do Card) */}
               <div>
-                <label className="text-zinc-200 font-black block mb-1">
-                  1. Nome do Evento / Casa * <span className="text-[10px] font-bold text-purple-400">(Título Principal)</span>
+                <label className="text-slate-600 font-black block mb-1">
+                  1. Nome do Evento / Casa * <span className="text-[10px] font-bold text-purple-600">(Título Principal)</span>
                 </label>
                 <input
                   type="text"
@@ -624,12 +624,12 @@ export const ShowFormModal: React.FC<Props> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Show Haras Casa Velha"
-                  className="w-full bg-[#121214] border border-purple-500/40 rounded-xl p-2.5 text-white font-black text-sm focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-purple-500/40 rounded-xl p-2.5 text-slate-900 font-black text-sm focus:outline-none focus:border-purple-500"
                 />
                 {/* Sugestões de Locais Cadastrados */}
                 {venues.length > 0 && !existingShow && (
                   <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-1.5">
-                    <span className="text-[9px] text-zinc-500 font-bold shrink-0">Casas:</span>
+                    <span className="text-[9px] text-slate-600 font-bold shrink-0">Casas:</span>
                     {venues.slice(0, 3).map(v => (
                       <button
                         key={v.id}
@@ -640,7 +640,7 @@ export const ShowFormModal: React.FC<Props> = ({
                           setCity(v.city || '');
                           if (v.defaultCache) setTotalCache(String(v.defaultCache));
                         }}
-                        className="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-medium whitespace-nowrap transition"
+                        className="px-2 py-0.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 text-[10px] font-medium whitespace-nowrap transition"
                       >
                         {v.name}
                       </button>
@@ -651,15 +651,15 @@ export const ShowFormModal: React.FC<Props> = ({
 
               {/* 2. Contratante / Cliente (Subtítulo do Card) */}
               <div>
-                <label className="text-zinc-200 font-black block mb-1">
-                  2. Contratante / Cliente * <span className="text-[10px] font-bold text-emerald-400">(Subtítulo)</span>
+                <label className="text-slate-600 font-black block mb-1">
+                  2. Contratante / Cliente * <span className="text-[10px] font-bold text-emerald-600">(Subtítulo)</span>
                 </label>
                 <input
                   type="text"
                   value={contractorName}
                   onChange={(e) => setContractorName(e.target.value)}
                   placeholder="Ex: LSA Tecnologia"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold text-sm focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold text-sm focus:outline-none focus:border-purple-500"
                 />
               </div>
             </div>
@@ -668,37 +668,37 @@ export const ShowFormModal: React.FC<Props> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {/* 3. Cidade / UF (Tag do Card) */}
               <div>
-                <label className="text-zinc-200 font-black block mb-1">
-                  3. Cidade / UF * <span className="text-[10px] font-bold text-sky-400">(Tag / Cidade)</span>
+                <label className="text-slate-600 font-black block mb-1">
+                  3. Cidade / UF * <span className="text-[10px] font-bold text-sky-600">(Tag / Cidade)</span>
                 </label>
                 <input
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Ex: Cruzília - MG"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold focus:outline-none focus:border-purple-500"
                 />
               </div>
 
               {/* Endereço / Espaço Complementar */}
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">Endereço / Espaço (Opcional)</label>
+                <label className="text-slate-600 font-bold block mb-1">Endereço / Espaço (Opcional)</label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Rua, Rodovia ou Referência"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
               {/* Tipo de Evento */}
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">Tipo de Evento</label>
+                <label className="text-slate-600 font-bold block mb-1">Tipo de Evento</label>
                 <select
                   value={eventType}
                   onChange={(e) => setEventType(e.target.value)}
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 >
                   {EVENT_TYPES.map(t => (
                     <option key={t} value={t}>{t}</option>
@@ -709,59 +709,59 @@ export const ShowFormModal: React.FC<Props> = ({
 
             {/* PASSO 4: 4. DATA, HORÁRIO & VALOR DO CACHÊ (R$) */}
             <div className="p-3.5 rounded-2xl bg-[#121214]/90 border border-zinc-800/90 space-y-3">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 block">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 block">
                 4. Data, Horário & Valor do Cachê Combinado
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Data do Show *</label>
+                  <label className="text-slate-600 font-bold block mb-1">Data do Show *</label>
                   <input
                     type="date"
                     required
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold focus:outline-none focus:border-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-emerald-400 font-black block mb-1">Valor / Cachê (R$) *</label>
+                  <label className="text-emerald-600 font-black block mb-1">Valor / Cachê (R$) *</label>
                   <input
                     type="number"
                     step="0.01"
                     value={totalCache}
                     onChange={(e) => setTotalCache(e.target.value)}
                     placeholder="Ex: 2500.00"
-                    className="w-full bg-[#18181b] border border-emerald-500/40 rounded-xl p-2.5 text-emerald-400 font-black focus:outline-none focus:border-emerald-400"
+                    className="w-full bg-slate-50 border border-emerald-500/40 rounded-xl p-2.5 text-emerald-600 font-black focus:outline-none focus:border-emerald-400"
                   />
                 </div>
 
                 <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Horário Início *</label>
+                  <label className="text-slate-600 font-bold block mb-1">Horário Início *</label>
                   <input
                     type="time"
                     required
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Término / Duração</label>
+                  <label className="text-slate-600 font-bold block mb-1">Término / Duração</label>
                   <div className="grid grid-cols-2 gap-1.5">
                     <input
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white focus:outline-none focus:border-purple-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 focus:outline-none focus:border-purple-500"
                     />
                     <input
                       type="text"
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
                       placeholder="3h"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-center focus:outline-none focus:border-purple-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-center focus:outline-none focus:border-purple-500"
                     />
                   </div>
                 </div>
@@ -769,27 +769,27 @@ export const ShowFormModal: React.FC<Props> = ({
             </div>
 
             {/* PRÉVIA EM TEMPO REAL DO CARD DE SHOW (SINCRONISMO ESTRITO) */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/30 via-[#141416] to-[#121214] border border-purple-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-white via-white to-white border border-purple-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-purple-400">Prévia do Card:</span>
-                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[10px] font-bold text-purple-300">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-purple-600">Prévia do Card:</span>
+                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[10px] font-bold text-purple-700">
                     <MapPin size={10} />
                     <span>{city.trim() || 'Cruzília - MG'}</span>
                   </span>
                 </div>
-                <div className="text-sm sm:text-base font-black text-white truncate">
+                <div className="text-sm sm:text-base font-black text-slate-900 truncate">
                   {name.trim() || 'Show Haras Casa Velha'}
                 </div>
-                <div className="text-xs font-bold text-zinc-400 truncate">
+                <div className="text-xs font-bold text-slate-600 truncate">
                   Contratante: {contractorName.trim() || name.trim() || 'LSA Tecnologia'}
                 </div>
               </div>
               <div className="text-left sm:text-right shrink-0">
-                <span className="text-sm font-black text-emerald-400 tabular-nums block">
+                <span className="text-sm font-black text-emerald-600 tabular-nums block">
                   {formatCurrency(financialSummaryLive.totalShowValue)}
                 </span>
-                <span className="text-[10px] text-zinc-400 block">
+                <span className="text-[10px] text-slate-600 block">
                   Lucro Líquido: {formatCurrency(financialSummaryLive.netProfit)}
                 </span>
               </div>
@@ -797,7 +797,7 @@ export const ShowFormModal: React.FC<Props> = ({
 
             {/* Status Comercial */}
             <div>
-              <label className="text-zinc-300 font-bold block mb-1.5">Status Comercial do Show</label>
+              <label className="text-slate-600 font-bold block mb-1.5">Status Comercial do Show</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { value: 'Confirmado', label: 'Confirmado', color: 'bg-emerald-500 text-zinc-950 font-black' },
@@ -825,13 +825,13 @@ export const ShowFormModal: React.FC<Props> = ({
           {/* ========================================================================= */}
           {/* 2. BLOCO B: RESUMO FINANCEIRO & MODELO DE RECEITA                         */}
           {/* ========================================================================= */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-[#1b152b] via-[#16131f] to-[#121214] border border-purple-500/30 space-y-4">
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white via-white to-white border border-purple-500/30 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-purple-900/40">
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                <DollarSign size={13} className="text-emerald-400" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
+                <DollarSign size={13} className="text-emerald-600" />
                 BLOCO B • Modelo de Receita & Resumo Financeiro
               </span>
-              <span className="text-[10px] text-emerald-400 font-black uppercase tracking-wider">
+              <span className="text-[10px] text-emerald-600 font-black uppercase tracking-wider">
                 Cálculo Instantâneo
               </span>
             </div>
@@ -839,7 +839,7 @@ export const ShowFormModal: React.FC<Props> = ({
             {/* SELEÇÃO DO MODELO DE RECEITA */}
             <div className="space-y-3">
               <div>
-                <label className="text-zinc-300 font-bold block mb-1.5">Formato de Recebimento</label>
+                <label className="text-slate-600 font-bold block mb-1.5">Formato de Recebimento</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { value: 'fixed', label: 'Cachê Fixo' },
@@ -865,7 +865,7 @@ export const ShowFormModal: React.FC<Props> = ({
               {/* INPUTS DINÂMICOS DO MODELO DE RECEITA */}
               {revenueModel === 'fixed' && (
                 <div>
-                  <label className="text-zinc-200 font-bold block mb-1">
+                  <label className="text-slate-600 font-bold block mb-1">
                     Cachê Fixo Combinado (R$) *
                   </label>
                   <input
@@ -874,86 +874,86 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={totalCache}
                     onChange={(e) => setTotalCache(e.target.value)}
                     placeholder="0,00"
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-2xl p-3 text-lg font-black text-emerald-400 focus:outline-none focus:border-purple-500"
+                    className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-lg font-black text-emerald-600 focus:outline-none focus:border-purple-500"
                   />
                 </div>
               )}
 
               {revenueModel === 'couvert' && (
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-[#121214] border border-zinc-800 animate-fade-in">
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-white border border-slate-200 animate-fade-in">
                   <div>
-                    <label className="text-zinc-400 font-bold block mb-1">Pessoas Estimadas</label>
+                    <label className="text-slate-600 font-bold block mb-1">Pessoas Estimadas</label>
                     <input
                       type="number"
                       value={estimatedPeople}
                       onChange={(e) => setEstimatedPeople(e.target.value)}
                       placeholder="Ex: 80"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white font-bold"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold"
                     />
                   </div>
                   <div>
-                    <label className="text-zinc-400 font-bold block mb-1">Couvert (R$/pessoa)</label>
+                    <label className="text-slate-600 font-bold block mb-1">Couvert (R$/pessoa)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={couvertPrice}
                       onChange={(e) => setCouvertPrice(e.target.value)}
                       placeholder="Ex: 15.00"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-[#1ed760] font-bold"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[#1ed760] font-bold"
                     />
                   </div>
-                  <div className="col-span-2 text-right text-xs text-zinc-400">
-                    Cachê Previsto Estimado: <strong className="text-emerald-400 font-black">{formatCurrency(financialSummaryLive.grossCache)}</strong>
+                  <div className="col-span-2 text-right text-xs text-slate-600">
+                    Cachê Previsto Estimado: <strong className="text-emerald-600 font-black">{formatCurrency(financialSummaryLive.grossCache)}</strong>
                   </div>
                 </div>
               )}
 
               {revenueModel === 'hybrid' && (
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-[#121214] border border-zinc-800 animate-fade-in">
+                <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-white border border-slate-200 animate-fade-in">
                   <div>
-                    <label className="text-zinc-400 font-bold block mb-1">Cachê Mínimo Garantido (R$)</label>
+                    <label className="text-slate-600 font-bold block mb-1">Cachê Mínimo Garantido (R$)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={guaranteedMinCache}
                       onChange={(e) => setGuaranteedMinCache(e.target.value)}
                       placeholder="Ex: 500"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-[#1ed760] font-bold"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[#1ed760] font-bold"
                     />
                   </div>
                   <div>
-                    <label className="text-zinc-400 font-bold block mb-1">Couvert (R$/pessoa)</label>
+                    <label className="text-slate-600 font-bold block mb-1">Couvert (R$/pessoa)</label>
                     <input
                       type="number"
                       step="0.01"
                       value={couvertPrice}
                       onChange={(e) => setCouvertPrice(e.target.value)}
                       placeholder="Ex: 15.00"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="text-zinc-400 font-bold block mb-1">Pessoas Estimadas</label>
+                    <label className="text-slate-600 font-bold block mb-1">Pessoas Estimadas</label>
                     <input
                       type="number"
                       value={estimatedPeople}
                       onChange={(e) => setEstimatedPeople(e.target.value)}
                       placeholder="Ex: 80"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
                     />
                   </div>
                   <div>
-                    <label className="text-zinc-400 font-bold block mb-1">% de Repasse p/ Artista</label>
+                    <label className="text-slate-600 font-bold block mb-1">% de Repasse p/ Artista</label>
                     <input
                       type="number"
                       value={couvertPercentage}
                       onChange={(e) => setCouvertPercentage(e.target.value)}
                       placeholder="Ex: 100"
-                      className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2.5 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
                     />
                   </div>
-                  <div className="col-span-2 text-right text-xs text-zinc-400">
-                    Cachê Previsto Estimado: <strong className="text-emerald-400 font-black">{formatCurrency(financialSummaryLive.grossCache)}</strong>
+                  <div className="col-span-2 text-right text-xs text-slate-600">
+                    Cachê Previsto Estimado: <strong className="text-emerald-600 font-black">{formatCurrency(financialSummaryLive.grossCache)}</strong>
                   </div>
                 </div>
               )}
@@ -963,15 +963,15 @@ export const ShowFormModal: React.FC<Props> = ({
                   <button
                     type="button"
                     onClick={() => setShowExtraField(true)}
-                    className="w-full py-2.5 px-3 rounded-2xl bg-purple-950/30 hover:bg-purple-900/40 border border-purple-800/40 text-purple-300 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-98"
+                    className="w-full py-2.5 px-3 rounded-2xl bg-purple-950/30 hover:bg-purple-900/40 border border-purple-800/40 text-purple-700 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-98"
                   >
-                    <Sparkles size={14} className="text-purple-400" />
+                    <Sparkles size={14} className="text-purple-600" />
                     <span>+ Adicionar Hora Extra / Gorjeta</span>
                   </button>
                 ) : (
                   <div className="p-3.5 rounded-2xl bg-purple-950/20 border border-purple-800/40 space-y-2.5 animate-fade-in">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                      <span className="text-xs font-black uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
                         <Sparkles size={14} />
                         Acréscimos ao Cachê (Hora Extra / Gorjeta)
                       </span>
@@ -982,14 +982,14 @@ export const ShowFormModal: React.FC<Props> = ({
                           setExtraAmount('');
                           setExtraNote('');
                         }}
-                        className="text-[10px] text-zinc-400 hover:text-rose-400 font-bold transition"
+                        className="text-[10px] text-slate-600 hover:text-rose-600 font-bold transition"
                       >
                         Remover Extra
                       </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1">
+                        <label className="text-[10px] font-bold text-slate-600 block mb-1">
                           Valor Adicional (R$)
                         </label>
                         <input
@@ -998,11 +998,11 @@ export const ShowFormModal: React.FC<Props> = ({
                           value={extraAmount}
                           onChange={(e) => setExtraAmount(e.target.value)}
                           placeholder="Ex: 200,00"
-                          className="w-full bg-[#121214] border border-purple-500/30 rounded-xl p-2.5 text-base font-black text-purple-300 focus:outline-none focus:border-purple-400"
+                          className="w-full bg-white border border-purple-500/30 rounded-xl p-2.5 text-base font-black text-purple-700 focus:outline-none focus:border-purple-400"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 block mb-1">
+                        <label className="text-[10px] font-bold text-slate-600 block mb-1">
                           Motivo / Descrição do Extra
                         </label>
                         <input
@@ -1010,12 +1010,12 @@ export const ShowFormModal: React.FC<Props> = ({
                           value={extraNote}
                           onChange={(e) => setExtraNote(e.target.value)}
                           placeholder="Ex: 1h extra de apresentação / Gorjeta"
-                          className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-400"
+                          className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:border-purple-400"
                         />
                       </div>
                     </div>
-                    <p className="text-[10px] text-zinc-400">
-                      O valor total do show será exclusivamente: <strong className="text-white">{formatCurrency(financialSummaryLive.grossCache)}</strong> (Cachê Base) + <strong className="text-purple-300">{formatCurrency(financialSummaryLive.extraVal)}</strong> (Extra) = <strong className="text-emerald-400">{formatCurrency(financialSummaryLive.totalShowValue)}</strong>
+                    <p className="text-[10px] text-slate-600">
+                      O valor total do show será exclusivamente: <strong className="text-slate-900">{formatCurrency(financialSummaryLive.grossCache)}</strong> (Cachê Base) + <strong className="text-purple-700">{formatCurrency(financialSummaryLive.extraVal)}</strong> (Extra) = <strong className="text-emerald-600">{formatCurrency(financialSummaryLive.totalShowValue)}</strong>
                     </p>
                   </div>
                 )}
@@ -1025,7 +1025,7 @@ export const ShowFormModal: React.FC<Props> = ({
             {/* Sinal / Adiantamento */}
             <div className="space-y-2">
               <div className="flex items-center justify-between pt-1">
-                <label className="text-zinc-300 font-bold flex items-center space-x-2 cursor-pointer">
+                <label className="text-slate-600 font-bold flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={hasImmediateDeposit}
@@ -1044,12 +1044,12 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
                     placeholder="Valor do Sinal (R$)"
-                    className="bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white font-bold"
+                    className="bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold"
                   />
                   <select
                     value={depositAccountId}
                     onChange={(e) => setDepositAccountId(e.target.value)}
-                    className="bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white"
+                    className="bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900"
                   >
                     {accounts.map(acc => (
                       <option key={acc.id} value={acc.id}>{acc.name}</option>
@@ -1060,42 +1060,42 @@ export const ShowFormModal: React.FC<Props> = ({
             </div>
 
             {/* MÉTRICA DE TEMPO DEDICADO & LUCRO POR HORA */}
-            <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-3">
-              <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 block">
+            <div className="p-3 rounded-2xl bg-[#121214]/80 border border-slate-200 space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 block">
                 Métrica de Tempo Dedicado & Lucratividade por Hora
               </span>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-0.5 text-[9px]">Deslocamento (min)</label>
+                  <label className="text-slate-600 font-bold block mb-0.5 text-[9px]">Deslocamento (min)</label>
                   <input
                     type="number"
                     value={travelTimeMinutes}
                     onChange={(e) => setTravelTimeMinutes(e.target.value)}
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold"
                   />
                 </div>
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-0.5 text-[9px]">Montagem / Som (min)</label>
+                  <label className="text-slate-600 font-bold block mb-0.5 text-[9px]">Montagem / Som (min)</label>
                   <input
                     type="number"
                     value={soundcheckTimeMinutes}
                     onChange={(e) => setSoundcheckTimeMinutes(e.target.value)}
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold"
                   />
                 </div>
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-0.5 text-[9px]">Show (horas)</label>
+                  <label className="text-slate-600 font-bold block mb-0.5 text-[9px]">Show (horas)</label>
                   <input
                     type="number"
                     step="0.5"
                     value={showHours}
                     onChange={(e) => setShowHours(e.target.value)}
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold"
                   />
                 </div>
               </div>
-              <div className="flex justify-between items-center text-xs text-zinc-300 pt-1 border-t border-zinc-800/80">
-                <span>Tempo Dedicado: <strong className="text-purple-400">{financialSummaryLive.totalDedicatedHours}h</strong></span>
+              <div className="flex justify-between items-center text-xs text-slate-600 pt-1 border-t border-slate-200/80">
+                <span>Tempo Dedicado: <strong className="text-purple-600">{financialSummaryLive.totalDedicatedHours}h</strong></span>
                 <span>Lucro Líquido p/ Hora: <strong className="text-[#1ed760]">{formatCurrency(financialSummaryLive.profitPerHour)}/h</strong></span>
               </div>
             </div>
@@ -1103,10 +1103,10 @@ export const ShowFormModal: React.FC<Props> = ({
             {/* FUNDO DE DEPRECIAÇÃO / RESERVA PARA EQUIPAMENTO */}
             <div className="p-3 rounded-2xl bg-[#121214]/80 border border-amber-500/20 space-y-2">
               <div className="flex justify-between items-center">
-                <label className="text-amber-400 font-black uppercase text-[10px] tracking-wider">
+                <label className="text-amber-700 font-black uppercase text-[10px] tracking-wider">
                   Reserva p/ Equipamentos (Fundo de Depreciação / Show)
                 </label>
-                <span className="text-xs font-black text-amber-400">{formatCurrency(financialSummaryLive.reserveVal)}</span>
+                <span className="text-xs font-black text-amber-700">{formatCurrency(financialSummaryLive.reserveVal)}</span>
               </div>
               <input
                 type="number"
@@ -1114,57 +1114,57 @@ export const ShowFormModal: React.FC<Props> = ({
                 value={equipmentReserveAmount}
                 onChange={(e) => setEquipmentReserveAmount(e.target.value)}
                 placeholder="Ex: 20.00"
-                className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs font-bold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs font-bold"
               />
-              <p className="text-[9px] text-zinc-500">
+              <p className="text-[9px] text-slate-600">
                 Esse valor será deduzido do Lucro Líquido do show e acumulado no card de "Reserva para Equipamentos".
               </p>
             </div>
 
             {/* TERMÔMETRO DE LUCRO (4 CARDS VISUAIS ATUALIZADOS) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
-              <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-0.5">
-                <span className="text-[9px] font-bold text-zinc-400 uppercase block">
+              <div className="p-3 rounded-2xl bg-[#121214]/80 border border-slate-200 space-y-0.5">
+                <span className="text-[9px] font-bold text-slate-600 uppercase block">
                   {financialSummaryLive.extraVal > 0 ? 'Valor Final do Show' : 'Cachê Bruto'}
                 </span>
-                <span className="text-sm font-black text-white tabular-nums block">
+                <span className="text-sm font-black text-slate-900 tabular-nums block">
                   {formatCurrency(financialSummaryLive.totalShowValue)}
                 </span>
-                <span className="text-[9px] text-zinc-500 block truncate">
+                <span className="text-[9px] text-slate-600 block truncate">
                   {financialSummaryLive.extraVal > 0 
                     ? `Base ${formatCurrency(financialSummaryLive.grossCache)} + Extra ${formatCurrency(financialSummaryLive.extraVal)}`
                     : hasImmediateDeposit ? `Sinal: ${formatCurrency(financialSummaryLive.depVal)}` : 'Sem sinal'}
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-0.5">
-                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Custos Totais</span>
-                <span className="text-sm font-black text-rose-400 tabular-nums block">
+              <div className="p-3 rounded-2xl bg-[#121214]/80 border border-slate-200 space-y-0.5">
+                <span className="text-[9px] font-bold text-slate-600 uppercase block">Custos Totais</span>
+                <span className="text-sm font-black text-rose-600 tabular-nums block">
                   -{formatCurrency(financialSummaryLive.totalCosts)}
                 </span>
-                <span className="text-[9px] text-zinc-500 block">
+                <span className="text-[9px] text-slate-600 block">
                   Equipe + Logística + Extras
                 </span>
               </div>
 
               <div className="p-3 rounded-2xl bg-purple-950/40 border border-purple-800/50 space-y-0.5">
-                <span className="text-[9px] font-bold text-purple-300 uppercase block">Lucro Líquido Real</span>
+                <span className="text-[9px] font-bold text-purple-700 uppercase block">Lucro Líquido Real</span>
                 <span className={`text-sm font-black tabular-nums block ${
                   financialSummaryLive.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}>
                   {formatCurrency(financialSummaryLive.netProfit)}
                 </span>
-                <span className="text-[9px] text-purple-300 font-bold block">
+                <span className="text-[9px] text-purple-700 font-bold block">
                   Margem: {financialSummaryLive.marginPercent.toFixed(0)}%
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#121214]/80 border border-zinc-800 space-y-0.5">
-                <span className="text-[9px] font-bold text-zinc-400 uppercase block">Saldo Restante</span>
-                <span className="text-sm font-black text-amber-400 tabular-nums block">
+              <div className="p-3 rounded-2xl bg-[#121214]/80 border border-slate-200 space-y-0.5">
+                <span className="text-[9px] font-bold text-slate-600 uppercase block">Saldo Restante</span>
+                <span className="text-sm font-black text-amber-700 tabular-nums block">
                   {formatCurrency(financialSummaryLive.remainingToReceive)}
                 </span>
-                <span className="text-[9px] text-zinc-500 block">
+                <span className="text-[9px] text-slate-600 block">
                   {financialSummaryLive.remainingToReceive === 0 ? '✓ 100% pago' : 'A receber no show'}
                 </span>
               </div>
@@ -1172,17 +1172,17 @@ export const ShowFormModal: React.FC<Props> = ({
 
             {/* Barra Visual do Termômetro */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400">
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
                 <span>Eficiência de Margem do Evento:</span>
                 <span className={
-                  financialSummaryLive.marginPercent >= 60 ? 'text-emerald-400' :
-                  financialSummaryLive.marginPercent >= 30 ? 'text-amber-400' : 'text-rose-400'
+                  financialSummaryLive.marginPercent >= 60 ? 'text-emerald-600' :
+                  financialSummaryLive.marginPercent >= 30 ? 'text-amber-700' : 'text-rose-600'
                 }>
                   {financialSummaryLive.marginPercent >= 60 ? '🔥 Excelente Margem (>60%)' :
                    financialSummaryLive.marginPercent >= 30 ? '⚖️ Margem Saudável (30-60%)' : '⚠️ Margem Baixa (<30%)'}
                 </span>
               </div>
-              <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-50 rounded-full overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-300 ${
                     financialSummaryLive.marginPercent >= 60 ? 'bg-gradient-to-r from-emerald-500 to-[#1ed760]' :
@@ -1197,13 +1197,13 @@ export const ShowFormModal: React.FC<Props> = ({
           {/* ========================================================================= */}
           {/* 3. BLOCO C: CUSTOS DIRETOS VINCULADOS AO EVENTO                           */}
           {/* ========================================================================= */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#18181b] border border-zinc-800 space-y-5">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
-              <span className="text-[10px] font-black uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 flex items-center gap-1.5">
                 <Users size={13} />
                 BLOCO C • Custos Diretos Vinculados ao Evento
               </span>
-              <span className="text-[10px] text-rose-400 font-bold">
+              <span className="text-[10px] text-rose-600 font-bold">
                 Total Custos: -{formatCurrency(financialSummaryLive.totalCosts)}
               </span>
             </div>
@@ -1211,27 +1211,27 @@ export const ShowFormModal: React.FC<Props> = ({
             {/* 3.1 TABELA DE MÚSICOS & EQUIPE (FREELANCERS) */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center space-x-1.5">
-                  <Users size={14} className="text-purple-400" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
+                  <Users size={14} className="text-purple-600" />
                   <span>1. Músicos & Equipe (Freelancers)</span>
                 </h4>
-                <span className="text-[10px] text-zinc-400 font-bold">
+                <span className="text-[10px] text-slate-600 font-bold">
                   Subtotal: {formatCurrency(financialSummaryLive.crewCost)}
                 </span>
               </div>
 
               {/* Seletor rápido de equipe cadastrada ou novo avulso */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 rounded-2xl bg-[#121214] border border-zinc-800">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 rounded-2xl bg-white border border-slate-200">
                 {crew.length > 0 && (
                   <div className="sm:col-span-3">
-                    <label className="text-[10px] font-bold text-zinc-400 block mb-1">
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">
                       Selecionar Músico Cadastrado no App:
                     </label>
                     <div className="flex items-center space-x-2">
                       <select
                         value={selectedCrewToAdd}
                         onChange={(e) => setSelectedCrewToAdd(e.target.value)}
-                        className="flex-1 bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                       >
                         <option value="">Selecione um integrante...</option>
                         {crew.map(c => (
@@ -1258,7 +1258,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={customCrewName}
                     onChange={(e) => setCustomCrewName(e.target.value)}
                     placeholder="Nome Avulso (ex: Baterista convidado)"
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                   />
                 </div>
 
@@ -1268,7 +1268,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={customCrewRole}
                     onChange={(e) => setCustomCrewRole(e.target.value)}
                     placeholder="Instrumento (ex: Sanfona)"
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                   />
                 </div>
 
@@ -1278,12 +1278,12 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={customCrewCache}
                     onChange={(e) => setCustomCrewCache(e.target.value)}
                     placeholder="Cachê (R$)"
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                   />
                   <button
                     type="button"
                     onClick={handleAddCrewMember}
-                    className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white shrink-0"
+                    className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-900 shrink-0"
                     title="Adicionar"
                   >
                     <Plus size={15} />
@@ -1295,27 +1295,27 @@ export const ShowFormModal: React.FC<Props> = ({
               {crewMembers.length > 0 && (
                 <div className="space-y-1.5">
                   {crewMembers.map((m, idx) => (
-                    <div key={m.id || idx} className="p-2.5 rounded-xl bg-[#121214] border border-zinc-800 flex items-center justify-between text-xs">
+                    <div key={m.id || idx} className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between text-xs">
                       <div className="flex items-center space-x-2 min-w-0">
                         <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
-                        <span className="font-bold text-white truncate">{m.name}</span>
-                        <span className="text-[10px] text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded-md">
+                        <span className="font-bold text-slate-900 truncate">{m.name}</span>
+                        <span className="text-[10px] text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded-md">
                           {m.role}
                         </span>
                       </div>
 
                       <div className="flex items-center space-x-2 shrink-0">
-                        <span className="text-[10px] text-zinc-400 font-medium">Cachê:</span>
+                        <span className="text-[10px] text-slate-600 font-medium">Cachê:</span>
                         <input
                           type="number"
                           value={m.cacheAmount}
                           onChange={(e) => handleUpdateCrewCache(idx, parseFloat(e.target.value) || 0)}
-                          className="w-20 bg-[#18181b] border border-zinc-700 rounded-lg p-1 text-right font-black text-rose-400 text-xs"
+                          className="w-20 bg-slate-50 border border-slate-300 rounded-lg p-1 text-right font-black text-rose-600 text-xs"
                         />
                         <button
                           type="button"
                           onClick={() => handleRemoveCrewMember(m.id, idx)}
-                          className="p-1 text-zinc-500 hover:text-rose-400 transition"
+                          className="p-1 text-slate-600 hover:text-rose-600 transition"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1327,68 +1327,68 @@ export const ShowFormModal: React.FC<Props> = ({
             </div>
 
             {/* 3.2 LOGÍSTICA & DESLOCAMENTO */}
-            <div className="space-y-3 pt-3 border-t border-zinc-800">
+            <div className="space-y-3 pt-3 border-t border-slate-200">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center space-x-1.5">
-                  <Car size={14} className="text-amber-400" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
+                  <Car size={14} className="text-amber-700" />
                   <span>2. Logística & Deslocamento</span>
                 </h4>
-                <span className="text-[10px] text-zinc-400 font-bold">
+                <span className="text-[10px] text-slate-600 font-bold">
                   Subtotal: {formatCurrency(financialSummaryLive.logisticsCost)}
                 </span>
               </div>
 
               {/* Adicionar transporte */}
-              <div className="p-4 rounded-2xl bg-[#121214] border border-zinc-800 space-y-4">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-4">
                 {/* CALCULADORA INTELIGENTE DE LOGÍSTICA (VEÍCULO PRÓPRIO) */}
-                <div className="p-3 rounded-xl bg-[#18181b] border border-sky-500/20 space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 block">
+                <div className="p-3 rounded-xl bg-slate-50 border border-sky-500/20 space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-600 block">
                     Calculadora Inteligente de Logística (Veículo Próprio)
                   </span>
                   
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     <div>
-                      <label className="text-[9px] text-zinc-400 block mb-0.5">Distância (KM ida/volta)</label>
+                      <label className="text-[9px] text-slate-600 block mb-0.5">Distância (KM ida/volta)</label>
                       <input
                         type="number"
                         value={transportDistanceKm}
                         onChange={(e) => setTransportDistanceKm(e.target.value)}
-                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-slate-900 font-bold text-xs"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] text-zinc-400 block mb-0.5">Consumo (KM/L)</label>
+                      <label className="text-[9px] text-slate-600 block mb-0.5">Consumo (KM/L)</label>
                       <input
                         type="number"
                         step="0.5"
                         value={carKmPerLiter}
                         onChange={(e) => setCarKmPerLiter(e.target.value)}
-                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-slate-900 font-bold text-xs"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] text-zinc-400 block mb-0.5">Preço Litro (R$)</label>
+                      <label className="text-[9px] text-slate-600 block mb-0.5">Preço Litro (R$)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={fuelPricePerLiter}
                         onChange={(e) => setFuelPricePerLiter(e.target.value)}
-                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-slate-900 font-bold text-xs"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] text-zinc-400 block mb-0.5">Pedágio (R$)</label>
+                      <label className="text-[9px] text-slate-600 block mb-0.5">Pedágio (R$)</label>
                       <input
                         type="number"
                         step="0.01"
                         value={tollCost}
                         onChange={(e) => setTollCost(e.target.value)}
-                        className="w-full bg-[#121214] border border-zinc-800 rounded-lg p-1.5 text-white font-bold text-xs"
+                        className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-slate-900 font-bold text-xs"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-1 border-t border-zinc-800/80">
+                  <div className="flex justify-between items-center text-[10px] text-slate-600 pt-1 border-t border-slate-200/80">
                     <span>Custo Estimado: <strong>{formatCurrency((parseFloat(transportDistanceKm) / (parseFloat(carKmPerLiter) || 10)) * parseFloat(fuelPricePerLiter) + (parseFloat(tollCost) || 0))}</strong></span>
                     <button
                       type="button"
@@ -1425,7 +1425,7 @@ export const ShowFormModal: React.FC<Props> = ({
                   <select
                     value={logisticsType}
                     onChange={(e) => setLogisticsType(e.target.value as any)}
-                    className="bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                    className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                   >
                     <option value="fuel">Combustível</option>
                     <option value="car_km">Carro Próprio / KM</option>
@@ -1440,7 +1440,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={logisticsDesc}
                     onChange={(e) => setLogisticsDesc(e.target.value)}
                     placeholder="Descrição (ex: Uber ida)"
-                    className="bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                    className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                   />
 
                   {logisticsType === 'car_km' ? (
@@ -1455,7 +1455,7 @@ export const ShowFormModal: React.FC<Props> = ({
                           setLogisticsAmount((k * p).toFixed(2));
                         }}
                         placeholder="KM Rodados"
-                        className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                       />
                     </div>
                   ) : (
@@ -1465,14 +1465,14 @@ export const ShowFormModal: React.FC<Props> = ({
                       value={logisticsAmount}
                       onChange={(e) => setLogisticsAmount(e.target.value)}
                       placeholder="Valor (R$)"
-                      className="bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs font-bold"
+                      className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs font-bold"
                     />
                   )}
 
                   <button
                     type="button"
                     onClick={handleAddLogistics}
-                    className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs"
+                    className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-blue-950 font-black text-xs"
                   >
                     + Outra Logística
                   </button>
@@ -1483,23 +1483,23 @@ export const ShowFormModal: React.FC<Props> = ({
               {logistics.length > 0 && (
                 <div className="space-y-1.5">
                   {logistics.map((l, idx) => (
-                    <div key={l.id || idx} className="p-2.5 rounded-xl bg-[#121214] border border-zinc-800 flex items-center justify-between text-xs">
+                    <div key={l.id || idx} className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between text-xs">
                       <div className="flex items-center space-x-2 min-w-0">
                         <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                        <span className="font-bold text-white truncate">{l.description}</span>
+                        <span className="font-bold text-slate-900 truncate">{l.description}</span>
                         {l.km && (
-                          <span className="text-[10px] text-zinc-400">({l.km} km)</span>
+                          <span className="text-[10px] text-slate-600">({l.km} km)</span>
                         )}
                       </div>
 
                       <div className="flex items-center space-x-2 shrink-0">
-                        <span className="font-black text-rose-400">
+                        <span className="font-black text-rose-600">
                           -{formatCurrency(l.amount)}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveLogistics(idx)}
-                          className="p-1 text-zinc-500 hover:text-rose-400 transition"
+                          className="p-1 text-slate-600 hover:text-rose-600 transition"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1511,22 +1511,22 @@ export const ShowFormModal: React.FC<Props> = ({
             </div>
 
             {/* 3.3 OUTRAS DESPESAS (CAMARIM, ALUGUEL DE SOM/LUZ, ALIMENTAÇÃO) */}
-            <div className="space-y-3 pt-3 border-t border-zinc-800">
+            <div className="space-y-3 pt-3 border-t border-slate-200">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center space-x-1.5">
-                  <Hammer size={14} className="text-sky-400" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center space-x-1.5">
+                  <Hammer size={14} className="text-sky-600" />
                   <span>3. Outras Despesas do Show</span>
                 </h4>
-                <span className="text-[10px] text-zinc-400 font-bold">
+                <span className="text-[10px] text-slate-600 font-bold">
                   Subtotal: {formatCurrency(financialSummaryLive.otherCost)}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 p-3 rounded-2xl bg-[#121214] border border-zinc-800">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 p-3 rounded-2xl bg-white border border-slate-200">
                 <select
                   value={otherCat}
                   onChange={(e) => setOtherCat(e.target.value)}
-                  className="bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs"
+                  className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs"
                 >
                   <option value="Alimentação / Camarim">Alimentação / Camarim</option>
                   <option value="Aluguel Som & Luz">Aluguel Som & Luz</option>
@@ -1540,7 +1540,7 @@ export const ShowFormModal: React.FC<Props> = ({
                   value={otherDesc}
                   onChange={(e) => setOtherDesc(e.target.value)}
                   placeholder="Detalhes da despesa"
-                  className="bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs sm:col-span-2"
+                  className="bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs sm:col-span-2"
                 />
 
                 <div className="flex items-center space-x-1.5">
@@ -1550,7 +1550,7 @@ export const ShowFormModal: React.FC<Props> = ({
                     value={otherAmount}
                     onChange={(e) => setOtherAmount(e.target.value)}
                     placeholder="R$"
-                    className="w-full bg-[#18181b] border border-zinc-800 rounded-xl p-2 text-white text-xs font-bold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 text-xs font-bold"
                   />
                   <button
                     type="button"
@@ -1566,21 +1566,21 @@ export const ShowFormModal: React.FC<Props> = ({
               {otherExpenses.length > 0 && (
                 <div className="space-y-1.5">
                   {otherExpenses.map((o, idx) => (
-                    <div key={o.id || idx} className="p-2.5 rounded-xl bg-[#121214] border border-zinc-800 flex items-center justify-between text-xs">
+                    <div key={o.id || idx} className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between text-xs">
                       <div className="flex items-center space-x-2 min-w-0">
                         <span className="w-2 h-2 rounded-full bg-sky-400 shrink-0" />
-                        <span className="font-bold text-white truncate">{o.description}</span>
-                        <span className="text-[10px] text-zinc-400">({o.category})</span>
+                        <span className="font-bold text-slate-900 truncate">{o.description}</span>
+                        <span className="text-[10px] text-slate-600">({o.category})</span>
                       </div>
 
                       <div className="flex items-center space-x-2 shrink-0">
-                        <span className="font-black text-rose-400">
+                        <span className="font-black text-rose-600">
                           -{formatCurrency(o.amount)}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveOtherExpense(idx)}
-                          className="p-1 text-zinc-500 hover:text-rose-400 transition"
+                          className="p-1 text-slate-600 hover:text-rose-600 transition"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1596,41 +1596,41 @@ export const ShowFormModal: React.FC<Props> = ({
           {/* ========================================================================= */}
           {/* 4. BLOCO D: CONTATO & OBSERVAÇÕES                                         */}
           {/* ========================================================================= */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-[#18181b] border border-zinc-800 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
-              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                 <Phone size={13} />
                 BLOCO D • Contato & Observações
               </span>
-              <span className="text-[10px] text-zinc-500 font-bold">Contratante e Notas</span>
+              <span className="text-[10px] text-slate-600 font-bold">Contratante e Notas</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">Nome do Contratante</label>
+                <label className="text-slate-600 font-bold block mb-1">Nome do Contratante</label>
                 <input
                   type="text"
                   value={contractorName}
                   onChange={(e) => setContractorName(e.target.value)}
                   placeholder="Ex: João Silva (Noivo), Gerente Bar"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">WhatsApp / Telefone</label>
+                <label className="text-slate-600 font-bold block mb-1">WhatsApp / Telefone</label>
                 <input
                   type="text"
                   value={contractorPhone}
                   onChange={(e) => setContractorPhone(e.target.value)}
                   placeholder="(11) 98765-4321"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-zinc-300 font-bold block mb-1">
+              <label className="text-slate-600 font-bold block mb-1">
                 Notas & Observações Logísticas
               </label>
               <textarea
@@ -1638,17 +1638,17 @@ export const ShowFormModal: React.FC<Props> = ({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ex: Passar som às 19h pontual, levar extensão de 20m, alimentação inclusa para 4 pessoas..."
-                className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
               />
             </div>
           </div>
 
           {/* BOTÕES DE FINALIZAÇÃO */}
-          <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
+          <div className="flex items-center justify-between pt-2 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs transition"
+              className="px-5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs transition"
             >
               Cancelar
             </button>

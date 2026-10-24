@@ -248,12 +248,12 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950 z-[100] overflow-y-auto animate-slide-up flex flex-col no-scrollbar">
+      <div className="fixed inset-0 bg-slate-50  z-[100] overflow-y-auto animate-slide-up flex flex-col no-scrollbar">
         {/* Top Navbar */}
-        <div className="sticky top-0 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl z-20 px-6 py-5 flex justify-between items-center border-b border-slate-100 dark:border-slate-800">
+        <div className="sticky top-0 bg-white/90  backdrop-blur-xl z-20 px-6 py-5 flex justify-between items-center border-b border-slate-100 ">
           <button
             onClick={onClose}
-            className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-2xl text-slate-500 active:scale-95 transition-all"
+            className="p-2.5 bg-slate-50  rounded-2xl text-slate-600 active:scale-95 transition-all"
           >
             <ArrowLeft size={24} />
           </button>
@@ -263,7 +263,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
               <input
                 value={editName}
                 onChange={e => setEditName(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-2 text-sm font-black text-center outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-slate-100  border-none rounded-xl px-4 py-2 text-sm font-black text-center outline-none focus:ring-2 focus:ring-indigo-500"
                 autoFocus
                 onBlur={handleSaveEditName}
                 onKeyDown={e => e.key === 'Enter' && handleSaveEditName()}
@@ -272,7 +272,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
               <div className="flex flex-col items-center">
                 <h2
                   onClick={() => setIsEditingDebtName(true)}
-                  className="font-black text-slate-800 dark:text-white truncate uppercase tracking-tighter text-base flex items-center cursor-pointer group"
+                  className="font-black text-slate-800  truncate uppercase tracking-tighter text-base flex items-center cursor-pointer group"
                 >
                   {debt.name}{' '}
                   <Edit2
@@ -280,7 +280,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                     className="ml-2 opacity-0 group-hover:opacity-50 transition-opacity"
                   />
                 </h2>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
                   {debt.installmentCount} Parcelas • {debtTransactions.length} lançamentos
                 </span>
               </div>
@@ -290,7 +290,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="p-2.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 hover:bg-purple-100 transition-all active:scale-95"
+              className="p-2.5 rounded-2xl bg-purple-50  text-purple-600  hover:bg-purple-100 transition-all active:scale-95"
               title="Editar Valor Total, Parcelas e Intervalos"
             >
               <SlidersHorizontal size={20} />
@@ -313,7 +313,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
 
         <div className="max-w-md mx-auto w-full flex-1 px-5 pt-6 pb-32">
           {/* CARD DE CENTRO DE CUSTO E IMPACTO NO DRE DA MÚSICA */}
-          <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-5 shadow-sm border border-slate-100 dark:border-slate-800 mb-6 space-y-4">
+          <div className="bg-white  rounded-[2.2rem] p-5 shadow-sm border border-slate-100  mb-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
                 <div
@@ -330,10 +330,10 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                   )}
                 </div>
                 <div>
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-600 block">
                     Centro de Custo Vinculado
                   </span>
-                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                  <h4 className="text-xs font-black text-slate-800  uppercase tracking-tight">
                     {isViny
                       ? `🔀 Som do Viny: Parcelas ${startInst} a ${endInst} (Música) • P11+ Pessoal`
                       : effectiveMode === 'TOTAL_BUSINESS'
@@ -356,31 +356,31 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
             </div>
 
             {(effectiveMode !== 'TOTAL_PERSONAL' || costCenterSummary.musicCount > 0 || isViny) && (
-              <div className="p-3.5 rounded-2xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/50 space-y-2.5">
+              <div className="p-3.5 rounded-2xl bg-purple-50/60  border border-purple-200/60  space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[10px] font-black uppercase text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                  <span className="text-[10px] font-black uppercase text-purple-600  flex items-center gap-1">
                     <Tag size={12} />
                     Subcategoria da Música:
                   </span>
-                  <span className="font-black text-purple-900 dark:text-purple-200">
+                  <span className="font-black text-purple-900 ">
                     {debt.musicSubcategory || 'Equipamentos / Instrumentos'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-purple-200/50 dark:border-purple-800/40">
+                <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-purple-200/50 ">
                   <div>
-                    <span className="text-[9px] font-bold uppercase text-slate-400 block">
+                    <span className="text-[9px] font-bold uppercase text-slate-600 block">
                       Pago na Música (DRE)
                     </span>
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    <span className="text-sm font-black text-emerald-600  tabular-nums">
                       {formatCurrency(costCenterSummary.musicPaidTotal)}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-[9px] font-bold uppercase text-slate-400 block">
+                    <span className="text-[9px] font-bold uppercase text-slate-600 block">
                       Pago no Pessoal (Fora DRE)
                     </span>
-                    <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+                    <span className="text-sm font-black text-indigo-600  tabular-nums">
                       {formatCurrency(costCenterSummary.personalPaidTotal)}
                     </span>
                   </div>
@@ -390,8 +390,8 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
           </div>
 
           {/* Progress & Dynamic Total Value Editor Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-7 sm:p-8 shadow-sm border border-slate-100 dark:border-slate-800 mb-8 relative overflow-hidden flex flex-col items-center text-center">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-indigo-500/20 to-transparent"></div>
+          <div className="bg-white  rounded-[3rem] p-7 sm:p-8 shadow-sm border border-slate-100  mb-8 relative overflow-hidden flex flex-col items-center text-center">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-white via-white to-white"></div>
 
             <div className="relative w-36 h-36 mb-6">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
@@ -402,7 +402,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                   stroke="currentColor"
                   strokeWidth="10"
                   fill="transparent"
-                  className="text-slate-100 dark:text-slate-800"
+                  className="text-slate-700 "
                 />
                 <circle
                   cx="80"
@@ -428,16 +428,16 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                   {progress.toFixed(0)}
                   <span className="text-lg">%</span>
                 </span>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                   Quitado
                 </span>
               </div>
             </div>
 
             {/* Valor Total Editável + Amortizado + Saldo Restante */}
-            <div className="grid grid-cols-3 gap-3 w-full pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            <div className="grid grid-cols-3 gap-3 w-full pt-2 border-t border-slate-100 ">
               <div className="text-center">
-                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest block mb-1">
+                <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest block mb-1">
                   Valor Total
                 </span>
                 {isEditingTotalInline ? (
@@ -449,7 +449,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                       onChange={e => setEditTotalAmount(e.target.value)}
                       onBlur={handleSaveEditTotalInline}
                       onKeyDown={e => e.key === 'Enter' && handleSaveEditTotalInline()}
-                      className="w-24 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 text-xs font-black text-center outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white tabular-nums"
+                      className="w-24 bg-slate-100  rounded-lg px-2 py-1 text-xs font-black text-center outline-none focus:ring-2 focus:ring-indigo-500  tabular-nums"
                       autoFocus
                     />
                   </div>
@@ -460,26 +460,26 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                       setEditTotalAmount(String(totalReal));
                       setIsEditingTotalInline(true);
                     }}
-                    className="inline-flex items-center justify-center gap-1 text-sm sm:text-base font-black text-slate-800 dark:text-white tabular-nums hover:text-indigo-500 transition group"
+                    className="inline-flex items-center justify-center gap-1 text-sm sm:text-base font-black text-slate-800  tabular-nums hover:text-indigo-600 transition group"
                     title="Clique para editar o Valor Total e recalcular proporcionalmente as parcelas pendentes"
                   >
                     <span>{formatCurrency(totalReal)}</span>
-                    <Edit2 size={11} className="opacity-50 group-hover:opacity-100 text-indigo-500" />
+                    <Edit2 size={11} className="opacity-50 group-hover:opacity-100 text-indigo-600" />
                   </button>
                 )}
               </div>
 
               <div className="text-center">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest block mb-1">
                   Amortizado
                 </span>
-                <span className="text-sm sm:text-base font-black text-emerald-500 tabular-nums">
+                <span className="text-sm sm:text-base font-black text-emerald-600 tabular-nums">
                   {formatCurrency(paid)}
                 </span>
               </div>
 
               <div className="text-center">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest block mb-1">
                   Saldo Restante
                 </span>
                 <span
@@ -495,10 +495,10 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
 
           {/* List Section Title */}
           <div className="flex justify-between items-center mb-4 px-3">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center">
+            <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest flex items-center">
               <Clock size={14} className="mr-2" /> Cronograma de Parcelas
             </h3>
-            <span className="text-[9px] font-black text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+            <span className="text-[9px] font-black text-purple-600  bg-purple-50  px-2.5 py-1 rounded-lg uppercase tracking-widest">
               Toque na parcela p/ editar
             </span>
           </div>
@@ -597,12 +597,12 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                             : 'Entrada Inicial'}
                         </span>
                         {isTPaid && (
-                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600  shrink-0">
                             Paga
                           </span>
                         )}
                         {t.manualCostCenterOverride && (
-                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                          <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600  shrink-0">
                             Ajustada
                           </span>
                         )}
@@ -617,7 +617,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                         }`}
                       >
                         {formatCurrency(cleanInstallmentAmount)}
-                        <Edit2 size={10} className="opacity-40 group-hover:opacity-100 text-indigo-400" />
+                        <Edit2 size={10} className="opacity-40 group-hover:opacity-100 text-indigo-600" />
                       </span>
                     </div>
 
@@ -625,7 +625,7 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                       <div className="flex items-center space-x-2">
                         <Calendar
                           size={10}
-                          className={isOverdue ? 'text-rose-400' : 'text-slate-400'}
+                          className={isOverdue ? 'text-rose-600' : 'text-slate-600'}
                         />
                         <span
                           className={`text-[10px] font-black uppercase tracking-tighter ${
@@ -639,13 +639,13 @@ export const DebtDetailModal: React.FC<DebtDetailModalProps> = ({ debtId, onClos
                       {/* Etiquetas de Rateio Dinâmico abaixo de cada parcela */}
                       <div className="flex flex-wrap items-center gap-1.5">
                         {dynamicMusicAmount > 0 && (
-                          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 flex items-center space-x-1">
+                          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border bg-purple-500/15 text-purple-700  border-purple-500/30 flex items-center space-x-1">
                             <Music size={10} />
                             <span>Música {formatCurrency(dynamicMusicAmount)}</span>
                           </span>
                         )}
                         {dynamicPersonalAmount > 0 && (
-                          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 flex items-center space-x-1">
+                          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border bg-slate-100  text-slate-600  border-slate-200  flex items-center space-x-1">
                             <User size={10} />
                             <span>Pessoal {formatCurrency(dynamicPersonalAmount)}</span>
                           </span>

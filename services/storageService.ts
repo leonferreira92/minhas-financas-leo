@@ -1,5 +1,4 @@
 import { Transaction, Category, AppSettings, Debt, Account, Budget, Show, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
-import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 import { BACKUP_DATA } from './backupImporter';
 
 const BASE_KEYS = {
@@ -100,15 +99,12 @@ export const StorageService = {
     if (isDemoModeActive) return [];
     try {
       const data = safeGetItem(getKey(BASE_KEYS.TRANSACTIONS));
-      if (data) {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return deduplicateById<Transaction>(parsed);
-        }
-      }
-      return deduplicateById<Transaction>(BACKUP_DATA.transactions);
-    } catch {
-      return deduplicateById<Transaction>(BACKUP_DATA.transactions);
+      if (data === null) return [];
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? deduplicateById<Transaction>(parsed) : [];
+    } catch (error) {
+      console.error('[StorageService] Falha ao carregar transações locais:', error);
+      return [];
     }
   },
 
@@ -180,15 +176,12 @@ export const StorageService = {
     if (isDemoModeActive) return [];
     try {
       const data = safeGetItem(getKey(BASE_KEYS.ACCOUNTS));
-      if (data) {
-        const parsed: Account[] = deduplicateById<Account>(JSON.parse(data));
-        if (parsed && parsed.length > 0) {
-          return deduplicateById(parsed);
-        }
-      }
-      return deduplicateById(BACKUP_DATA.accounts);
-    } catch {
-      return deduplicateById(BACKUP_DATA.accounts);
+      if (data === null) return [];
+      const parsed: Account[] = JSON.parse(data);
+      return Array.isArray(parsed) ? deduplicateById(parsed) : [];
+    } catch (error) {
+      console.error('[StorageService] Falha ao carregar contas locais:', error);
+      return [];
     }
   },
 

@@ -289,13 +289,13 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
     <div className="space-y-5">
       
       {/* HEADER DA ABA */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200">
         <div>
-          <h2 className="text-base sm:text-lg font-black text-white flex items-center space-x-2">
-            <Hammer size={20} className="text-purple-400" />
+          <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center space-x-2">
+            <Hammer size={20} className="text-purple-600" />
             <span>Custos da Música & Estrutura</span>
           </h2>
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-[11px] text-slate-600">
             Equipamentos, instrumentos, luthier, cordas, marketing, figurino e softwares musicais.
           </p>
         </div>
@@ -310,28 +310,28 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
       </div>
 
       {/* PAINEL DE DISTRIBUIÇÃO DE CUSTOS ESTATÍSTICOS */}
-      <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4 shadow-sm">
+      <div className="p-5 rounded-3xl bg-white border border-slate-200 space-y-4 shadow-sm">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-[#0f0f11] border border-zinc-800 flex justify-between items-center">
+          <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 flex justify-between items-center">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400 block mb-0.5">Total Investido em Estrutura</span>
-              <h3 className="text-xl sm:text-2xl font-black text-white tabular-nums">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block mb-0.5">Total Investido em Estrutura</span>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tabular-nums">
                 {formatCurrency(categoryTotals.grandTotal)}
               </h3>
             </div>
-            <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-3 py-1 rounded-xl border border-purple-500/20">
+            <span className="text-xs font-bold text-purple-600 bg-purple-500/10 px-3 py-1 rounded-xl border border-purple-500/20">
               {allUnifiedCostItems.length} despesas
             </span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#0f0f11] border border-amber-500/20 flex justify-between items-center">
+          <div className="p-4 rounded-2xl bg-slate-100 border border-amber-500/20 flex justify-between items-center">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block mb-0.5">Reserva para Equipamentos (Shows)</span>
-              <h3 className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block mb-0.5">Reserva para Equipamentos (Shows)</span>
+              <h3 className="text-xl sm:text-2xl font-black text-amber-700 tabular-nums">
                 {formatCurrency(totalEquipmentReserve)}
               </h3>
             </div>
-            <span className="text-[10px] font-black uppercase bg-amber-500/10 text-amber-400 px-3 py-1 rounded-xl border border-amber-500/20">
+            <span className="text-[10px] font-black uppercase bg-amber-500/10 text-amber-700 px-3 py-1 rounded-xl border border-amber-500/20">
               Fundo Acumulado
             </span>
           </div>
@@ -339,18 +339,18 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
 
         {/* BARRAS DE DISTRIBUIÇÃO */}
         {categoryTotals.list.length > 0 && (
-          <div className="space-y-2 pt-2 border-t border-zinc-800">
+          <div className="space-y-2 pt-2 border-t border-slate-200">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {categoryTotals.list.map(cat => (
-                <div key={cat.category} className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-zinc-400">
+                <div key={cat.category} className="p-3 rounded-2xl bg-white/90 border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
                     <span className="truncate">{cat.label}</span>
                     <span>{cat.percentage.toFixed(0)}%</span>
                   </div>
-                  <span className="text-xs font-black text-white tabular-nums block">
+                  <span className="text-xs font-black text-slate-900 tabular-nums block">
                     {formatCurrency(cat.amount)}
                   </span>
-                  <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden mt-1">
+                  <div className="w-full h-1 bg-slate-50 rounded-full overflow-hidden mt-1">
                     <div className="h-full rounded-full" style={{ width: `${cat.percentage}%`, backgroundColor: cat.color }} />
                   </div>
                 </div>
@@ -363,18 +363,18 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-center gap-2.5">
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por descrição (ex: Jogo de cordas, Pedal overdrive, Tráfego Instagram)..."
-            className="w-full bg-[#121214] border border-zinc-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-900"
             >
               <X size={14} />
             </button>
@@ -411,10 +411,10 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
 
       {/* LISTAGEM DE CUSTOS */}
       {filteredItems.length === 0 ? (
-        <div className="p-8 rounded-3xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-3">
-          <Hammer size={32} className="mx-auto text-zinc-600" />
-          <p className="text-sm font-bold text-white">Nenhum custo ou equipamento cadastrado</p>
-          <p className="text-xs text-zinc-400">Cadastre a compra de instrumentos, cabos, cordas e luthier para manter o DRE da música 100% preciso.</p>
+        <div className="p-8 rounded-3xl bg-white border border-dashed border-slate-200 text-center space-y-3">
+          <Hammer size={32} className="mx-auto text-slate-600" />
+          <p className="text-sm font-bold text-slate-900">Nenhum custo ou equipamento cadastrado</p>
+          <p className="text-xs text-slate-600">Cadastre a compra de instrumentos, cabos, cordas e luthier para manter o DRE da música 100% preciso.</p>
           <button
             onClick={() => handleOpenModal()}
             className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs inline-flex items-center space-x-1"
@@ -433,7 +433,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
             return (
               <div
                 key={item.id}
-                className="p-4 rounded-2xl bg-[#141416] border border-zinc-800 hover:border-zinc-700 transition flex items-center justify-between gap-3 group"
+                className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 transition flex items-center justify-between gap-3 group"
               >
                 <div className="flex items-center space-x-3 min-w-0">
                   <div 
@@ -445,7 +445,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
 
                   <div className="min-w-0">
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs font-black text-white truncate">
+                      <span className="text-xs font-black text-slate-900 truncate">
                         {item.title}
                       </span>
                       <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${cfg.bgClass}`}>
@@ -453,15 +453,15 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-2 text-[11px] text-zinc-400 mt-0.5">
+                    <div className="flex items-center space-x-2 text-[11px] text-slate-600 mt-0.5">
                       <span>{item.date}</span>
                       {linkedShow && (
-                        <span className="text-purple-400 font-bold truncate">
+                        <span className="text-purple-600 font-bold truncate">
                           • Show: {linkedShow.contractorName || linkedShow.name}
                         </span>
                       )}
                       {item.notes && (
-                        <span className="text-zinc-500 truncate hidden sm:inline">
+                        <span className="text-slate-600 truncate hidden sm:inline">
                           • {item.notes}
                         </span>
                       )}
@@ -470,20 +470,20 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
                 </div>
 
                 <div className="flex items-center space-x-3 shrink-0">
-                  <span className="text-sm font-black text-rose-400 tabular-nums">
+                  <span className="text-sm font-black text-rose-600 tabular-nums">
                     -{formatCurrency(item.amount)}
                   </span>
 
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => handleOpenModal(item)}
-                      className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition"
+                      className="p-1.5 rounded-xl bg-slate-50 text-slate-600 hover:text-slate-900 transition"
                     >
                       <Edit3 size={13} />
                     </button>
                     <button
                       onClick={() => handleDelete(item.id, item.title, item.transactionId)}
-                      className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-rose-400 transition"
+                      className="p-1.5 rounded-xl bg-slate-50 text-slate-600 hover:text-rose-600 transition"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -497,17 +497,17 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
 
       {/* MODAL: REGISTRAR / EDITAR CUSTO DA MÚSICA */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-              <h3 className="text-base font-black text-white flex items-center space-x-2">
-                <Hammer size={18} className="text-purple-400" />
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                <Hammer size={18} className="text-purple-600" />
                 <span>{editingItem ? 'Editar Custo da Música' : 'Novo Custo / Equipamento'}</span>
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-zinc-800"
+                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-900 bg-slate-50"
               >
                 <X size={16} />
               </button>
@@ -515,11 +515,11 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
 
             <form onSubmit={handleSaveItem} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Categoria do Custo *</label>
+                <label className="text-slate-600 font-bold block mb-1">Categoria do Custo *</label>
                 <select
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value as any)}
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 font-bold"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500 font-bold"
                 >
                   {Object.entries(categoriesConfig).map(([k, v]) => (
                     <option key={k} value={k}>{v.label}</option>
@@ -528,20 +528,20 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Descrição do Item / Despesa *</label>
+                <label className="text-slate-600 font-bold block mb-1">Descrição do Item / Despesa *</label>
                 <input
                   type="text"
                   required
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="Ex: Jogo de Cordas Elixir 0.10, Luthier Regulagem, Pedal Strymon, Anúncio Instagram..."
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 font-bold"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500 font-bold"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Valor (R$) *</label>
+                  <label className="text-slate-600 font-bold block mb-1">Valor (R$) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -549,24 +549,24 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
                     value={formAmount}
                     onChange={(e) => setFormAmount(e.target.value)}
                     placeholder="0,00"
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-rose-400 font-black text-sm focus:outline-none focus:border-purple-500"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-rose-600 font-black text-sm focus:outline-none focus:border-purple-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Data *</label>
+                  <label className="text-slate-600 font-bold block mb-1">Data *</label>
                   <input
                     type="date"
                     required
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Vincular a um Show (Opcional)</label>
+                <label className="text-slate-600 font-bold block mb-1">Vincular a um Show (Opcional)</label>
                 <select
                   value={formShowId}
                   onChange={(e) => {
@@ -579,7 +579,7 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
                       }
                     }
                   }}
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 >
                   <option value="">Gasto Geral de Carreira / Estrutura</option>
                   {shows.filter(s => s.status !== 'Cancelado').map(s => (
@@ -591,21 +591,21 @@ export const GearAndCostsView: React.FC<Props> = ({ shows }) => {
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Observações / Loja / Garantia</label>
+                <label className="text-slate-600 font-bold block mb-1">Observações / Loja / Garantia</label>
                 <textarea
                   rows={2}
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="Ex: Comprado na Santa Efigênia, garantia 1 ano..."
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold"
+                  className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold"
                 >
                   Cancelar
                 </button>

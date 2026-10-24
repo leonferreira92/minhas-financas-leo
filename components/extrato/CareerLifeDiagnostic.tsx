@@ -85,12 +85,12 @@ export const CareerLifeDiagnostic: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="p-4 rounded-2xl bg-purple-50/70 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/50 flex items-center justify-between">
+      <div className="p-4 rounded-2xl bg-purple-50/70  border border-purple-100  flex items-center justify-between">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400">
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 ">
             Diagnóstico Operacional
           </span>
-          <h3 className="text-base font-black text-slate-900 dark:text-white mt-0.5 tracking-tight">
+          <h3 className="text-base font-black text-slate-900  mt-0.5 tracking-tight">
             Carreira Artística & Vida Pessoal
           </h3>
         </div>
@@ -103,93 +103,93 @@ export const CareerLifeDiagnostic: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
         {/* Card 1: Margem de Lucro por Show */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-3">
+        <div className="bg-white  p-5 rounded-[2rem] border border-slate-200/80  shadow-xl space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               1. Margem de Lucro por Show
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600  flex items-center justify-center">
               <TrendingUp size={16} strokeWidth={2.5} />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900  tabular-nums">
               {metrics.profitMargin.toFixed(1)}%
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <p className="text-xs text-slate-600  font-medium mt-1">
               (Cachê Bruto - Custos) / Cachê Bruto
             </p>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-slate-100  rounded-full h-2 overflow-hidden">
             <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${Math.min(100, Math.max(5, metrics.profitMargin))}%` }} />
           </div>
         </div>
 
         {/* Card 2: Cobertura do Custo de Vida Pessoal */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-3">
+        <div className="bg-white  p-5 rounded-[2rem] border border-slate-200/80  shadow-xl space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               2. Cobertura de Vida Pessoal
             </span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600  flex items-center justify-center">
               <ShieldCheck size={16} strokeWidth={2.5} />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900  tabular-nums">
               {metrics.lifeCoverageMonths.toFixed(1)} meses
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <p className="text-xs text-slate-600  font-medium mt-1">
               Saldo Pessoal cobre despesas mensais
             </p>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-slate-100  rounded-full h-2 overflow-hidden">
             <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${Math.min(100, (metrics.lifeCoverageMonths / 6) * 100)}%` }} />
           </div>
         </div>
 
         {/* Card 3: Custo Logístico x Cachê */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-3">
+        <div className="bg-white  p-5 rounded-[2rem] border border-slate-200/80  shadow-xl space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               3. Custo Logístico x Cachê
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600  flex items-center justify-center">
               <PieChart size={16} strokeWidth={2.5} />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900  tabular-nums">
               {metrics.logisticCostRatio.toFixed(1)}%
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <p className="text-xs text-slate-600  font-medium mt-1">
               Combustível, pedágio e comissões sobre cachê
             </p>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-slate-100  rounded-full h-2 overflow-hidden">
             <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${Math.min(100, metrics.logisticCostRatio)}%` }} />
           </div>
         </div>
 
         {/* Card 4: Eficiência de Pró-Labore */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-[2rem] border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-3">
+        <div className="bg-white  p-5 rounded-[2rem] border border-slate-200/80  shadow-xl space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">
               4. Eficiência de Pró-Labore
             </span>
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600  flex items-center justify-center">
               <Wallet size={16} strokeWidth={2.5} />
             </div>
           </div>
           <div>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tabular-nums">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900  tabular-nums">
               {metrics.proLaboreEfficiency.toFixed(1)}%
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            <p className="text-xs text-slate-600  font-medium mt-1">
               Retirada transferida do show para o pessoal ({formatCurrency(metrics.proLaboreMonth)})
             </p>
           </div>
-          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-slate-100  rounded-full h-2 overflow-hidden">
             <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${Math.min(100, metrics.proLaboreEfficiency)}%` }} />
           </div>
         </div>

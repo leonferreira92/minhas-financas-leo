@@ -72,13 +72,13 @@ export const ShowsManagementView: React.FC<Props> = ({
     <div className="space-y-5">
       
       {/* HEADER & AÇÕES */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200">
         <div>
-          <h2 className="text-base sm:text-lg font-black text-white flex items-center space-x-2">
-            <TrendingUp size={20} className="text-purple-400" />
+          <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center space-x-2">
+            <TrendingUp size={20} className="text-purple-600" />
             <span>Gestão Detalhada de Shows & Lucratividade</span>
           </h2>
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-[11px] text-slate-600">
             Ficha de cada apresentação com cachê bruto, custos de equipe/logística e margem líquida.
           </p>
         </div>
@@ -86,17 +86,17 @@ export const ShowsManagementView: React.FC<Props> = ({
         <div className="flex items-center space-x-2 self-start sm:self-auto flex-wrap gap-y-2">
           <button
             onClick={onExportERP || (() => downloadShowsERPMigrationJSON(shows, transactions, settings))}
-            className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-900/40 to-purple-800/40 hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider border border-purple-500/40 transition active:scale-95 flex items-center space-x-1.5 shadow-sm group"
+            className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-white via-white to-white hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider border border-purple-500/40 transition active:scale-95 flex items-center space-x-1.5 shadow-sm group"
             title="Exportar Todos os Shows (Migração ERP) - Gera shows_migracao_leo_ferreira.json"
           >
-            <Download size={14} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+            <Download size={14} className="text-purple-600 group-hover:translate-y-0.5 transition-transform" />
             <span className="hidden sm:inline">Exportar Todos os Shows (Migração ERP)</span>
             <span className="sm:hidden">Exportar ERP</span>
           </button>
 
           <button
             onClick={() => onOpenCreateShow('Orçamento')}
-            className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider border border-amber-500/30 transition active:scale-95 flex items-center space-x-1"
+            className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 text-xs font-black uppercase tracking-wider border border-amber-500/30 transition active:scale-95 flex items-center space-x-1"
           >
             <FileText size={14} />
             <span>Orçamento</span>
@@ -115,13 +115,13 @@ export const ShowsManagementView: React.FC<Props> = ({
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-center gap-2.5">
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por contratante, cidade ou local do show..."
-            className="w-full bg-[#121214] border border-zinc-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500"
           />
         </div>
 
@@ -132,7 +132,7 @@ export const ShowsManagementView: React.FC<Props> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-[#121214] border border-zinc-800 rounded-2xl px-3 py-2.5 text-xs text-zinc-300 font-bold focus:outline-none focus:border-purple-500"
+            className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-xs text-slate-600 font-bold focus:outline-none focus:border-purple-500"
           >
             <option value="all">Todos os Status</option>
             <option value="Confirmado">Confirmados</option>
@@ -144,7 +144,7 @@ export const ShowsManagementView: React.FC<Props> = ({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-[#121214] border border-zinc-800 rounded-2xl px-3 py-2.5 text-xs text-zinc-300 font-bold focus:outline-none focus:border-purple-500"
+            className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-xs text-slate-600 font-bold focus:outline-none focus:border-purple-500"
           >
             <option value="date_desc">Mais Recentes</option>
             <option value="date_asc">Mais Antigos</option>
@@ -156,10 +156,10 @@ export const ShowsManagementView: React.FC<Props> = ({
 
       {/* LISTAGEM DE CARDS */}
       {filteredShows.length === 0 ? (
-        <div className="p-8 rounded-3xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-3">
-          <Calendar size={32} className="mx-auto text-zinc-600" />
-          <p className="text-sm font-bold text-white">Nenhum show encontrado</p>
-          <p className="text-xs text-zinc-400">Tente ajustar seus filtros ou adicione uma nova apresentação.</p>
+        <div className="p-8 rounded-3xl bg-white border border-dashed border-slate-200 text-center space-y-3">
+          <Calendar size={32} className="mx-auto text-slate-600" />
+          <p className="text-sm font-bold text-slate-900">Nenhum show encontrado</p>
+          <p className="text-xs text-slate-600">Tente ajustar seus filtros ou adicione uma nova apresentação.</p>
           <button
             onClick={() => onOpenCreateShow('Confirmado')}
             className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs inline-flex items-center space-x-1"
@@ -182,14 +182,14 @@ export const ShowsManagementView: React.FC<Props> = ({
               <div
                 key={show.id}
                 onClick={() => onSelectShow(show)}
-                className="p-4 sm:p-5 rounded-3xl bg-[#141416] border border-zinc-800 hover:border-purple-500/40 transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs active:scale-[0.99]"
+                className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200 hover:border-purple-500/40 transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs active:scale-[0.99]"
               >
                 <div className="space-y-2.5">
                   {/* Header do Card: Data + Status + Tag Cidade/UF + Horário */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
-                        <span className="text-xs font-black text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded-lg border border-purple-500/20 flex items-center space-x-1">
+                        <span className="text-xs font-black text-purple-700 bg-purple-500/10 px-2 py-0.5 rounded-lg border border-purple-500/20 flex items-center space-x-1">
                           <Calendar size={12} />
                           <span>{show.date}</span>
                         </span>
@@ -198,55 +198,55 @@ export const ShowsManagementView: React.FC<Props> = ({
                           {show.status}
                         </span>
 
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-900 text-zinc-300 border border-zinc-800">
-                          <MapPin size={10} className="text-purple-400 shrink-0" />
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-white text-slate-600 border border-slate-200">
+                          <MapPin size={10} className="text-purple-600 shrink-0" />
                           <span className="truncate max-w-[140px]">{hierarchy.cityTag}</span>
                         </span>
                       </div>
 
                       {/* 1. TÍTULO PRINCIPAL: Nome do Evento / Casa */}
-                      <h3 className="text-base sm:text-lg font-black text-white mt-2 truncate group-hover:text-purple-400 transition-colors">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 mt-2 truncate group-hover:text-purple-600 transition-colors">
                         {hierarchy.eventTitle}
                       </h3>
 
                       {/* 2. SUBTÍTULO: Nome do Contratante / Cliente */}
-                      <p className="text-xs text-zinc-400 font-bold mt-0.5 truncate">
+                      <p className="text-xs text-slate-600 font-bold mt-0.5 truncate">
                         {hierarchy.contractorSubtitle}
                       </p>
                     </div>
 
-                    <span className="text-xs font-black text-zinc-400 bg-zinc-900 px-2 py-1 rounded-xl border border-zinc-800 shrink-0">
+                    <span className="text-xs font-black text-slate-600 bg-white px-2 py-1 rounded-xl border border-slate-200 shrink-0">
                       {show.time || '20:00'}
                     </span>
                   </div>
 
                   {/* PAINEL DE METRICAS FINANCEIRAS DO SHOW (REQUISITO 2) */}
-                  <div className="p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-2">
+                  <div className="p-3 rounded-2xl bg-white/90 border border-slate-200 space-y-2">
                     
                     {/* Linha 1: Cachê Bruto */}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-400 font-bold">Cachê Bruto:</span>
-                      <span className="font-black text-white tabular-nums">
+                      <span className="text-slate-600 font-bold">Cachê Bruto:</span>
+                      <span className="font-black text-slate-900 tabular-nums">
                         {formatCurrency(fin.totalPredicted)}
                       </span>
                     </div>
 
                     {/* Linha 2: Custos de Equipe & Logística */}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-400 font-bold">Custos da Música:</span>
-                      <span className="font-bold text-rose-400 tabular-nums">
+                      <span className="text-slate-600 font-bold">Custos da Música:</span>
+                      <span className="font-bold text-rose-600 tabular-nums">
                         -{formatCurrency(totalCosts)}
                       </span>
                     </div>
 
                     {/* Linha 3: Lucro Líquido Real & Margem */}
-                    <div className="flex items-center justify-between text-xs pt-1.5 border-t border-zinc-800 font-black">
-                      <span className="text-purple-300 uppercase text-[10px]">Lucro Líquido:</span>
+                    <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200 font-black">
+                      <span className="text-purple-700 uppercase text-[10px]">Lucro Líquido:</span>
                       <div className="flex items-center space-x-1.5">
-                        <span className="text-emerald-400 tabular-nums">
+                        <span className="text-emerald-600 tabular-nums">
                           {formatCurrency(fin.netProfit)}
                         </span>
-                        <span className="text-[10px] text-zinc-400 font-normal">
+                        <span className="text-[10px] text-slate-600 font-normal">
                           ({marginPct.toFixed(0)}%)
                         </span>
                       </div>
@@ -255,13 +255,13 @@ export const ShowsManagementView: React.FC<Props> = ({
 
                   {/* Barra de Progresso do Recebimento */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400 font-bold">
+                    <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold">
                       <span>Recebido: {formatCurrency(fin.totalReceived)}</span>
-                      <span className={fin.totalPending === 0 ? 'text-emerald-400' : 'text-amber-400'}>
+                      <span className={fin.totalPending === 0 ? 'text-emerald-600' : 'text-amber-700'}>
                         {fin.totalPending === 0 ? '✓ 100% Quitado' : `Falta: ${formatCurrency(fin.totalPending)}`}
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${fin.totalPending === 0 ? 'bg-[#1ed760]' : 'bg-purple-500'}`}
                         style={{ width: `${fin.totalPredicted > 0 ? (fin.totalReceived / fin.totalPredicted) * 100 : 0}%` }}
@@ -271,7 +271,7 @@ export const ShowsManagementView: React.FC<Props> = ({
                 </div>
 
                 {/* Footer do Card */}
-                <div className="flex items-center justify-between pt-2 border-t border-zinc-800 text-xs text-purple-400 font-bold">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-xs text-purple-600 font-bold">
                   <span>Ver Ficha e Lançar Pagamento</span>
                   <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                 </div>

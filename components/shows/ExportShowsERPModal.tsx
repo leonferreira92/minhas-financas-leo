@@ -60,45 +60,45 @@ export const ExportShowsERPModal: React.FC<Props> = ({
   const { resumo_financeiro_global, distribuicao_por_status_agenda, total_shows_cadastrados } = exportPayload;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-white/90 backdrop-blur-md animate-fade-in">
       <div 
-        className="bg-[#121214] border border-zinc-800 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl shadow-purple-950/40 overflow-hidden"
+        className="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl shadow-purple-950/40 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-purple-950/50 via-[#181524] to-[#121214] border-b border-zinc-800 flex items-center justify-between">
+        <div className="p-5 sm:p-6 bg-gradient-to-r from-white via-white to-white border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-3 bg-purple-600/20 border border-purple-500/40 rounded-2xl text-purple-400">
+            <div className="p-3 bg-purple-600/20 border border-purple-500/40 rounded-2xl text-purple-600">
               <Database size={24} className="animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
                   Exportação Completa ERP
                 </span>
-                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
                   {total_shows_cadastrados} {total_shows_cadastrados === 1 ? 'Show' : 'Shows'}
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-white mt-0.5">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">
                 Migração de Shows para ERP
               </h2>
-              <p className="text-xs text-zinc-400">
-                Arquivo padronizado: <span className="font-mono text-purple-300 font-bold">shows_migracao_leo_ferreira.json</span>
+              <p className="text-xs text-slate-600">
+                Arquivo padronizado: <span className="font-mono text-purple-700 font-bold">shows_migracao_leo_ferreira.json</span>
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-white rounded-xl hover:bg-zinc-800 transition"
+            className="p-2 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-50 transition"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* TABS DE NAVEGAÇÃO INTERNA */}
-        <div className="flex border-b border-zinc-800 bg-zinc-900/40 px-5 pt-2">
+        <div className="flex border-b border-slate-200 bg-white/60 px-5 pt-2">
           <button
             onClick={() => setActiveTab('resumo')}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center space-x-1.5 ${
@@ -141,17 +141,17 @@ export const ExportShowsERPModal: React.FC<Props> = ({
           {activeTab === 'resumo' && (
             <div className="space-y-5">
               {/* CARD DE DESTAQUE COM O ARQUIVO GERADO */}
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-900/20 via-zinc-900/60 to-emerald-950/20 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-white via-white to-white border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-700 shrink-0">
                     <FileJson size={20} />
                   </div>
                   <div>
-                    <div className="text-xs font-black text-white flex items-center space-x-1.5">
+                    <div className="text-xs font-black text-slate-900 flex items-center space-x-1.5">
                       <span>shows_migracao_leo_ferreira.json</span>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">Pronto para ERP</span>
+                      <span className="text-[10px] text-emerald-600 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">Pronto para ERP</span>
                     </div>
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-slate-600">
                       Contém todos os objetos, chaves originais e estrutura completa com cachês, custos e agenda.
                     </p>
                   </div>
@@ -160,10 +160,10 @@ export const ExportShowsERPModal: React.FC<Props> = ({
                 <div className="flex items-center space-x-2 shrink-0">
                   <button
                     onClick={handleCopy}
-                    className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition flex items-center space-x-1.5 border border-zinc-700"
+                    className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold transition flex items-center space-x-1.5 border border-slate-300"
                     title="Copiar JSON para a área de transferência"
                   >
-                    {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                     <span>{copied ? 'Copiado!' : 'Copiar JSON'}</span>
                   </button>
 
@@ -179,101 +179,101 @@ export const ExportShowsERPModal: React.FC<Props> = ({
 
               {/* STATS FINANCEIROS CONSOLIDADOS */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-zinc-900/60 border border-zinc-800/80 p-3.5 rounded-2xl">
-                  <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Cachê Bruto Total</div>
-                  <div className="text-base sm:text-lg font-black text-white mt-1">
+                <div className="bg-white/80 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Cachê Bruto Total</div>
+                  <div className="text-base sm:text-lg font-black text-slate-900 mt-1">
                     {formatCurrency(resumo_financeiro_global.total_cache_bruto)}
                   </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">Soma contratada</div>
+                  <div className="text-[10px] text-slate-600 mt-0.5">Soma contratada</div>
                 </div>
 
-                <div className="bg-zinc-900/60 border border-zinc-800/80 p-3.5 rounded-2xl">
-                  <div className="text-[10px] font-bold text-rose-400 uppercase tracking-wider">Custos Somados</div>
-                  <div className="text-base sm:text-lg font-black text-rose-300 mt-1">
+                <div className="bg-white/80 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">Custos Somados</div>
+                  <div className="text-base sm:text-lg font-black text-rose-700 mt-1">
                     {formatCurrency(resumo_financeiro_global.total_custos_somados)}
                   </div>
-                  <div className="text-[10px] text-zinc-500 mt-0.5">Músicos + Logística + Som</div>
+                  <div className="text-[10px] text-slate-600 mt-0.5">Músicos + Logística + Som</div>
                 </div>
 
-                <div className="bg-zinc-900/60 border border-zinc-800/80 p-3.5 rounded-2xl">
-                  <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Cachê Líquido Total</div>
-                  <div className="text-base sm:text-lg font-black text-emerald-300 mt-1">
+                <div className="bg-white/80 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Cachê Líquido Total</div>
+                  <div className="text-base sm:text-lg font-black text-emerald-700 mt-1">
                     {formatCurrency(resumo_financeiro_global.total_cache_liquido)}
                   </div>
-                  <div className="text-[10px] text-emerald-500 font-bold mt-0.5">
+                  <div className="text-[10px] text-emerald-600 font-bold mt-0.5">
                     Margem: {resumo_financeiro_global.margem_lucro_global_percent}%
                   </div>
                 </div>
 
-                <div className="bg-zinc-900/60 border border-zinc-800/80 p-3.5 rounded-2xl">
-                  <div className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">Total Recebido</div>
-                  <div className="text-base sm:text-lg font-black text-sky-300 mt-1">
+                <div className="bg-white/80 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Total Recebido</div>
+                  <div className="text-base sm:text-lg font-black text-sky-700 mt-1">
                     {formatCurrency(resumo_financeiro_global.total_recebido)}
                   </div>
-                  <div className="text-[10px] text-amber-400 font-bold mt-0.5">
+                  <div className="text-[10px] text-amber-700 font-bold mt-0.5">
                     Pendente: {formatCurrency(resumo_financeiro_global.total_pendente)}
                   </div>
                 </div>
               </div>
 
               {/* DISTRIBUIÇÃO POR STATUS DE AGENDA */}
-              <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-2xl space-y-3">
-                <div className="text-xs font-black text-zinc-300 uppercase tracking-wider flex items-center justify-between">
+              <div className="bg-white/60 border border-slate-200 p-4 rounded-2xl space-y-3">
+                <div className="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center justify-between">
                   <span>Distribuição por Status da Agenda (Mapeado p/ ERP)</span>
-                  <span className="text-zinc-500 font-normal">{total_shows_cadastrados} eventos</span>
+                  <span className="text-slate-600 font-normal">{total_shows_cadastrados} eventos</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-400 block">Confirmados</span>
-                      <span className="text-lg font-black text-white">{distribuicao_por_status_agenda.confirmados}</span>
+                      <span className="text-[10px] font-bold text-emerald-600 block">Confirmados</span>
+                      <span className="text-lg font-black text-slate-900">{distribuicao_por_status_agenda.confirmados}</span>
                     </div>
-                    <Calendar size={18} className="text-emerald-400" />
+                    <Calendar size={18} className="text-emerald-600" />
                   </div>
 
                   <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-purple-400 block">Realizados</span>
-                      <span className="text-lg font-black text-white">{distribuicao_por_status_agenda.realizados}</span>
+                      <span className="text-[10px] font-bold text-purple-600 block">Realizados</span>
+                      <span className="text-lg font-black text-slate-900">{distribuicao_por_status_agenda.realizados}</span>
                     </div>
-                    <ShieldCheck size={18} className="text-purple-400" />
+                    <ShieldCheck size={18} className="text-purple-600" />
                   </div>
 
                   <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-sky-400 block">Orçamento / Lead</span>
-                      <span className="text-lg font-black text-white">{distribuicao_por_status_agenda.orcamentos_leads}</span>
+                      <span className="text-[10px] font-bold text-sky-600 block">Orçamento / Lead</span>
+                      <span className="text-lg font-black text-slate-900">{distribuicao_por_status_agenda.orcamentos_leads}</span>
                     </div>
-                    <FileCheck2 size={18} className="text-sky-400" />
+                    <FileCheck2 size={18} className="text-sky-600" />
                   </div>
 
                   <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-rose-400 block">Cancelados</span>
-                      <span className="text-lg font-black text-white">{distribuicao_por_status_agenda.cancelados}</span>
+                      <span className="text-[10px] font-bold text-rose-600 block">Cancelados</span>
+                      <span className="text-lg font-black text-slate-900">{distribuicao_por_status_agenda.cancelados}</span>
                     </div>
-                    <AlertCircle size={18} className="text-rose-400" />
+                    <AlertCircle size={18} className="text-rose-600" />
                   </div>
                 </div>
               </div>
 
               {/* LISTA RESUMIDA DOS PRIMEIROS SHOWS */}
               <div className="space-y-2">
-                <div className="text-xs font-bold text-zinc-400 flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
                   <span>Prévia dos Shows Mapeados</span>
-                  <span className="text-[11px] text-purple-400 font-bold">100% dos dados preservados</span>
+                  <span className="text-[11px] text-purple-600 font-bold">100% dos dados preservados</span>
                 </div>
 
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {exportPayload.shows.map((s, idx) => (
                     <div 
                       key={s.id || idx}
-                      className="p-3 bg-zinc-900/60 border border-zinc-800/80 rounded-2xl flex items-center justify-between text-xs"
+                      className="p-3 bg-white/80 border border-slate-200/80 rounded-2xl flex items-center justify-between text-xs"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center space-x-2">
-                          <span className="font-black text-white truncate">{s.nome_evento_local}</span>
+                          <span className="font-black text-slate-900 truncate">{s.nome_evento_local}</span>
                           <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
                             s.status_agenda === 'Confirmado' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
                             s.status_agenda === 'Realizado' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
@@ -282,21 +282,21 @@ export const ExportShowsERPModal: React.FC<Props> = ({
                             {s.status_agenda}
                           </span>
                         </div>
-                        <div className="text-[11px] text-zinc-400 flex items-center space-x-2 mt-0.5">
+                        <div className="text-[11px] text-slate-600 flex items-center space-x-2 mt-0.5">
                           <span>{s.data_show} • {s.horario_inicio}</span>
                           <span>•</span>
                           <span>{s.cidade} - {s.estado}</span>
                           <span>•</span>
-                          <span className="text-zinc-300 font-bold">{s.nome_contratante}</span>
+                          <span className="text-slate-600 font-bold">{s.nome_contratante}</span>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0 ml-3">
-                        <div className="font-black text-white">{formatCurrency(s.cache_bruto)}</div>
-                        <div className="text-[10px] text-emerald-400 font-bold">
+                        <div className="font-black text-slate-900">{formatCurrency(s.cache_bruto)}</div>
+                        <div className="text-[10px] text-emerald-600 font-bold">
                           Líq: {formatCurrency(s.cache_liquido)}
                         </div>
-                        <div className="text-[9px] text-zinc-500">
+                        <div className="text-[9px] text-slate-600">
                           {s.status_pagamento}
                         </div>
                       </div>
@@ -309,82 +309,82 @@ export const ExportShowsERPModal: React.FC<Props> = ({
 
           {activeTab === 'campos' && (
             <div className="space-y-4 text-xs">
-              <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800 space-y-3">
-                <h3 className="font-black text-white flex items-center space-x-2 text-sm">
-                  <ShieldCheck size={18} className="text-purple-400" />
+              <div className="p-4 rounded-2xl bg-white/70 border border-slate-200 space-y-3">
+                <h3 className="font-black text-slate-900 flex items-center space-x-2 text-sm">
+                  <ShieldCheck size={18} className="text-purple-600" />
                   <span>Dicionário dos Dados Exportados para ERP</span>
                 </h3>
-                <p className="text-zinc-400">
+                <p className="text-slate-600">
                   Todas as chaves solicitadas foram organizadas tanto na raiz do objeto quanto em grupos hierárquicos para adaptação direta em qualquer banco ou ERP:
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                   {/* IDENTIFICAÇÃO */}
-                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1.5">
-                    <span className="font-black text-purple-300 uppercase tracking-wider text-[11px] block">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1.5">
+                    <span className="font-black text-purple-700 uppercase tracking-wider text-[11px] block">
                       1. Identificação
                     </span>
-                    <ul className="text-zinc-300 space-y-1 text-[11px]">
-                      <li>• <span className="font-mono text-purple-400">id / id_show</span>: ID único do show</li>
-                      <li>• <span className="font-mono text-purple-400">nome_evento_local</span>: Nome do Evento / Casa</li>
-                      <li>• <span className="font-mono text-purple-400">nome_contratante</span>: Nome do Contratante</li>
-                      <li>• <span className="font-mono text-purple-400">telefone_contato</span>: WhatsApp / Telefone</li>
-                      <li>• <span className="font-mono text-purple-400">cidade</span>: Cidade da apresentação</li>
-                      <li>• <span className="font-mono text-purple-400">estado</span>: UF (Estado)</li>
-                      <li>• <span className="font-mono text-purple-400">tipo_evento</span>: Casamento, Pub, Corporativo, etc.</li>
+                    <ul className="text-slate-600 space-y-1 text-[11px]">
+                      <li>• <span className="font-mono text-purple-600">id / id_show</span>: ID único do show</li>
+                      <li>• <span className="font-mono text-purple-600">nome_evento_local</span>: Nome do Evento / Casa</li>
+                      <li>• <span className="font-mono text-purple-600">nome_contratante</span>: Nome do Contratante</li>
+                      <li>• <span className="font-mono text-purple-600">telefone_contato</span>: WhatsApp / Telefone</li>
+                      <li>• <span className="font-mono text-purple-600">cidade</span>: Cidade da apresentação</li>
+                      <li>• <span className="font-mono text-purple-600">estado</span>: UF (Estado)</li>
+                      <li>• <span className="font-mono text-purple-600">tipo_evento</span>: Casamento, Pub, Corporativo, etc.</li>
                     </ul>
                   </div>
 
                   {/* DATAS E HORÁRIOS */}
-                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1.5">
-                    <span className="font-black text-sky-300 uppercase tracking-wider text-[11px] block">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1.5">
+                    <span className="font-black text-sky-700 uppercase tracking-wider text-[11px] block">
                       2. Datas e Horários
                     </span>
-                    <ul className="text-zinc-300 space-y-1 text-[11px]">
-                      <li>• <span className="font-mono text-sky-400">data_show</span>: Data da apresentação (YYYY-MM-DD)</li>
-                      <li>• <span className="font-mono text-sky-400">horario_inicio</span>: Horário de início</li>
-                      <li>• <span className="font-mono text-sky-400">horario_termino</span>: Horário de término</li>
-                      <li>• <span className="font-mono text-sky-400">duracao</span>: Duração estimada (ex: 3h)</li>
+                    <ul className="text-slate-600 space-y-1 text-[11px]">
+                      <li>• <span className="font-mono text-sky-600">data_show</span>: Data da apresentação (YYYY-MM-DD)</li>
+                      <li>• <span className="font-mono text-sky-600">horario_inicio</span>: Horário de início</li>
+                      <li>• <span className="font-mono text-sky-600">horario_termino</span>: Horário de término</li>
+                      <li>• <span className="font-mono text-sky-600">duracao</span>: Duração estimada (ex: 3h)</li>
                     </ul>
                   </div>
 
                   {/* FINANCEIRO */}
-                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1.5">
-                    <span className="font-black text-emerald-300 uppercase tracking-wider text-[11px] block">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1.5">
+                    <span className="font-black text-emerald-700 uppercase tracking-wider text-[11px] block">
                       3. Financeiro
                     </span>
-                    <ul className="text-zinc-300 space-y-1 text-[11px]">
-                      <li>• <span className="font-mono text-emerald-400">cache_bruto</span>: Valor Combinado Contratado</li>
-                      <li>• <span className="font-mono text-emerald-400">valor_sinal_entrada</span>: Sinal pago ou previsto</li>
-                      <li>• <span className="font-mono text-emerald-400">cache_liquido</span>: Bruto deduzido de todos os custos</li>
-                      <li>• <span className="font-mono text-emerald-400">status_pagamento</span>: Pendente, Pago ou Sinal Pago</li>
-                      <li>• <span className="font-mono text-emerald-400">valor_total_recebido</span> / <span className="font-mono text-emerald-400">valor_pendente</span></li>
+                    <ul className="text-slate-600 space-y-1 text-[11px]">
+                      <li>• <span className="font-mono text-emerald-600">cache_bruto</span>: Valor Combinado Contratado</li>
+                      <li>• <span className="font-mono text-emerald-600">valor_sinal_entrada</span>: Sinal pago ou previsto</li>
+                      <li>• <span className="font-mono text-emerald-600">cache_liquido</span>: Bruto deduzido de todos os custos</li>
+                      <li>• <span className="font-mono text-emerald-600">status_pagamento</span>: Pendente, Pago ou Sinal Pago</li>
+                      <li>• <span className="font-mono text-emerald-600">valor_total_recebido</span> / <span className="font-mono text-emerald-600">valor_pendente</span></li>
                     </ul>
                   </div>
 
                   {/* DETALHAMENTO DE CUSTOS */}
-                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1.5">
-                    <span className="font-black text-rose-300 uppercase tracking-wider text-[11px] block">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1.5">
+                    <span className="font-black text-rose-700 uppercase tracking-wider text-[11px] block">
                       4. Detalhamento de Custos
                     </span>
-                    <ul className="text-zinc-300 space-y-1 text-[11px]">
-                      <li>• <span className="font-mono text-rose-400">custos_musicos_freelancers</span>: Nomes, funções, cachês</li>
-                      <li>• <span className="font-mono text-rose-400">custos_logistica</span>: Combustível, Pedágio, Uber, KM</li>
-                      <li>• <span className="font-mono text-rose-400">custos_som_equipamentos</span>: Aluguel, manutenção, PA</li>
-                      <li>• <span className="font-mono text-rose-400">custo_total_somado</span>: Soma de todas as despesas</li>
+                    <ul className="text-slate-600 space-y-1 text-[11px]">
+                      <li>• <span className="font-mono text-rose-600">custos_musicos_freelancers</span>: Nomes, funções, cachês</li>
+                      <li>• <span className="font-mono text-rose-600">custos_logistica</span>: Combustível, Pedágio, Uber, KM</li>
+                      <li>• <span className="font-mono text-rose-600">custos_som_equipamentos</span>: Aluguel, manutenção, PA</li>
+                      <li>• <span className="font-mono text-rose-600">custo_total_somado</span>: Soma de todas as despesas</li>
                     </ul>
                   </div>
                 </div>
 
-                <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl space-y-1 mt-3">
-                  <span className="font-black text-amber-300 uppercase tracking-wider text-[11px] block">
+                <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1 mt-3">
+                  <span className="font-black text-amber-700 uppercase tracking-wider text-[11px] block">
                     5. Status da Agenda & Preservação Integral
                   </span>
-                  <p className="text-zinc-300 text-[11px]">
-                    • <span className="font-mono text-amber-400">status_agenda</span>: Estritamente classificado como <strong className="text-white">Confirmado</strong>, <strong className="text-white">Realizado</strong> ou <strong className="text-white">Orçamento/Lead</strong>.
+                  <p className="text-slate-600 text-[11px]">
+                    • <span className="font-mono text-amber-700">status_agenda</span>: Estritamente classificado como <strong className="text-slate-900">Confirmado</strong>, <strong className="text-slate-900">Realizado</strong> ou <strong className="text-slate-900">Orçamento/Lead</strong>.
                   </p>
-                  <p className="text-zinc-300 text-[11px]">
-                    • <span className="font-mono text-amber-400">dados_completos_originais</span>: Objeto intacto com 100% das chaves (nenhum detalhe técnico ou customizado foi omitido).
+                  <p className="text-slate-600 text-[11px]">
+                    • <span className="font-mono text-amber-700">dados_completos_originais</span>: Objeto intacto com 100% das chaves (nenhum detalhe técnico ou customizado foi omitido).
                   </p>
                 </div>
               </div>
@@ -393,18 +393,18 @@ export const ExportShowsERPModal: React.FC<Props> = ({
 
           {activeTab === 'preview' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
+              <div className="flex items-center justify-between text-xs text-slate-600">
                 <span>Visualizador de Código JSON Gerado ({jsonString.length.toLocaleString()} caracteres)</span>
                 <button
                   onClick={handleCopy}
-                  className="text-purple-400 hover:text-purple-300 font-bold flex items-center space-x-1"
+                  className="text-purple-600 hover:text-purple-700 font-bold flex items-center space-x-1"
                 >
-                  {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                  {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                   <span>{copied ? 'Copiado para Área de Transferência' : 'Copiar Tudo'}</span>
                 </button>
               </div>
 
-              <pre className="p-4 bg-black/90 border border-zinc-800 rounded-2xl text-[11px] font-mono text-emerald-400/90 overflow-x-auto max-h-96 selection:bg-purple-600/30">
+              <pre className="p-4 bg-slate-900/90 border border-slate-200 rounded-2xl text-[11px] font-mono text-emerald-400/90 overflow-x-auto max-h-96 selection:bg-purple-600/30">
                 {jsonString}
               </pre>
             </div>
@@ -412,25 +412,25 @@ export const ExportShowsERPModal: React.FC<Props> = ({
         </div>
 
         {/* FOOTER COM AÇÕES */}
-        <div className="p-4 sm:p-5 bg-zinc-900/60 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-zinc-400 flex items-center space-x-2">
-            <Sparkles size={15} className="text-purple-400" />
-            <span>Arquivo destino: <strong className="text-white">shows_migracao_leo_ferreira.json</strong></span>
+        <div className="p-4 sm:p-5 bg-white/80 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-xs text-slate-600 flex items-center space-x-2">
+            <Sparkles size={15} className="text-purple-600" />
+            <span>Arquivo destino: <strong className="text-slate-900">shows_migracao_leo_ferreira.json</strong></span>
           </div>
 
           <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition flex-1 sm:flex-initial"
+              className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold transition flex-1 sm:flex-initial"
             >
               Fechar
             </button>
 
             <button
               onClick={handleCopy}
-              className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold transition flex items-center justify-center space-x-1.5 flex-1 sm:flex-initial"
+              className="px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 border border-purple-500/30 text-xs font-bold transition flex items-center justify-center space-x-1.5 flex-1 sm:flex-initial"
             >
-              {copied ? <Check size={15} className="text-emerald-400" /> : <Copy size={15} />}
+              {copied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
               <span>{copied ? 'Copiado!' : 'Copiar'}</span>
             </button>
 

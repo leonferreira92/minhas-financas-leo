@@ -89,17 +89,17 @@ export const AlertsScreen = () => {
       <div key={alert.id} className={`${statusStyle.bg} border ${statusStyle.border} rounded-2xl p-4 shadow-sm transition-all hover:scale-[1.01]`}>
         <div className="flex justify-between items-start mb-3">
            <div className="flex items-center space-x-2">
-              <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${statusStyle.accent} bg-white dark:bg-black/20 border border-current opacity-80 uppercase`}>
+              <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${statusStyle.accent} bg-white  border border-current opacity-80 uppercase`}>
                 {statusStyle.label}
               </span>
               {!isRisk && (
-                <span className="text-[10px] font-bold text-slate-400 flex items-center">
+                <span className="text-[10px] font-bold text-slate-600 flex items-center">
                    <Calendar size={10} className="mr-1" /> {formatDate(alert.date)}
                 </span>
               )}
            </div>
            {account && (
-             <div className="flex items-center text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+             <div className="flex items-center text-[10px] font-bold text-slate-600 bg-slate-100  px-2 py-0.5 rounded-full">
                 <Wallet size={10} className="mr-1" /> {account.name}
              </div>
            )}
@@ -111,21 +111,21 @@ export const AlertsScreen = () => {
         </div>
 
         {!isRisk && (
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800/50">
+          <div className="flex justify-between items-center pt-3 border-t border-slate-100 ">
              <div className="flex items-center">
                 {alert.isCovered ? (
-                  <div className="flex items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center text-[10px] font-bold text-emerald-600 ">
                     <ShieldCheck size={12} className="mr-1" /> Saldo OK
                   </div>
                 ) : (
-                  <div className="flex items-center text-[10px] font-bold text-rose-500">
+                  <div className="flex items-center text-[10px] font-bold text-rose-600">
                     <AlertCircle size={12} className="mr-1" /> Insuficiente
                   </div>
                 )}
              </div>
              <button 
                onClick={() => handlePay(alert)}
-               className="bg-indigo-600 text-white text-[11px] font-bold py-1.5 px-4 rounded-xl shadow-md shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition flex items-center"
+               className="bg-indigo-600 text-white text-[11px] font-bold py-1.5 px-4 rounded-xl shadow-md shadow-indigo-200  hover:bg-indigo-700 active:scale-95 transition flex items-center"
              >
                Baixar <ArrowRight size={12} className="ml-1" />
              </button>
@@ -136,19 +136,19 @@ export const AlertsScreen = () => {
   };
 
   return (
-    <div className="pb-24 animate-fade-in text-slate-900 dark:text-slate-100">
+    <div className="pb-24 animate-fade-in text-slate-900 ">
       
       {/* --- Sticky Header --- */}
-      <div className="sticky top-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md z-30 pt-2 pb-4 px-1">
+      <div className="sticky top-0 bg-slate-50/95  backdrop-blur-md z-30 pt-2 pb-4 px-1">
         <div className="flex items-center space-x-2 mb-6">
-          <Link to="/" className="p-2 hover:bg-white dark:hover:bg-slate-800 rounded-full transition text-slate-500 dark:text-slate-400">
+          <Link to="/" className="p-2 hover:bg-white  rounded-full transition text-slate-600 ">
              <ChevronLeft size={24} />
           </Link>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Alertas</h1>
+          <h1 className="text-2xl font-bold text-slate-800 ">Alertas</h1>
         </div>
 
         {/* --- Weekly Summary Card --- */}
-        <div className="bg-indigo-600 rounded-3xl p-5 text-white shadow-xl shadow-indigo-200 dark:shadow-none relative overflow-hidden">
+        <div className="bg-indigo-600 rounded-3xl p-5 text-white shadow-xl shadow-indigo-200  relative overflow-hidden">
            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
            <div className="relative z-10">
               <div className="flex justify-between items-center mb-4">
@@ -180,18 +180,18 @@ export const AlertsScreen = () => {
       <div className="px-1 space-y-8 mt-4">
         {alerts.length === 0 ? (
           <div className="text-center py-20 opacity-50">
-             <div className="bg-emerald-100 dark:bg-emerald-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 dark:text-emerald-400">
+             <div className="bg-emerald-100  w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600 ">
                 <CheckCircle2 size={32} />
              </div>
-             <h3 className="font-bold text-slate-700 dark:text-white mb-1">Tudo em dia!</h3>
-             <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum pagamento pendente para o período.</p>
+             <h3 className="font-bold text-slate-700  mb-1">Tudo em dia!</h3>
+             <p className="text-sm text-slate-600 ">Nenhum pagamento pendente para o período.</p>
           </div>
         ) : (
           <>
              {/* Critical Section */}
              {groupedAlerts.critical.length > 0 && (
                <section className="space-y-3">
-                  <h2 className="text-[10px] font-black text-rose-500 uppercase tracking-widest px-2 flex items-center">
+                  <h2 className="text-[10px] font-black text-rose-600 uppercase tracking-widest px-2 flex items-center">
                      <AlertTriangle size={12} className="mr-1.5" /> Atenção & Atrasados
                   </h2>
                   <div className="space-y-3">
@@ -203,7 +203,7 @@ export const AlertsScreen = () => {
              {/* Today Section */}
              {groupedAlerts.today.length > 0 && (
                <section className="space-y-3">
-                  <h2 className="text-[10px] font-black text-amber-500 dark:text-amber-400 uppercase tracking-widest px-2 flex items-center">
+                  <h2 className="text-[10px] font-black text-amber-700  uppercase tracking-widest px-2 flex items-center">
                      <Clock size={12} className="mr-1.5" /> Vencendo Hoje
                   </h2>
                   <div className="space-y-3">
@@ -215,7 +215,7 @@ export const AlertsScreen = () => {
              {/* Upcoming Section */}
              {groupedAlerts.upcoming.length > 0 && (
                <section className="space-y-3">
-                  <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 flex items-center">
+                  <h2 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2 flex items-center">
                      <Calendar size={12} className="mr-1.5" /> Próximos Compromissos
                   </h2>
                   <div className="space-y-3">

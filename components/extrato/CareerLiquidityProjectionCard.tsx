@@ -74,26 +74,26 @@ export const CareerLiquidityProjectionCard: React.FC<Props> = ({ className = '' 
   };
 
   return (
-    <div className={`p-5 rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl border border-indigo-800/30 space-y-4 ${className}`}>
+    <div className={`p-5 rounded-3xl bg-gradient-to-br from-white via-indigo-50 to-slate-100 text-slate-900 shadow-xl border border-indigo-800/30 space-y-4 ${className}`}>
       
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-700">
             <TrendingUp size={20} />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300 block">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-700 block">
               Previsibilidade da Carreira
             </span>
-            <h3 className="text-sm font-black text-white">
+            <h3 className="text-sm font-black text-slate-900">
               Projeção de Liquidez (30 / 60 / 90 Dias)
             </h3>
           </div>
         </div>
 
         <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-white/10 text-indigo-200 border border-indigo-400/20 flex items-center space-x-1">
-          <Sparkles size={11} className="text-amber-400" />
+          <Sparkles size={11} className="text-amber-700" />
           <span>{projection.totalFutureShows} {projection.totalFutureShows === 1 ? 'show futuro' : 'shows futuros'}</span>
         </span>
       </div>
@@ -102,39 +102,39 @@ export const CareerLiquidityProjectionCard: React.FC<Props> = ({ className = '' 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
         
         {/* 30 Dias */}
-        <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase">
+        <div className="p-3.5 rounded-2xl bg-white/5 border border-slate-200 space-y-1">
+          <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold uppercase">
             <span>Próximos 30 Dias</span>
-            <span className="text-purple-300">{projection.showsCount30} shows</span>
+            <span className="text-purple-700">{projection.showsCount30} shows</span>
           </div>
-          <div className="text-base font-black tabular-nums text-emerald-400 truncate">
+          <div className="text-base font-black tabular-nums text-emerald-600 truncate">
             {!isBlurred ? formatCurrency(projection.inflows30) : '••••'}
           </div>
-          <span className="text-[9px] text-slate-400 block truncate">Entradas garantidas contratadas</span>
+          <span className="text-[9px] text-slate-600 block truncate">Entradas garantidas contratadas</span>
         </div>
 
         {/* 60 Dias */}
-        <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase">
+        <div className="p-3.5 rounded-2xl bg-white/5 border border-slate-200 space-y-1">
+          <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold uppercase">
             <span>31 a 60 Dias</span>
-            <span className="text-purple-300">{projection.showsCount60} shows</span>
+            <span className="text-purple-700">{projection.showsCount60} shows</span>
           </div>
-          <div className="text-base font-black tabular-nums text-emerald-400 truncate">
+          <div className="text-base font-black tabular-nums text-emerald-600 truncate">
             {!isBlurred ? formatCurrency(projection.inflows60) : '••••'}
           </div>
-          <span className="text-[9px] text-slate-400 block truncate">Receita futura agendada</span>
+          <span className="text-[9px] text-slate-600 block truncate">Receita futura agendada</span>
         </div>
 
         {/* 90 Dias */}
-        <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-          <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase">
+        <div className="p-3.5 rounded-2xl bg-white/5 border border-slate-200 space-y-1">
+          <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold uppercase">
             <span>61 a 90 Dias</span>
-            <span className="text-purple-300">{projection.showsCount90} shows</span>
+            <span className="text-purple-700">{projection.showsCount90} shows</span>
           </div>
-          <div className="text-base font-black tabular-nums text-emerald-400 truncate">
+          <div className="text-base font-black tabular-nums text-emerald-600 truncate">
             {!isBlurred ? formatCurrency(projection.inflows90) : '••••'}
           </div>
-          <span className="text-[9px] text-slate-400 block truncate">Projeção a médio prazo</span>
+          <span className="text-[9px] text-slate-600 block truncate">Projeção a médio prazo</span>
         </div>
 
       </div>
@@ -142,12 +142,12 @@ export const CareerLiquidityProjectionCard: React.FC<Props> = ({ className = '' 
       {/* Resumo Consolidado Projetado */}
       <div className="p-3.5 rounded-2xl bg-indigo-950/60 border border-indigo-800/40 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <ShieldCheck size={18} className="text-emerald-400 shrink-0" />
-          <span className="text-xs font-bold text-slate-200">
+          <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
+          <span className="text-xs font-bold text-slate-600">
             Total Garantido Contratado a Receber nos Próximos 90 Dias:
           </span>
         </div>
-        <span className="text-sm font-black tabular-nums text-emerald-400 shrink-0 ml-2">
+        <span className="text-sm font-black tabular-nums text-emerald-600 shrink-0 ml-2">
           {!isBlurred ? formatCurrency(projection.totalProjectedInflows) : '••••'}
         </span>
       </div>

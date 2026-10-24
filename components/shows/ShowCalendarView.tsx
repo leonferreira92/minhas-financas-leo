@@ -165,16 +165,16 @@ export const ShowCalendarView: React.FC<Props> = ({
   return (
     <div className="space-y-4">
       {/* HEADER DO CALENDÁRIO COM NAVEGAÇÃO */}
-      <div className="bg-[#18181b] rounded-3xl p-4 sm:p-5 border border-zinc-800/80 shadow-sm space-y-4">
+      <div className="bg-slate-50 rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-4">
         
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <h2 className="text-base sm:text-lg font-black text-white capitalize tracking-tight">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 capitalize tracking-tight">
               {monthYearLabel}
             </h2>
             <button
               onClick={handleGoToday}
-              className="px-2.5 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black uppercase tracking-wider transition active:scale-95"
+              className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider transition active:scale-95"
             >
               Hoje
             </button>
@@ -183,14 +183,14 @@ export const ShowCalendarView: React.FC<Props> = ({
           <div className="flex items-center space-x-1">
             <button
               onClick={handlePrevMonth}
-              className="p-2 rounded-xl bg-[#121212] text-zinc-400 hover:text-white transition active:scale-95 border border-zinc-800"
+              className="p-2 rounded-xl bg-white text-slate-600 hover:text-slate-900 transition active:scale-95 border border-slate-200"
               title="Mês Anterior"
             >
               <ChevronLeft size={16} />
             </button>
             <button
               onClick={handleNextMonth}
-              className="p-2 rounded-xl bg-[#121212] text-zinc-400 hover:text-white transition active:scale-95 border border-zinc-800"
+              className="p-2 rounded-xl bg-white text-slate-600 hover:text-slate-900 transition active:scale-95 border border-slate-200"
               title="Próximo Mês"
             >
               <ChevronRight size={16} />
@@ -199,7 +199,7 @@ export const ShowCalendarView: React.FC<Props> = ({
         </div>
 
         {/* LEGENDA RÁPIDA DISCRETA */}
-        <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-zinc-400 px-1 pt-0.5">
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-600 px-1 pt-0.5">
           <div className="flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-[#1ed760] shadow-[0_0_6px_#1ed760]" />
             <span>Confirmado</span>
@@ -215,7 +215,7 @@ export const ShowCalendarView: React.FC<Props> = ({
         </div>
 
         {/* DIAS DA SEMANA */}
-        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-zinc-500">
+        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-600">
           <div>Dom</div>
           <div>Seg</div>
           <div>Ter</div>
@@ -286,15 +286,15 @@ export const ShowCalendarView: React.FC<Props> = ({
       </div>
 
       {/* 3. VISÃO DO DIA: CONSULTA INSTANTÂNEA E ATALHOS RÁPIDOS */}
-      <div className="bg-[#18181b] rounded-3xl p-5 border border-zinc-800/80 shadow-sm space-y-4">
+      <div className="bg-slate-50 rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
         
         {/* Cabeçalho do dia selecionado */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">
               Visão do Dia • {formatShortDate(selectedDateStr)}
             </span>
-            <h3 className="text-base font-black text-white capitalize mt-0.5">
+            <h3 className="text-base font-black text-slate-900 capitalize mt-0.5">
               {formatSelectedDateHeader(selectedDateStr)}
             </h3>
           </div>
@@ -303,22 +303,22 @@ export const ShowCalendarView: React.FC<Props> = ({
           <div className="flex items-center space-x-2 flex-wrap gap-y-2">
             <div>
               {confirmedShowsOnSelectedDate.length > 1 ? (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/15 text-purple-700 border border-purple-500/30">
                   <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
                   <span>{confirmedShowsOnSelectedDate.length} Shows Confirmados</span>
                 </span>
               ) : confirmedShowsOnSelectedDate.length === 1 ? (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
                   <span className="w-2 h-2 rounded-full bg-[#1ed760] shadow-[0_0_6px_#1ed760]" />
                   <span>1 Show Confirmado</span>
                 </span>
               ) : hasQuotesOnSelectedDate ? (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 border border-amber-500/30">
                   <span className="w-2 h-2 rounded-full bg-amber-400" />
                   <span>Em Negociação (Orçamento)</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
                   <CheckCircle2 size={13} strokeWidth={3} />
                   <span>Data Livre</span>
                 </span>
@@ -339,10 +339,10 @@ export const ShowCalendarView: React.FC<Props> = ({
 
         {/* LISTAGEM DOS COMPROMISSOS DO DIA */}
         {showsOnSelectedDate.length === 0 ? (
-          <div className="p-6 rounded-2xl bg-[#121212] border border-dashed border-zinc-800 text-center space-y-2">
-            <CheckCircle2 size={24} className="mx-auto text-emerald-400" />
-            <p className="text-xs font-bold text-white">Nenhum compromisso marcado nesta data</p>
-            <p className="text-[11px] text-zinc-400 font-medium">Sua agenda está totalmente livre neste dia.</p>
+          <div className="p-6 rounded-2xl bg-white border border-dashed border-slate-200 text-center space-y-2">
+            <CheckCircle2 size={24} className="mx-auto text-emerald-600" />
+            <p className="text-xs font-bold text-slate-900">Nenhum compromisso marcado nesta data</p>
+            <p className="text-[11px] text-slate-600 font-medium">Sua agenda está totalmente livre neste dia.</p>
             
             <div className="pt-2 flex items-center justify-center space-x-2">
               <button
@@ -393,19 +393,19 @@ export const ShowCalendarView: React.FC<Props> = ({
               }
 
               return hasConflict ? (
-                <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-300 flex items-start space-x-2.5 text-xs">
-                  <AlertCircle size={16} className="text-rose-400 shrink-0 mt-0.5" />
+                <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-rose-700 flex items-start space-x-2.5 text-xs">
+                  <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
                   <div>
                     <div className="flex items-center space-x-1 font-black text-rose-200">
-                      <AlertTriangle size={13} className="text-rose-400 shrink-0" />
+                      <AlertTriangle size={13} className="text-rose-600 shrink-0" />
                       <span>Conflito de Horário Detectado</span>
                     </div>
                     <span className="text-[11px] opacity-90 block mt-0.5">{conflictDetail}. Verifique os horários de início e término e o tempo de deslocamento.</span>
                   </div>
                 </div>
               ) : (
-                <div className="p-3 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 text-emerald-300 flex items-center space-x-2 text-xs">
-                  <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                <div className="p-3 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 text-emerald-700 flex items-center space-x-2 text-xs">
+                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
                   <span className="font-bold text-[11px]">
                     Múltiplos shows no mesmo dia: Horários compatíveis sem sobreposição!
                   </span>
@@ -424,12 +424,12 @@ export const ShowCalendarView: React.FC<Props> = ({
                 <div
                   key={show.id}
                   onClick={() => onSelectShow(show)}
-                  className="p-4 rounded-2xl bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
+                  className="p-4 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-slate-300 transition cursor-pointer space-y-3 shadow-xs active:scale-[0.99] group"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                        <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center space-x-1">
+                        <span className="text-xs font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20 flex items-center space-x-1">
                           <Clock size={12} />
                           <span>{show.time || '20:00'}{show.endTime ? ` — ${show.endTime}` : ''}</span>
                         </span>
@@ -438,31 +438,31 @@ export const ShowCalendarView: React.FC<Props> = ({
                           {show.status}
                         </span>
 
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-800/90 text-zinc-200 border border-zinc-700">
-                          <MapPin size={10} className="text-emerald-400 shrink-0" />
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-300">
+                          <MapPin size={10} className="text-emerald-600 shrink-0" />
                           <span>{hierarchy.cityTag}</span>
                         </span>
                       </div>
 
-                      <h4 className="text-base font-black text-white mt-1.5 truncate group-hover:text-emerald-400 transition-colors">
+                      <h4 className="text-base font-black text-slate-900 mt-1.5 truncate group-hover:text-emerald-600 transition-colors">
                         {hierarchy.eventTitle}
                       </h4>
-                      <p className="text-xs text-zinc-400 font-bold mt-0.5 truncate">
+                      <p className="text-xs text-slate-600 font-bold mt-0.5 truncate">
                         {hierarchy.contractorSubtitle}
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-sm font-black text-white block tabular-nums">
+                      <span className="text-sm font-black text-slate-900 block tabular-nums">
                         {formatCurrency(fin.totalPredicted)}
                       </span>
                       {fin.totalPending > 0 && show.status === 'Confirmado' && (
-                        <span className="text-[10px] font-bold text-amber-400 block">
+                        <span className="text-[10px] font-bold text-amber-700 block">
                           Falta: {formatCurrency(fin.totalPending)}
                         </span>
                       )}
                       {is100 && (
-                        <span className="text-[10px] font-bold text-emerald-400 block">
+                        <span className="text-[10px] font-bold text-emerald-600 block">
                           100% Recebido
                         </span>
                       )}
@@ -471,13 +471,13 @@ export const ShowCalendarView: React.FC<Props> = ({
 
                   {/* BARRA DE PROGRESSO DO PAGAMENTO */}
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] text-zinc-400 font-bold">
+                    <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold">
                       <span>Recebido: {formatCurrency(fin.totalReceived)} ({pct}%)</span>
-                      <span className={is100 ? 'text-emerald-400' : 'text-amber-400'}>
+                      <span className={is100 ? 'text-emerald-600' : 'text-amber-700'}>
                         {is100 ? '✓ Quitado' : `Saldo: ${formatCurrency(fin.totalPending)}`}
                       </span>
                     </div>
-                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
                           is100 ? 'bg-[#1ed760]' : pct > 0 ? 'bg-emerald-500' : 'bg-zinc-700'
@@ -488,15 +488,15 @@ export const ShowCalendarView: React.FC<Props> = ({
                   </div>
 
                   {/* DETALHES & ACESSO À FICHA COMPLETA */}
-                  <div className="flex items-center justify-between text-xs text-zinc-400 pt-2 border-t border-zinc-800/80 font-medium">
+                  <div className="flex items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-200/80 font-medium">
                     <div className="flex items-center space-x-1.5 min-w-0">
-                      <MapPin size={13} className="text-zinc-500 shrink-0" />
-                      <span className="font-semibold text-zinc-300 truncate">
+                      <MapPin size={13} className="text-slate-600 shrink-0" />
+                      <span className="font-semibold text-slate-600 truncate">
                         {show.city || 'Cidade a definir'}
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 shrink-0 text-emerald-400 font-bold text-xs group-hover:translate-x-0.5 transition-transform">
+                    <div className="flex items-center space-x-1.5 shrink-0 text-emerald-600 font-bold text-xs group-hover:translate-x-0.5 transition-transform">
                       <span>Ver Ficha do Evento</span>
                       <ArrowRight size={13} />
                     </div>
@@ -507,7 +507,7 @@ export const ShowCalendarView: React.FC<Props> = ({
 
             <button
               onClick={() => onOpenCreateModal(selectedDateStr)}
-              className="w-full py-2.5 rounded-xl border border-dashed border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800/40 text-xs font-bold transition flex items-center justify-center space-x-1"
+              className="w-full py-2.5 rounded-xl border border-dashed border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50/40 text-xs font-bold transition flex items-center justify-center space-x-1"
             >
               <Plus size={14} />
               <span>Adicionar Outro Show neste Dia</span>

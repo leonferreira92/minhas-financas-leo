@@ -118,11 +118,11 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-[#18181b] border border-zinc-800 rounded-3xl max-w-lg w-full p-6 text-zinc-100 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-slate-50 border border-slate-200 rounded-3xl max-w-lg w-full p-6 text-slate-700 shadow-2xl relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-white rounded-full bg-zinc-800/50 hover:bg-zinc-800 transition-colors"
+          className="absolute top-4 right-4 p-2 text-slate-600 hover:text-slate-900 rounded-full bg-slate-50/50 hover:bg-slate-50 transition-colors"
         >
           <X size={20} />
         </button>
@@ -133,13 +133,13 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
             <Calendar size={26} />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Google Calendar Sync</h2>
-            <p className="text-xs text-zinc-400">Sincronize seus shows e datas com sua conta do Google</p>
+            <h2 className="text-xl font-bold text-slate-900">Google Calendar Sync</h2>
+            <p className="text-xs text-slate-600">Sincronize seus shows e datas com sua conta do Google</p>
           </div>
         </div>
 
         {/* AUTH STATUS CARD */}
-        <div className="bg-[#121212] border border-zinc-800/80 rounded-2xl p-4 mb-6">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 mb-6">
           {user ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -152,15 +152,15 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
                 )}
                 <div>
                   <div className="flex items-center space-x-1.5">
-                    <span className="text-sm font-bold text-white">{user.displayName || 'Usuário Google'}</span>
+                    <span className="text-sm font-bold text-slate-900">{user.displayName || 'Usuário Google'}</span>
                     <ShieldCheck size={14} className="text-[#1ed760]" />
                   </div>
-                  <p className="text-xs text-zinc-400 truncate max-w-[200px]">{user.email}</p>
+                  <p className="text-xs text-slate-600 truncate max-w-[200px]">{user.email}</p>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="px-3 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors flex items-center space-x-1"
+                className="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-500/10 rounded-xl transition-colors flex items-center space-x-1"
               >
                 <LogOut size={14} />
                 <span>Sair</span>
@@ -168,7 +168,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
             </div>
           ) : (
             <div className="text-center py-2 space-y-3">
-              <p className="text-xs text-zinc-300">
+              <p className="text-xs text-slate-600">
                 Conecte sua conta do Google para enviar e atualizar seus compromissos e shows com permissão diretamente no seu Google Calendar.
               </p>
               
@@ -176,7 +176,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
               <button
                 onClick={handleLogin}
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-white hover:bg-zinc-100 text-zinc-900 font-bold rounded-2xl transition-all shadow-md flex items-center justify-center space-x-3 active:scale-[0.98]"
+                className="w-full py-3 px-4 bg-white hover:bg-zinc-100 text-slate-800 font-bold rounded-2xl transition-all shadow-md flex items-center justify-center space-x-3 active:scale-[0.98]"
               >
                 <svg className="w-5 h-5" viewBox="0 0 48 48">
                   <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
@@ -192,7 +192,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
 
         {/* STATUS MESSAGES */}
         {syncStatus && (
-          <div className="mb-4 p-3 bg-zinc-800/80 border border-zinc-700/60 rounded-xl text-xs text-zinc-200 flex items-center space-x-2">
+          <div className="mb-4 p-3 bg-slate-50/80 border border-zinc-700/60 rounded-xl text-xs text-slate-600 flex items-center space-x-2">
             <AlertCircle size={16} className="text-[#1ed760] shrink-0" />
             <span>{syncStatus}</span>
           </div>
@@ -213,7 +213,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
             <button
               onClick={handleFetchCalendarEvents}
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-2xl transition-all border border-zinc-700/60 flex items-center justify-center space-x-2 active:scale-95 disabled:opacity-50 text-xs"
+              className="w-full py-3 px-4 bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold rounded-2xl transition-all border border-zinc-700/60 flex items-center justify-center space-x-2 active:scale-95 disabled:opacity-50 text-xs"
             >
               <ArrowDown size={16} />
               <span>Ver Compromissos da Agenda do Google</span>
@@ -223,16 +223,16 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
 
         {/* CALENDAR EVENTS LIST */}
         {importedEvents.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-zinc-800">
-            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2">
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
               Eventos Recentes na Agenda ({importedEvents.length})
             </h3>
             <div className="max-h-40 overflow-y-auto space-y-2 pr-1 no-scrollbar">
               {importedEvents.slice(0, 5).map((evt: any) => (
-                <div key={evt.id} className="p-2.5 bg-[#121212] rounded-xl border border-zinc-800 flex items-center justify-between text-xs">
+                <div key={evt.id} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs">
                   <div>
-                    <p className="font-bold text-white truncate max-w-[220px]">{evt.summary || 'Sem título'}</p>
-                    <p className="text-[10px] text-zinc-400">
+                    <p className="font-bold text-slate-900 truncate max-w-[220px]">{evt.summary || 'Sem título'}</p>
+                    <p className="text-[10px] text-slate-600">
                       {evt.start?.dateTime ? new Date(evt.start.dateTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : evt.start?.date}
                     </p>
                   </div>
@@ -245,7 +245,7 @@ export const GoogleCalendarSyncModal: React.FC<GoogleCalendarSyncModalProps> = (
           </div>
         )}
 
-        <div className="mt-6 pt-4 border-t border-zinc-800/80 text-center text-[11px] text-zinc-500">
+        <div className="mt-6 pt-4 border-t border-slate-200/80 text-center text-[11px] text-slate-600">
           Integração oficial Google Calendar com permissão explícita do usuário.
         </div>
       </div>

@@ -183,27 +183,27 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
 
   return (
     <>
-      <div className={`w-full max-w-full overflow-x-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-purple-800/30 relative space-y-4 ${className}`}>
+      <div className={`w-full max-w-full overflow-x-hidden bg-gradient-to-br from-white via-indigo-50 to-purple-50 text-slate-900 rounded-3xl p-4 sm:p-5 shadow-lg border border-purple-800/30 relative space-y-4 ${className}`}>
         {/* Glow de fundo */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-44 h-44 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-44 h-44 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* 1. Header do DRE & Botão de Retirar Pró-Labore */}
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
           <div className="flex items-center space-x-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 shadow-inner shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-700 shadow-inner shrink-0">
               <Layers size={18} />
             </div>
             <div className="min-w-0">
               <div className="flex items-center space-x-1.5">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-300 truncate">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700 truncate">
                   DRE • {careerName}
                 </span>
                 <span className="text-[9px] bg-purple-900/80 text-purple-200 px-2 py-0.5 rounded-full font-bold shrink-0">
                   {periodLabel}
                 </span>
               </div>
-              <h4 className="text-xs sm:text-sm font-black text-white truncate">
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 truncate">
                 Faturamento & Custos do Projeto
               </h4>
             </div>
@@ -213,7 +213,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             {/* Botão de Ação Direta: Retirar Pró-Labore */}
             <button
               onClick={() => setIsProLaboreModalOpen(true)}
-              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[11px] font-black uppercase tracking-wider shadow-md shadow-purple-950/40 active:scale-95 transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gradient-to-r from-white via-white to-white hover:from-purple-500 hover:to-indigo-500 text-slate-900 text-[11px] font-black uppercase tracking-wider shadow-md shadow-purple-950/40 active:scale-95 transition flex items-center space-x-1.5"
               title="Transferir saldo de shows para a conta pessoal"
             >
               <ArrowRightLeft size={13} strokeWidth={2.5} />
@@ -224,7 +224,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
 
         {/* 2. Seletor de Período Estilo Bancário */}
         <div className="relative z-10 pt-1 pb-1 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center bg-white/5 border border-white/10 p-1 rounded-2xl max-w-full overflow-x-auto no-scrollbar">
+          <div className="flex items-center bg-white/5 border border-slate-200 p-1 rounded-2xl max-w-full overflow-x-auto no-scrollbar">
             <button
               onClick={() => setPeriodPreset('current_month')}
               className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
@@ -271,7 +271,7 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
           </div>
 
           <div className="text-right">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-wider block">
               Margem Líquida
             </span>
             <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg inline-block ${metrics.profitMargin >= 50 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
@@ -283,22 +283,22 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
         {/* Inputs de Data quando Personalizado */}
         {periodPreset === 'custom' && (
           <div className="relative z-10 flex items-center gap-2 pt-1 pb-2">
-            <div className="flex items-center space-x-1.5 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">De:</span>
+            <div className="flex items-center space-x-1.5 bg-white/5 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+              <span className="text-[10px] text-slate-600 font-bold uppercase">De:</span>
               <input
                 type="date"
                 value={customStart}
                 onChange={e => setCustomStart(e.target.value)}
-                className="bg-transparent text-white text-xs font-bold outline-none"
+                className="bg-transparent text-slate-900 text-xs font-bold outline-none"
               />
             </div>
-            <div className="flex items-center space-x-1.5 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Até:</span>
+            <div className="flex items-center space-x-1.5 bg-white/5 border border-slate-200 rounded-xl px-2.5 py-1 text-xs">
+              <span className="text-[10px] text-slate-600 font-bold uppercase">Até:</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={e => setCustomEnd(e.target.value)}
-                className="bg-transparent text-white text-xs font-bold outline-none"
+                className="bg-transparent text-slate-900 text-xs font-bold outline-none"
               />
             </div>
           </div>
@@ -309,22 +309,22 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
           {/* Card 1: Faturamento Bruto de Cachês */}
           <div 
             onClick={() => handleNavigateExtrato({ type: 'income', scope: 'BUSINESS' })}
-            className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-emerald-500/40 transition cursor-pointer active:scale-95"
+            className="group bg-white/5 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-emerald-500/40 transition cursor-pointer active:scale-95"
             title="Clique para ver receitas da música no Extrato"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-300 group-hover:text-emerald-300 transition">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-600 group-hover:text-emerald-700 transition">
                 Faturamento Bruto
               </span>
-              <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition">
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition">
                 <ArrowUpRight size={13} strokeWidth={3} />
               </div>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-black tracking-tight text-emerald-400 tabular-nums">
+              <div className="text-base sm:text-lg font-black tracking-tight text-emerald-600 tabular-nums">
                 {!isBlurred ? formatCurrency(metrics.grossRevenue) : 'R$ ••••••'}
               </div>
-              <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
+              <p className="text-[9px] text-slate-600 mt-0.5 group-hover:text-slate-600 transition flex items-center justify-between">
                 <span>{metrics.showsCount} shows no período</span>
                 <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
               </p>
@@ -334,22 +334,22 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
           {/* Card 2: Custos Operacionais & Equipamentos */}
           <div 
             onClick={() => handleNavigateExtrato({ type: 'expense', scope: 'BUSINESS' })}
-            className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-rose-500/40 transition cursor-pointer active:scale-95"
+            className="group bg-white/5 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-rose-500/40 transition cursor-pointer active:scale-95"
             title="Clique para ver custos da música no Extrato"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-300 group-hover:text-rose-300 transition">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-600 group-hover:text-rose-700 transition">
                 Custos & Equipamentos
               </span>
-              <div className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center group-hover:scale-110 transition">
+              <div className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-600 flex items-center justify-center group-hover:scale-110 transition">
                 <ArrowDownRight size={13} strokeWidth={3} />
               </div>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-black tracking-tight text-rose-400 tabular-nums">
+              <div className="text-base sm:text-lg font-black tracking-tight text-rose-600 tabular-nums">
                 {!isBlurred ? formatCurrency(metrics.totalExpenses) : 'R$ ••••••'}
               </div>
-              <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
+              <p className="text-[9px] text-slate-600 mt-0.5 group-hover:text-slate-600 transition flex items-center justify-between">
                 <span>
                   {metrics.debtInstallmentsTotal > 0
                     ? `Inclui ${!isBlurred ? formatCurrency(metrics.debtInstallmentsTotal) : '••••'} (${metrics.debtInstallmentsCount}x parcelamento)`
@@ -367,10 +367,10 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             title="Clique para ver todas as movimentações do projeto no Extrato"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-300 group-hover:text-white transition">
+              <span className="text-[9px] font-black uppercase tracking-wider text-indigo-700 group-hover:text-slate-900 transition">
                 Lucro Real do Projeto
               </span>
-              <div className="w-6 h-6 rounded-lg bg-indigo-500/30 text-indigo-300 flex items-center justify-center group-hover:scale-110 transition">
+              <div className="w-6 h-6 rounded-lg bg-indigo-500/30 text-indigo-700 flex items-center justify-center group-hover:scale-110 transition">
                 <TrendingUp size={13} strokeWidth={2.5} />
               </div>
             </div>
@@ -388,22 +388,22 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
           {/* Card 4: Pró-Labore Retirado */}
           <div 
             onClick={() => handleNavigateExtrato({ search: 'pró-labore' })}
-            className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-purple-500/40 transition cursor-pointer active:scale-95"
+            className="group bg-white/5 border border-slate-200 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-purple-500/40 transition cursor-pointer active:scale-95"
             title="Clique para ver retiradas de pró-labore no Extrato"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-300 group-hover:text-purple-300 transition">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-600 group-hover:text-purple-700 transition">
                 Pró-Labore Retirado
               </span>
-              <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center group-hover:scale-110 transition">
+              <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-700 flex items-center justify-center group-hover:scale-110 transition">
                 <Wallet size={13} strokeWidth={2.5} />
               </div>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-black tracking-tight text-purple-300 tabular-nums">
+              <div className="text-base sm:text-lg font-black tracking-tight text-purple-700 tabular-nums">
                 {!isBlurred ? formatCurrency(metrics.proLaboreTotal) : 'R$ ••••••'}
               </div>
-              <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
+              <p className="text-[9px] text-slate-600 mt-0.5 group-hover:text-slate-600 transition flex items-center justify-between">
                 <span>Shows → Pessoal</span>
                 <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
               </p>

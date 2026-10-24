@@ -123,13 +123,13 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
     <div className="space-y-5">
       
       {/* HEADER DA ABA */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200">
         <div>
-          <h2 className="text-base sm:text-lg font-black text-white flex items-center space-x-2">
-            <Users size={20} className="text-purple-400" />
+          <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center space-x-2">
+            <Users size={20} className="text-purple-600" />
             <span>Músicos & Equipe (Freelancers)</span>
           </h2>
-          <p className="text-[11px] text-zinc-400">
+          <p className="text-[11px] text-slate-600">
             Cadastre músicos de apoio, técnicos, roadies, cachês padrão e chaves PIX para pagamento rápido.
           </p>
         </div>
@@ -146,18 +146,18 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-center gap-2.5">
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-600" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por nome, instrumento ou chave PIX..."
-            className="w-full bg-[#121214] border border-zinc-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+            className="w-full bg-white border border-slate-200 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:border-purple-500"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-900"
             >
               <X size={14} />
             </button>
@@ -194,10 +194,10 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
       {/* LISTA EM CARDS */}
       {filteredCrew.length === 0 ? (
-        <div className="p-8 rounded-3xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-3">
-          <Users size={32} className="mx-auto text-zinc-600" />
-          <p className="text-sm font-bold text-white">Nenhum músico ou integrante cadastrado</p>
-          <p className="text-xs text-zinc-400">Cadastre bateristas, baixistas e equipe para agilizar o cálculo de custos dos shows.</p>
+        <div className="p-8 rounded-3xl bg-white border border-dashed border-slate-200 text-center space-y-3">
+          <Users size={32} className="mx-auto text-slate-600" />
+          <p className="text-sm font-bold text-slate-900">Nenhum músico ou integrante cadastrado</p>
+          <p className="text-xs text-slate-600">Cadastre bateristas, baixistas e equipe para agilizar o cálculo de custos dos shows.</p>
           <button
             onClick={() => handleOpenModal()}
             className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold inline-flex items-center space-x-1"
@@ -216,15 +216,15 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
             return (
               <div
                 key={member.id}
-                className="p-4 sm:p-5 rounded-3xl bg-[#141416] border border-zinc-800 hover:border-zinc-700 transition flex flex-col justify-between space-y-3 group shadow-xs"
+                className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200 hover:border-slate-300 transition flex flex-col justify-between space-y-3 group shadow-xs"
               >
                 <div className="space-y-2.5">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-700 border border-purple-500/20">
                         {member.role}
                       </span>
-                      <h3 className="text-base font-black text-white mt-1.5 group-hover:text-purple-400 transition-colors">
+                      <h3 className="text-base font-black text-slate-900 mt-1.5 group-hover:text-purple-600 transition-colors">
                         {member.name}
                       </h3>
                     </div>
@@ -232,14 +232,14 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => handleOpenModal(member)}
-                        className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white transition"
+                        className="p-1.5 rounded-xl bg-slate-50 text-slate-600 hover:text-slate-900 transition"
                         title="Editar Músico"
                       >
                         <Edit3 size={14} />
                       </button>
                       <button
                         onClick={() => handleDeleteMember(member.id, member.name)}
-                        className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-rose-400 transition"
+                        className="p-1.5 rounded-xl bg-slate-50 text-slate-600 hover:text-rose-600 transition"
                         title="Remover da Equipe"
                       >
                         <Trash2 size={14} />
@@ -248,17 +248,17 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                   </div>
 
                   {/* Cachê Padrão por Show */}
-                  <div className="p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Cachê / Diária</span>
-                    <span className="text-sm font-black text-emerald-400 tabular-nums">
+                  <div className="p-3 rounded-2xl bg-white/90 border border-slate-200 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-600 uppercase">Cachê / Diária</span>
+                    <span className="text-sm font-black text-emerald-600 tabular-nums">
                       {formatCurrency(member.defaultCache)}
                     </span>
                   </div>
 
                   {/* Chave PIX com 1-Click Copy */}
                   {member.pixKey && (
-                    <div className="p-2.5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-bold">
+                    <div className="p-2.5 rounded-2xl bg-white/70 border border-slate-200/80 space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-slate-600 font-bold">
                         <span>Chave PIX ({member.pixKeyType || 'Chave'}):</span>
                         <button
                           onClick={() => handleCopyPix(member.pixKey!, member.id)}
@@ -270,14 +270,14 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                           <span>{isCopied ? 'Copiado!' : 'Copiar PIX'}</span>
                         </button>
                       </div>
-                      <span className="text-xs font-mono font-bold text-zinc-200 block truncate">
+                      <span className="text-xs font-mono font-bold text-slate-600 block truncate">
                         {member.pixKey}
                       </span>
                     </div>
                   )}
 
                   {member.notes && (
-                    <p className="text-[11px] text-zinc-400 bg-zinc-900/30 p-2 rounded-xl border border-zinc-800/50 line-clamp-2">
+                    <p className="text-[11px] text-slate-600 bg-white/50 p-2 rounded-xl border border-slate-200/50 line-clamp-2">
                       {member.notes}
                     </p>
                   )}
@@ -289,7 +289,7 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                     href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition flex items-center justify-center space-x-1.5"
+                    className="w-full py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border border-emerald-500/20 text-xs font-bold transition flex items-center justify-center space-x-1.5"
                   >
                     <MessageSquare size={14} />
                     <span>Falar no WhatsApp ({member.phone})</span>
@@ -303,17 +303,17 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
       {/* MODAL DE CADASTRO / EDIÇÃO */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-              <h3 className="text-base font-black text-white flex items-center space-x-2">
-                <Users size={18} className="text-purple-400" />
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-black text-slate-900 flex items-center space-x-2">
+                <Users size={18} className="text-purple-600" />
                 <span>{editingMember ? 'Editar Integrante' : 'Novo Integrante da Equipe'}</span>
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-1.5 rounded-xl text-zinc-400 hover:text-white bg-zinc-800"
+                className="p-1.5 rounded-xl text-slate-600 hover:text-slate-900 bg-slate-50"
               >
                 <X size={16} />
               </button>
@@ -321,24 +321,24 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
             <form onSubmit={handleSaveMember} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Nome Completo / Artístico *</label>
+                <label className="text-slate-600 font-bold block mb-1">Nome Completo / Artístico *</label>
                 <input
                   type="text"
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Ex: Rodrigo Bateria, Mateus Baixista..."
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 font-bold"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500 font-bold"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Função / Instrumento</label>
+                  <label className="text-slate-600 font-bold block mb-1">Função / Instrumento</label>
                   <select
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                   >
                     {rolesList.map(r => (
                       <option key={r} value={r}>{r}</option>
@@ -347,36 +347,36 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                 </div>
 
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Cachê Padrão (R$) *</label>
+                  <label className="text-slate-600 font-bold block mb-1">Cachê Padrão (R$) *</label>
                   <input
                     type="number"
                     required
                     value={formDefaultCache}
                     onChange={(e) => setFormDefaultCache(e.target.value)}
                     placeholder="Ex: 350"
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 font-bold text-emerald-400"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500 font-bold text-emerald-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">WhatsApp / Telefone</label>
+                <label className="text-slate-600 font-bold block mb-1">WhatsApp / Telefone</label>
                 <input
                   type="text"
                   value={formPhone}
                   onChange={(e) => setFormPhone(e.target.value)}
                   placeholder="(11) 98765-4321"
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Tipo de Chave</label>
+                  <label className="text-slate-600 font-bold block mb-1">Tipo de Chave</label>
                   <select
                     value={formPixKeyType}
                     onChange={(e) => setFormPixKeyType(e.target.value as any)}
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                   >
                     <option value="CPF">CPF</option>
                     <option value="Email">E-mail</option>
@@ -387,33 +387,33 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-zinc-400 font-bold block mb-1">Chave PIX</label>
+                  <label className="text-slate-600 font-bold block mb-1">Chave PIX</label>
                   <input
                     type="text"
                     value={formPixKey}
                     onChange={(e) => setFormPixKey(e.target.value)}
                     placeholder="Chave para transferir o cachê..."
-                    className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500 font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Observações / Equipamentos</label>
+                <label className="text-slate-600 font-bold block mb-1">Observações / Equipamentos</label>
                 <textarea
                   rows={2}
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="Ex: Traz bateria e microfones próprios, usa fone in-ear..."
-                  className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 focus:outline-none focus:border-purple-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-zinc-800">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold"
+                  className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold"
                 >
                   Cancelar
                 </button>

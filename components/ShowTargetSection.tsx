@@ -189,24 +189,24 @@ export const ShowTargetSection: React.FC = () => {
   }, [shows, transactions, categories, debts, financialSettings, customSavingsGoal, getDebtProgress]);
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+    <section className="bg-white  rounded-[2.5rem] p-6 border border-slate-200/80  shadow-sm space-y-6">
       
       {/* HEADER DA SEÇÃO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600  flex items-center justify-center">
             <Music size={22} strokeWidth={2.5} />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-base font-black text-slate-900  tracking-tight">
                 Meta de Shows
               </h2>
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700  border border-amber-200 ">
                 {metrics.totalShowsCount} {metrics.totalShowsCount === 1 ? 'evento cadastrado' : 'eventos cadastrados'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600  mt-0.5">
               Cálculo baseado no <strong>lucro líquido real</strong> dos seus eventos (cachê bruto menos custos)
             </p>
           </div>
@@ -214,7 +214,7 @@ export const ShowTargetSection: React.FC = () => {
 
         <Link
           to="/musician-shows"
-          className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 rounded-xl border border-amber-200/60 dark:border-amber-800/40 transition w-fit"
+          className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-600  hover:text-amber-700  bg-amber-50  px-3 py-1.5 rounded-xl border border-amber-200/60  transition w-fit"
         >
           <span>Gerenciar Eventos</span>
           <ChevronRight size={14} />
@@ -223,25 +223,25 @@ export const ShowTargetSection: React.FC = () => {
 
       {/* AVISO DE BAIXA CONFIABILIDADE OU AUSÊNCIA DE EVENTOS */}
       {metrics.hasNoShows ? (
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-start space-x-3">
-          <Info size={18} className="text-slate-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-200  flex items-start space-x-3">
+          <Info size={18} className="text-slate-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">
+            <h4 className="text-xs font-black text-slate-800 ">
               Nenhum show ou evento cadastrado
             </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-[11px] text-slate-600  leading-relaxed">
               Para calcular o faturamento, custos e quantidade de apresentações necessárias para custear sua vida, registre seus eventos em "Gerenciar Eventos". Não inventamos valores estimados.
             </p>
           </div>
         </div>
       ) : metrics.isLowReliability ? (
-        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-700/80 flex items-start space-x-2.5">
-          <AlertTriangle size={17} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-300  flex items-start space-x-2.5">
+          <AlertTriangle size={17} className="text-amber-600  shrink-0 mt-0.5" />
           <div>
-            <span className="text-xs font-black text-amber-800 dark:text-amber-300 block">
+            <span className="text-xs font-black text-amber-800  block">
               Aviso: Média com baixa confiabilidade estatística
             </span>
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
+            <p className="text-[11px] text-amber-700  mt-0.5 leading-relaxed">
               Foram cadastrados apenas {metrics.totalShowsCount} evento(s). À medida que você registrar mais apresentações e suas respectivas despesas reais (combustível, pedágio, alimentação, comissões), as projeções de shows se tornarão mais precisas.
             </p>
           </div>
@@ -250,9 +250,9 @@ export const ShowTargetSection: React.FC = () => {
 
       {/* CASO HAJA SHOWS CADASTRADOS SEM DESPESAS INFORMADAS */}
       {!metrics.hasNoShows && metrics.showsWithoutExpenses > 0 && (
-        <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="px-3.5 py-2.5 rounded-xl bg-slate-50  border border-slate-200/80  flex items-center justify-between text-[11px] text-slate-600 ">
           <span className="flex items-center space-x-1.5">
-            <Info size={13} className="text-amber-500 shrink-0" />
+            <Info size={13} className="text-amber-700 shrink-0" />
             <span>
               {metrics.showsWithoutExpenses} evento(s) ainda não têm custos de logística cadastrados. O lucro líquido considerará despesas zeradas para esses eventos.
             </span>
@@ -269,81 +269,81 @@ export const ShowTargetSection: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         
         {/* 1. NÚMERO MÉDIO DE SHOWS POR MÊS */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-200/80  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
               Média de Shows
             </span>
-            <Calendar size={15} className="text-indigo-500" />
+            <Calendar size={15} className="text-indigo-600" />
           </div>
 
           <div>
             <div className="flex items-baseline space-x-1">
-              <span className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
+              <span className="text-xl font-black text-slate-900  tabular-nums tracking-tight">
                 {metrics.avgShowsPerMonth.toFixed(1)}
               </span>
-              <span className="text-[11px] font-bold text-slate-400">shows/mês</span>
+              <span className="text-[11px] font-bold text-slate-500">shows/mês</span>
             </div>
-            <span className="text-[10px] text-slate-400 block mt-0.5">
+            <span className="text-[10px] text-slate-500 block mt-0.5">
               Distribuídos em {metrics.monthsSpan} {metrics.monthsSpan === 1 ? 'mês' : 'meses'}
             </span>
           </div>
         </div>
 
         {/* 2. FATURAMENTO MÉDIO POR SHOW (BRUTO) */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-200/80  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
               Cachê Médio Bruto
             </span>
-            <ArrowUpRight size={15} className="text-emerald-500" />
+            <ArrowUpRight size={15} className="text-emerald-600" />
           </div>
 
           <div>
-            <span className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight block">
+            <span className="text-xl font-black text-slate-900  tabular-nums tracking-tight block">
               {formatBRL(metrics.avgGrossPerShow)}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">
+            <span className="text-[10px] text-slate-500 block mt-0.5">
               Faturamento médio por evento
             </span>
           </div>
         </div>
 
         {/* 3. CUSTOS MÉDIOS POR SHOW */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-slate-50  border border-slate-200/80  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
               Custos Médios
             </span>
-            <ArrowDownRight size={15} className="text-rose-500" />
+            <ArrowDownRight size={15} className="text-rose-600" />
           </div>
 
           <div>
-            <span className="text-xl font-black text-rose-600 dark:text-rose-400 tabular-nums tracking-tight block">
+            <span className="text-xl font-black text-rose-600  tabular-nums tracking-tight block">
               {formatBRL(metrics.avgCostPerShow)}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">
+            <span className="text-[10px] text-slate-500 block mt-0.5">
               Combustível, pedágios e taxas
             </span>
           </div>
         </div>
 
         {/* 4. LUCRO MÉDIO LÍQUIDO POR SHOW */}
-        <div className="p-4 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 flex flex-col justify-between space-y-2">
+        <div className="p-4 rounded-2xl bg-amber-50/40  border border-amber-200  flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 ">
               Lucro Líquido Real
             </span>
-            <Sparkles size={15} className="text-amber-500" />
+            <Sparkles size={15} className="text-amber-700" />
           </div>
 
           <div>
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-xl font-black text-amber-600 dark:text-amber-400 tabular-nums tracking-tight">
+              <span className="text-xl font-black text-amber-600  tabular-nums tracking-tight">
                 {formatBRL(metrics.avgNetProfitPerShow)}
               </span>
             </div>
-            <span className="text-[10px] font-bold text-amber-700/80 dark:text-amber-400/80 block mt-0.5">
+            <span className="text-[10px] font-bold text-amber-700/80  block mt-0.5">
               Margem líquida: {metrics.profitMargin.toFixed(0)}% do cachê
             </span>
           </div>
@@ -356,10 +356,10 @@ export const ShowTargetSection: React.FC = () => {
       {/* --------------------------------------------------------------------- */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 ">
             Quantidade de Shows Necessária (Meta Mensal)
           </h3>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-slate-500">
             Calculado com base no lucro de <strong>{formatBRL(metrics.avgNetProfitPerShow)}/show</strong>
           </span>
         </div>
@@ -367,106 +367,106 @@ export const ShowTargetSection: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           
           {/* META 1: COBRIR O CUSTO ESSENCIAL */}
-          <div className="bg-slate-50/80 dark:bg-slate-950/60 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-3">
+          <div className="bg-slate-50/80  rounded-2xl p-4 border border-slate-200/80  flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                   Degrau 1: Sobrevivência
                 </span>
-                <ShieldAlert size={16} className="text-rose-500" />
+                <ShieldAlert size={16} className="text-rose-600" />
               </div>
 
-              <h4 className="text-sm font-black text-slate-900 dark:text-white mt-1">
+              <h4 className="text-sm font-black text-slate-900  mt-1">
                 Custo Essencial
               </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+              <p className="text-[11px] text-slate-600  mt-0.5 leading-snug">
                 Moradia, alimentação básica e parcelas de dívidas ativas ({formatBRL(metrics.monthlyEssentialCost)}/mês).
               </p>
             </div>
 
-            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-baseline justify-between">
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            <div className="pt-2 border-t border-slate-200/60  flex items-baseline justify-between">
+              <span className="text-xs font-bold text-slate-600 ">
                 Necessários:
               </span>
               <div className="text-right">
-                <span className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                <span className="text-2xl font-black text-slate-900  tabular-nums">
                   {metrics.avgNetProfitPerShow > 0 ? metrics.showsForEssential : '—'}
                 </span>
-                <span className="text-xs font-bold text-slate-400 ml-1">shows/mês</span>
+                <span className="text-xs font-bold text-slate-500 ml-1">shows/mês</span>
               </div>
             </div>
           </div>
 
           {/* META 2: COBRIR O CUSTO DE VIDA ATUAL */}
-          <div className="bg-slate-50/80 dark:bg-slate-950/60 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-3">
+          <div className="bg-slate-50/80  rounded-2xl p-4 border border-slate-200/80  flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                   Degrau 2: Manutenção
                 </span>
-                <TrendingUp size={16} className="text-indigo-500" />
+                <TrendingUp size={16} className="text-indigo-600" />
               </div>
 
-              <h4 className="text-sm font-black text-slate-900 dark:text-white mt-1">
+              <h4 className="text-sm font-black text-slate-900  mt-1">
                 Custo de Vida Atual
               </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+              <p className="text-[11px] text-slate-600  mt-0.5 leading-snug">
                 Estilo de vida atual completo com lazer, assinaturas e dívidas ({formatBRL(metrics.monthlyCurrentLivingCost)}/mês).
               </p>
             </div>
 
-            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-baseline justify-between">
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            <div className="pt-2 border-t border-slate-200/60  flex items-baseline justify-between">
+              <span className="text-xs font-bold text-slate-600 ">
                 Necessários:
               </span>
               <div className="text-right">
-                <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+                <span className="text-2xl font-black text-indigo-600  tabular-nums">
                   {metrics.avgNetProfitPerShow > 0 ? metrics.showsForLiving : '—'}
                 </span>
-                <span className="text-xs font-bold text-slate-400 ml-1">shows/mês</span>
+                <span className="text-xs font-bold text-slate-500 ml-1">shows/mês</span>
               </div>
             </div>
           </div>
 
           {/* META 3: ATINGIR META MENSAL DE ECONOMIA */}
-          <div className="bg-emerald-50/30 dark:bg-emerald-950/20 rounded-2xl p-4 border border-emerald-200/80 dark:border-emerald-900/60 flex flex-col justify-between space-y-3">
+          <div className="bg-emerald-50/30  rounded-2xl p-4 border border-emerald-200/80  flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 ">
                   Degrau 3: Crescimento
                 </span>
-                <Target size={16} className="text-emerald-500" />
+                <Target size={16} className="text-emerald-600" />
               </div>
 
               <div className="flex items-center justify-between mt-1">
-                <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                <h4 className="text-sm font-black text-slate-900 ">
                   Vida + Poupança
                 </h4>
                 <div className="flex items-center space-x-1">
-                  <span className="text-[10px] font-bold text-slate-400">Meta:</span>
+                  <span className="text-[10px] font-bold text-slate-500">Meta:</span>
                   <input
                     type="number"
                     value={metrics.activeMonthlySavingsTarget}
                     onChange={(e) => setCustomSavingsGoal(Number(e.target.value) || 0)}
-                    className="w-20 px-1.5 py-0.5 text-right text-[11px] font-black rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 tabular-nums"
+                    className="w-20 px-1.5 py-0.5 text-right text-[11px] font-black rounded-lg border border-emerald-300  bg-white  text-emerald-700  tabular-nums"
                   />
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+              <p className="text-[11px] text-slate-600  mt-0.5 leading-snug">
                 Pagar todo o custo de vida ({formatBRL(metrics.monthlyCurrentLivingCost)}) e poupar {formatBRL(metrics.activeMonthlySavingsTarget)}/mês.
               </p>
             </div>
 
-            <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60 flex items-baseline justify-between">
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+            <div className="pt-2 border-t border-emerald-200/60  flex items-baseline justify-between">
+              <span className="text-xs font-bold text-slate-600 ">
                 Necessários:
               </span>
               <div className="text-right">
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                <span className="text-2xl font-black text-emerald-600  tabular-nums">
                   {metrics.avgNetProfitPerShow > 0 ? metrics.showsForLivingAndSavings : '—'}
                 </span>
-                <span className="text-xs font-bold text-slate-400 ml-1">shows/mês</span>
+                <span className="text-xs font-bold text-slate-500 ml-1">shows/mês</span>
               </div>
             </div>
           </div>
@@ -475,9 +475,9 @@ export const ShowTargetSection: React.FC = () => {
       </div>
 
       {/* RODAPÉ EXPLICATIVO */}
-      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
+      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-100 ">
         <div className="flex items-center space-x-1.5">
-          <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
           <span>
             Os cálculos consideram estritamente o lucro líquido médio apurado ({formatBRL(metrics.avgNetProfitPerShow)}). Cachês brutos foram deduzidos das despesas operacionais cadastradas.
           </span>

@@ -116,13 +116,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
 
         {/* Detalhes do Lançamento: Nome separado das Badges com espaçamento (gap) adequado */}
         <div className="min-w-0 flex-1 flex flex-col gap-2">
-          <h4 className="transaction-item-title text-xs sm:text-sm font-black text-white group-hover:text-emerald-400 transition-colors leading-relaxed break-words">
+          <h4 className="transaction-item-title text-xs sm:text-sm font-black text-slate-900 group-hover:text-emerald-600 transition-colors leading-relaxed break-words">
             {t.description || 'Sem descrição'}
           </h4>
 
           <div className="transaction-badges-row flex flex-wrap items-center gap-2">
             {/* Categoria */}
-            <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wide mr-1">
+            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide mr-1">
               {t.type === 'transfer' ? 'Transferência' : category ? category.name : 'Geral'}
             </span>
 
@@ -133,7 +133,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
                   🎸 Música {!isBlurred ? formatCurrency(vinyMusicShare) : '••••'}
                 </span>
                 {vinyPersonalShare > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 bg-zinc-800 text-zinc-200 border-zinc-700">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 bg-slate-50 text-slate-600 border-slate-300">
                     👤 Pessoal {!isBlurred ? formatCurrency(vinyPersonalShare) : '••••'}
                   </span>
                 )}
@@ -157,7 +157,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
                 <span>Pendente</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider shrink-0">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/20 text-emerald-700 border border-emerald-500/40 uppercase tracking-wider shrink-0">
                 <Check size={9} strokeWidth={3} className="shrink-0" />
                 <span>Efetivado</span>
               </span>
@@ -174,14 +174,14 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-purple-600 text-white hover:bg-purple-500 border border-purple-400/40 uppercase tracking-wider transition active:scale-95 shrink-0"
                 title="Abrir detalhes deste show na agenda"
               >
-                <Music size={9} className="text-white shrink-0" />
+                <Music size={9} className="text-slate-900 shrink-0" />
                 <span>Show</span>
               </button>
             )}
 
             {/* Tag Recorrente / Fixa */}
             {t.isFixed && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 uppercase shrink-0">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold bg-indigo-500/15 text-indigo-700 border border-indigo-500/30 uppercase shrink-0">
                 <Repeat size={8} className="shrink-0" />
                 <span>Fixa</span>
               </span>
@@ -189,15 +189,15 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
 
             {/* Tag Parcelamento */}
             {t.installmentNumber && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold bg-orange-500/15 text-orange-300 border border-orange-500/30 uppercase shrink-0">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold bg-orange-500/15 text-orange-700 border border-orange-500/30 uppercase shrink-0">
                 {t.installmentNumber}/{t.installmentTotal}
               </span>
             )}
 
             {/* Conta Bancária */}
             {account && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium text-zinc-300 bg-zinc-800/90 border border-zinc-700/70 truncate max-w-[150px]">
-                <Wallet size={8} className="shrink-0 text-zinc-400" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-medium text-slate-600 bg-slate-100 border border-slate-200 truncate max-w-[150px]">
+                <Wallet size={8} className="shrink-0 text-slate-600" />
                 <span className="truncate">{account.name}</span>
               </span>
             )}
@@ -220,7 +220,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
             {isExpense ? '- ' : isIncome ? '+ ' : ''}
             {!isBlurred ? formatCurrency(Math.abs(t.amount)) : '••••••'}
           </span>
-          <span className="text-[9px] text-zinc-400 block">
+          <span className="text-[9px] text-slate-600 block">
             {isPending ? 'Projetado' : 'Liquidado'}
           </span>
         </div>
@@ -251,7 +251,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
         <button
           type="button"
           onClick={() => onEdit(t)}
-          className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition hidden sm:flex"
+          className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition hidden sm:flex"
           title="Editar Lançamento"
         >
           <Edit3 size={15} />
@@ -261,7 +261,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
         <button
           type="button"
           onClick={(e) => onDelete(e, t.id)}
-          className="p-2 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition flex"
+          className="p-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-500/10 transition flex"
           title="Excluir Lançamento"
         >
           <Trash2 size={15} />

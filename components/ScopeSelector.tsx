@@ -38,7 +38,7 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fu
   return (
     <div 
       ref={!fullWidth ? scrollRef : undefined}
-      className={`p-1 bg-[#18181b] rounded-2xl border border-zinc-800/80 shadow-xs ${
+      className={`p-1 bg-slate-50 rounded-2xl border border-slate-200/80 shadow-xs ${
         fullWidth ? 'w-full grid grid-cols-3 gap-1' : 'inline-flex items-center space-x-0.5 max-w-full overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none'
       } ${className}`}
     >

@@ -237,15 +237,15 @@ export const Settings = () => {
   }
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-md mx-auto relative">
+    <div className="pb-32 animate-fade-in text-slate-900  max-w-md mx-auto relative">
       
       {/* --- Sticky App Header --- */}
-      <div className="sticky top-0 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-lg z-30 pt-4 pb-4 px-2 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50">
+      <div className="sticky top-0 bg-slate-50/80  backdrop-blur-lg z-30 pt-4 pb-4 px-2 flex items-center justify-between border-b border-slate-200/50 ">
         <div className="flex items-center">
-          <Link to="/" className="p-2 mr-2 hover:bg-white dark:hover:bg-slate-800 rounded-full transition-all active:scale-90">
-             <ChevronLeft size={24} className="text-slate-500" />
+          <Link to="/" className="p-2 mr-2 hover:bg-white  rounded-full transition-all active:scale-90">
+             <ChevronLeft size={24} className="text-slate-600" />
           </Link>
-          <h1 className="text-xl font-black tracking-tight text-slate-800 dark:text-white">Ajustes</h1>
+          <h1 className="text-xl font-black tracking-tight text-slate-800 ">Ajustes</h1>
         </div>
         <div className="w-8"></div> {/* Spacer for balance */}
       </div>
@@ -253,117 +253,117 @@ export const Settings = () => {
       <div className="space-y-6 px-3 pt-4">
         
         {/* --- Profile & Main Settings --- */}
-        <section className="bg-[#18181b] rounded-[2.2rem] p-6 shadow-sm border border-zinc-800 relative overflow-hidden">
+        <section className="bg-slate-50 rounded-[2.2rem] p-6 shadow-sm border border-slate-200 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
            
            {/* Profile Input */}
            <div className="flex items-center space-x-4 relative z-10 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-[1.2rem] flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-emerald-500/20 shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-tr from-white via-white to-white rounded-[1.2rem] flex items-center justify-center text-slate-900 font-black shadow-lg shadow-emerald-500/20 shrink-0">
                  <User size={32} strokeWidth={2} />
               </div>
               <div className="flex-1">
-                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">Nome de Usuário</label>
+                 <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1">Nome de Usuário</label>
                  <input 
                    value={settings.userName || ''} 
                    onChange={(e) => updateSettings({ userName: e.target.value })} 
                    placeholder="Seu Nome"
-                   className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
+                   className="w-full bg-transparent text-xl font-black text-slate-900 outline-none placeholder:text-slate-600 border-b border-slate-200 focus:border-emerald-400 transition-colors pb-1"
                  />
               </div>
            </div>
 
            {/* Nome do Projeto / Carreira */}
-           <div className="flex items-center space-x-4 relative z-10 mb-6 pt-4 border-t border-zinc-800">
-              <div className="w-16 h-16 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0">
+           <div className="flex items-center space-x-4 relative z-10 mb-6 pt-4 border-t border-slate-200">
+              <div className="w-16 h-16 bg-gradient-to-tr from-white via-white to-white rounded-[1.2rem] flex items-center justify-center text-slate-900 shadow-lg shadow-purple-500/20 shrink-0">
                  <Music size={30} strokeWidth={2} />
               </div>
               <div className="flex-1">
-                 <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">
+                 <label className="text-[10px] font-bold text-purple-600 uppercase tracking-widest block mb-1">
                    Nome do Projeto / Carreira (Empresa)
                  </label>
                  <input 
                    value={settings.careerProjectName !== undefined ? settings.careerProjectName : 'Leo Ferreira'} 
                    onChange={(e) => updateSettings({ careerProjectName: e.target.value })} 
                    placeholder="Ex: Leo Ferreira"
-                   className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-purple-400 transition-colors pb-1"
+                   className="w-full bg-transparent text-xl font-black text-slate-900 outline-none placeholder:text-slate-600 border-b border-slate-200 focus:border-purple-400 transition-colors pb-1"
                  />
-                 <span className="text-[10px] text-zinc-400 block mt-1">Nome exibido nos relatórios e recibos de shows</span>
+                 <span className="text-[10px] text-slate-600 block mt-1">Nome exibido nos relatórios e recibos de shows</span>
               </div>
            </div>
 
            {/* Dados Profissionais para Recibos e Comprovantes */}
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 pt-4 border-t border-zinc-800 relative z-10">
-              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800">
-                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 pt-4 border-t border-slate-200 relative z-10">
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200">
+                 <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1">
                    CPF do Músico (Recibos)
                  </label>
                  <input 
                    value={settings.musicianCpf || ''} 
                    onChange={(e) => updateSettings({ musicianCpf: e.target.value })} 
                    placeholder="000.000.000-00"
-                   className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
+                   className="w-full bg-transparent text-sm font-bold text-slate-900 outline-none placeholder:text-slate-600 border-b border-slate-200 focus:border-emerald-400 transition-colors pb-1"
                  />
-                 <span className="text-[9px] text-zinc-500 block mt-1">Utilizado na assinatura do Recibo de Sinal</span>
+                 <span className="text-[9px] text-slate-600 block mt-1">Utilizado na assinatura do Recibo de Sinal</span>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800">
-                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200">
+                 <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1">
                    Cidade / UF Base
                  </label>
                  <input 
                    value={settings.musicianCity || ''} 
                    onChange={(e) => updateSettings({ musicianCity: e.target.value })} 
                    placeholder="Ex: Baependi - MG"
-                   className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
+                   className="w-full bg-transparent text-sm font-bold text-slate-900 outline-none placeholder:text-slate-600 border-b border-slate-200 focus:border-emerald-400 transition-colors pb-1"
                  />
-                 <span className="text-[9px] text-zinc-500 block mt-1">Cidade da emissão no rodapé do comprovante</span>
+                 <span className="text-[9px] text-slate-600 block mt-1">Cidade da emissão no rodapé do comprovante</span>
               </div>
            </div>
 
            {/* CONTAS PADRÃO POR MÓDULO (PESSOAL x EMPRESA) */}
-           <div className="pt-4 border-t border-zinc-800 space-y-3 mb-6">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">
+           <div className="pt-4 border-t border-slate-200 space-y-3 mb-6">
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider block">
                 Contas Bancárias Padrão por Módulo
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Conta Padrão Pessoal */}
-                <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
-                  <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1">
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1.5">
+                  <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center space-x-1">
                     <User size={12} />
                     <span>Conta Padrão Pessoal</span>
                   </label>
                   <select
                     value={settings.personalDefaultAccountId || 'acc_bb'}
                     onChange={e => updateSettings({ personalDefaultAccountId: e.target.value })}
-                    className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-emerald-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300/80 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
                   >
                     {accounts.map(acc => (
                       <option key={acc.id} value={acc.id}>{acc.name}</option>
                     ))}
                   </select>
-                  <span className="text-[9px] text-zinc-400 block">Usada por padrão em despesas e compras pessoais</span>
+                  <span className="text-[9px] text-slate-600 block">Usada por padrão em despesas e compras pessoais</span>
                 </div>
 
                 {/* Conta Padrão Empresa */}
-                <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
-                  <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-1">
+                <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1.5">
+                  <label className="text-[10px] font-bold text-purple-600 uppercase tracking-wider flex items-center space-x-1">
                     <Music size={12} />
                     <span>Conta Padrão Empresa (Shows)</span>
                   </label>
                   <select
                     value={settings.businessDefaultAccountId || 'acc_mp'}
                     onChange={e => updateSettings({ businessDefaultAccountId: e.target.value })}
-                    className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-purple-500"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-300/80 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-purple-500"
                   >
                     {accounts.map(acc => (
                       <option key={acc.id} value={acc.id}>{acc.name}</option>
                     ))}
                   </select>
-                  <span className="text-[9px] text-zinc-400 block">Usada por padrão para recebimentos e custos de shows</span>
+                  <span className="text-[9px] text-slate-600 block">Usada por padrão para recebimentos e custos de shows</span>
                 </div>
               </div>
-              <p className="text-[10px] text-zinc-400">
+              <p className="text-[10px] text-slate-600">
                 💡 A <strong>Carteira (Dinheiro)</strong> pertence ao Pessoal, mas pode receber entradas de shows quando pago em espécie no evento.
               </p>
            </div>
@@ -376,50 +376,50 @@ export const Settings = () => {
                    const next = settings.notificationInterval === 0 ? 12 : settings.notificationInterval === 12 ? 24 : 0;
                    updateSettings({ notificationInterval: next });
                 }}
-                className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800 transition active:scale-95 text-left"
+                className="bg-white p-4 rounded-2xl flex flex-col items-start border border-slate-200 transition active:scale-95 text-left"
               >
                  <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Alertas de Vencimento</span>
-                    <Bell size={16} className={settings.notificationInterval ? 'text-emerald-400' : 'text-zinc-600'} />
+                    <span className="text-[10px] font-bold text-slate-600 uppercase">Alertas de Vencimento</span>
+                    <Bell size={16} className={settings.notificationInterval ? 'text-emerald-600' : 'text-slate-600'} />
                  </div>
-                 <span className="text-sm font-bold text-white">{settings.notificationInterval ? `A cada ${settings.notificationInterval}h` : 'Desligado'}</span>
+                 <span className="text-sm font-bold text-slate-900">{settings.notificationInterval ? `A cada ${settings.notificationInterval}h` : 'Desligado'}</span>
               </button>
 
               {/* Tema Fixo (Spotify / Fintech Dark) */}
-              <div className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800">
+              <div className="bg-white p-4 rounded-2xl flex flex-col items-start border border-slate-200">
                  <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Tema Padrão</span>
-                    <Moon size={16} className="text-emerald-400" />
+                    <span className="text-[10px] font-bold text-slate-600 uppercase">Tema Padrão</span>
+                    <Moon size={16} className="text-emerald-600" />
                  </div>
-                 <span className="text-sm font-bold text-white">Fintech Dark (Spotify)</span>
+                 <span className="text-sm font-bold text-slate-900">Fintech Dark (Spotify)</span>
               </div>
 
               {/* Configurações Financeiras */}
-              <Link to="/financial-settings" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
+              <Link to="/financial-settings" className="bg-white hover:bg-slate-50/80 p-4 rounded-2xl flex items-center justify-between border border-slate-200 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
-                    <div className="p-2.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl">
+                    <div className="p-2.5 bg-amber-500/15 text-amber-700 border border-amber-500/30 rounded-xl">
                        <Sliders size={18} />
                     </div>
                     <div className="text-left">
-                       <span className="text-sm font-black text-white block">Parâmetros Financeiros</span>
-                       <span className="text-[11px] text-zinc-400 font-medium">Reserva mínima, meses de proteção e categorias</span>
+                       <span className="text-sm font-black text-slate-900 block">Parâmetros Financeiros</span>
+                       <span className="text-[11px] text-slate-600 font-medium">Reserva mínima, meses de proteção e categorias</span>
                     </div>
                  </div>
-                 <ChevronRight size={18} className="text-zinc-500" />
+                 <ChevronRight size={18} className="text-slate-600" />
               </Link>
 
               {/* Categories */}
-              <Link to="/categories" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
+              <Link to="/categories" className="bg-white hover:bg-slate-50/80 p-4 rounded-2xl flex items-center justify-between border border-slate-200 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
-                    <div className="p-2.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl">
+                    <div className="p-2.5 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 rounded-xl">
                        <LayoutGrid size={18} />
                     </div>
                     <div className="text-left">
-                       <span className="text-sm font-bold text-white block">Categorias</span>
-                       <span className="text-[10px] text-zinc-400">Gerenciar etiquetas de receitas e despesas</span>
+                       <span className="text-sm font-bold text-slate-900 block">Categorias</span>
+                       <span className="text-[10px] text-slate-600">Gerenciar etiquetas de receitas e despesas</span>
                     </div>
                  </div>
-                 <ChevronRight size={18} className="text-zinc-500" />
+                 <ChevronRight size={18} className="text-slate-600" />
               </Link>
            </div>
         </section>
@@ -427,7 +427,7 @@ export const Settings = () => {
         {/* --- Accounts Management --- */}
         <section>
            <div className="flex justify-between items-center mb-3 px-2">
-              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Minhas Contas</h2>
+              <h2 className="text-xs font-black text-slate-600 uppercase tracking-widest">Minhas Contas</h2>
               <button onClick={() => openAccountModal()} className="p-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-90 transition-all font-black">
                  <Plus size={16} strokeWidth={3} />
               </button>
@@ -438,14 +438,14 @@ export const Settings = () => {
                 const Icon = getAccountIcon(acc.type);
                 const balance = getAccountBalance(acc.id);
                 return (
-                  <div key={acc.id} onClick={() => openAccountModal(acc)} className="bg-[#18181b] p-4 rounded-3xl border border-zinc-800 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
+                  <div key={acc.id} onClick={() => openAccountModal(acc)} className="bg-slate-50 p-4 rounded-3xl border border-slate-200 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-zinc-950 font-bold shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: acc.color }}>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-900 font-bold shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: acc.color }}>
                            <Icon size={20} strokeWidth={2} />
                         </div>
                         <div>
-                           <h3 className="font-bold text-white text-sm leading-tight">{acc.name}</h3>
-                           <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wide">
+                           <h3 className="font-bold text-slate-900 text-sm leading-tight">{acc.name}</h3>
+                           <span className="text-[10px] font-medium text-slate-600 uppercase tracking-wide">
                              {acc.type === 'wallet' ? 'Carteira (Espécie)' : acc.type === 'bank' ? 'Conta Bancária' : acc.type === 'savings' ? 'Reserva' : 'Investimento'}
                              {acc.scope === 'BUSINESS' ? ' • Empresa' : ' • Pessoal'}
                            </span>
@@ -457,7 +457,7 @@ export const Settings = () => {
                         </span>
                         <button 
                           onClick={(e) => { e.stopPropagation(); openReconcileModal(acc); }}
-                          className="flex items-center text-[9px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded-lg mt-1 transition-colors"
+                          className="flex items-center text-[9px] font-bold text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-1 rounded-lg mt-1 transition-colors"
                         >
                            <RefreshCw size={10} className="mr-1" /> Ajustar Saldo
                         </button>
@@ -469,26 +469,26 @@ export const Settings = () => {
         </section>
 
         {/* --- Centralização Banco de Dados (default) --- */}
-        <section className="bg-[#18181b] rounded-[2.2rem] p-5 border border-zinc-800 space-y-4">
+        <section className="bg-slate-50 rounded-[2.2rem] p-5 border border-slate-200 space-y-4">
            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center">
-                 <Database size={15} className="mr-2 text-yellow-400" /> Banco de Dados Principal
+              <h2 className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center">
+                 <Database size={15} className="mr-2 text-yellow-700" /> Banco de Dados Principal
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase flex items-center gap-1">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] font-black uppercase flex items-center gap-1">
                  <CheckCircle2 size={11} /> (default) Ativo
               </span>
            </div>
 
-           <p className="text-xs text-zinc-300 leading-relaxed">
+           <p className="text-xs text-slate-600 leading-relaxed">
               O backend está configurado para que <strong>todas as transações</strong> (antigas e novas) sejam salvas no banco de dados <strong>(default)</strong> do seu projeto Firebase.
            </p>
 
-           <div className="p-3.5 rounded-2xl bg-[#121214] border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+           <div className="p-3.5 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Destino Atual</span>
-                 <span className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
+                 <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">Destino Atual</span>
+                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
                     <span>Firestore Database:</span>
-                    <code className="text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded text-[11px] font-mono">(default)</code>
+                    <code className="text-yellow-700 bg-yellow-400/10 px-1.5 py-0.5 rounded text-[11px] font-mono">(default)</code>
                  </span>
               </div>
 
@@ -509,24 +509,24 @@ export const Settings = () => {
                 disabled={isConsolidating}
                 className="py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-yellow-400 font-extrabold text-xs transition active:scale-95 shadow-sm flex items-center justify-center space-x-2 border border-blue-700 disabled:opacity-60 shrink-0"
               >
-                <RefreshCw size={14} className={isConsolidating ? 'animate-spin text-yellow-400' : ''} />
+                <RefreshCw size={14} className={isConsolidating ? 'animate-spin text-yellow-700' : ''} />
                 <span>{isConsolidating ? 'Consolidando...' : 'Consolidar Tudo no (default)'}</span>
               </button>
            </div>
 
            {consolidationResult && (
-              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-xs font-semibold flex items-center gap-2">
-                 <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+                 <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
                  <span>{consolidationResult}</span>
               </div>
            )}
         </section>
 
         {/* --- Data & Security --- */}
-        <section className="bg-[#18181b] rounded-[2.2rem] overflow-hidden border border-zinc-800">
-           <div className="p-5 border-b border-zinc-800/80">
-              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center">
-                 <Database size={14} className="mr-2 text-emerald-400" /> Dados e Backup
+        <section className="bg-slate-50 rounded-[2.2rem] overflow-hidden border border-slate-200">
+           <div className="p-5 border-b border-slate-200/80">
+              <h2 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-4 flex items-center">
+                 <Database size={14} className="mr-2 text-emerald-600" /> Dados e Backup
               </h2>
               
               {/* Backup Status */}
@@ -534,8 +534,8 @@ export const Settings = () => {
                  <div className="flex items-center space-x-3">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
                     <div>
-                       <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wide block">Backup Automático Local</span>
-                       <span className="text-xs text-zinc-400 font-medium">
+                       <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wide block">Backup Automático Local</span>
+                       <span className="text-xs text-slate-600 font-medium">
                           {backupInfo ? `Última cópia: ${backupInfo.date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : 'Sincronizado'}
                        </span>
                     </div>
@@ -549,13 +549,13 @@ export const Settings = () => {
 
               {/* Actions Grid */}
               <div className="grid grid-cols-2 gap-3">
-                 <button onClick={handleExport} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
-                    <Download size={20} className="text-emerald-400 mb-2" />
-                    <span className="text-[10px] font-bold text-zinc-300">Exportar Backup JSON</span>
+                 <button onClick={handleExport} className="flex flex-col items-center justify-center p-4 bg-white hover:bg-slate-50/80 border border-slate-200 rounded-2xl transition active:scale-95 text-slate-900">
+                    <Download size={20} className="text-emerald-600 mb-2" />
+                    <span className="text-[10px] font-bold text-slate-600">Exportar Backup JSON</span>
                  </button>
-                 <button onClick={handleRestoreClick} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
-                    <Upload size={20} className="text-emerald-400 mb-2" />
-                    <span className="text-[10px] font-bold text-zinc-300">Restaurar JSON</span>
+                 <button onClick={handleRestoreClick} className="flex flex-col items-center justify-center p-4 bg-white hover:bg-slate-50/80 border border-slate-200 rounded-2xl transition active:scale-95 text-slate-900">
+                    <Upload size={20} className="text-emerald-600 mb-2" />
+                    <span className="text-[10px] font-bold text-slate-600">Restaurar JSON</span>
                  </button>
                  <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
               </div>
@@ -565,7 +565,7 @@ export const Settings = () => {
            {/* Danger Zone */}
            <button 
              onClick={handleClearData}
-             className="w-full p-5 flex items-center justify-center space-x-2 text-rose-400 hover:bg-rose-950/30 transition-colors"
+             className="w-full p-5 flex items-center justify-center space-x-2 text-rose-600 hover:bg-rose-950/30 transition-colors"
            >
               <LogOut size={16} />
               <span className="text-xs font-black uppercase tracking-widest">Resetar Aplicativo</span>
@@ -575,7 +575,7 @@ export const Settings = () => {
         {/* --- Customization Link --- */}
         <button 
            onClick={() => setIsLayoutModalOpen(true)}
-           className="w-full py-4 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-500 transition-colors flex items-center justify-center"
+           className="w-full py-4 text-xs font-bold text-slate-600 uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center justify-center"
         >
            <Palette size={14} className="mr-2" /> Personalizar Dashboard
         </button>
@@ -584,34 +584,34 @@ export const Settings = () => {
 
       {/* --- Dashboard Layout Modal --- */}
       {isLayoutModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
-           <div className="bg-white dark:bg-slate-900 rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
+        <div className="fixed inset-0 bg-white/90 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
+           <div className="bg-white  rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100  animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
               <div className="flex justify-between items-center mb-8">
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Organizar Início</h3>
-                 <button onClick={() => setIsLayoutModalOpen(false)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-full transition-all active:scale-90"><X size={24} className="text-slate-400"/></button>
+                 <h3 className="text-2xl font-black text-slate-800  tracking-tight">Organizar Início</h3>
+                 <button onClick={() => setIsLayoutModalOpen(false)} className="p-2 bg-slate-50  rounded-full transition-all active:scale-90"><X size={24} className="text-slate-600"/></button>
               </div>
               
               <div className="space-y-3">
                  {settings.dashboardLayout.map((widget, index) => (
-                    <div key={widget.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 p-4 rounded-3xl flex items-center justify-between group">
+                    <div key={widget.id} className="bg-slate-50  border border-slate-100  p-4 rounded-3xl flex items-center justify-between group">
                        <div className="flex items-center space-x-3">
                           <div className="flex flex-col space-y-1">
                              <button 
                                onClick={() => moveWidget(index, 'up')}
                                disabled={index === 0}
-                               className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-20"
+                               className="p-1 text-slate-600 hover:text-indigo-600 disabled:opacity-20"
                              >
                                 <ArrowUp size={14} />
                              </button>
                              <button 
                                onClick={() => moveWidget(index, 'down')}
                                disabled={index === settings.dashboardLayout.length - 1}
-                               className="p-1 text-slate-300 hover:text-indigo-500 disabled:opacity-20"
+                               className="p-1 text-slate-600 hover:text-indigo-600 disabled:opacity-20"
                              >
                                 <ArrowDown size={14} />
                              </button>
                           </div>
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{widget.label}</span>
+                          <span className="text-sm font-bold text-slate-700 ">{widget.label}</span>
                        </div>
                        
                        <button 
@@ -624,8 +624,8 @@ export const Settings = () => {
                  ))}
               </div>
 
-              <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 block">Cor de Destaque</h4>
+              <div className="mt-8 pt-6 border-t border-slate-100 ">
+                 <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4 block">Cor de Destaque</h4>
                  <div className="flex justify-between items-center px-1">
                     {colors.map(c => {
                       const isSelected = (settings.primaryColor || 'indigo') === c.key;
@@ -636,7 +636,7 @@ export const Settings = () => {
                           className={`w-10 h-10 rounded-full transition-all flex items-center justify-center relative ${isSelected ? 'scale-110 shadow-xl shadow-indigo-200 dark:shadow-none ring-4 ring-white dark:ring-slate-800' : 'hover:scale-105 opacity-60 hover:opacity-100'}`} 
                           style={{ backgroundColor: c.hex }}
                         >
-                          {isSelected && <CheckCircle2 size={18} className="text-white drop-shadow-md" />}
+                          {isSelected && <CheckCircle2 size={18} className="text-slate-900 drop-shadow-md" />}
                         </button>
                       );
                     })}
@@ -645,7 +645,7 @@ export const Settings = () => {
 
               <button 
                 onClick={() => setIsLayoutModalOpen(false)}
-                className="w-full mt-8 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 active:scale-[0.98] transition-all"
+                className="w-full mt-8 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100  hover:bg-indigo-700 active:scale-[0.98] transition-all"
               >
                 Concluir
               </button>
@@ -655,29 +655,29 @@ export const Settings = () => {
 
       {/* --- Account Form Modal --- */}
       {isAccountModalOpen && (
-         <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-up">
+         <div className="fixed inset-0 bg-white/90 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
+            <div className="bg-white  rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100  animate-slide-up">
                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+                  <h3 className="text-2xl font-black text-slate-800  tracking-tight">
                      {editingAccount ? 'Editar Conta' : 'Nova Conta'}
                   </h3>
-                  <button onClick={() => setIsAccountModalOpen(false)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-full transition-all active:scale-90"><X size={24} className="text-slate-400"/></button>
+                  <button onClick={() => setIsAccountModalOpen(false)} className="p-2 bg-slate-50  rounded-full transition-all active:scale-90"><X size={24} className="text-slate-600"/></button>
                </div>
                
                <div className="space-y-6">
                   <div>
-                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Identificação</label>
+                     <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">Identificação</label>
                      <input 
                        value={accName} 
                        onChange={e => setAccName(e.target.value)} 
-                       className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] dark:text-white outline-none font-bold text-lg" 
+                       className="w-full px-5 py-4 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem]  outline-none font-bold text-lg"
                        placeholder="Ex: Nubank, Bradesco..." 
                      />
                   </div>
                   
                   <div>
-                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Categoria</label>
-                     <div className="flex p-1 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                     <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">Categoria</label>
+                     <div className="flex p-1 bg-slate-50  rounded-2xl">
                         {(['bank', 'wallet', 'savings', 'investment'] as const).map(t => (
                            <button 
                              key={t} 
@@ -691,7 +691,7 @@ export const Settings = () => {
                   </div>
 
                   <div>
-                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Cor Personalizada</label>
+                     <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3 px-1">Cor Personalizada</label>
                      <div className="grid grid-cols-5 gap-3">
                         {['#6366f1', '#ef4444', '#10b981', '#f59e0b', '#ec4899'].map(c => (
                            <button 
@@ -700,7 +700,7 @@ export const Settings = () => {
                              className={`aspect-square rounded-2xl transition-all relative ${accColor === c ? 'scale-110 ring-4 ring-white dark:ring-slate-800 shadow-lg' : 'opacity-60 hover:opacity-100'}`} 
                              style={{ backgroundColor: c }} 
                            >
-                              {accColor === c && <CheckCircle2 size={16} className="text-white mx-auto drop-shadow-md" />}
+                              {accColor === c && <CheckCircle2 size={16} className="text-slate-900 mx-auto drop-shadow-md" />}
                            </button>
                         ))}
                      </div>
@@ -709,7 +709,7 @@ export const Settings = () => {
                   <div className="pt-4 flex flex-col space-y-3">
                     <button 
                       onClick={handleSaveAccount} 
-                      className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 active:scale-[0.98] transition-all"
+                      className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100  hover:bg-indigo-700 active:scale-[0.98] transition-all"
                     >
                       Confirmar Conta
                     </button>
@@ -717,7 +717,7 @@ export const Settings = () => {
                     {editingAccount && (
                        <button 
                          onClick={() => handleDeleteAccount(editingAccount)} 
-                         className="w-full py-4 text-rose-500 font-bold text-xs uppercase tracking-widest hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-[1.5rem] transition"
+                         className="w-full py-4 text-rose-600 font-bold text-xs uppercase tracking-widest hover:bg-rose-50  rounded-[1.5rem] transition"
                        >
                          Excluir Definitivamente
                        </button>
@@ -730,42 +730,42 @@ export const Settings = () => {
 
       {/* --- Reconcile Modal --- */}
       {isReconcileModalOpen && (
-         <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in">
+         <div className="fixed inset-0 bg-white/90 z-[70] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+            <div className="bg-white  rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100  animate-scale-in">
                <div className="text-center mb-8">
-                 <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400 shadow-inner">
+                 <div className="w-20 h-20 bg-indigo-50  rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-indigo-600  shadow-inner">
                     <RefreshCw size={36} strokeWidth={1.5} />
                  </div>
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Ajuste de Saldo</h3>
-                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 px-4">
+                 <h3 className="text-2xl font-black text-slate-800  tracking-tight">Ajuste de Saldo</h3>
+                 <p className="text-xs text-slate-600  mt-2 px-4">
                     O saldo real no banco é diferente? Informe o valor correto para sincronizar.
                  </p>
                </div>
 
                <div className="space-y-6">
-                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl flex justify-between items-center border border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo no App</span>
-                    <span className="text-lg font-black text-slate-800 dark:text-white">R$ {reconcileAccountId ? getAccountBalance(reconcileAccountId).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '0,00'}</span>
+                 <div className="bg-slate-50  p-4 rounded-3xl flex justify-between items-center border border-slate-100 ">
+                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Saldo no App</span>
+                    <span className="text-lg font-black text-slate-800 ">R$ {reconcileAccountId ? getAccountBalance(reconcileAccountId).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '0,00'}</span>
                  </div>
                  
                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Novo Saldo Real</label>
+                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">Novo Saldo Real</label>
                     <div className="relative">
-                       <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">R$</span>
+                       <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 font-black text-xl">R$</span>
                        <input 
                          type="number" 
                          step="any" 
                          value={actualBalance} 
                          onChange={e => setActualBalance(e.target.value)} 
-                         className="w-full pl-14 pr-5 py-5 bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 focus:border-indigo-500 rounded-[1.5rem] dark:text-white outline-none font-black text-2xl shadow-sm" 
+                         className="w-full pl-14 pr-5 py-5 bg-white  border-2 border-indigo-100  focus:border-indigo-500 rounded-[1.5rem]  outline-none font-black text-2xl shadow-sm"
                          placeholder="0"
                        />
                     </div>
                  </div>
 
                  <div className="flex space-x-3 pt-4">
-                    <button onClick={() => setIsReconcileModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition">Cancelar</button>
-                    <button onClick={handleReconcile} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 transition active:scale-[0.98]">Confirmar</button>
+                    <button onClick={() => setIsReconcileModalOpen(false)} className="flex-1 py-4 text-slate-600 font-black text-xs uppercase tracking-widest hover:bg-slate-50  rounded-2xl transition">Cancelar</button>
+                    <button onClick={handleReconcile} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100  hover:bg-indigo-700 transition active:scale-[0.98]">Confirmar</button>
                  </div>
                </div>
             </div>
@@ -774,13 +774,13 @@ export const Settings = () => {
 
       {/* Global Confirmation Modal */}
       {confirmation && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
-           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in text-center">
+        <div className="fixed inset-0 bg-white/90 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
+           <div className="bg-white  rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100  animate-scale-in text-center">
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmation.isAlert ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                  {confirmation.isAlert ? <CheckCircle2 size={32} /> : <AlertTriangle size={32} />}
               </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">{confirmation.title}</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed whitespace-pre-line">
+              <h3 className="text-xl font-black text-slate-800  mb-2">{confirmation.title}</h3>
+              <p className="text-sm text-slate-600  mb-8 font-medium leading-relaxed whitespace-pre-line">
                  {confirmation.message}
               </p>
               
@@ -788,7 +788,7 @@ export const Settings = () => {
                  {!confirmation.isAlert && (
                     <button 
                       onClick={() => setConfirmation(null)}
-                      className="flex-1 py-4 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs uppercase tracking-wider"
+                      className="flex-1 py-4 text-slate-600 font-bold bg-slate-100  rounded-2xl text-xs uppercase tracking-wider"
                     >
                        Cancelar
                     </button>
@@ -798,7 +798,7 @@ export const Settings = () => {
                       if (confirmation.onConfirm) confirmation.onConfirm();
                       setConfirmation(null);
                    }}
-                   className={`flex-1 py-4 text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-lg ${confirmation.isAlert ? 'bg-indigo-600 w-full' : 'bg-rose-600 shadow-rose-200 dark:shadow-none'}`}
+                   className={`flex-1 py-4 text-slate-900 font-bold rounded-2xl text-xs uppercase tracking-wider shadow-lg ${confirmation.isAlert ? 'bg-indigo-600 w-full' : 'bg-rose-600 shadow-rose-200 dark:shadow-none'}`}
                  >
                     {confirmation.isAlert ? 'OK' : 'Confirmar'}
                  </button>

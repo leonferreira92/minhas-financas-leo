@@ -271,22 +271,22 @@ export const ExtratoScreen: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-28 animate-fade-in text-white">
+    <div className="space-y-4 pb-28 animate-fade-in text-slate-900">
       {/* HEADER DA TELA */}
       <div className="flex items-center justify-between pt-1">
         <div>
-          <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <Receipt className="text-[#fcca00]" size={22} />
             <span>Extrato da Conta</span>
           </h1>
-          <p className="text-[11px] text-zinc-400 font-medium">Movimentações passadas e lançamentos futuros</p>
+          <p className="text-[11px] text-slate-600 font-medium">Movimentações passadas e lançamentos futuros</p>
         </div>
 
         <div className="flex items-center space-x-2">
           <ScopeSelector size="sm" />
           <button
             onClick={() => toggleBlur()}
-            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition active:scale-95"
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 transition active:scale-95"
             title={isBlurred ? "Exibir Valores" : "Ocultar Valores"}
           >
             {isBlurred ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -339,54 +339,54 @@ export const ExtratoScreen: React.FC = () => {
           {/* CARD 2: LANÇAMENTOS FUTUROS / CACHÊS ABERTOS */}
           <div 
             onClick={() => setCarouselIndex(1)}
-            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-[#121c2e] via-[#10243d] to-[#0d1726] border border-emerald-500/30 shadow-xl cursor-pointer transition hover:border-emerald-400/50"
+            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-white via-slate-50 to-slate-100 border border-emerald-500/30 shadow-xl cursor-pointer transition hover:border-emerald-400/50"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase tracking-wider font-black text-emerald-300 flex items-center gap-1.5">
-                <ArrowUpRight size={14} className="text-emerald-400" />
+              <span className="text-[11px] uppercase tracking-wider font-black text-emerald-700 flex items-center gap-1.5">
+                <ArrowUpRight size={14} className="text-emerald-600" />
                 Futuros & Cachês a Receber
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-700 border border-emerald-500/30">
                 A Entrar
               </span>
             </div>
 
             <div className="mt-2.5">
-              <h2 className="text-3xl font-black text-emerald-400 tracking-tight">
+              <h2 className="text-3xl font-black text-emerald-600 tracking-tight">
                 +{formatCurrency(metrics.futurosReceber)}
               </h2>
             </div>
 
             <div className="mt-4 pt-3.5 border-t border-emerald-800/30 text-xs flex items-center justify-between">
-              <span className="text-zinc-400 text-[10px]">Cachês agendados e receitas pendentes</span>
-              <span className="text-xs font-bold text-emerald-300">Entrada prevista</span>
+              <span className="text-slate-600 text-[10px]">Cachês agendados e receitas pendentes</span>
+              <span className="text-xs font-bold text-emerald-700">Entrada prevista</span>
             </div>
           </div>
 
           {/* CARD 3: TOTAL COMPROMETIDO DO MÊS */}
           <div 
             onClick={() => setCarouselIndex(2)}
-            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-[#26151b] via-[#201015] to-[#140b0e] border border-rose-500/30 shadow-xl cursor-pointer transition hover:border-rose-400/50"
+            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-white via-slate-50 to-slate-100 border border-rose-500/30 shadow-xl cursor-pointer transition hover:border-rose-400/50"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase tracking-wider font-black text-rose-300 flex items-center gap-1.5">
-                <ArrowDownRight size={14} className="text-rose-400" />
+              <span className="text-[11px] uppercase tracking-wider font-black text-rose-700 flex items-center gap-1.5">
+                <ArrowDownRight size={14} className="text-rose-600" />
                 Total Comprometido do Mês
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-500/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-700 border border-rose-500/30">
                 A Pagar
               </span>
             </div>
 
             <div className="mt-2.5">
-              <h2 className="text-3xl font-black text-rose-400 tracking-tight">
+              <h2 className="text-3xl font-black text-rose-600 tracking-tight">
                 -{formatCurrency(metrics.comprometidoPagar)}
               </h2>
             </div>
 
             <div className="mt-4 pt-3.5 border-t border-rose-800/30 text-xs flex items-center justify-between">
-              <span className="text-zinc-400 text-[10px]">Contas e parcelas a quitar</span>
-              <span className="text-xs font-bold text-amber-300">Saída prevista</span>
+              <span className="text-slate-600 text-[10px]">Contas e parcelas a quitar</span>
+              <span className="text-xs font-bold text-amber-700">Saída prevista</span>
             </div>
           </div>
 
@@ -437,37 +437,37 @@ export const ExtratoScreen: React.FC = () => {
 
         <button
           onClick={() => setIsBankImportOpen(true)}
-          className="px-3.5 py-2 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0"
+          className="px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0"
         >
-          <UploadCloud size={14} className="text-blue-400" />
+          <UploadCloud size={14} className="text-blue-600" />
           <span>Importar OFX/CSV</span>
         </button>
 
         <button
           onClick={handleExportAIReport}
-          className="px-3.5 py-2 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0"
+          className="px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0"
         >
-          <Sparkles size={14} className="text-purple-400" />
+          <Sparkles size={14} className="text-purple-600" />
           <span>Relatório IA</span>
         </button>
       </div>
 
       {/* PAINEL EXPANSÍVEL DE BUSCA & FILTRO POR CONTA */}
       {showFiltersPanel && (
-        <div className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-3 animate-fade-in">
+        <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-3 animate-fade-in">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 text-zinc-400" size={15} />
+            <Search className="absolute left-3 top-2.5 text-slate-600" size={15} />
             <input
               type="text"
               placeholder="Buscar descrição, categoria ou conta..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700 text-white placeholder-zinc-400 text-xs focus:border-blue-500 outline-none"
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50/80 border border-slate-300 text-slate-900 placeholder-slate-400 text-xs focus:border-blue-500 outline-none"
             />
             {searchTerm && (
               <button 
                 onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white"
+                className="absolute right-2.5 top-2.5 text-slate-600 hover:text-slate-900"
               >
                 <X size={14} />
               </button>
@@ -475,11 +475,11 @@ export const ExtratoScreen: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <label className="text-[11px] font-bold text-zinc-400 shrink-0">Filtrar Conta:</label>
+            <label className="text-[11px] font-bold text-slate-600 shrink-0">Filtrar Conta:</label>
             <select
               value={selectedAccountId}
               onChange={e => setSelectedAccountId(e.target.value)}
-              className="flex-1 px-2.5 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white focus:border-blue-500 outline-none"
+              className="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:border-blue-500 outline-none"
             >
               <option value="all">Todas as Contas</option>
               {accounts.map(a => (
@@ -497,7 +497,7 @@ export const ExtratoScreen: React.FC = () => {
       {/* Seletor Horizontal de Meses */}
       <div 
         ref={monthsRef}
-        className="overflow-x-auto no-scrollbar flex items-center space-x-1.5 py-1 border-b border-zinc-800/80 pb-2.5 cursor-grab active:cursor-grabbing select-none"
+        className="overflow-x-auto no-scrollbar flex items-center space-x-1.5 py-1 border-b border-slate-200/80 pb-2.5 cursor-grab active:cursor-grabbing select-none"
       >
         {monthList.map(item => {
           const isSelected = !isFutureOnly && selectedMonth === item.value;
@@ -572,9 +572,9 @@ export const ExtratoScreen: React.FC = () => {
       {/* ========================================================================= */}
       <div className="space-y-5 pt-2">
         {groupedByDate.length === 0 ? (
-          <div className="p-10 text-center rounded-3xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs">
-            <Receipt size={32} className="mx-auto mb-2 text-zinc-400" />
-            <p className="font-bold text-white mb-1">Nenhum lançamento encontrado</p>
+          <div className="p-10 text-center rounded-3xl bg-white border border-slate-200 text-slate-600 text-xs">
+            <Receipt size={32} className="mx-auto mb-2 text-slate-600" />
+            <p className="font-bold text-slate-900 mb-1">Nenhum lançamento encontrado</p>
             <p className="text-[11px]">Tente mudar os filtros ou clique em "+ Lançamento" para cadastrar.</p>
           </div>
         ) : (
@@ -583,13 +583,13 @@ export const ExtratoScreen: React.FC = () => {
               <div key={group.date} className="space-y-2">
                 {/* CABEÇALHO DA DATA */}
                 <div className="flex items-center justify-between px-1 pt-1">
-                  <h3 className="text-[11px] font-black tracking-wider text-zinc-300">
+                  <h3 className="text-[11px] font-black tracking-wider text-slate-600">
                     {formatDateHeader(group.date)}
                   </h3>
                 </div>
 
                 {/* ITENS DE LANÇAMENTO DAQUELA DATA */}
-                <div className="rounded-2xl bg-[#141416] border border-zinc-800/80 overflow-hidden divide-y divide-zinc-800/60 shadow-xs">
+                <div className="rounded-2xl bg-white border border-slate-200/80 overflow-hidden divide-y divide-zinc-800/60 shadow-xs">
                   {group.transactions.map(t => {
                     const cat = categories.find(c => c.id === t.categoryId);
                     const acc = accounts.find(a => a.id === t.accountId);
@@ -604,7 +604,7 @@ export const ExtratoScreen: React.FC = () => {
                       <div
                         key={t.id}
                         onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
-                        className={`p-3.5 hover:bg-zinc-800/40 transition flex items-center justify-between cursor-pointer group ${
+                        className={`p-3.5 hover:bg-slate-50/40 transition flex items-center justify-between cursor-pointer group ${
                           isPending ? 'bg-amber-950/10' : ''
                         }`}
                       >
@@ -621,7 +621,7 @@ export const ExtratoScreen: React.FC = () => {
                           </div>
 
                           <div className="min-w-0 flex-1 flex flex-col gap-2">
-                            <span className="transaction-item-title text-xs sm:text-sm font-bold text-white block leading-relaxed break-words group-hover:text-blue-400 transition">
+                            <span className="transaction-item-title text-xs sm:text-sm font-bold text-slate-900 block leading-relaxed break-words group-hover:text-blue-600 transition">
                               {t.description || 'Sem descrição'}
                             </span>
 
@@ -643,11 +643,11 @@ export const ExtratoScreen: React.FC = () => {
                               }`}>
                                 {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId) ? 'Música' : 'Pessoal'}
                               </span>
-                              <span className="text-[10px] text-zinc-400 truncate">
+                              <span className="text-[10px] text-slate-600 truncate">
                                 {cat?.name || 'Geral'}
                               </span>
-                              <span aria-hidden="true" className="text-zinc-600">·</span>
-                              <span className="text-[10px] text-zinc-300 font-medium truncate">
+                              <span aria-hidden="true" className="text-slate-600">·</span>
+                              <span className="text-[10px] text-slate-600 font-medium truncate">
                                 {acc?.name || 'Conta Padrão'}
                               </span>
                             </div>
@@ -662,7 +662,7 @@ export const ExtratoScreen: React.FC = () => {
                             }`}>
                               {isIncome ? '+' : '-'}{formatCurrency(Math.abs(Number(t.amount) || 0))}
                             </span>
-                            <span className="text-[9px] text-zinc-400 block font-medium">
+                            <span className="text-[9px] text-slate-600 block font-medium">
                               {isPending ? 'Previsto' : 'Realizado'}
                             </span>
                           </div>
@@ -686,7 +686,7 @@ export const ExtratoScreen: React.FC = () => {
                               e.stopPropagation();
                               deleteTransaction(t.id);
                             }}
-                            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-950/30 transition active:scale-95"
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white/90 text-slate-600 hover:text-rose-600 hover:border-rose-500/40 hover:bg-rose-950/30 transition active:scale-95"
                             title="Excluir lançamento"
                           >
                             <Trash2 size={13} strokeWidth={2} />
@@ -698,7 +698,7 @@ export const ExtratoScreen: React.FC = () => {
                 </div>
 
                 {/* SALDO DO DIA (Ao final de cada bloco concluído) */}
-                <div className="flex items-center justify-end px-2 pt-0.5 pb-1 text-[10px] text-zinc-400 font-bold space-x-1.5">
+                <div className="flex items-center justify-end px-2 pt-0.5 pb-1 text-[10px] text-slate-600 font-bold space-x-1.5">
                   <span>Saldo do dia:</span>
                   <span className={`font-black ${group.dayNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     {group.dayNet >= 0 ? '+' : ''}{formatCurrency(group.dayNet)}

@@ -548,8 +548,8 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-900/60 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
-        <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-slide-up max-h-[94vh] overflow-y-auto no-scrollbar border-t border-white/10">
+      <div className="fixed inset-0 bg-white/90 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
+        <div className="bg-white  w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 shadow-2xl animate-slide-up max-h-[94vh] overflow-y-auto no-scrollbar border-t border-slate-200">
           <div className="flex justify-between items-start mb-6">
             <div className="flex-1">
               {!isEditing && (
@@ -566,14 +566,14 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                   ></div>
                 </div>
               )}
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white tracking-tighter">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-800  tracking-tighter">
                 {isEditing
                   ? 'Editar Dívida & Rateio Flexível'
                   : step === 0
                   ? 'Nova Dívida / Parcelamento'
                   : 'Plano de Parcelas'}
               </h2>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+              <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mt-1">
                 {isEditing
                   ? 'Altere o valor total, quantidade de parcelas e intervalos com recálculo automático sem travar'
                   : step === 0
@@ -583,7 +583,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
             </div>
             <button
               onClick={onClose}
-              className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-2xl text-slate-400 transition-colors hover:text-rose-500 active:scale-95"
+              className="p-2.5 bg-slate-50  rounded-2xl text-slate-600 transition-colors hover:text-rose-600 active:scale-95"
             >
               <X size={22} />
             </button>
@@ -623,25 +623,25 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                 {/* Título e Valor Total Flexível */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">
                       Título da Dívida / Acordo
                     </label>
                     <input
                       type="text"
                       value={name}
                       onChange={e => setName(e.target.value)}
-                      className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-base dark:text-white transition shadow-inner"
+                      className="w-full px-4 py-3.5 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-base  transition shadow-inner"
                       placeholder="Ex: Dívida com o Viny, Mesa de Som..."
                       autoFocus
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest px-1">
+                    <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest px-1">
                       Valor Total da Dívida (R$)
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500 font-black text-base">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-600 font-black text-base">
                         R$
                       </span>
                       <input
@@ -652,7 +652,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           setTotalAmount(e.target.value);
                           setIsManualInstallment(false);
                         }}
-                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-indigo-500/30 focus:border-indigo-500 rounded-2xl outline-none font-black text-lg text-slate-800 dark:text-white shadow-inner tabular-nums"
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50  border-2 border-indigo-500/30 focus:border-indigo-500 rounded-2xl outline-none font-black text-lg text-slate-800  shadow-inner tabular-nums"
                         placeholder="0,00"
                       />
                     </div>
@@ -663,31 +663,31 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                 {isEditing && (
                   <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-500 flex items-center gap-1.5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 flex items-center gap-1.5">
                         <Calculator size={13} />
                         Recálculo Proporcional Automático
                       </span>
-                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400">
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-600">
                         {proportionalRecalcPreview.pendingCount} pendente(s) • {proportionalRecalcPreview.paidCount} paga(s)
                       </span>
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="p-2.5 rounded-xl bg-white/60 dark:bg-slate-900/70">
-                        <span className="text-[9px] font-black uppercase text-slate-400 block">Valor Total</span>
-                        <span className="text-xs font-black text-slate-800 dark:text-white tabular-nums">
+                      <div className="p-2.5 rounded-xl bg-white/60 ">
+                        <span className="text-[9px] font-black uppercase text-slate-600 block">Valor Total</span>
+                        <span className="text-xs font-black text-slate-800  tabular-nums">
                           {formatBRL(totalParsed)}
                         </span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-white/60 dark:bg-slate-900/70">
-                        <span className="text-[9px] font-black uppercase text-emerald-500 block">Soma Pagas</span>
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      <div className="p-2.5 rounded-xl bg-white/60 ">
+                        <span className="text-[9px] font-black uppercase text-emerald-600 block">Soma Pagas</span>
+                        <span className="text-xs font-black text-emerald-600  tabular-nums">
                           {formatBRL(proportionalRecalcPreview.paidSum)}
                         </span>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-white/60 dark:bg-slate-900/70">
-                        <span className="text-[9px] font-black uppercase text-rose-500 block">Saldo Restante</span>
-                        <span className="text-xs font-black text-rose-600 dark:text-rose-400 tabular-nums">
+                      <div className="p-2.5 rounded-xl bg-white/60 ">
+                        <span className="text-[9px] font-black uppercase text-rose-600 block">Saldo Restante</span>
+                        <span className="text-xs font-black text-rose-600  tabular-nums">
                           {formatBRL(proportionalRecalcPreview.remainingBalance)}
                         </span>
                       </div>
@@ -695,10 +695,10 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
 
                     {proportionalRecalcPreview.pendingCount > 0 && (
                       <div className="pt-2 border-t border-indigo-500/20 flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-slate-600 dark:text-slate-300">
+                        <span className="font-bold text-slate-600 ">
                           Nova parcela pendente redistribuída ({proportionalRecalcPreview.pendingCount}x):
                         </span>
-                        <span className="font-black text-indigo-600 dark:text-indigo-400 tabular-nums text-sm">
+                        <span className="font-black text-indigo-600  tabular-nums text-sm">
                           {formatBRL(proportionalRecalcPreview.averagePendingInstallment)}/mês
                         </span>
                       </div>
@@ -709,15 +709,15 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                 {/* ================================================================= */}
                 {/* SEÇÃO PRINCIPAL: ASSOCIAÇÃO DE CENTRO DE CUSTO E INTERVALOS        */}
                 {/* ================================================================= */}
-                <div className="p-4 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 space-y-4">
+                <div className="p-4 sm:p-5 rounded-3xl bg-slate-50  border border-slate-200/80  space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Layers size={16} className="text-purple-500" />
-                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                      <Layers size={16} className="text-purple-600" />
+                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 ">
                         Centro de Custo da Dívida / Parcelas
                       </span>
                     </div>
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 ">
                       Impacta DRE da Música
                     </span>
                   </div>
@@ -738,12 +738,12 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           size={16}
                           className={
                             costCenterMode === 'TOTAL_PERSONAL'
-                              ? 'text-indigo-600 dark:text-indigo-400'
-                              : 'text-slate-400'
+                              ? 'text-indigo-600 '
+                              : 'text-slate-600'
                           }
                         />
                         {costCenterMode === 'TOTAL_PERSONAL' && (
-                          <CheckCircle2 size={14} className="text-indigo-500" />
+                          <CheckCircle2 size={14} className="text-indigo-600" />
                         )}
                       </div>
                       <div>
@@ -766,12 +766,12 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           size={16}
                           className={
                             costCenterMode === 'TOTAL_BUSINESS'
-                              ? 'text-purple-600 dark:text-purple-400'
-                              : 'text-slate-400'
+                              ? 'text-purple-600 '
+                              : 'text-slate-600'
                           }
                         />
                         {costCenterMode === 'TOTAL_BUSINESS' && (
-                          <CheckCircle2 size={14} className="text-purple-500" />
+                          <CheckCircle2 size={14} className="text-purple-600" />
                         )}
                       </div>
                       <div>
@@ -796,12 +796,12 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           size={16}
                           className={
                             costCenterMode === 'INSTALLMENT_RANGE'
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-slate-400'
+                              ? 'text-amber-600 '
+                              : 'text-slate-600'
                           }
                         />
                         {costCenterMode === 'INSTALLMENT_RANGE' && (
-                          <CheckCircle2 size={14} className="text-amber-500" />
+                          <CheckCircle2 size={14} className="text-amber-700" />
                         )}
                       </div>
                       <div>
@@ -817,14 +817,14 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
 
                   {/* Configuração de Intervalo de Parcelas Totalmente Destravado */}
                   {(costCenterMode === 'INSTALLMENT_RANGE' || isVinyContract) && (
-                    <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-950 border border-amber-500/30 space-y-3 animate-fade-in">
+                    <div className="p-3.5 rounded-2xl bg-white  border border-amber-500/30 space-y-3 animate-fade-in">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 ">
                           {isVinyContract
                             ? 'Intervalo do Som / Música do Viny (Livre Edição)'
                             : 'Intervalo Destinado à MÚSICA / CARREIRA'}
                         </span>
-                        <span className="text-[10px] font-bold text-slate-400">
+                        <span className="text-[10px] font-bold text-slate-600">
                           Total de {qtyParsed} parcelas
                         </span>
                       </div>
@@ -832,7 +832,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                       {/* CAMPOS DESTRAVADOS: Da Parcela Nº e Até a Parcela Nº */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
-                          <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">
+                          <label className="text-[9px] font-black uppercase text-slate-600 block mb-1">
                             Qtd. Total Parcelas
                           </label>
                           <input
@@ -843,11 +843,11 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                               setInstallments(e.target.value);
                               setIsManualInstallment(false);
                             }}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-black text-sm dark:text-white tabular-nums"
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50  border border-slate-200  font-black text-sm  tabular-nums"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-black uppercase text-purple-500 block mb-1">
+                          <label className="text-[9px] font-black uppercase text-purple-600 block mb-1">
                             Da Parcela nº
                           </label>
                           <input
@@ -857,11 +857,11 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                             value={businessStartInstallment}
                             onChange={e => setBusinessStartInstallment(e.target.value)}
                             placeholder="2"
-                            className="w-full px-3 py-2 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border-2 border-purple-500/50 focus:border-purple-600 font-black text-sm text-purple-700 dark:text-purple-300 tabular-nums outline-none transition"
+                            className="w-full px-3 py-2 rounded-xl bg-purple-50/70  border-2 border-purple-500/50 focus:border-purple-600 font-black text-sm text-purple-700  tabular-nums outline-none transition"
                           />
                         </div>
                         <div>
-                          <label className="text-[9px] font-black uppercase text-purple-500 block mb-1">
+                          <label className="text-[9px] font-black uppercase text-purple-600 block mb-1">
                             Até a Parcela nº
                           </label>
                           <input
@@ -870,23 +870,23 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                             value={businessEndInstallment}
                             onChange={e => setBusinessEndInstallment(e.target.value)}
                             placeholder="10"
-                            className="w-full px-3 py-2 rounded-xl bg-purple-50/70 dark:bg-purple-950/40 border-2 border-purple-500/50 focus:border-purple-600 font-black text-sm text-purple-700 dark:text-purple-300 tabular-nums outline-none transition"
+                            className="w-full px-3 py-2 rounded-xl bg-purple-50/70  border-2 border-purple-500/50 focus:border-purple-600 font-black text-sm text-purple-700  tabular-nums outline-none transition"
                           />
                         </div>
                       </div>
 
                       {/* Limite Mensal da Música (Opcional) */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="pt-2 border-t border-slate-100  flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <label className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">
+                          <label className="text-[9px] font-black uppercase text-slate-600  block">
                             Cota Máxima da Música por Parcela (R$)
                           </label>
-                          <span className="text-[9px] text-slate-400">
+                          <span className="text-[9px] text-slate-600">
                             Padrão: {isVinyContract ? 'R$ 650,00 (Som)' : 'Valor integral da parcela'}
                           </span>
                         </div>
                         <div className="w-full sm:w-36 relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-purple-500">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-purple-600">
                             R$
                           </span>
                           <input
@@ -895,12 +895,12 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                             value={musicMonthlyAmountInput}
                             onChange={e => setMusicMonthlyAmountInput(e.target.value)}
                             placeholder={isVinyContract ? '650,00' : 'Integral'}
-                            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-purple-500/30 font-black text-xs text-purple-700 dark:text-purple-300 tabular-nums outline-none"
+                            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50  border border-purple-500/30 font-black text-xs text-purple-700  tabular-nums outline-none"
                           />
                         </div>
                       </div>
 
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                      <p className="text-[10px] text-slate-600  font-medium leading-relaxed">
                         Parcelas <strong>{parsedStartInst} a {parsedEndInst}</strong> destinam para a DRE da Música até{' '}
                         <strong>{formatBRL(allocationPreview.sampleMusicPerInstallment)}</strong>/parcela. O excedente e as parcelas fora desse intervalo (ex: {parsedEndInst + 1 > qtyParsed ? 'últimas' : `Parcela ${parsedEndInst + 1} em diante`}) são alocadas automaticamente como <strong>100% PESSOAL</strong>.
                       </p>
@@ -910,7 +910,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                   {/* Seletor de Subcategoria da Música */}
                   {(costCenterMode !== 'TOTAL_PERSONAL' || isVinyContract) && (
                     <div className="space-y-2 pt-1 animate-fade-in">
-                      <label className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <label className="text-[10px] font-black text-purple-600  uppercase tracking-widest flex items-center gap-1.5">
                         <Tag size={12} />
                         <span>Subcategoria da Música / Carreira *</span>
                       </label>
@@ -924,20 +924,20 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                             setMusicSubcategory(e.target.value);
                           }
                         }}
-                        className="w-full px-4 py-3.5 bg-purple-50/70 dark:bg-purple-950/40 border-2 border-purple-500/40 focus:border-purple-500 rounded-2xl outline-none font-black text-xs text-purple-900 dark:text-purple-200 cursor-pointer"
+                        className="w-full px-4 py-3.5 bg-purple-50/70  border-2 border-purple-500/40 focus:border-purple-500 rounded-2xl outline-none font-black text-xs text-purple-900  cursor-pointer"
                       >
                         {CAREER_DEBT_SUBCATEGORIES.map(sub => (
                           <option
                             key={sub.id}
                             value={sub.label}
-                            className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                            className="bg-white  text-slate-800 "
                           >
                             {sub.label}
                           </option>
                         ))}
                         <option
                           value="__custom__"
-                          className="bg-white dark:bg-slate-900 text-purple-600 font-bold"
+                          className="bg-white  text-purple-600 font-bold"
                         >
                           + Outra Subcategoria Personalizada...
                         </option>
@@ -949,39 +949,39 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           value={customSubcategory}
                           onChange={e => setCustomSubcategory(e.target.value)}
                           placeholder="Digite a subcategoria (ex: Equipamentos / Instrumentos)"
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-purple-500/50 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none"
+                          className="w-full px-4 py-3 bg-white  border border-purple-500/50 rounded-xl text-xs font-bold text-slate-800  outline-none"
                         />
                       )}
                     </div>
                   )}
 
                   {/* Resumo de Alocação em Tempo Real */}
-                  <div className="p-3 rounded-2xl bg-slate-100/80 dark:bg-slate-950/80 border border-slate-200/60 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                  <div className="p-3 rounded-2xl bg-slate-100/80  border border-slate-200/60  flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
                     <div className="space-y-0.5">
-                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-600 block">
                         Resumo Dinâmico do Rateio DRE
                       </span>
-                      <span className="font-bold text-slate-700 dark:text-slate-200 block">
+                      <span className="font-bold text-slate-700  block">
                         {allocationPreview.rangeLabel}
                       </span>
                     </div>
                     <div className="flex items-center space-x-3 shrink-0">
                       {allocationPreview.musicInstallmentsCount > 0 && (
                         <div className="text-right">
-                          <span className="text-[9px] font-black uppercase text-purple-500 block">
+                          <span className="text-[9px] font-black uppercase text-purple-600 block">
                             DRE Música
                           </span>
-                          <span className="font-black text-purple-600 dark:text-purple-400 tabular-nums">
+                          <span className="font-black text-purple-600  tabular-nums">
                             {formatBRL(allocationPreview.musicTotalAmount)}
                           </span>
                         </div>
                       )}
                       {allocationPreview.personalInstallmentsCount > 0 && (
                         <div className="text-right">
-                          <span className="text-[9px] font-black uppercase text-indigo-500 block">
+                          <span className="text-[9px] font-black uppercase text-indigo-600 block">
                             Pessoal
                           </span>
-                          <span className="font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+                          <span className="font-black text-indigo-600  tabular-nums">
                             {formatBRL(allocationPreview.personalTotalAmount)}
                           </span>
                         </div>
@@ -994,13 +994,13 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {costCenterMode !== 'TOTAL_BUSINESS' && (
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                      <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">
                         Categoria (Parcelas Pessoais)
                       </label>
                       <select
                         value={personalCategoryId}
                         onChange={e => setPersonalCategoryId(e.target.value)}
-                        className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-black text-xs dark:text-white cursor-pointer"
+                        className="w-full px-4 py-3.5 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-black text-xs  cursor-pointer"
                       >
                         {personalExpenseCategories.map(c => (
                           <option key={c.id} value={c.id}>
@@ -1016,13 +1016,13 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                       costCenterMode === 'TOTAL_BUSINESS' ? 'sm:col-span-2' : ''
                     }`}
                   >
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-1">
                       Conta de Débito
                     </label>
                     <select
                       value={accountId}
                       onChange={e => setAccountId(e.target.value)}
-                      className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-black text-xs dark:text-white cursor-pointer"
+                      className="w-full px-4 py-3.5 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-black text-xs  cursor-pointer"
                     >
                       {accounts.map(acc => (
                         <option key={acc.id} value={acc.id}>
@@ -1038,7 +1038,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-6 py-4 bg-slate-100 dark:bg-slate-900 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition-all"
+                      className="px-6 py-4 bg-slate-100  text-slate-600 font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition-all"
                     >
                       Cancelar
                     </button>
@@ -1056,7 +1056,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                     type="button"
                     onClick={() => setStep(1)}
                     disabled={!name.trim() || !totalAmount || !accountId}
-                    className="w-full py-4.5 bg-indigo-600 disabled:bg-slate-200 disabled:dark:bg-slate-800 text-white font-black text-xs uppercase tracking-[0.25em] rounded-2xl shadow-xl shadow-indigo-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center group"
+                    className="w-full py-4.5 bg-indigo-600 disabled:bg-slate-200  text-white font-black text-xs uppercase tracking-[0.25em] rounded-2xl shadow-xl shadow-indigo-200  transition-all active:scale-95 flex items-center justify-center group"
                   >
                     Configurar Parcelas
                     <ChevronRight
@@ -1071,10 +1071,10 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
             {step === 1 && !isEditing && (
               <div className="space-y-6 animate-fade-in">
                 {/* Installment Simulator */}
-                <div className="bg-slate-900 dark:bg-black rounded-[2rem] p-6 text-white shadow-2xl relative overflow-hidden ring-4 ring-indigo-500/20">
+                <div className="bg-white  rounded-[2rem] p-6 text-slate-900 shadow-2xl relative overflow-hidden ring-4 ring-indigo-500/20">
                   <div className="absolute top-0 right-0 -mr-12 -mt-12 w-32 h-32 bg-indigo-600 rounded-full blur-3xl opacity-40"></div>
                   <div className="flex justify-between items-center mb-4">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 flex items-center">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 flex items-center">
                       <Calculator size={14} className="mr-2" />{' '}
                       {isManualInstallment ? 'Parcela Manual' : 'Parcela Estimada'}
                     </span>
@@ -1094,29 +1094,29 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                         : '👤 100% Pessoal'}
                     </span>
                   </div>
-                  <div className="flex items-end space-x-3 relative border-b border-white/10 pb-3 mb-3">
-                    <span className="text-2xl font-black text-indigo-400 mb-1.5">R$</span>
+                  <div className="flex items-end space-x-3 relative border-b border-slate-200 pb-3 mb-3">
+                    <span className="text-2xl font-black text-indigo-600 mb-1.5">R$</span>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={installmentValue}
                       onChange={e => handleInstallmentChange(e.target.value)}
-                      className="w-full bg-transparent border-none outline-none text-4xl font-black tracking-tighter text-white tabular-nums"
+                      className="w-full bg-transparent border-none outline-none text-4xl font-black tracking-tighter text-slate-900 tabular-nums"
                       placeholder="0,00"
                     />
-                    <span className="text-xs text-slate-500 font-black mb-2 uppercase tracking-widest shrink-0">
+                    <span className="text-xs text-slate-600 font-black mb-2 uppercase tracking-widest shrink-0">
                       / Mês
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                  <div className="flex justify-between items-center text-[10px] text-slate-600 font-black uppercase tracking-widest">
                     <span>Custo Efetivo Total</span>
-                    <span className="text-white">{formatBRL(totalParsed)}</span>
+                    <span className="text-slate-900">{formatBRL(totalParsed)}</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div
-                    className={`bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border-2 transition-all ${
+                    className={`bg-slate-50  p-4 rounded-2xl border-2 transition-all ${
                       isEntryInvalid
                         ? 'border-rose-500'
                         : 'border-transparent focus-within:border-indigo-500 shadow-inner'
@@ -1152,8 +1152,8 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                       />
                     </div>
                   </div>
-                  <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border-2 border-transparent focus-within:border-indigo-500 transition-all shadow-inner">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                  <div className="bg-slate-50  p-4 rounded-2xl border-2 border-transparent focus-within:border-indigo-500 transition-all shadow-inner">
+                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5">
                       Qtd Parcelas
                     </label>
                     <div className="flex items-center space-x-2">
@@ -1169,23 +1169,23 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                             setBusinessEndInstallment(val);
                           }
                         }}
-                        className="w-full bg-transparent outline-none font-black text-lg dark:text-white tabular-nums"
+                        className="w-full bg-transparent outline-none font-black text-lg  tabular-nums"
                       />
-                      <RefreshCw size={18} className="text-slate-400" />
+                      <RefreshCw size={18} className="text-slate-600" />
                     </div>
                   </div>
                 </div>
 
                 {costCenterMode === 'INSTALLMENT_RANGE' && (
-                  <div className="p-4 rounded-2xl bg-purple-50/60 dark:bg-purple-950/20 border border-purple-500/30 space-y-3">
+                  <div className="p-4 rounded-2xl bg-purple-50/60  border border-purple-500/30 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 ">
                         Intervalo de Parcelas na Música ({effectiveMusicSubcategory})
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">
+                        <label className="text-[9px] font-black uppercase text-slate-600 block mb-1">
                           Parcela Inicial (Música)
                         </label>
                         <input
@@ -1194,11 +1194,11 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           max={qtyParsed}
                           value={businessStartInstallment}
                           onChange={e => setBusinessStartInstallment(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-500/30 font-black text-sm dark:text-white"
+                          className="w-full px-3 py-2 rounded-xl bg-white  border border-purple-500/30 font-black text-sm "
                         />
                       </div>
                       <div>
-                        <label className="text-[9px] font-black uppercase text-slate-400 block mb-1">
+                        <label className="text-[9px] font-black uppercase text-slate-600 block mb-1">
                           Parcela Final (Música)
                         </label>
                         <input
@@ -1206,12 +1206,12 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                           min={businessStartInstallment || 1}
                           value={businessEndInstallment}
                           onChange={e => setBusinessEndInstallment(e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-purple-500/30 font-black text-sm dark:text-white"
+                          className="w-full px-3 py-2 rounded-xl bg-white  border border-purple-500/30 font-black text-sm "
                         />
                       </div>
                     </div>
                     {downParsed > 0 && (
-                      <label className="flex items-center space-x-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer pt-1">
+                      <label className="flex items-center space-x-2 text-xs font-bold text-slate-600  cursor-pointer pt-1">
                         <input
                           type="checkbox"
                           checked={includeDownPaymentInBusiness}
@@ -1227,7 +1227,7 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                 )}
 
                 {isEntryInvalid && (
-                  <div className="flex items-center space-x-3 text-rose-500 bg-rose-50 dark:bg-rose-950/20 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/50">
+                  <div className="flex items-center space-x-3 text-rose-600 bg-rose-50  p-4 rounded-2xl border border-rose-100 ">
                     <AlertTriangle size={20} className="shrink-0" />
                     <span className="text-xs font-black uppercase tracking-tight leading-snug">
                       A entrada não pode superar o total do contrato.
@@ -1235,32 +1235,32 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                   </div>
                 )}
 
-                <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl shadow-inner">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+                <div className="bg-slate-50  p-4 rounded-2xl shadow-inner">
+                  <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">
                     Início dos Pagamentos (1ª Parcela)
                   </label>
                   <div
                     onClick={() => setIsCalendarOpen(true)}
-                    className="flex items-center bg-white dark:bg-slate-800 rounded-xl px-4 py-3 shadow-sm border border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition active:scale-95"
+                    className="flex items-center bg-white  rounded-xl px-4 py-3 shadow-sm border border-slate-100  cursor-pointer hover:bg-slate-50  transition active:scale-95"
                   >
-                    <Calendar size={18} className="text-indigo-500 mr-3" />
-                    <span className="flex-1 font-black text-sm dark:text-white">
+                    <Calendar size={18} className="text-indigo-600 mr-3" />
+                    <span className="flex-1 font-black text-sm ">
                       {new Date(firstDate + 'T12:00:00').toLocaleDateString('pt-BR')}
                     </span>
                   </div>
                 </div>
 
                 {isRetroactive && (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-between group">
+                  <div className="bg-emerald-50  p-4 rounded-2xl border border-emerald-100  flex items-center justify-between group">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 dark:shadow-none">
+                      <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200 ">
                         <ShieldCheck size={22} />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] block">
+                        <span className="text-[10px] font-black text-emerald-600  uppercase tracking-[0.2em] block">
                           Histórico
                         </span>
-                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">
+                        <span className="text-[10px] font-black text-slate-600  uppercase tracking-tighter">
                           Baixar parcelas passadas automaticamente?
                         </span>
                       </div>
@@ -1285,14 +1285,14 @@ export const DebtModal: React.FC<DebtModalProps> = ({ onClose, initialDebt }) =>
                   <button
                     type="button"
                     onClick={() => setStep(0)}
-                    className="w-14 h-14 flex items-center justify-center bg-slate-100 dark:bg-slate-900 text-slate-500 rounded-2xl active:scale-95 transition-all hover:bg-slate-200"
+                    className="w-14 h-14 flex items-center justify-center bg-slate-100  text-slate-600 rounded-2xl active:scale-95 transition-all hover:bg-slate-200"
                   >
                     <ArrowLeft size={24} />
                   </button>
                   <button
                     type="submit"
                     disabled={isEntryInvalid || !installmentValue}
-                    className="flex-1 h-14 bg-slate-900 dark:bg-indigo-600 disabled:opacity-30 text-white font-black text-xs uppercase tracking-[0.25em] rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center"
+                    className="flex-1 h-14 bg-white  disabled:opacity-30 text-slate-900 font-black text-xs uppercase tracking-[0.25em] rounded-2xl shadow-2xl transition-all active:scale-95 flex items-center justify-center"
                   >
                     <Check size={20} className="mr-2" />
                     Finalizar Dívida
@@ -1499,20 +1499,20 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] p-7 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in max-h-[92vh] overflow-y-auto no-scrollbar">
+    <div className="fixed inset-0 bg-white/90 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+      <div className="bg-white  w-full max-w-md rounded-[2.5rem] p-7 sm:p-8 shadow-2xl border border-slate-100  animate-scale-in max-h-[92vh] overflow-y-auto no-scrollbar">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tighter">
+            <h3 className="text-xl font-black text-slate-800  tracking-tighter">
               Ajustar {instNum > 0 ? `Parcela ${instNum}` : 'Entrada Inicial'}
             </h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-600 mt-0.5">
               Edição flexível de valor e centro de custo
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-rose-500 transition-colors active:scale-95"
+            className="p-2.5 bg-slate-50  rounded-2xl text-slate-600 hover:text-rose-600 transition-colors active:scale-95"
           >
             <X size={20} />
           </button>
@@ -1521,11 +1521,11 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
         <div className="space-y-5">
           {/* Valor da Parcela */}
           <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">
+            <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2 px-1">
               Novo Valor {instNum > 0 ? 'da Parcela' : 'da Entrada Inicial'} (R$)
             </label>
             <div className="relative">
-              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">
+              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600 font-black text-xl">
                 R$
               </span>
               <input
@@ -1533,7 +1533,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                 inputMode="decimal"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] text-3xl font-black outline-none dark:text-white tabular-nums shadow-inner"
+                className="w-full pl-14 pr-6 py-4 bg-slate-50  border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] text-3xl font-black outline-none  tabular-nums shadow-inner"
                 autoFocus
               />
             </div>
@@ -1541,7 +1541,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
 
           {/* Opções de Destinação da Parcela (Música vs Pessoal) */}
           <div className="space-y-2.5">
-            <label className="block text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
+            <label className="block text-[10px] font-black text-purple-600  uppercase tracking-widest px-1 flex items-center gap-1.5">
               <Layers size={13} />
               Destinação desta Parcela
             </label>
@@ -1556,7 +1556,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                     : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
                 }`}
               >
-                <span className="block text-[9px] uppercase text-slate-400">Padrão do Contrato</span>
+                <span className="block text-[9px] uppercase text-slate-600">Padrão do Contrato</span>
                 <span>Automático</span>
               </button>
 
@@ -1569,7 +1569,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                     : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
                 }`}
               >
-                <span className="block text-[9px] uppercase text-slate-400">100% Pessoal</span>
+                <span className="block text-[9px] uppercase text-slate-600">100% Pessoal</span>
                 <span>Pessoal</span>
               </button>
 
@@ -1582,7 +1582,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                     : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
                 }`}
               >
-                <span className="block text-[9px] uppercase text-slate-400">100% Música</span>
+                <span className="block text-[9px] uppercase text-slate-600">100% Música</span>
                 <span>Música / DRE</span>
               </button>
 
@@ -1595,18 +1595,18 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                     : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
                 }`}
               >
-                <span className="block text-[9px] uppercase text-slate-400">Divisão Manual</span>
+                <span className="block text-[9px] uppercase text-slate-600">Divisão Manual</span>
                 <span>Rateio Misto</span>
               </button>
             </div>
 
             {allocationChoice === 'CUSTOM_SPLIT' && (
               <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2 animate-fade-in">
-                <label className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 block">
+                <label className="text-[10px] font-black uppercase text-amber-600  block">
                   Quanto desta parcela vai para a Música? (R$)
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-amber-500">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-amber-700">
                     R$
                   </span>
                   <input
@@ -1615,7 +1615,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
                     value={customMusicInput}
                     onChange={e => setCustomMusicInput(e.target.value)}
                     placeholder="650,00"
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/40 font-black text-sm text-amber-800 dark:text-amber-200 outline-none tabular-nums"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-white  border border-amber-500/40 font-black text-sm text-amber-800  outline-none tabular-nums"
                   />
                 </div>
               </div>
@@ -1625,27 +1625,27 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
           {/* Preview Dinâmico do Rateio DRE da Música vs Pessoal desta Parcela */}
           <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/25 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-purple-500">
+              <span className="text-[10px] font-black uppercase tracking-widest text-purple-600">
                 Rateio DRE desta Parcela
               </span>
-              <span className="text-[9px] font-bold text-slate-400">
+              <span className="text-[9px] font-bold text-slate-600">
                 {dynamicInstallmentAllocation.label}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/70">
-                <span className="text-[9px] font-black uppercase text-purple-500 block">
+              <div className="p-2.5 rounded-xl bg-white/70 ">
+                <span className="text-[9px] font-black uppercase text-purple-600 block">
                   🎸 DRE Música
                 </span>
-                <span className="text-sm font-black text-purple-600 dark:text-purple-400 tabular-nums">
+                <span className="text-sm font-black text-purple-600  tabular-nums">
                   {formatBRL(dynamicInstallmentAllocation.musicShare)}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white/70 dark:bg-slate-950/70">
-                <span className="text-[9px] font-black uppercase text-indigo-500 block">
+              <div className="p-2.5 rounded-xl bg-white/70 ">
+                <span className="text-[9px] font-black uppercase text-indigo-600 block">
                   👤 Centro Pessoal
                 </span>
-                <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+                <span className="text-sm font-black text-indigo-600  tabular-nums">
                   {formatBRL(dynamicInstallmentAllocation.personalShare)}
                 </span>
               </div>
@@ -1676,7 +1676,7 @@ export const InstallmentRecalcModal: React.FC<InstallmentRecalcModalProps> = ({
 
           <button
             onClick={handleConfirmSave}
-            className="w-full py-4.5 bg-slate-900 dark:bg-indigo-600 hover:scale-[1.01] text-white rounded-[1.5rem] font-black text-xs uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95"
+            className="w-full py-4.5 bg-white  hover:scale-[1.01] text-slate-900 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95"
           >
             Confirmar & Salvar
           </button>

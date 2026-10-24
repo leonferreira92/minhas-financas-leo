@@ -122,10 +122,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
             {/* Perfil / Sessão */}
             {isDemoMode ? (
               <div className="flex items-center space-x-1.5 bg-blue-950/70 border border-blue-800/60 px-2 py-1 rounded-xl">
-                <span className="text-[11px] text-yellow-300 font-bold hidden sm:inline">Demo</span>
+                <span className="text-[11px] text-yellow-700 font-bold hidden sm:inline">Demo</span>
                 <button
                   onClick={() => exitDemoMode()}
-                  className="p-1 rounded-lg text-blue-200 hover:text-white transition"
+                  className="p-1 rounded-lg text-blue-200 hover:text-slate-900 transition"
                   title="Sair do Modo Demo"
                 >
                   <LogOut size={14} />
@@ -136,12 +136,12 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 <div className="w-6 h-6 rounded-full bg-yellow-400 text-blue-950 font-black text-xs flex items-center justify-center">
                   {(settings.userName || 'U').charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs font-bold text-white max-w-[90px] truncate hidden sm:inline">
+                <span className="text-xs font-bold text-slate-900 max-w-[90px] truncate hidden sm:inline">
                   {settings.userName || 'Leo'}
                 </span>
                 <button
                   onClick={() => logoutUser()}
-                  className="p-1 text-blue-200 hover:text-rose-300 transition"
+                  className="p-1 text-blue-200 hover:text-rose-700 transition"
                   title="Sair"
                 >
                   <LogOut size={14} />
@@ -174,7 +174,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               </div>
               <div>
                 <p className="text-xs font-extrabold text-slate-800">Modo Demonstração Pessoal</p>
-                <p className="text-[11px] text-slate-500">Dados temporários em memória para navegação sem afetar o banco principal.</p>
+                <p className="text-[11px] text-slate-600">Dados temporários em memória para navegação sem afetar o banco principal.</p>
               </div>
             </div>
             <button

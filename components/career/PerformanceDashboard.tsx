@@ -321,22 +321,22 @@ export const PerformanceDashboard: React.FC<Props> = ({
     <div className="space-y-6">
       
       {/* 1. SELETOR DE PERÍODO & INTRO */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/20">
+          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0 border border-purple-500/20">
             <TrendingUp size={20} />
           </div>
           <div>
-            <h2 className="text-sm sm:text-base font-black text-white tracking-tight">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
               Dashboard de Performance & Lucratividade
             </h2>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-slate-600">
               Métricas consolidadas de cachês, equipe, logística e ticket médio.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 self-start sm:self-auto">
+        <div className="flex items-center space-x-1 bg-white/90 p-1 rounded-2xl border border-slate-200 self-start sm:self-auto">
           {(['all', '3m', '6m', '12m'] as const).map(range => (
             <button
               key={range}
@@ -356,25 +356,25 @@ export const PerformanceDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {/* BANNER / STATUS DE AUDITORIA DE CACHÊS & EXTRATOS                        */}
       {/* ========================================================================= */}
-      <div className="p-4 rounded-3xl bg-zinc-900/90 border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+      <div className="p-4 rounded-3xl bg-white/90 border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
         <div className="flex items-start sm:items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 border border-purple-500/30">
+          <div className="w-10 h-10 rounded-2xl bg-purple-500/20 text-purple-600 flex items-center justify-center shrink-0 border border-purple-500/30">
             <ShieldCheck size={20} />
           </div>
           <div className="space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-white">Auditoria Estrita de Receitas de Shows</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="text-xs sm:text-sm font-black text-slate-900">Auditoria Estrita de Receitas de Shows</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 border border-emerald-500/30">
                 100% Baseada em Eventos Cadastrados
               </span>
               {activeMatches.length > 0 && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 border border-amber-500/30 animate-pulse">
                   {activeMatches.length} Sugestão(ões) de Vínculo
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-zinc-400">
-              Receita calculada exclusivamente sobre os cachês recebidos de <strong className="text-zinc-200">{globalMetrics.totalShowsCount} shows cadastrados</strong>. {auditResult.unlinkedExtratoIncomes.length} movimentações no extrato foram desconsideradas para não inflacionar os valores.
+            <p className="text-[11px] text-slate-600">
+              Receita calculada exclusivamente sobre os cachês recebidos de <strong className="text-slate-600">{globalMetrics.totalShowsCount} shows cadastrados</strong>. {auditResult.unlinkedExtratoIncomes.length} movimentações no extrato foram desconsideradas para não inflacionar os valores.
             </p>
           </div>
         </div>
@@ -394,65 +394,65 @@ export const PerformanceDashboard: React.FC<Props> = ({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         
         {/* CARD 1: TOTAL DE SHOWS */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-purple-950/40 via-[#16131f] to-[#121214] border border-purple-500/30 space-y-2 shadow-lg">
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white via-white to-white border border-purple-500/30 space-y-2 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1">
-              <Music size={12} className="text-purple-400" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 flex items-center gap-1">
+              <Music size={12} className="text-purple-600" />
               Total de Shows
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-700">
               {globalMetrics.completedShowsCount} feitos
             </span>
           </div>
           <div className="flex items-baseline space-x-1.5">
-            <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums">
               {globalMetrics.totalShowsCount}
             </span>
-            <span className="text-xs text-purple-300 font-bold">apresentações</span>
+            <span className="text-xs text-purple-700 font-bold">apresentações</span>
           </div>
-          <p className="text-[10px] text-zinc-400 font-medium">
+          <p className="text-[10px] text-slate-600 font-medium">
             {globalMetrics.confirmedShowsCount} confirmados • {globalMetrics.quotesShowsCount} em negociação
           </p>
         </div>
 
         {/* CARD 2: RECEITA BRUTA (EFETIVAMENTE RECEBIDA) */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-emerald-950/40 via-[#101c15] to-[#121214] border border-emerald-500/30 space-y-2 shadow-lg">
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white via-white to-white border border-emerald-500/30 space-y-2 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
-              <DollarSign size={12} className="text-emerald-400" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 flex items-center gap-1">
+              <DollarSign size={12} className="text-emerald-600" />
               Receita Bruta (Recebida)
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700">
               Cachês Recebidos
             </span>
           </div>
           <div className="flex items-baseline space-x-1.5">
-            <span className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">
+            <span className="text-xl sm:text-2xl font-black text-emerald-600 tabular-nums">
               {formatCurrency(globalMetrics.totalGrossRevenue)}
             </span>
           </div>
-          <p className="text-[10px] text-zinc-400 font-medium">
+          <p className="text-[10px] text-slate-600 font-medium">
             Contratado total: {formatCurrency(globalMetrics.totalContractedRevenue)}
           </p>
         </div>
 
         {/* CARD 3: CUSTOS TOTAIS DA MÚSICA */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-rose-950/40 via-[#1c1214] to-[#121214] border border-rose-500/30 space-y-2 shadow-lg">
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white via-white to-white border border-rose-500/30 space-y-2 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-300 flex items-center gap-1">
-              <ArrowDownRight size={12} className="text-rose-400" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 flex items-center gap-1">
+              <ArrowDownRight size={12} className="text-rose-600" />
               Custos Totais
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-700">
               Despesas
             </span>
           </div>
           <div className="flex items-baseline space-x-1.5">
-            <span className="text-xl sm:text-2xl font-black text-rose-400 tabular-nums">
+            <span className="text-xl sm:text-2xl font-black text-rose-600 tabular-nums">
               {formatCurrency(globalMetrics.totalMusicExpenses)}
             </span>
           </div>
-          <p className="text-[10px] text-zinc-400 font-medium">
+          <p className="text-[10px] text-slate-600 font-medium">
             {globalMetrics.debtInstallmentsTotal > 0
               ? `Inclui ${formatCurrency(globalMetrics.debtInstallmentsTotal)} (${globalMetrics.debtInstallmentsCount}x parcelas pagas)`
               : 'Equipe, logística, locomoção e infra'}
@@ -460,13 +460,13 @@ export const PerformanceDashboard: React.FC<Props> = ({
         </div>
 
         {/* CARD 4: LUCRO LÍQUIDO REAL */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-blue-950/40 via-[#101726] to-[#121214] border border-blue-500/30 space-y-2 shadow-lg">
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white via-white to-white border border-blue-500/30 space-y-2 shadow-lg">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-300 flex items-center gap-1">
-              <TrendingUp size={12} className="text-blue-400" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1">
+              <TrendingUp size={12} className="text-blue-600" />
               Lucro Líquido Real
             </span>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-700">
               {globalMetrics.profitMargin.toFixed(0)}% margem
             </span>
           </div>
@@ -477,28 +477,28 @@ export const PerformanceDashboard: React.FC<Props> = ({
               {formatCurrency(globalMetrics.netRealProfit)}
             </span>
           </div>
-          <p className="text-[10px] text-zinc-400 font-medium">
+          <p className="text-[10px] text-slate-600 font-medium">
             Receita bruta menos todos os custos
           </p>
         </div>
 
         {/* CARD 5: RESERVA PARA EQUIPAMENTOS (FUNDO DE DEPRECIAÇÃO) */}
-        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-950/40 via-[#261c10] to-[#121214] border border-amber-500/30 space-y-2 shadow-lg col-span-2 md:col-span-1">
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-white via-white to-white border border-amber-500/30 space-y-2 shadow-lg col-span-2 md:col-span-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-              <Sparkles size={12} className="text-amber-400" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1">
+              <Sparkles size={12} className="text-amber-700" />
               Reserva Equipamentos
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700">
               Fundo
             </span>
           </div>
           <div className="flex items-baseline space-x-1.5">
-            <span className="text-xl sm:text-2xl font-black text-amber-400 tabular-nums">
+            <span className="text-xl sm:text-2xl font-black text-amber-700 tabular-nums">
               {formatCurrency(globalMetrics.totalEquipmentReserve)}
             </span>
           </div>
-          <p className="text-[10px] text-zinc-400 font-medium">
+          <p className="text-[10px] text-slate-600 font-medium">
             Reserva acumulada retida de shows
           </p>
         </div>
@@ -511,67 +511,67 @@ export const PerformanceDashboard: React.FC<Props> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
         {/* TICKET MÉDIO POR APRESENTAÇÃO */}
-        <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center shrink-0">
                 <Award size={16} />
               </div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                 Ticket Médio por Show
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">Por apresentação</span>
+            <span className="text-[10px] text-slate-600 font-bold">Por apresentação</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Cachê Médio Recebido</span>
-              <span className="text-lg font-black text-amber-300 tabular-nums block mt-1">
+            <div className="p-3.5 rounded-2xl bg-white/90 border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-600 block uppercase">Cachê Médio Recebido</span>
+              <span className="text-lg font-black text-amber-700 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageTicketPerShow)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Média por show com recebimento</span>
+              <span className="text-[9px] text-slate-600 font-medium mt-0.5 block">Média por show com recebimento</span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Lucro Médio</span>
-              <span className="text-lg font-black text-emerald-400 tabular-nums block mt-1">
+            <div className="p-3.5 rounded-2xl bg-white/90 border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-600 block uppercase">Lucro Médio</span>
+              <span className="text-lg font-black text-emerald-600 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageProfitPerShow)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Lucro limpo por evento</span>
+              <span className="text-[9px] text-slate-600 font-medium mt-0.5 block">Lucro limpo por evento</span>
             </div>
           </div>
         </div>
 
         {/* MÉDIA DE LUCRO MENSAL */}
-        <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
                 <Percent size={16} />
               </div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                 Média de Lucro Mensal
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">Histórico do período</span>
+            <span className="text-[10px] text-slate-600 font-bold">Histórico do período</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Lucro Médio / Mês</span>
-              <span className="text-lg font-black text-emerald-400 tabular-nums block mt-1">
+            <div className="p-3.5 rounded-2xl bg-white/90 border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-600 block uppercase">Lucro Médio / Mês</span>
+              <span className="text-lg font-black text-emerald-600 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageMonthlyProfit)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Média líquida mensal</span>
+              <span className="text-[9px] text-slate-600 font-medium mt-0.5 block">Média líquida mensal</span>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Margem Operacional</span>
-              <span className="text-lg font-black text-purple-400 tabular-nums block mt-1">
+            <div className="p-3.5 rounded-2xl bg-white/90 border border-slate-200">
+              <span className="text-[10px] font-bold text-slate-600 block uppercase">Margem Operacional</span>
+              <span className="text-lg font-black text-purple-600 tabular-nums block mt-1">
                 {globalMetrics.profitMargin.toFixed(1)}%
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Eficiência de custos</span>
+              <span className="text-[9px] text-slate-600 font-medium mt-0.5 block">Eficiência de custos</span>
             </div>
           </div>
         </div>
@@ -581,16 +581,16 @@ export const PerformanceDashboard: React.FC<Props> = ({
       {/* ========================================================================= */}
       {/* 4. GRÁFICO DE FLUXO DE CAIXA MENSAL (RECEITA VS DESPESA VS LUCRO)         */}
       {/* ========================================================================= */}
-      <div className="p-5 sm:p-6 rounded-3xl bg-[#141416] border border-zinc-800 space-y-5 shadow-sm">
+      <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200 space-y-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <div className="flex items-center space-x-2">
-              <BarChart3 size={16} className="text-purple-400" />
-              <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              <BarChart3 size={16} className="text-purple-600" />
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">
                 Fluxo de Caixa Mensal da Música
               </h3>
             </div>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
+            <p className="text-[11px] text-slate-600 mt-0.5">
               Comparativo de Receitas (Cachês), Despesas (Equipe/Logística) e Lucro Líquido Real.
             </p>
           </div>
@@ -599,15 +599,15 @@ export const PerformanceDashboard: React.FC<Props> = ({
           <div className="flex items-center space-x-4 text-xs font-bold">
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-              <span className="text-zinc-300">Receita</span>
+              <span className="text-slate-600">Receita</span>
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e]" />
-              <span className="text-zinc-300">Despesa</span>
+              <span className="text-slate-600">Despesa</span>
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_6px_#a855f7]" />
-              <span className="text-zinc-300">Lucro</span>
+              <span className="text-slate-600">Lucro</span>
             </div>
           </div>
         </div>
@@ -741,20 +741,20 @@ export const PerformanceDashboard: React.FC<Props> = ({
         </div>
 
         {/* Detalhe do mês selecionado ou resumo em cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-zinc-800">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200">
           {chartSeries.slice(-4).map(m => (
-            <div key={m.key} className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-1">
-              <div className="flex items-center justify-between text-[11px] font-bold text-zinc-400">
+            <div key={m.key} className="p-3 rounded-2xl bg-white/80 border border-slate-200/80 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
                 <span>{m.label}</span>
-                <span className="text-purple-400">{m.showsCount} {m.showsCount === 1 ? 'show' : 'shows'}</span>
+                <span className="text-purple-600">{m.showsCount} {m.showsCount === 1 ? 'show' : 'shows'}</span>
               </div>
               <div className="flex items-baseline justify-between">
-                <span className="text-xs text-emerald-400 font-bold">+{formatCurrency(m.revenue)}</span>
-                <span className="text-xs text-rose-400 font-bold">-{formatCurrency(m.expenses)}</span>
+                <span className="text-xs text-emerald-600 font-bold">+{formatCurrency(m.revenue)}</span>
+                <span className="text-xs text-rose-600 font-bold">-{formatCurrency(m.expenses)}</span>
               </div>
-              <div className="text-xs font-black text-white pt-0.5 border-t border-zinc-800 flex items-center justify-between">
-                <span className="text-[10px] text-zinc-400">Lucro:</span>
-                <span className={m.profit >= 0 ? 'text-purple-400' : 'text-rose-400'}>{formatCurrency(m.profit)}</span>
+              <div className="text-xs font-black text-slate-900 pt-0.5 border-t border-slate-200 flex items-center justify-between">
+                <span className="text-[10px] text-slate-600">Lucro:</span>
+                <span className={m.profit >= 0 ? 'text-purple-600' : 'text-rose-600'}>{formatCurrency(m.profit)}</span>
               </div>
             </div>
           ))}
@@ -767,34 +767,34 @@ export const PerformanceDashboard: React.FC<Props> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* EVENTOS POR CATEGORIA */}
-        <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <PieChart size={16} className="text-purple-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+              <PieChart size={16} className="text-purple-600" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                 Faturamento por Tipo de Evento
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">Mix de Shows</span>
+            <span className="text-[10px] text-slate-600 font-bold">Mix de Shows</span>
           </div>
 
           <div className="space-y-3 pt-1">
             {eventTypesBreakdown.length === 0 ? (
-              <p className="text-xs text-zinc-400 py-4 text-center">Nenhum show registrado com categoria ainda.</p>
+              <p className="text-xs text-slate-600 py-4 text-center">Nenhum show registrado com categoria ainda.</p>
             ) : (
               eventTypesBreakdown.map((item) => (
                 <div key={item.type} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
                       <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span className="font-bold text-zinc-200">{item.type}</span>
-                      <span className="text-[10px] text-zinc-400">({item.count} {item.count === 1 ? 'show' : 'shows'})</span>
+                      <span className="font-bold text-slate-600">{item.type}</span>
+                      <span className="text-[10px] text-slate-600">({item.count} {item.count === 1 ? 'show' : 'shows'})</span>
                     </div>
-                    <span className="font-black text-white">{formatCurrency(item.totalRevenue)}</span>
+                    <span className="font-black text-slate-900">{formatCurrency(item.totalRevenue)}</span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 rounded-full"
+                      className="h-full bg-gradient-to-r from-white via-white to-white rounded-full"
                       style={{ width: `${item.percentage}%` }}
                     />
                   </div>
@@ -805,26 +805,26 @@ export const PerformanceDashboard: React.FC<Props> = ({
         </div>
 
         {/* ANÁLISE DE GASTOS DA MÚSICA & PARCELAMENTOS PAGOS POR SUBCATEGORIA */}
-        <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
+        <div className="p-5 rounded-3xl bg-white border border-slate-200 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Tag size={16} className="text-rose-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+              <Tag size={16} className="text-rose-600" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                 Gastos da Música por Subcategoria (DRE)
               </h3>
             </div>
             {globalMetrics.debtInstallmentsTotal > 0 ? (
-              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-700 border border-purple-500/30">
                 {globalMetrics.debtInstallmentsCount}x Parcelas Pagas Incluídas
               </span>
             ) : (
-              <span className="text-[10px] text-zinc-400 font-bold">Custos Consolidados</span>
+              <span className="text-[10px] text-slate-600 font-bold">Custos Consolidados</span>
             )}
           </div>
 
           <div className="space-y-3 pt-1">
             {globalMetrics.bySubcategory.length === 0 ? (
-              <p className="text-xs text-zinc-400 py-4 text-center">
+              <p className="text-xs text-slate-600 py-4 text-center">
                 Nenhum gasto da carreira ou parcela paga vinculada à música no período.
               </p>
             ) : (
@@ -833,19 +833,19 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2 min-w-0">
                       <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                      <span className="font-bold text-zinc-200 truncate">{sub.label}</span>
-                      <span className="text-[10px] text-zinc-400 shrink-0">
+                      <span className="font-bold text-slate-600 truncate">{sub.label}</span>
+                      <span className="text-[10px] text-slate-600 shrink-0">
                         ({sub.count} {sub.count === 1 ? 'item' : 'itens'}
                         {sub.debtCount > 0 ? ` • ${sub.debtCount}x dívida` : ''})
                       </span>
                     </div>
-                    <span className="font-black text-rose-400 tabular-nums shrink-0 ml-2">
+                    <span className="font-black text-rose-600 tabular-nums shrink-0 ml-2">
                       {formatCurrency(sub.amount)}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-rose-500 to-purple-500 rounded-full"
+                      className="h-full bg-gradient-to-r from-white via-white to-white rounded-full"
                       style={{ width: `${Math.min(100, Math.max(4, sub.percentage))}%` }}
                     />
                   </div>
@@ -861,25 +861,25 @@ export const PerformanceDashboard: React.FC<Props> = ({
       {/* MODAL DE AUDITORIA COMPLETA DE CACHÊS & EXTRATOS                        */}
       {/* ========================================================================= */}
       {isAuditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="w-full max-w-3xl bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-3xl bg-slate-50 border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
             
             {/* MODAL HEADER */}
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 shrink-0">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+                <div className="w-9 h-9 rounded-2xl bg-purple-500/20 text-purple-600 flex items-center justify-center border border-purple-500/30">
                   <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">Auditoria de Cachês & Extratos</h3>
-                  <p className="text-[11px] text-zinc-400">
+                  <h3 className="text-base font-black text-slate-900">Auditoria de Cachês & Extratos</h3>
+                  <p className="text-[11px] text-slate-600">
                     Conferência estrita: Receitas baseadas unicamente em eventos cadastrados.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsAuditModalOpen(false)}
-                className="p-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition"
+                className="p-2 rounded-xl text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 transition"
               >
                 <X size={16} />
               </button>
@@ -887,39 +887,39 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
             {/* AUDIT SUMMARY STATS */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
-              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
-                <span className="text-[10px] font-bold uppercase text-zinc-400">Receita Auditada dos Shows</span>
-                <span className="text-lg font-black text-emerald-400 tabular-nums block">
+              <div className="p-3 rounded-2xl bg-white border border-slate-200 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-600">Receita Auditada dos Shows</span>
+                <span className="text-lg font-black text-emerald-600 tabular-nums block">
                   {formatCurrency(auditResult.totalAuditedReceived)}
                 </span>
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-slate-600">
                   {auditResult.auditedShows.length} eventos cadastrados
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
-                <span className="text-[10px] font-bold uppercase text-zinc-400">Movimentações Desconsideradas</span>
-                <span className="text-lg font-black text-amber-400 tabular-nums block">
+              <div className="p-3 rounded-2xl bg-white border border-slate-200 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-600">Movimentações Desconsideradas</span>
+                <span className="text-lg font-black text-amber-700 tabular-nums block">
                   {formatCurrency(auditResult.totalExcludedExtratoIncome)}
                 </span>
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-slate-600">
                   {auditResult.unlinkedExtratoIncomes.length} entradas no extrato sem show
                 </span>
               </div>
 
-              <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
-                <span className="text-[10px] font-bold uppercase text-zinc-400">Sugestões de Vínculo</span>
-                <span className="text-lg font-black text-purple-400 tabular-nums block">
+              <div className="p-3 rounded-2xl bg-white border border-slate-200 space-y-1">
+                <span className="text-[10px] font-bold uppercase text-slate-600">Sugestões de Vínculo</span>
+                <span className="text-lg font-black text-purple-600 tabular-nums block">
                   {activeMatches.length}
                 </span>
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-slate-600">
                   Transações compatíveis encontradas
                 </span>
               </div>
             </div>
 
             {/* AUDIT TABS */}
-            <div className="flex items-center space-x-1.5 border-b border-zinc-800 pb-2 shrink-0 overflow-x-auto no-scrollbar">
+            <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-2 shrink-0 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setAuditTab('matches')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
@@ -943,7 +943,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 }`}
               >
                 <span>Shows Conferidos</span>
-                <span className="px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-300 text-[10px]">
+                <span className="px-1.5 py-0.2 rounded-md bg-slate-50 text-slate-600 text-[10px]">
                   {auditResult.auditedShows.length}
                 </span>
               </button>
@@ -957,7 +957,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 }`}
               >
                 <span>Extrato Desconsiderado</span>
-                <span className="px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-300 text-[10px]">
+                <span className="px-1.5 py-0.2 rounded-md bg-slate-50 text-slate-600 text-[10px]">
                   {auditResult.unlinkedExtratoIncomes.length}
                 </span>
               </button>
@@ -970,10 +970,10 @@ export const PerformanceDashboard: React.FC<Props> = ({
               {auditTab === 'matches' && (
                 <div className="space-y-3">
                   {activeMatches.length === 0 ? (
-                    <div className="p-8 rounded-2xl bg-zinc-900/50 border border-dashed border-zinc-800 text-center space-y-2">
-                      <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
-                      <p className="text-sm font-bold text-white">Nenhum cachê pendente de conferência</p>
-                      <p className="text-xs text-zinc-400">
+                    <div className="p-8 rounded-2xl bg-white/70 border border-dashed border-slate-200 text-center space-y-2">
+                      <CheckCircle2 size={32} className="mx-auto text-emerald-600" />
+                      <p className="text-sm font-bold text-slate-900">Nenhum cachê pendente de conferência</p>
+                      <p className="text-xs text-slate-600">
                         Todas as transações do extrato reconhecidas como cachê já estão vinculadas aos seus respectivos shows.
                       </p>
                     </div>
@@ -981,27 +981,27 @@ export const PerformanceDashboard: React.FC<Props> = ({
                     activeMatches.map(({ transaction: tx, candidateShow, matchReason, confidence }) => (
                       <div
                         key={tx.id}
-                        className="p-4 rounded-2xl bg-zinc-900 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="p-4 rounded-2xl bg-white border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center space-x-2">
-                            <span className="text-xs font-black text-white truncate">
+                            <span className="text-xs font-black text-slate-900 truncate">
                               {tx.description}
                             </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-700">
                               {formatCurrency(tx.amount)}
                             </span>
-                            <span className="text-[10px] text-zinc-400">
+                            <span className="text-[10px] text-slate-600">
                               {tx.date}
                             </span>
                           </div>
                           
-                          <div className="text-xs text-zinc-300 flex items-center space-x-1.5">
-                            <ArrowRight size={13} className="text-purple-400 shrink-0" />
-                            <span>Vincular ao Show: <strong className="text-white">{candidateShow.contractorName || candidateShow.name}</strong> ({candidateShow.date})</span>
+                          <div className="text-xs text-slate-600 flex items-center space-x-1.5">
+                            <ArrowRight size={13} className="text-purple-600 shrink-0" />
+                            <span>Vincular ao Show: <strong className="text-slate-900">{candidateShow.contractorName || candidateShow.name}</strong> ({candidateShow.date})</span>
                           </div>
                           
-                          <p className="text-[10px] text-emerald-400 font-medium">
+                          <p className="text-[10px] text-emerald-600 font-medium">
                             ✓ {matchReason}
                           </p>
                         </div>
@@ -1016,7 +1016,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
                           </button>
                           <button
                             onClick={() => handleDismissMatch(tx.id)}
-                            className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs font-bold transition"
+                            className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold transition"
                           >
                             Dispensar
                           </button>
@@ -1033,14 +1033,14 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   {auditResult.auditedShows.map(({ show, financialSummary: fin, linkedTransactions: linked, statusMessage }) => (
                     <div
                       key={show.id}
-                      className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      className="p-3.5 rounded-2xl bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs font-black text-white truncate">
+                          <span className="text-xs font-black text-slate-900 truncate">
                             {show.contractorName || show.name}
                           </span>
-                          <span className="text-[10px] text-zinc-400">{show.date}</span>
+                          <span className="text-[10px] text-slate-600">{show.date}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             fin.totalReceived >= fin.totalPredicted && fin.totalPredicted > 0
                               ? 'bg-emerald-500/20 text-emerald-300'
@@ -1051,14 +1051,14 @@ export const PerformanceDashboard: React.FC<Props> = ({
                             {statusMessage}
                           </span>
                         </div>
-                        <p className="text-[11px] text-zinc-400">
-                          Recebido: <strong className="text-emerald-400">{formatCurrency(fin.totalReceived)}</strong> de {formatCurrency(fin.totalPredicted)} previsto
+                        <p className="text-[11px] text-slate-600">
+                          Recebido: <strong className="text-emerald-600">{formatCurrency(fin.totalReceived)}</strong> de {formatCurrency(fin.totalPredicted)} previsto
                           {fin.extraReceived > 0 && ` (inclui ${formatCurrency(fin.extraReceived)} de extras)`}
                         </p>
                         {linked.length > 0 && (
-                          <div className="text-[10px] text-zinc-500 flex flex-wrap gap-1.5 pt-0.5">
+                          <div className="text-[10px] text-slate-600 flex flex-wrap gap-1.5 pt-0.5">
                             {linked.map(t => (
-                              <span key={t.id} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                              <span key={t.id} className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-600">
                                 Pix: {formatCurrency(t.amount)} ({t.date})
                               </span>
                             ))}
@@ -1067,7 +1067,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
                       </div>
 
                       <div className="shrink-0 flex items-center space-x-2">
-                        <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                        <span className="text-xs font-bold text-emerald-600 tabular-nums">
                           {formatCurrency(fin.totalReceived)}
                         </span>
                         {onSelectShow && (
@@ -1076,7 +1076,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
                               setIsAuditModalOpen(false);
                               onSelectShow(show);
                             }}
-                            className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                            className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600"
                           >
                             <ExternalLink size={13} />
                           </button>
@@ -1090,7 +1090,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
               {/* TAB 3: MOVIMENTAÇÕES DE EXTRATO DESCONSIDERADAS */}
               {auditTab === 'excluded' && (
                 <div className="space-y-2.5">
-                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start space-x-2">
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-xs flex items-start space-x-2">
                     <AlertCircle size={16} className="shrink-0 mt-0.5" />
                     <span>
                       Estas movimentações foram <strong>desconsideradas</strong> no Dashboard de Performance para evitar inflacionar as receitas e ticket médio da carreira. Elas permanecem salvas normalmente no seu livro-razão / extrato geral.
@@ -1098,18 +1098,18 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   </div>
 
                   {auditResult.unlinkedExtratoIncomes.length === 0 ? (
-                    <p className="text-xs text-zinc-500 text-center py-4">Nenhuma movimentação avulsa encontrada.</p>
+                    <p className="text-xs text-slate-600 text-center py-4">Nenhuma movimentação avulsa encontrada.</p>
                   ) : (
                     auditResult.unlinkedExtratoIncomes.map(t => (
                       <div
                         key={t.id}
-                        className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex items-center justify-between text-xs"
+                        className="p-3 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-between text-xs"
                       >
                         <div className="min-w-0 pr-3">
-                          <span className="font-bold text-zinc-200 block truncate">{t.description}</span>
-                          <span className="text-[10px] text-zinc-500">{t.date} • {t.originalBankDescription || 'Extrato'}</span>
+                          <span className="font-bold text-slate-600 block truncate">{t.description}</span>
+                          <span className="text-[10px] text-slate-600">{t.date} • {t.originalBankDescription || 'Extrato'}</span>
                         </div>
-                        <span className="font-bold text-zinc-400 tabular-nums shrink-0">
+                        <span className="font-bold text-slate-600 tabular-nums shrink-0">
                           +{formatCurrency(t.amount)}
                         </span>
                       </div>
@@ -1121,10 +1121,10 @@ export const PerformanceDashboard: React.FC<Props> = ({
             </div>
 
             {/* MODAL FOOTER */}
-            <div className="pt-3 border-t border-zinc-800 flex justify-end shrink-0">
+            <div className="pt-3 border-t border-slate-200 flex justify-end shrink-0">
               <button
                 onClick={() => setIsAuditModalOpen(false)}
-                className="px-5 py-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition"
+                className="px-5 py-2.5 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-xs transition"
               >
                 Fechar Auditoria
               </button>

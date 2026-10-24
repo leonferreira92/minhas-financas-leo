@@ -153,28 +153,28 @@ export const AIReportScreen = () => {
   const activeRange = getPeriodDateRange(periodType, customStart, customEnd);
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-4xl mx-auto px-2 sm:px-4">
+    <div className="pb-32 animate-fade-in text-slate-900  max-w-4xl mx-auto px-2 sm:px-4">
       
       {/* Top Bar / Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center space-x-3">
           <Link 
             to="/" 
-            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition active:scale-95 shadow-xs"
+            className="p-2.5 rounded-2xl bg-white  border border-slate-200  text-slate-600 hover:text-slate-800  transition active:scale-95 shadow-xs"
             title="Voltar"
           >
             <ChevronLeft size={20} />
           </Link>
           <div>
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-white via-white to-white text-slate-900 flex items-center justify-center shadow-md">
                 <Bot size={18} />
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-800  tracking-tight">
                 Relatório Financeiro para IA
               </h1>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600  mt-0.5">
               Estrutura rigorosa para análise de decisões no ChatGPT, Claude ou Gemini
             </p>
           </div>
@@ -184,7 +184,7 @@ export const AIReportScreen = () => {
         <div className="flex items-center space-x-2">
           <Link
             to="/financial-settings"
-            className="px-3 py-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
+            className="px-3 py-2.5 rounded-2xl bg-amber-50  border border-amber-200  hover:bg-amber-100  text-amber-700  text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
             title="Configurar reserva mínima e classificação de categorias"
           >
             <Sliders size={14} />
@@ -193,7 +193,7 @@ export const AIReportScreen = () => {
 
           <button
             onClick={handleGenerate}
-            className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5"
+            className="px-3.5 py-2.5 rounded-2xl bg-slate-100  hover:bg-slate-200  text-slate-700  text-xs font-bold transition active:scale-95 flex items-center space-x-1.5"
             title="Recalcular relatório"
           >
             <RefreshCw size={14} />
@@ -202,7 +202,7 @@ export const AIReportScreen = () => {
           
           <button
             onClick={handleExportTxt}
-            className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
+            className="px-3.5 py-2.5 rounded-2xl bg-white  border border-slate-200  hover:bg-slate-50  text-slate-700  text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
             title="Baixar arquivo TXT"
           >
             <Download size={14} />
@@ -227,64 +227,64 @@ export const AIReportScreen = () => {
       {/* Snapshot Cards Bar: 4 Core Pillars */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {/* 1. Dinheiro Hoje */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+        <div className="p-3.5 rounded-2xl bg-white  border border-slate-200/80  shadow-xs">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-[10px] font-black uppercase tracking-wider">Dinheiro Hoje</span>
-            <Wallet size={14} className="text-indigo-500" />
+            <Wallet size={14} className="text-indigo-600" />
           </div>
-          <span className="text-base font-black text-slate-800 dark:text-white tabular-nums block">
+          <span className="text-base font-black text-slate-800  tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.available) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Em caixa operacional</span>
+          <span className="text-[10px] text-slate-600">Em caixa operacional</span>
         </div>
 
         {/* 2. Reservado */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+        <div className="p-3.5 rounded-2xl bg-white  border border-slate-200/80  shadow-xs">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-[10px] font-black uppercase tracking-wider">Reservado</span>
-            <PiggyBank size={14} className="text-amber-500" />
+            <PiggyBank size={14} className="text-amber-700" />
           </div>
-          <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums block">
+          <span className="text-base font-black text-amber-600  tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.reserved) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Poupança e Reserva (intocável)</span>
+          <span className="text-[10px] text-slate-600">Poupança e Reserva (intocável)</span>
         </div>
 
         {/* 3. Compromissos Imediatos */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+        <div className="p-3.5 rounded-2xl bg-white  border border-slate-200/80  shadow-xs">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-[10px] font-black uppercase tracking-wider">Compromissos</span>
-            <ArrowDownRight size={14} className="text-rose-500" />
+            <ArrowDownRight size={14} className="text-rose-600" />
           </div>
-          <span className="text-base font-black text-rose-600 dark:text-rose-400 tabular-nums block">
+          <span className="text-base font-black text-rose-600  tabular-nums block">
             {!isBlurred ? formatBRL(snapshot.pending) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">A vencer no mês</span>
+          <span className="text-[10px] text-slate-600">A vencer no mês</span>
         </div>
 
         {/* 4. Caixa Livre Real */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
+        <div className="p-3.5 rounded-2xl bg-white  border border-slate-200/80  shadow-xs">
+          <div className="flex items-center justify-between text-slate-600 mb-1">
             <span className="text-[10px] font-black uppercase tracking-wider">Caixa Livre Real</span>
-            <ShieldCheck size={14} className="text-emerald-500" />
+            <ShieldCheck size={14} className="text-emerald-600" />
           </div>
           <span className={`text-base font-black tabular-nums block ${snapshot.free >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
             {!isBlurred ? formatBRL(snapshot.free) : 'R$ •••••'}
           </span>
-          <span className="text-[10px] text-slate-400">Após contas imediatas</span>
+          <span className="text-[10px] text-slate-600">Após contas imediatas</span>
         </div>
       </div>
 
       {/* Period Selector Panel */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 mb-6 space-y-4">
+      <div className="bg-white  rounded-[2rem] p-5 shadow-xs border border-slate-200/80  mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center space-x-2">
-            <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
-            <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            <Calendar size={16} className="text-indigo-600 " />
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 ">
               Horizonte de Análise do Relatório
             </h2>
           </div>
-          <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900 self-start sm:self-auto">
+          <span className="text-[11px] font-semibold text-indigo-600  bg-indigo-50  px-2.5 py-1 rounded-full border border-indigo-100  self-start sm:self-auto">
             {activeRange.label}
           </span>
         </div>
@@ -320,23 +320,23 @@ export const AIReportScreen = () => {
 
         {/* Custom Range Inputs if "custom" is selected */}
         {periodType === 'custom' && (
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+          <div className="pt-2 border-t border-slate-100  flex flex-wrap items-center gap-3">
             <div className="flex items-center space-x-2">
-              <label className="text-xs font-bold text-slate-500">Início:</label>
+              <label className="text-xs font-bold text-slate-600">Início:</label>
               <input
                 type="date"
                 value={customStart}
                 onChange={e => setCustomStart(e.target.value)}
-                className="px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white"
+                className="px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-50  border border-slate-200  text-slate-800 "
               />
             </div>
             <div className="flex items-center space-x-2">
-              <label className="text-xs font-bold text-slate-500">Fim:</label>
+              <label className="text-xs font-bold text-slate-600">Fim:</label>
               <input
                 type="date"
                 value={customEnd}
                 onChange={e => setCustomEnd(e.target.value)}
-                className="px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white"
+                className="px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-50  border border-slate-200  text-slate-800 "
               />
             </div>
           </div>
@@ -344,16 +344,16 @@ export const AIReportScreen = () => {
       </div>
 
       {/* Direct AI Launcher Bar (1-Click Copy & Open) */}
-      <div className="bg-gradient-to-r from-purple-900/90 via-indigo-900 to-slate-900 text-white rounded-[2rem] p-5 shadow-xl border border-indigo-500/20 mb-6">
+      <div className="bg-gradient-to-r from-white via-white to-white text-slate-900 rounded-[2rem] p-5 shadow-xl border border-indigo-500/20 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
-              <Sparkles size={16} className="text-amber-400 animate-pulse" />
+              <Sparkles size={16} className="text-amber-700 animate-pulse" />
               <span className="text-xs font-black uppercase tracking-wider text-indigo-200">
                 Copiar e Abrir Direto na sua IA
               </span>
             </div>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-slate-600">
               Copia todo o relatório estruturado e abre diretamente o chat da inteligência artificial
             </p>
           </div>
@@ -361,21 +361,21 @@ export const AIReportScreen = () => {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleOpenAI('https://chatgpt.com')}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-black transition active:scale-95 flex items-center space-x-1.5"
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-slate-200 text-xs font-black transition active:scale-95 flex items-center space-x-1.5"
             >
               <span>ChatGPT</span>
               <ExternalLink size={12} className="opacity-70" />
             </button>
             <button
               onClick={() => handleOpenAI('https://claude.ai')}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-black transition active:scale-95 flex items-center space-x-1.5"
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-slate-200 text-xs font-black transition active:scale-95 flex items-center space-x-1.5"
             >
               <span>Claude</span>
               <ExternalLink size={12} className="opacity-70" />
             </button>
             <button
               onClick={() => handleOpenAI('https://gemini.google.com')}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-black transition active:scale-95 flex items-center space-x-1.5"
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-slate-200 text-xs font-black transition active:scale-95 flex items-center space-x-1.5"
             >
               <span>Gemini</span>
               <ExternalLink size={12} className="opacity-70" />
@@ -385,15 +385,15 @@ export const AIReportScreen = () => {
       </div>
 
       {/* Suggested Questions to Ask the AI */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 mb-6 space-y-3">
+      <div className="bg-white  rounded-[2rem] p-5 shadow-xs border border-slate-200/80  mb-6 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <HelpCircle size={16} className="text-purple-600 dark:text-purple-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+            <HelpCircle size={16} className="text-purple-600 " />
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 ">
               Perguntas Prontas para Decisão da IA (Copiar com 1 Clique)
             </h3>
           </div>
-          <span className="text-[10px] font-bold text-slate-400">
+          <span className="text-[10px] font-bold text-slate-600">
             Copia a pergunta com o relatório já anexado
           </span>
         </div>
@@ -405,13 +405,13 @@ export const AIReportScreen = () => {
               <button
                 key={idx}
                 onClick={() => handleCopyPrompt(prompt, idx)}
-                className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-slate-200/70 dark:border-slate-800 text-left transition active:scale-[0.99] group flex items-start justify-between gap-2"
+                className="p-3 rounded-xl bg-slate-50  hover:bg-purple-50  border border-slate-200/70  text-left transition active:scale-[0.99] group flex items-start justify-between gap-2"
               >
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 block">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-600  block">
                     Sugestão #{idx + 1}
                   </span>
-                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 line-clamp-2">
+                  <p className="text-xs font-semibold text-slate-700  line-clamp-2">
                     "{prompt}"
                   </p>
                 </div>
@@ -429,16 +429,16 @@ export const AIReportScreen = () => {
       </div>
 
       {/* Pure Text Preview Window */}
-      <div className="bg-slate-950 rounded-[2rem] p-5 shadow-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div className="bg-white rounded-[2rem] p-5 shadow-2xl border border-slate-200 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
           <div className="flex items-center space-x-2">
-            <FileText size={16} className="text-indigo-400" />
-            <span className="text-xs font-black uppercase tracking-wider text-slate-300">
+            <FileText size={16} className="text-indigo-600" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-600">
               Visualização do Texto Puro (Exportação Completa)
             </span>
           </div>
 
-          <div className="flex items-center space-x-2 text-[11px] text-slate-400 font-mono">
+          <div className="flex items-center space-x-2 text-[11px] text-slate-600 font-mono">
             <span>{reportText.split('\n').length} linhas</span>
             <span>•</span>
             <span>{reportText.length.toLocaleString('pt-BR')} caracteres</span>
@@ -451,21 +451,21 @@ export const AIReportScreen = () => {
             readOnly
             value={reportText}
             rows={20}
-            className="w-full bg-slate-900/90 text-emerald-300 font-mono text-xs p-4 rounded-xl border border-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed select-all selection:bg-indigo-600 selection:text-white"
+            className="w-full bg-slate-900/90 text-emerald-700 font-mono text-xs p-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed select-all selection:bg-indigo-600 selection:text-slate-900"
           />
         </div>
 
         {/* Bottom Bar: Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <div className="flex items-center space-x-2 text-xs text-slate-400">
-            <Info size={14} className="text-indigo-400" />
+          <div className="flex items-center space-x-2 text-xs text-slate-600">
+            <Info size={14} className="text-indigo-600" />
             <span>Dica: clique dentro da caixa para selecionar tudo com Ctrl+A.</span>
           </div>
 
           <div className="flex items-center space-x-3 w-full sm:w-auto">
             <button
               onClick={handleExportTxt}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition active:scale-95 flex items-center justify-center space-x-1.5"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold transition active:scale-95 flex items-center justify-center space-x-1.5"
             >
               <Download size={14} />
               <span>Baixar .TXT</span>
