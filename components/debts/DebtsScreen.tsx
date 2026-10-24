@@ -27,6 +27,7 @@ import { parseCurrencyInput } from '../../constants';
 import { DebtModal, InstallmentRecalcModal } from './DebtModal';
 import { DebtDetailModal } from './DebtDetailModal';
 import { ActiveDebtsPanel } from '../ActiveDebtsPanel';
+import { DebtsFitBanner } from '../DebtsFitBanner';
 import {
   resolveDebtInstallmentCostCenter,
   isSomLeoDebtOrTransaction,
@@ -100,6 +101,10 @@ export const DebtList: React.FC = () => {
         >
           <Plus size={28} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
         </button>
+      </div>
+
+      <div className="mb-6 px-1">
+        <DebtsFitBanner />
       </div>
 
       {/* Painel Unificado de Dívidas Ativas e Rateio com DRE */}

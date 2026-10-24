@@ -15,6 +15,7 @@ import { BankImportModal } from './BankImportModal';
 import { ProLaboreEstimateCard } from './ProLaboreEstimateCard';
 import { MonthPanelCard } from './MonthPanelCard';
 import { IncomeTargetCard } from './IncomeTargetCard';
+import { WhereToSaveCard } from './WhereToSaveCard';
 import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 import { getAccountVinculo } from '../services/financeAggregator';
 import { getIcon } from '../constants';
@@ -365,6 +366,8 @@ export const Dashboard: React.FC = () => {
           <MonthPanelCard />
           <IncomeTargetCard />
         </div>
+
+        <WhereToSaveCard />
 
         {/* ========================================================================= */}
         {/* GRID CENTRAL DE ACESSO RÁPIDO (ESTILO BANCO DO BRASIL)                    */}

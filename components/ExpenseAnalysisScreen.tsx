@@ -9,14 +9,14 @@ import {
 import { getIcon } from '../constants';
 import { matchesScope, Transaction } from '../types';
 import {
-  isCareerExpenseTransaction,
   getTransactionCareerAndPersonalSplit,
   DEFAULT_PERSONAL_DEBT_CATEGORY_ID
 } from '../services/financeAggregator';
+import { summarizeExpenseKinds } from '../services/transactionKindService';
 
 export const ExpenseAnalysisScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { transactions, debts, categories, activeScope, isBlurred, accounts } = useFinance();
+  const { transactions, debts, categories, activeScope, isBlurred, settings } = useFinance();
 
   // Current month state (YYYY-MM)
   const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
@@ -143,6 +143,39 @@ export const ExpenseAnalysisScreen: React.FC = () => {
     return Math.max(...categoryStats.map(c => c.amount));
   }, [categoryStats]);
 
+  // Visão simples: Essencial / Lazer / Parcelas / Outros
+  const kindSummary = useMemo(
+    () =>
+      summarizeExpenseKinds({
+        transactions: monthExpenses,
+        categories,
+        debts,
+        monthPrefix: selectedMonth,
+        financialSettings: settings.financialSettings
+      }),
+    [monthExpenses, categories, debts, selectedMonth, settings.financialSettings]
+  );
+
+  const kindBars = useMemo(() => {
+    const rows = [
+      { key: 'essential', label: 'Essencial', hint: 'Moradia, comida, contas…', value: kindSummary.essential, color: '#003882' },
+      { key: 'lifestyle', label: 'Lazer e compras', hint: 'O que dá para cortar primeiro', value: kindSummary.lifestyle, color: '#7c3aed' },
+      { key: 'installment', label: 'Parcelas', hint: 'Dívidas e carnês do mês', value: kindSummary.installment, color: '#ea580c' },
+      { key: 'other', label: 'Outros', hint: 'O que sobrou classificar', value: kindSummary.other, color: '#64748b' }
+    ];
+    return rows.filter(r => r.value > 0 || kindSummary.total === 0);
+  }, [kindSummary]);
+
+  const topCategory = categoryStats[0];
+  const plainHint =
+    kindSummary.total === 0
+      ? 'Ainda não há gastos neste mês para analisar.'
+      : kindSummary.lifestyle >= kindSummary.essential && kindSummary.lifestyle > 0
+        ? 'Neste mês o lazer/compras está alto — é o primeiro lugar para economizar.'
+        : topCategory
+          ? `O maior peso está em “${topCategory.cat.name}” (${topCategory.percentage.toFixed(0)}% do total).`
+          : 'Seus gastos estão distribuídos entre essencial e demais categorias.';
+
   return (
     <div className="space-y-6 pb-24 animate-fade-in text-slate-900">
       {/* HEADER SUPERIOR COM ESTILO INSTITUCIONAL BB */}
@@ -160,7 +193,7 @@ export const ExpenseAnalysisScreen: React.FC = () => {
               <BarChart3 className="text-[#fcca00]" size={22} />
               <span>Meus Gastos</span>
             </h1>
-            <p className="text-[11px] text-slate-600 font-medium">Análise e distribuição por categoria</p>
+            <p className="text-[11px] text-slate-600 font-medium">Em poucas palavras — o que mais pesou</p>
           </div>
         </div>
 
@@ -224,14 +257,51 @@ export const ExpenseAnalysisScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* VISÃO SIMPLES — pessoa comum entende em segundos */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <Sparkles size={14} className="text-[#003882]" />
+            Em poucas palavras
+          </h3>
+          <p className="text-sm text-slate-700 mt-1.5 leading-snug font-medium">{plainHint}</p>
+        </div>
+
+        <div className="space-y-3">
+          {kindBars.map(row => {
+            const pct = kindSummary.total > 0 ? (row.value / kindSummary.total) * 100 : 0;
+            return (
+              <div key={row.key} className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-slate-800">{row.label}</p>
+                    <p className="text-[10px] text-slate-500">{row.hint}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-black text-slate-900">{formatCurrency(row.value)}</p>
+                    <p className="text-[10px] font-bold text-slate-500">{pct.toFixed(0)}%</p>
+                  </div>
+                </div>
+                <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.max(pct > 0 ? 4 : 0, pct)}%`, backgroundColor: row.color }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* GRÁFICO COM BARRAS VERTICAIS */}
       <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-md">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
             <BarChart3 size={15} className="text-[#fcca00]" />
-            <span>Distribuição Gráfica (Top Categorias)</span>
+            <span>Top categorias</span>
           </h3>
-          <span className="text-[10px] text-slate-600">Em % do total gasto</span>
+          <span className="text-[10px] text-slate-600">% do total</span>
         </div>
 
         {categoryStats.length === 0 ? (

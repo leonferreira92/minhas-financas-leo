@@ -14,6 +14,11 @@ import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
+import {
+  getKindTag,
+  getTransactionKind,
+  KindFilter
+} from '../services/transactionKindService';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 
@@ -22,7 +27,9 @@ export const ExtratoScreen: React.FC = () => {
   const { 
     transactions, 
     categories, 
-    accounts, 
+    accounts,
+    debts,
+    settings,
     isBlurred, 
     toggleBlur, 
     activeScope,
@@ -51,6 +58,7 @@ export const ExtratoScreen: React.FC = () => {
 
   // Filter pills
   const [statusFilter, setStatusFilter] = useState<TypeStatusFilter>('all');
+  const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -121,6 +129,12 @@ export const ExtratoScreen: React.FC = () => {
       if (statusFilter === 'pending' && t.status !== 'pending') return false;
       if (statusFilter === 'shows' && !(t.showId || t.categoryId === 'cat_33' || t.scope === 'BUSINESS')) return false;
 
+      // 3b. Tipo inteligente (Essencial / Lazer / Parcela…)
+      if (kindFilter !== 'all') {
+        const kind = getTransactionKind(t, categories, debts, settings.financialSettings);
+        if (kind !== kindFilter) return false;
+      }
+
       // 4. Termo de busca (considera de forma transparente todas as contas selecionadas ou a conta ativa)
       if (hasSearch) {
         const descMatch = normalizeSearchText(t.description).includes(normTerm);
@@ -144,7 +158,21 @@ export const ExtratoScreen: React.FC = () => {
       // Ordenação decrescente de data, pendentes com destaque
       return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
     });
-  }, [transactions, activeScope, isFutureOnly, selectedMonth, statusFilter, selectedAccountId, searchTerm, todayStr, categories, accounts]);
+  }, [
+    transactions,
+    activeScope,
+    isFutureOnly,
+    selectedMonth,
+    statusFilter,
+    kindFilter,
+    selectedAccountId,
+    searchTerm,
+    todayStr,
+    categories,
+    accounts,
+    debts,
+    settings.financialSettings
+  ]);
 
   // Totais do Período Selecionado (baseados nas transações filtradas e contas selecionadas)
   const metrics = useMemo(() => {
@@ -540,8 +568,8 @@ export const ExtratoScreen: React.FC = () => {
       >
         {[
           { id: 'all', label: 'Tudo' },
-          { id: 'paid', label: 'Realizado / Efetivado' },
-          { id: 'pending', label: 'Pendente / Futuro' },
+          { id: 'paid', label: 'Realizado' },
+          { id: 'pending', label: 'Pendente' },
           { id: 'accounts', label: 'Por Conta' }
         ].map(pill => {
           const isActive = statusFilter === pill.id;
@@ -564,6 +592,36 @@ export const ExtratoScreen: React.FC = () => {
         })}
       </div>
 
+      {/* Filtros inteligentes: Essencial / Lazer / Parcela */}
+      <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
+        {(
+          [
+            { id: 'all', label: 'Todos os tipos' },
+            { id: 'essential', label: 'Essencial' },
+            { id: 'lifestyle', label: 'Lazer' },
+            { id: 'installment', label: 'Parcelas' },
+            { id: 'income', label: 'Receitas' },
+            { id: 'reserve', label: 'Reserva' }
+          ] as { id: KindFilter; label: string }[]
+        ).map(pill => {
+          const isActive = kindFilter === pill.id;
+          return (
+            <button
+              key={pill.id}
+              type="button"
+              onClick={() => setKindFilter(pill.id)}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition active:scale-95 shrink-0 border ${
+                isActive
+                  ? 'bg-[#003882] text-[#fcca00] border-blue-700 shadow-sm'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {pill.label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ========================================================================= */}
       {/* 4. LISTAGEM TIMELINE AGRUPADA POR DATA (ESTILO BANCO DO BRASIL)           */}
       {/* ========================================================================= */}
@@ -578,15 +636,25 @@ export const ExtratoScreen: React.FC = () => {
           groupedByDate.map(group => {
             return (
               <div key={group.date} className="space-y-2">
-                {/* CABEÇALHO DA DATA */}
-                <div className="flex items-center justify-between px-1 pt-1">
-                  <h3 className="text-[11px] font-black tracking-wider text-slate-600">
+                {/* CABEÇALHO DA DATA + saldo do dia em destaque */}
+                <div className="flex items-center justify-between gap-2 px-1 pt-1">
+                  <h3 className="text-[11px] font-black tracking-wider text-slate-600 min-w-0 truncate">
                     {formatDateHeader(group.date)}
                   </h3>
+                  <span
+                    className={`shrink-0 text-[11px] font-black tabular-nums px-2 py-0.5 rounded-lg ${
+                      group.dayNet >= 0
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-rose-50 text-rose-700'
+                    }`}
+                  >
+                    {group.dayNet >= 0 ? '+' : ''}
+                    {formatCurrency(group.dayNet)}
+                  </span>
                 </div>
 
                 {/* ITENS DE LANÇAMENTO DAQUELA DATA */}
-                <div className="rounded-2xl bg-white border border-slate-200/80 overflow-hidden divide-y divide-zinc-800/60 shadow-xs">
+                <div className="rounded-2xl bg-white border border-slate-200/80 overflow-hidden divide-y divide-slate-100 shadow-xs">
                   {group.transactions.map(t => {
                     const cat = categories.find(c => c.id === t.categoryId);
                     const acc = accounts.find(a => a.id === t.accountId);
@@ -596,13 +664,14 @@ export const ExtratoScreen: React.FC = () => {
                       (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
                     const isPending = t.status === 'pending';
                     const Icon = getIcon(cat?.icon || 'Tag');
+                    const kindTag = getKindTag(t, categories, debts, settings.financialSettings);
 
                     return (
                       <div
                         key={t.id}
                         onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
-                        className={`p-3.5 hover:bg-slate-50/40 transition flex items-center justify-between cursor-pointer group ${
-                          isPending ? 'bg-amber-950/10' : ''
+                        className={`p-3.5 hover:bg-slate-50/80 transition flex items-center justify-between cursor-pointer group ${
+                          isPending ? 'bg-amber-50/40' : ''
                         }`}
                       >
                         {/* Lado Esquerdo: Ícone da Categoria e Detalhes */}
@@ -617,30 +686,28 @@ export const ExtratoScreen: React.FC = () => {
                             <Icon size={18} />
                           </div>
 
-                          <div className="min-w-0 flex-1 flex flex-col gap-2">
-                            <span className="transaction-item-title text-xs sm:text-sm font-bold text-slate-900 block leading-relaxed break-words group-hover:text-blue-600 transition">
+                          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+                            <span className="transaction-item-title text-xs sm:text-sm font-bold text-slate-900 block leading-relaxed break-words group-hover:text-[#003882] transition">
                               {t.description || 'Sem descrição'}
                             </span>
 
-                            <div className="transaction-badges-row flex flex-wrap items-center gap-2">
+                            <div className="transaction-badges-row flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-md border uppercase shrink-0 ${kindTag.className}`}
+                              >
+                                {kindTag.label}
+                              </span>
                               {isPending && (
-                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 uppercase shrink-0">
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200 uppercase shrink-0">
                                   Pendente
                                 </span>
                               )}
-                              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-md border uppercase shrink-0 ${
-                                t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId)
-                                  ? 'bg-slate-700 text-slate-200 border-slate-600'
-                                  : 'bg-zinc-800 text-zinc-200 border-zinc-700'
-                              }`}>
-                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId) ? 'Legado' : 'Pessoal'}
-                              </span>
-                              <span className="text-[10px] text-slate-600 truncate">
+                              <span className="text-[10px] text-slate-500 truncate">
                                 {cat?.name || 'Geral'}
                               </span>
-                              <span aria-hidden="true" className="text-slate-600">·</span>
-                              <span className="text-[10px] text-slate-600 font-medium truncate">
-                                {acc?.name || 'Conta Padrão'}
+                              <span aria-hidden="true" className="text-slate-300">·</span>
+                              <span className="text-[10px] text-slate-500 font-medium truncate">
+                                {acc?.name || 'Conta'}
                               </span>
                             </div>
                           </div>
@@ -650,11 +717,11 @@ export const ExtratoScreen: React.FC = () => {
                         <div className="text-right shrink-0 flex items-center space-x-2.5">
                           <div>
                             <span className={`text-xs font-black block tracking-tight ${
-                              isIncome ? 'text-emerald-400' : 'text-rose-400'
+                              isIncome ? 'text-emerald-700' : 'text-rose-600'
                             }`}>
                               {isIncome ? '+' : '-'}{formatCurrency(Math.abs(Number(t.amount) || 0))}
                             </span>
-                            <span className="text-[9px] text-slate-600 block font-medium">
+                            <span className="text-[9px] text-slate-500 block font-medium">
                               {isPending ? 'Previsto' : 'Realizado'}
                             </span>
                           </div>
@@ -664,8 +731,8 @@ export const ExtratoScreen: React.FC = () => {
                             onClick={(e) => handleTogglePaid(t, e)}
                             className={`p-1.5 rounded-lg border transition active:scale-95 ${
                               isPending
-                                ? 'bg-zinc-800/80 hover:bg-emerald-950/60 border-zinc-700 text-zinc-400 hover:text-emerald-400'
-                                : 'bg-emerald-950/40 border-emerald-600/30 text-emerald-400'
+                                ? 'bg-slate-50 hover:bg-emerald-50 border-slate-200 text-slate-400 hover:text-emerald-600'
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                             }`}
                             title={isPending ? "Confirmar baixa / pagamento" : "Marcar como pendente"}
                           >
@@ -678,7 +745,7 @@ export const ExtratoScreen: React.FC = () => {
                               e.stopPropagation();
                               deleteTransaction(t.id);
                             }}
-                            className="p-1.5 rounded-lg border border-slate-200 bg-white/90 text-slate-600 hover:text-rose-600 hover:border-rose-500/40 hover:bg-rose-950/30 transition active:scale-95"
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition active:scale-95"
                             title="Excluir lançamento"
                           >
                             <Trash2 size={13} strokeWidth={2} />
@@ -687,14 +754,6 @@ export const ExtratoScreen: React.FC = () => {
                       </div>
                     );
                   })}
-                </div>
-
-                {/* SALDO DO DIA (Ao final de cada bloco concluído) */}
-                <div className="flex items-center justify-end px-2 pt-0.5 pb-1 text-[10px] text-slate-600 font-bold space-x-1.5">
-                  <span>Saldo do dia:</span>
-                  <span className={`font-black ${group.dayNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {group.dayNet >= 0 ? '+' : ''}{formatCurrency(group.dayNet)}
-                  </span>
                 </div>
               </div>
             );
