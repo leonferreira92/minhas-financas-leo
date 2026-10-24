@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarDays,
@@ -7,11 +7,13 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   ChevronRight,
-  CircleAlert
+  CircleAlert,
+  ShoppingBag
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { useMonthInsights } from '../hooks/useMonthInsights';
 import { MonthTrafficLight } from '../services/monthPanelService';
+import { CanIBuyModal } from './CanIBuyModal';
 
 const trafficStyles: Record<
   MonthTrafficLight,
@@ -41,6 +43,7 @@ export const MonthPanelCard: React.FC = () => {
   const navigate = useNavigate();
   const { isBlurred } = useFinance();
   const { monthPanel: m } = useMonthInsights();
+  const [canBuyOpen, setCanBuyOpen] = useState(false);
   const style = trafficStyles[m.traffic];
 
   const formatCurrency = (val: number) => {
@@ -51,6 +54,7 @@ export const MonthPanelCard: React.FC = () => {
   const monthTitle = m.monthLabel.charAt(0).toUpperCase() + m.monthLabel.slice(1);
 
   return (
+    <>
     <section
       className={`rounded-3xl border shadow-sm p-4 sm:p-5 space-y-4 ${style.ring}`}
       aria-label="Painel do mês"
@@ -117,6 +121,15 @@ export const MonthPanelCard: React.FC = () => {
         </div>
       </div>
 
+      <button
+        type="button"
+        onClick={() => setCanBuyOpen(true)}
+        className="w-full py-3 px-4 rounded-2xl bg-[#003882] hover:bg-[#002d6c] text-white font-extrabold text-sm transition active:scale-[0.98] shadow-sm flex items-center justify-center gap-2"
+      >
+        <ShoppingBag size={16} className="text-[#fcca00]" />
+        Posso comprar?
+      </button>
+
       <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/70">
         <p className="text-[11px] text-slate-500">
           No mês até agora:{' '}
@@ -138,5 +151,8 @@ export const MonthPanelCard: React.FC = () => {
         </button>
       </div>
     </section>
+
+    {canBuyOpen && <CanIBuyModal onClose={() => setCanBuyOpen(false)} />}
+    </>
   );
 };
