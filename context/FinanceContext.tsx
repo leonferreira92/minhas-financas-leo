@@ -57,17 +57,14 @@ import {
   saveSettingsToFirestore,
   syncLocalDataToFirestore,
   migrateAllDataToDefaultDatabase,
-  replaceUserCloudWithLocalData,
   MigrationStats,
   testFirestoreConnection,
   checkUserInitialized,
   initializeNewUserInFirestore
 } from '../services/firebaseService';
 import {
-  ensureSafeRestoreOnce,
-  sanitizeCloudTransaction,
-  isCloudSyncPendingAfterRestore,
-  clearCloudSyncPending
+  retireAutoRestoreMechanisms,
+  sanitizeCloudTransaction
 } from '../services/safeRecovery';
 import {
   PERSONAL_ONLY_MODE,
@@ -489,33 +486,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const isLeo = currentUser.email === 'leobov2@gmail.com';
     StorageService.setActiveUser(uid, isLeo);
 
-    // Garante restore local do backup 21/10 antes de ouvir o cloud
-    ensureSafeRestoreOnce(uid);
-
-    // Se acabamos de restaurar: WIPE + grava backup (remove OFX/órfãos do cloud)
-    if (isCloudSyncPendingAfterRestore()) {
-      const payload = {
-        accounts: StorageService.getAccounts(),
-        transactions: StorageService.getTransactions(),
-        debts: StorageService.getDebts(),
-        categories: StorageService.getCategories(),
-        budgets: StorageService.getBudgets(),
-        settings: StorageService.getSettings(),
-        shows: StorageService.getShows()
-      };
-      void replaceUserCloudWithLocalData(uid, payload)
-        .then(result => {
-          if (result.success) {
-            clearCloudSyncPending();
-            console.info('[safeRecovery] Cloud substituído pelo backup 21/10', result);
-          } else {
-            console.warn('[safeRecovery] Wipe/cloud incompleto:', result.message);
-          }
-        })
-        .catch(err => {
-          console.warn('[safeRecovery] Falha ao substituir cloud pelo backup:', err);
-        });
-    }
+    // Aposenta auto-restore 21/10: libera pending e deixa o Firestore ser a fonte (desktop ↔ celular)
+    retireAutoRestoreMechanisms();
 
     // Sincronização e consolidação automática para o banco de dados (default)
     const consolidationFlag = `fin_consolidated_default_${uid}`;
@@ -553,10 +525,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // 1. Escutador em tempo real: Contas Bancárias (filtrando contas arquivadas/ocultas)
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
-      if (isCloudSyncPendingAfterRestore()) {
-        setAccounts(StorageService.getAccounts().filter(isAccountActive));
-        return;
-      }
       let cleanAccounts = deduplicateItemsById(cloudAccounts);
       if (PERSONAL_ONLY_MODE) {
         const pack = archiveCompanyAccounts(cleanAccounts);
@@ -574,16 +542,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       setAccounts(cleanAccounts.filter(isAccountActive));
     });
 
-    // 2. Escutador em tempo real: Transações / Lançamentos
+    // 2. Escutador em tempo real: Transações / Lançamentos (Firestore = fonte da verdade)
     const unsubTransactions = subscribeToUserTransactions(uid, (cloudTxs) => {
       setAccounts(currentAccs => {
-        // Enquanto o push do backup não termina, mantém local (JSON 21/10) como fonte
-        if (isCloudSyncPendingAfterRestore()) {
-          const localTxs = StorageService.getTransactions();
-          setTransactions(localTxs);
-          return currentAccs;
-        }
-
         const normalizedTxs = deduplicateItemsById(cloudTxs)
           .map(sanitizeCloudTransaction)
           .map(t => normalizeTransactionRecord(t, currentAccs));
@@ -827,8 +788,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [settings.primaryColor]);
 
   const refreshData = () => {
-    // Recuperação pós-rollback: restaura JSON oficial 21/10 uma vez (local)
-    ensureSafeRestoreOnce(currentUser?.uid || null);
+    // Nunca restaura backup antigo aqui — só sincroniza/normaliza o que já está local/cloud
+    retireAutoRestoreMechanisms();
 
     let storedTransactions = StorageService.getTransactions();
     let storedCategories = StorageService.getCategories();

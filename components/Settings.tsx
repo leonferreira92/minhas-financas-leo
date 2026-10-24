@@ -15,7 +15,10 @@ import { useFinance } from '../context/FinanceContext';
 import { Account, DashboardWidgetConfig } from '../types';
 import { parseCurrencyInput } from '../constants';
 import { loadBackupIntoStorage } from '../services/backupImporter';
-import { resetOfficialBackupAndWipeCloud } from '../services/safeRecovery';
+import {
+  resetOfficialBackupAndWipeCloud,
+  pushCurrentLocalToCloud
+} from '../services/safeRecovery';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { CutoffDryRunSummary, PERSONAL_CUTOFF_DATE } from '../services/legacyCutoffMigration';
 
@@ -34,6 +37,7 @@ export const Settings = () => {
   const [cutoffPreview, setCutoffPreview] = useState<CutoffDryRunSummary | null>(null);
   const [cutoffMessage, setCutoffMessage] = useState<string | null>(null);
   const [isResettingCloud, setIsResettingCloud] = useState(false);
+  const [isPushingCloud, setIsPushingCloud] = useState(false);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false);
@@ -143,11 +147,54 @@ export const Settings = () => {
     });
   };
 
+  const handlePushLocalToCloud = () => {
+    if (!currentUser?.uid) {
+      setConfirmation({
+        title: 'Login necessário',
+        message: 'Entre na conta para publicar este aparelho na nuvem (sync desktop ↔ celular).',
+        isAlert: true
+      });
+      return;
+    }
+    setConfirmation({
+      title: 'Publicar este aparelho → nuvem',
+      message:
+        `Substitui o Firestore pelos dados DESTE aparelho agora (${transactions.length} lançamentos). O outro dispositivo (celular/desktop) passa a receber esse estado via autosync. Use no aparelho que estiver CORRETO. Continuar?`,
+      onConfirm: () => {
+        void (async () => {
+          setIsPushingCloud(true);
+          setConfirmation(null);
+          try {
+            const result = await pushCurrentLocalToCloud(currentUser.uid);
+            setConfirmation({
+              title: result.success ? 'Nuvem atualizada' : 'Falha',
+              message: result.success
+                ? `${result.message || 'Firestore substituído por este aparelho.'} Abra o outro dispositivo logado para sincronizar.`
+                : (result.message || 'Não foi possível publicar.'),
+              isAlert: true
+            });
+            if (result.success) {
+              refreshData();
+            }
+          } catch (err) {
+            setConfirmation({
+              title: 'Erro',
+              message: err instanceof Error ? err.message : 'Falha ao publicar na nuvem.',
+              isAlert: true
+            });
+          } finally {
+            setIsPushingCloud(false);
+          }
+        })();
+      }
+    });
+  };
+
   const handleOfficialBackupRestore = () => {
     setConfirmation({
-      title: 'Reset total · Backup 21/10',
+      title: 'PERIGO · Voltar ao backup 21/10',
       message:
-        'Restaura o JSON oficial de 21/10 no aparelho e APAGA no Firestore tudo que não estiver nesse backup (OFX, ajustes, flags de corte). O saldo volta ao estado de 21/10. Continuar?',
+        'Isto NÃO é o sync diário. Apaga no Firestore tudo depois de 21/10 e restaura aquele snapshot em todos os dispositivos. Só use em desastre. Prefira “Publicar este aparelho → nuvem” se um dos aparelhos estiver certo. Continuar mesmo assim?',
       onConfirm: () => {
         void (async () => {
           setIsResettingCloud(true);
@@ -696,15 +743,30 @@ export const Settings = () => {
                     <span className="text-[10px] font-bold text-zinc-300">Restaurar JSON</span>
                  </button>
                  <button
-                   onClick={handleOfficialBackupRestore}
-                   disabled={isResettingCloud}
-                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/50 rounded-2xl transition active:scale-95 text-white disabled:opacity-50 disabled:cursor-wait"
+                   onClick={handlePushLocalToCloud}
+                   disabled={isPushingCloud || isResettingCloud}
+                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-2xl transition active:scale-95 text-white disabled:opacity-50 disabled:cursor-wait"
                  >
-                    <ShieldCheck size={20} className="text-amber-400 mb-2" />
-                    <span className="text-[10px] font-bold text-amber-200">
+                    <Database size={20} className="text-emerald-400 mb-2" />
+                    <span className="text-[10px] font-bold text-emerald-200">
+                      {isPushingCloud
+                        ? 'Publicando lançamentos na nuvem…'
+                        : 'Publicar este aparelho → nuvem (sync)'}
+                    </span>
+                    <span className="text-[9px] text-emerald-400/70 mt-1 px-2 text-center leading-snug">
+                      Use no desktop/celular que estiver com saldo e lançamentos corretos
+                    </span>
+                 </button>
+                 <button
+                   onClick={handleOfficialBackupRestore}
+                   disabled={isResettingCloud || isPushingCloud}
+                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-800/40 rounded-2xl transition active:scale-95 text-white disabled:opacity-50 disabled:cursor-wait"
+                 >
+                    <AlertTriangle size={20} className="text-rose-400 mb-2" />
+                    <span className="text-[10px] font-bold text-rose-200">
                       {isResettingCloud
                         ? 'Limpando Firestore e restaurando 21/10…'
-                        : 'Reset total: backup 21/10 + limpar Firestore'}
+                        : 'PERIGO · Voltar ao snapshot 21/10 (apaga o restante)'}
                     </span>
                  </button>
                  <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
