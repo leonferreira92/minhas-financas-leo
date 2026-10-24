@@ -15,7 +15,7 @@ import { useFinance } from '../context/FinanceContext';
 import { Account, DashboardWidgetConfig } from '../types';
 import { parseCurrencyInput } from '../constants';
 import { loadBackupIntoStorage } from '../services/backupImporter';
-import { applyOfficialBackupRestore } from '../services/safeRecovery';
+import { resetOfficialBackupAndWipeCloud } from '../services/safeRecovery';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { CutoffDryRunSummary, PERSONAL_CUTOFF_DATE } from '../services/legacyCutoffMigration';
 
@@ -33,6 +33,7 @@ export const Settings = () => {
   const [consolidationResult, setConsolidationResult] = useState<string | null>(null);
   const [cutoffPreview, setCutoffPreview] = useState<CutoffDryRunSummary | null>(null);
   const [cutoffMessage, setCutoffMessage] = useState<string | null>(null);
+  const [isResettingCloud, setIsResettingCloud] = useState(false);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false);
@@ -144,27 +145,45 @@ export const Settings = () => {
 
   const handleOfficialBackupRestore = () => {
     setConfirmation({
-      title: 'Backup oficial 21/10/2026',
+      title: 'Reset total · Backup 21/10',
       message:
-        'Restaura a cópia estável do app (financas_pro_backup_2026-10-21). Substitui os dados locais atuais. Continuar?',
+        'Restaura o JSON oficial de 21/10 no aparelho e APAGA no Firestore tudo que não estiver nesse backup (OFX, ajustes, flags de corte). O saldo volta ao estado de 21/10. Continuar?',
       onConfirm: () => {
-        try {
-          localStorage.removeItem('fin_safe_restore_20261024');
-        } catch {
-          /* ignore */
-        }
-        const success = applyOfficialBackupRestore(currentUser?.uid || null);
-        if (success) {
-          refreshData();
-          setConfirmation({
-            title: 'Sucesso',
-            message: 'Backup oficial de 21/10 restaurado. Recarregando…',
-            isAlert: true
-          });
-          setTimeout(() => window.location.reload(), 1500);
-        } else {
-          setConfirmation({ title: 'Erro', message: 'Falha ao restaurar o backup oficial.', isAlert: true });
-        }
+        void (async () => {
+          setIsResettingCloud(true);
+          setConfirmation(null);
+          try {
+            const result = await resetOfficialBackupAndWipeCloud(currentUser?.uid || null);
+            if (!result.localOk) {
+              setConfirmation({
+                title: 'Erro',
+                message: 'Falha ao restaurar o backup local.',
+                isAlert: true
+              });
+              return;
+            }
+            refreshData();
+            const cloudMsg = result.cloud?.message || '';
+            setConfirmation({
+              title: result.cloud?.success === false ? 'Atenção' : 'Sucesso',
+              message: result.cloud?.success === false
+                ? `Local OK, mas o cloud falhou: ${cloudMsg}. Tente de novo logado.`
+                : `Backup 21/10 restaurado e Firestore limpo. ${cloudMsg} Recarregando…`,
+              isAlert: true
+            });
+            if (result.cloud?.success !== false) {
+              setTimeout(() => window.location.reload(), 1800);
+            }
+          } catch (err) {
+            setConfirmation({
+              title: 'Erro',
+              message: err instanceof Error ? err.message : 'Falha no reset.',
+              isAlert: true
+            });
+          } finally {
+            setIsResettingCloud(false);
+          }
+        })();
       }
     });
   };
@@ -678,10 +697,15 @@ export const Settings = () => {
                  </button>
                  <button
                    onClick={handleOfficialBackupRestore}
-                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/50 rounded-2xl transition active:scale-95 text-white"
+                   disabled={isResettingCloud}
+                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/50 rounded-2xl transition active:scale-95 text-white disabled:opacity-50 disabled:cursor-wait"
                  >
                     <ShieldCheck size={20} className="text-amber-400 mb-2" />
-                    <span className="text-[10px] font-bold text-amber-200">Restaurar backup oficial 21/10/2026</span>
+                    <span className="text-[10px] font-bold text-amber-200">
+                      {isResettingCloud
+                        ? 'Limpando Firestore e restaurando 21/10…'
+                        : 'Reset total: backup 21/10 + limpar Firestore'}
+                    </span>
                  </button>
                  <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
               </div>

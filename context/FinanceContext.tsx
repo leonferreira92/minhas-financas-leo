@@ -57,6 +57,7 @@ import {
   saveSettingsToFirestore,
   syncLocalDataToFirestore,
   migrateAllDataToDefaultDatabase,
+  replaceUserCloudWithLocalData,
   MigrationStats,
   testFirestoreConnection,
   checkUserInitialized,
@@ -491,7 +492,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Garante restore local do backup 21/10 antes de ouvir o cloud
     ensureSafeRestoreOnce(uid);
 
-    // Se acabamos de restaurar, empurra o backup para o Firestore (evita cloud quebrado sobrescrever)
+    // Se acabamos de restaurar: WIPE + grava backup (remove OFX/órfãos do cloud)
     if (isCloudSyncPendingAfterRestore()) {
       const payload = {
         accounts: StorageService.getAccounts(),
@@ -502,13 +503,17 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         settings: StorageService.getSettings(),
         shows: StorageService.getShows()
       };
-      void syncLocalDataToFirestore(uid, payload)
-        .then(() => {
-          clearCloudSyncPending();
-          console.info('[safeRecovery] Backup 21/10 sincronizado para o Firestore');
+      void replaceUserCloudWithLocalData(uid, payload)
+        .then(result => {
+          if (result.success) {
+            clearCloudSyncPending();
+            console.info('[safeRecovery] Cloud substituído pelo backup 21/10', result);
+          } else {
+            console.warn('[safeRecovery] Wipe/cloud incompleto:', result.message);
+          }
         })
         .catch(err => {
-          console.warn('[safeRecovery] Falha ao sincronizar backup para o cloud:', err);
+          console.warn('[safeRecovery] Falha ao substituir cloud pelo backup:', err);
         });
     }
 

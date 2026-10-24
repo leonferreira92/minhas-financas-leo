@@ -101,6 +101,15 @@ export const loadBackupIntoStorage = (userId?: string | null): boolean => {
       localStorage.setItem(key, JSON.stringify(data));
     });
 
+    // Limpa shows/legado de carreira no local (não fazem parte do backup pessoal 21/10)
+    const emptyArr = JSON.stringify([]);
+    localStorage.setItem(`fin_app_shows${suffix}`, emptyArr);
+    localStorage.setItem('fin_app_shows', emptyArr);
+    localStorage.setItem(`fin_app_venues${suffix}`, emptyArr);
+    localStorage.setItem('fin_app_venues', emptyArr);
+    localStorage.setItem(`fin_app_crew${suffix}`, emptyArr);
+    localStorage.setItem('fin_app_crew', emptyArr);
+
     localStorage.setItem(`fin_backup_restored_${userId || 'root'}`, `${Date.now()}`);
     return true;
   } catch (error) {

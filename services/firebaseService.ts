@@ -653,6 +653,144 @@ export const syncLocalDataToFirestore = async (userId: string, localData: {
   }
 };
 
+const FIRESTORE_BATCH_LIMIT = 400;
+
+/** Apaga todos os documentos de uma subcoleção do usuário (em lotes). */
+const clearUserSubcollection = async (userId: string, subcollection: string): Promise<number> => {
+  const snap = await getDocs(collection(db, 'users', userId, subcollection));
+  if (snap.empty) return 0;
+
+  let deleted = 0;
+  const docs = snap.docs;
+  for (let i = 0; i < docs.length; i += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    const chunk = docs.slice(i, i + FIRESTORE_BATCH_LIMIT);
+    chunk.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    deleted += chunk.length;
+  }
+  return deleted;
+};
+
+export interface ReplaceCloudResult {
+  success: boolean;
+  deleted: Record<string, number>;
+  written: Record<string, number>;
+  message: string;
+}
+
+/**
+ * Substitui o cloud do usuário pelos dados locais (backup).
+ * 1) Apaga subcoleções (txs órfãs do OFX somem)
+ * 2) Grava o snapshot limpo
+ * 3) Settings com setDoc sem merge (remove flags de corte legado)
+ */
+export const replaceUserCloudWithLocalData = async (
+  userId: string,
+  localData: {
+    transactions?: Transaction[];
+    shows?: Show[];
+    debts?: Debt[];
+    accounts?: Account[];
+    categories?: Category[];
+    budgets?: Budget[];
+    settings?: AppSettings;
+  }
+): Promise<ReplaceCloudResult> => {
+  const deleted: Record<string, number> = {};
+  const written: Record<string, number> = {};
+
+  try {
+    const collectionsToClear = [
+      'transactions',
+      'accounts',
+      'debts',
+      'shows',
+      'categories',
+      'budgets'
+    ] as const;
+
+    for (const name of collectionsToClear) {
+      deleted[name] = await clearUserSubcollection(userId, name);
+    }
+
+    const writeChunked = async (
+      items: Array<{ id: string; data: Record<string, unknown> }>,
+      subcollection: string
+    ) => {
+      let count = 0;
+      for (let i = 0; i < items.length; i += FIRESTORE_BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        const chunk = items.slice(i, i + FIRESTORE_BATCH_LIMIT);
+        chunk.forEach(item => {
+          const ref = doc(db, 'users', userId, subcollection, item.id);
+          batch.set(ref, sanitizeForFirestore(item.data));
+        });
+        await batch.commit();
+        count += chunk.length;
+      }
+      return count;
+    };
+
+    written.accounts = await writeChunked(
+      (localData.accounts || []).map(a => ({ id: a.id, data: a as unknown as Record<string, unknown> })),
+      'accounts'
+    );
+    written.transactions = await writeChunked(
+      (localData.transactions || []).map(t => ({ id: t.id, data: t as unknown as Record<string, unknown> })),
+      'transactions'
+    );
+    written.debts = await writeChunked(
+      (localData.debts || []).map(d => ({ id: d.id, data: d as unknown as Record<string, unknown> })),
+      'debts'
+    );
+    written.shows = await writeChunked(
+      (localData.shows || []).map(s => ({ id: s.id, data: s as unknown as Record<string, unknown> })),
+      'shows'
+    );
+    written.categories = await writeChunked(
+      (localData.categories || []).map(c => ({ id: c.id, data: c as unknown as Record<string, unknown> })),
+      'categories'
+    );
+    written.budgets = await writeChunked(
+      (localData.budgets || []).map(b => ({
+        id: b.categoryId,
+        data: b as unknown as Record<string, unknown>
+      })),
+      'budgets'
+    );
+
+    // Settings: replace completo (sem merge) para limpar legacyPersonalCutoffApplied
+    const cleanSettings = { ...(localData.settings || {}) } as AppSettings & {
+      legacyPersonalCutoffApplied?: string;
+    };
+    delete cleanSettings.legacyPersonalCutoffApplied;
+    await setDoc(
+      doc(db, 'users', userId, 'settings', 'app'),
+      sanitizeForFirestore(cleanSettings),
+      { merge: false }
+    );
+    written.settings = 1;
+
+    await markUserInitialized(userId);
+
+    return {
+      success: true,
+      deleted,
+      written,
+      message: `Cloud limpo e gravado. Removidos: txs ${deleted.transactions || 0}. Gravados: txs ${written.transactions || 0}.`
+    };
+  } catch (err) {
+    console.error('[replaceUserCloudWithLocalData] Falha:', err);
+    return {
+      success: false,
+      deleted,
+      written,
+      message: err instanceof Error ? err.message : 'Falha ao substituir dados no Firestore'
+    };
+  }
+};
+
 export interface MigrationStats {
   success: boolean;
   transactionsMigrated: number;
