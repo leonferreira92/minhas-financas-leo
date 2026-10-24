@@ -121,6 +121,8 @@ export interface Transaction {
    * Histórico preservado; efeito pago congelado no initialBalance.
    */
   legacyArchived?: boolean;
+  /** Pessoa do empréstimo (ex.: Mãe). Fora do relatório de despesas/receitas. */
+  loanPerson?: string;
 }
 
 export interface SystemAlert {

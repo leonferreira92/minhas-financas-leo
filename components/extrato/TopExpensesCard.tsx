@@ -6,6 +6,7 @@ import {
   getTransactionCareerAndPersonalSplit,
   DEFAULT_PERSONAL_DEBT_CATEGORY_ID
 } from '../../services/financeAggregator';
+import { isNeutralCashFlowMovement } from '../../services/aiReportService';
 import { ArrowDownRight, TrendingDown, Layers, User, Music } from 'lucide-react';
 
 export const TopExpensesCard: React.FC = () => {
@@ -20,6 +21,7 @@ export const TopExpensesCard: React.FC = () => {
 
     transactions.forEach(t => {
       if (t.type !== 'expense' || t.status === 'cancelled' || !t.date || !t.date.startsWith(currentMonthStr)) return;
+      if (isNeutralCashFlowMovement(t)) return;
       const { careerAmount, personalAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
 
       if (careerAmount > 0 && (!t.debtId || t.status === 'paid')) {
@@ -48,6 +50,7 @@ export const TopExpensesCard: React.FC = () => {
 
     transactions.forEach(t => {
       if (t.type !== 'expense' || t.status === 'cancelled' || !t.date || !t.date.startsWith(currentMonthStr)) return;
+      if (isNeutralCashFlowMovement(t)) return;
       if (activeScope === 'BUSINESS') {
         if (t.debtId && t.status !== 'paid') return;
         const { careerAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);

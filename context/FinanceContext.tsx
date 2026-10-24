@@ -73,7 +73,7 @@ import {
   PERSONAL_ONLY_MODE,
   archiveCompanyAccounts
 } from '../services/personalOnlyMode';
-import { isTransferMovement } from '../services/aiReportService';
+import { isNeutralCashFlowMovement } from '../services/aiReportService';
 import {
   applyPersonalCutoffMigration,
   dryRunPersonalCutoff,
@@ -3084,8 +3084,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     filteredTransactions.forEach(t => {
       if (t.status === 'cancelled') return;
       if (t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid') return;
-      // Transferências / cat_transfer não são receita nem despesa
-      if (isTransferMovement(t)) return;
+      // Transferências / empréstimos a pessoas / reserva: afetam caixa, não relatório
+      if (isNeutralCashFlowMovement(t)) return;
       if (isLegacyArchivedTx(t)) return;
       const amount = Math.abs(Number(t.amount)) || 0;
       const isPaid = t.status === 'paid';

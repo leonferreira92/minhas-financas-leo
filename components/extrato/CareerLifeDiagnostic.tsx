@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
 import { matchesScope } from '../../types';
+import { isNeutralCashFlowMovement } from '../../services/aiReportService';
 import { Sparkles, TrendingUp, Wallet, ShieldCheck, PieChart, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 export const CareerLifeDiagnostic: React.FC = () => {
@@ -44,7 +45,7 @@ export const CareerLifeDiagnostic: React.FC = () => {
       .reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
 
     const personalExpensesThisMonth = transactions
-      .filter(t => t.type === 'expense' && t.date.startsWith(currentMonthStr) && (t.scope === 'PERSONAL' || t.scope === 'BOTH'))
+      .filter(t => t.type === 'expense' && t.date.startsWith(currentMonthStr) && (t.scope === 'PERSONAL' || t.scope === 'BOTH') && !isNeutralCashFlowMovement(t))
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
     const monthlyFixedPersonal = Math.max(1500, personalExpensesThisMonth);

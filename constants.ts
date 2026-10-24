@@ -10,7 +10,8 @@ import {
   Landmark, ShieldCheck, Heart, Umbrella, Users,
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
-  BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy
+  BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy,
+  Handshake
 } from 'lucide-react';
 
 export interface CareerSubcategoryOption {
@@ -75,6 +76,8 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_32', name: 'Rendimentos', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_transfer', name: 'Transferência entre Contas', type: 'transfer', color: '#64748b', icon: 'ArrowRightLeft', classification: 'future' },
+  { id: 'cat_loan_out', name: 'Empréstimo a Pessoas', type: 'expense', color: '#0ea5e9', icon: 'Handshake', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_loan_in', name: 'Devolução de Empréstimo', type: 'income', color: '#38bdf8', icon: 'Handshake', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_adjustment', name: 'Ajuste de Saldo', type: 'adjustment', color: '#64748b', icon: 'Calculator', classification: 'personal' },
 
   // --- DESPESAS DA MÚSICA / EMPRESA (EXCLUSIVAS MÚSICO) ---
@@ -103,7 +106,8 @@ export const ICON_MAP: Record<string, any> = {
   Landmark, ShieldCheck, Heart, Umbrella, Users,
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
-  BarChart3, Fingerprint, LayoutDashboard, Clock
+  BarChart3, Fingerprint, LayoutDashboard, Clock,
+  Handshake
 };
 
 export const getIcon = (name: string) => ICON_MAP[name] || DollarSign;

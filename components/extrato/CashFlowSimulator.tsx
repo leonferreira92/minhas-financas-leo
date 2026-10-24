@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { matchesScope } from '../../types';
+import { isNeutralCashFlowMovement } from '../../services/aiReportService';
 import { TrendingUp, ShieldAlert, AlertTriangle, CheckCircle2, Sliders, Calendar, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 type ScenarioType = 'conservative' | 'moderate' | 'optimistic';
@@ -28,7 +29,7 @@ export const CashFlowSimulator: React.FC = () => {
 
       const monthTxs = transactions.filter(t => t.date.startsWith(prefix) && matchesScope(t.scope, activeScope));
       monthTxs.forEach(t => {
-        if (t.type === 'expense') totalExpense += Number(t.amount) || 0;
+        if (t.type === 'expense' && !isNeutralCashFlowMovement(t)) totalExpense += Number(t.amount) || 0;
       });
 
       const monthShows = shows.filter(s => s.status !== 'Cancelado' && (s.date || '').startsWith(prefix) && matchesScope(s.scope, activeScope));

@@ -12,7 +12,7 @@ import {
   isDebtExpense, 
   isProfessionalInvestmentExpense,
   isDiscretionaryExpense,
-  isTransferMovement, 
+  isNeutralCashFlowMovement, 
   isGoalMovement,
   isIncomeGuaranteed,
   isRecurringIncome,
@@ -46,31 +46,31 @@ export const FinancialProjectionSection: React.FC = () => {
   }, [settings.financialSettings]);
 
   const formatBRL = (val: number | null | undefined) => {
-    if (val === null || val === undefined) return '‚Äî';
-    if (isBlurred) return 'R$ ‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢';
+    if (val === null || val === undefined) return 'ó';
+    if (isBlurred) return 'R$ ïïïïï';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
   // ---------------------------------------------------------------------------
-  // MOTOR DE PROJE√á√ÉO MENSAL
+  // MOTOR DE PROJE«√O MENSAL
   // ---------------------------------------------------------------------------
   const projectionData = useMemo(() => {
     const now = new Date();
 
-    // 1. Saldo Inicial Operacional Hoje (Exclui contas de reserva/poupan√ßa)
+    // 1. Saldo Inicial Operacional Hoje (Exclui contas de reserva/poupanÁa)
     const operationalAccounts = accounts.filter(
       a => !(a.type === 'savings' || a.name.toLowerCase().includes('reserva') || a.name.toLowerCase().includes('economia'))
     );
     const startingCashToday = operationalAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
 
-    // 2. Lista dos pr√≥ximos N meses
+    // 2. Lista dos prÛximos N meses
     const monthsList: string[] = [];
     for (let i = 0; i < horizonMonths; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       monthsList.push(d.toISOString().slice(0, 7));
     }
 
-    // 3. Informa√ß√µes de D√≠vidas ativas e parcelas
+    // 3. InformaÁıes de DÌvidas ativas e parcelas
     const activeDebts = debts.filter(d => {
       const prog = getDebtProgress(d.id);
       return prog.status !== 'paid' && prog.remaining > 0.1;
@@ -88,7 +88,7 @@ export const FinancialProjectionSection: React.FC = () => {
           debtScheduleMap[ym] = (debtScheduleMap[ym] || 0) + Number(t.amount);
         });
       } else {
-        // Se n√£o houver transa√ß√µes pendentes geradas, projeta a parcela pelos pr√≥ximos meses restantes
+        // Se n„o houver transaÁıes pendentes geradas, projeta a parcela pelos prÛximos meses restantes
         const paidCount = dTxs.filter(t => t.status === 'paid').length;
         const totalCount = d.installmentCount || (dTxs.length || 1);
         const remainingCount = Math.max(0, totalCount - paidCount);
@@ -102,11 +102,11 @@ export const FinancialProjectionSection: React.FC = () => {
       }
     });
 
-    // 4. M√©dia de despesas essenciais mensais para proje√ß√£o de meses sem lan√ßamentos
+    // 4. MÈdia de despesas essenciais mensais para projeÁ„o de meses sem lanÁamentos
     const pastEssentialTxs = transactions.filter(t => 
       isEssentialExpense(t, categories, debts, financialSettings) && 
       t.date < currentMonthPrefix && 
-      !isTransferMovement(t) && 
+      !isNeutralCashFlowMovement(t) && 
       !isGoalMovement(t)
     );
     const pastMonthsCount = new Set(pastEssentialTxs.map(t => t.date.slice(0, 7))).size;
@@ -120,7 +120,7 @@ export const FinancialProjectionSection: React.FC = () => {
       s.date >= todayStr
     );
 
-    // Itera√ß√£o dos meses calculando saldos encadeados
+    // IteraÁ„o dos meses calculando saldos encadeados
     let runningBalance = startingCashToday;
 
     interface MonthProjectionRow {
@@ -146,13 +146,13 @@ export const FinancialProjectionSection: React.FC = () => {
       const initialBalance = runningBalance;
 
       // -----------------------------------------------------------------------
-      // ENTRADAS DO M√äS
+      // ENTRADAS DO M S
       // -----------------------------------------------------------------------
       const monthIncomes = transactions.filter(t => 
         t.type === 'income' && 
         t.date.startsWith(monthStr) && 
         (isCurrentMonth ? (t.status === 'pending' && t.date >= todayStr) : true) &&
-        !isTransferMovement(t) && 
+        !isNeutralCashFlowMovement(t) && 
         !isGoalMovement(t)
       );
 
@@ -168,7 +168,7 @@ export const FinancialProjectionSection: React.FC = () => {
         }
       });
 
-      // Shows futuros contratados para este m√™s que n√£o foram lan√ßados como transa√ß√£o
+      // Shows futuros contratados para este mÍs que n„o foram lanÁados como transaÁ„o
       const showsInMonth = confirmedFutureShows.filter(s => s.date.startsWith(monthStr));
       showsInMonth.forEach(s => {
         const toReceive = Math.max(0, (Number(s.totalCache) || 0) - (Number(s.cacheReceived) || 0));
@@ -183,13 +183,13 @@ export const FinancialProjectionSection: React.FC = () => {
       });
 
       // -----------------------------------------------------------------------
-      // SA√çDAS DO M√äS POR TIPO
+      // SAÕDAS DO M S POR TIPO
       // -----------------------------------------------------------------------
       const monthExpenseTxs = transactions.filter(t => 
         t.type === 'expense' && 
         t.date.startsWith(monthStr) && 
         (isCurrentMonth ? (t.status === 'pending' && t.date >= todayStr) : true) &&
-        !isTransferMovement(t) && 
+        !isNeutralCashFlowMovement(t) && 
         !isGoalMovement(t)
       );
 
@@ -198,12 +198,12 @@ export const FinancialProjectionSection: React.FC = () => {
         .filter(t => isEssentialExpense(t, categories, debts, financialSettings))
         .reduce((s, t) => s + Number(t.amount), 0);
       
-      // Se n√£o for o m√™s atual e n√£o houver transa√ß√µes essenciais agendadas, projeta a m√©dia essencial
+      // Se n„o for o mÍs atual e n„o houver transaÁıes essenciais agendadas, projeta a mÈdia essencial
       if (!isCurrentMonth && essentialExpenses === 0 && avgHistoricalEssential > 0) {
         essentialExpenses = avgHistoricalEssential;
       }
 
-      // 2. D√≠vidas
+      // 2. DÌvidas
       let debtInstallments = monthExpenseTxs
         .filter(t => isDebtExpense(t, debts, categories))
         .reduce((s, t) => s + Number(t.amount), 0);
@@ -218,7 +218,7 @@ export const FinancialProjectionSection: React.FC = () => {
         .filter(t => isProfessionalInvestmentExpense(t, categories, financialSettings))
         .reduce((s, t) => s + Number(t.amount), 0);
 
-      // 4. Estilo de vida (discricion√°rio)
+      // 4. Estilo de vida (discricion·rio)
       const lifestyleExpenses = monthExpenseTxs
         .filter(t => 
           !isEssentialExpense(t, categories, debts, financialSettings) &&
@@ -229,7 +229,7 @@ export const FinancialProjectionSection: React.FC = () => {
 
       const totalOutflows = essentialExpenses + lifestyleExpenses + debtInstallments + professionalInvestments;
 
-      // REGRA: Receitas incertas N√ÉO entram no saldo garantido
+      // REGRA: Receitas incertas N√O entram no saldo garantido
       const netResult = confirmedIncomes - totalOutflows;
       runningBalance += netResult;
 
@@ -253,10 +253,10 @@ export const FinancialProjectionSection: React.FC = () => {
     });
 
     // -------------------------------------------------------------------------
-    // DESTAQUES AUTOM√ÅTICOS SOLICITADOS:
-    // 1. Primeiro m√™s com risco de saldo negativo
+    // DESTAQUES AUTOM¡TICOS SOLICITADOS:
+    // 1. Primeiro mÍs com risco de saldo negativo
     // 2. Menor saldo projetado
-    // 3. Meses com d√©ficit
+    // 3. Meses com dÈficit
     // 4. Meses com maior sobra
     // -------------------------------------------------------------------------
     const firstNegativeMonth = rows.find(r => r.projectedEndBalance < 0) || null;
@@ -302,7 +302,7 @@ export const FinancialProjectionSection: React.FC = () => {
   return (
     <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
       
-      {/* HEADER DA SE√á√ÉO COM SELETOR DE HORIZONTE */}
+      {/* HEADER DA SE«√O COM SELETOR DE HORIZONTE */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
@@ -311,19 +311,19 @@ export const FinancialProjectionSection: React.FC = () => {
           <div>
             <div className="flex items-center space-x-2">
               <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                Proje√ß√£o Financeira
+                ProjeÁ„o Financeira
               </h2>
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/60">
                 Horizonte {horizonMonths}M
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Simula√ß√£o de fluxo de caixa, receitas confirmadas e pontos de estresse
+              SimulaÁ„o de fluxo de caixa, receitas confirmadas e pontos de estresse
             </p>
           </div>
         </div>
 
-        {/* CONTROLES: HORIZONTE (3, 6, 12M) + VIS√ÉO (CARDS / TABELA) */}
+        {/* CONTROLES: HORIZONTE (3, 6, 12M) + VIS√O (CARDS / TABELA) */}
         <div className="flex flex-wrap items-center gap-2">
           
           {/* Seletor de Meses */}
@@ -360,7 +360,7 @@ export const FinancialProjectionSection: React.FC = () => {
             </button>
           </div>
 
-          {/* Seletor de Modo de Exibi√ß√£o */}
+          {/* Seletor de Modo de ExibiÁ„o */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/60 text-xs font-bold">
             <button
               onClick={() => setDisplayMode('cards')}
@@ -370,7 +370,7 @@ export const FinancialProjectionSection: React.FC = () => {
                   : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
-              Cart√µes
+              Cartıes
             </button>
             <button
               onClick={() => setDisplayMode('table')}
@@ -388,11 +388,11 @@ export const FinancialProjectionSection: React.FC = () => {
       </div>
 
       {/* --------------------------------------------------------------------- */}
-      {/* OS 4 DESTAQUES AUTOM√ÅTICOS OBRIGAT√ìRIOS                               */}
+      {/* OS 4 DESTAQUES AUTOM¡TICOS OBRIGAT”RIOS                               */}
       {/* --------------------------------------------------------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         
-        {/* 1. PRIMEIRO M√äS COM RISCO DE SALDO NEGATIVO */}
+        {/* 1. PRIMEIRO M S COM RISCO DE SALDO NEGATIVO */}
         <div className={`p-4 rounded-2xl border flex flex-col justify-between space-y-2 ${
           projectionData.firstNegativeMonth 
             ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60' 
@@ -413,7 +413,7 @@ export const FinancialProjectionSection: React.FC = () => {
             {projectionData.firstNegativeMonth ? (
               <>
                 <span className="text-xs font-bold text-rose-700 dark:text-rose-300 block">
-                  1¬∫ M√™s em Risco:
+                  1∫ MÍs em Risco:
                 </span>
                 <span className="text-base font-black text-rose-600 dark:text-rose-400 tabular-nums block">
                   {projectionData.firstNegativeMonth.monthLabel}
@@ -428,7 +428,7 @@ export const FinancialProjectionSection: React.FC = () => {
                   Sem Risco
                 </span>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                  Nenhum m√™s projeta saldo negativo no horizonte de {horizonMonths} meses.
+                  Nenhum mÍs projeta saldo negativo no horizonte de {horizonMonths} meses.
                 </p>
               </>
             )}
@@ -460,23 +460,23 @@ export const FinancialProjectionSection: React.FC = () => {
           </div>
         </div>
 
-        {/* 3. MESES COM D√âFICIT */}
+        {/* 3. MESES COM D…FICIT */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Meses com D√©ficit
+              Meses com DÈficit
             </span>
             <TrendingDown size={16} className="text-rose-500" />
           </div>
 
           <div>
             <span className="text-base font-black text-slate-900 dark:text-white tabular-nums block">
-              {projectionData.deficitMonths.length} {projectionData.deficitMonths.length === 1 ? 'm√™s' : 'meses'}
+              {projectionData.deficitMonths.length} {projectionData.deficitMonths.length === 1 ? 'mÍs' : 'meses'}
             </span>
             <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block mt-0.5">
               {projectionData.deficitMonths.length > 0 
                 ? projectionData.deficitMonths.map(m => m.monthLabel.split('/')[0]).join(', ') 
-                : 'Nenhum d√©ficit registrado'}
+                : 'Nenhum dÈficit registrado'}
             </span>
           </div>
         </div>
@@ -501,7 +501,7 @@ export const FinancialProjectionSection: React.FC = () => {
                 </span>
               </>
             ) : (
-              <span className="text-xs text-slate-400">Sem sobras no per√≠odo</span>
+              <span className="text-xs text-slate-400">Sem sobras no perÌodo</span>
             )}
           </div>
         </div>
@@ -509,7 +509,7 @@ export const FinancialProjectionSection: React.FC = () => {
       </div>
 
       {/* --------------------------------------------------------------------- */}
-      {/* MODO 1: CART√ïES MENSAIS (TIMELINE)                                    */}
+      {/* MODO 1: CART’ES MENSAIS (TIMELINE)                                    */}
       {/* --------------------------------------------------------------------- */}
       {displayMode === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -524,7 +524,7 @@ export const FinancialProjectionSection: React.FC = () => {
                   : 'bg-slate-50/60 dark:bg-slate-950/40 border-slate-200/80 dark:border-slate-800'
               }`}
             >
-              {/* Header do M√™s */}
+              {/* Header do MÍs */}
               <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/60 pb-2.5">
                 <div>
                   <div className="flex items-center space-x-1.5">
@@ -554,7 +554,7 @@ export const FinancialProjectionSection: React.FC = () => {
                 </div>
               </div>
 
-              {/* Linhas de Entrada e Sa√≠da */}
+              {/* Linhas de Entrada e SaÌda */}
               <div className="space-y-1.5 text-xs">
                 
                 {/* (+) Receitas Confirmadas */}
@@ -573,7 +573,7 @@ export const FinancialProjectionSection: React.FC = () => {
                     <span className="flex items-center space-x-1">
                       <span>(~) Receitas Estimadas</span>
                       <span className="text-[8px] font-black uppercase px-1 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
-                        N√£o Garantida
+                        N„o Garantida
                       </span>
                     </span>
                     <span className="font-medium tabular-nums">
@@ -600,10 +600,10 @@ export const FinancialProjectionSection: React.FC = () => {
                   </div>
                 )}
 
-                {/* (-) Parcelas de D√≠vidas Ativas */}
+                {/* (-) Parcelas de DÌvidas Ativas */}
                 {row.debtInstallments > 0 && (
                   <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-[11px]">
-                    <span>(-) D√≠vidas Ativas</span>
+                    <span>(-) DÌvidas Ativas</span>
                     <span className="font-bold tabular-nums">
                       {formatBRL(row.debtInstallments)}
                     </span>
@@ -647,13 +647,13 @@ export const FinancialProjectionSection: React.FC = () => {
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 uppercase font-black text-[10px]">
               <tr>
-                <th className="py-3 px-3">M√™s</th>
+                <th className="py-3 px-3">MÍs</th>
                 <th className="py-3 px-3 text-right">Saldo Inicial</th>
                 <th className="py-3 px-3 text-right text-emerald-600 dark:text-emerald-400">Rec. Confirmada</th>
                 <th className="py-3 px-3 text-right text-amber-600 dark:text-amber-400">Rec. Estimada</th>
                 <th className="py-3 px-3 text-right">Essenciais</th>
                 <th className="py-3 px-3 text-right">Estilo de Vida</th>
-                <th className="py-3 px-3 text-right text-rose-600 dark:text-rose-400">D√≠vidas</th>
+                <th className="py-3 px-3 text-right text-rose-600 dark:text-rose-400">DÌvidas</th>
                 <th className="py-3 px-3 text-right">Invest. Prof.</th>
                 <th className="py-3 px-3 text-right">Resultado</th>
                 <th className="py-3 px-3 text-right">Saldo Final</th>
@@ -682,19 +682,19 @@ export const FinancialProjectionSection: React.FC = () => {
                     {formatBRL(row.confirmedIncomes)}
                   </td>
                   <td className="py-2.5 px-3 text-right font-medium text-amber-600 dark:text-amber-400 tabular-nums">
-                    {row.estimatedIncomes > 0 ? formatBRL(row.estimatedIncomes) : '‚Äî'}
+                    {row.estimatedIncomes > 0 ? formatBRL(row.estimatedIncomes) : 'ó'}
                   </td>
                   <td className="py-2.5 px-3 text-right font-medium text-slate-700 dark:text-slate-300 tabular-nums">
                     {formatBRL(row.essentialExpenses)}
                   </td>
                   <td className="py-2.5 px-3 text-right font-medium text-slate-500 tabular-nums">
-                    {row.lifestyleExpenses > 0 ? formatBRL(row.lifestyleExpenses) : '‚Äî'}
+                    {row.lifestyleExpenses > 0 ? formatBRL(row.lifestyleExpenses) : 'ó'}
                   </td>
                   <td className="py-2.5 px-3 text-right font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                    {row.debtInstallments > 0 ? formatBRL(row.debtInstallments) : '‚Äî'}
+                    {row.debtInstallments > 0 ? formatBRL(row.debtInstallments) : 'ó'}
                   </td>
                   <td className="py-2.5 px-3 text-right font-medium text-indigo-600 dark:text-indigo-400 tabular-nums">
-                    {row.professionalInvestments > 0 ? formatBRL(row.professionalInvestments) : '‚Äî'}
+                    {row.professionalInvestments > 0 ? formatBRL(row.professionalInvestments) : 'ó'}
                   </td>
                   <td className={`py-2.5 px-3 text-right font-black tabular-nums ${
                     row.netResult >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
@@ -713,12 +713,12 @@ export const FinancialProjectionSection: React.FC = () => {
         </div>
       )}
 
-      {/* RODA-P√â METODOL√ìGICO */}
+      {/* RODA-P… METODOL”GICO */}
       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
         <div className="flex items-center space-x-1.5">
           <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
           <span>
-            Receitas estimadas n√£o foram incorporadas ao saldo projetado garantido. Transfer√™ncias entre contas e aportes foram desconsiderados.
+            Receitas estimadas n„o foram incorporadas ao saldo projetado garantido. TransferÍncias entre contas e aportes foram desconsiderados.
           </span>
         </div>
       </div>

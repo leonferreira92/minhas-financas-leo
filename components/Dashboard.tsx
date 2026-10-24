@@ -19,7 +19,7 @@ import { getIcon } from '../constants';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { MonthCashPanel } from './MonthCashPanel';
-import { isTransferMovement } from '../services/aiReportService';
+import { isNeutralCashFlowMovement } from '../services/aiReportService';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -137,7 +137,7 @@ export const Dashboard: React.FC = () => {
 
     transactions.forEach(t => {
       if (t.type !== 'expense' || t.status === 'cancelled') return false;
-      if (isTransferMovement(t)) return false;
+      if (isNeutralCashFlowMovement(t)) return false;
       if (!t.date || !t.date.startsWith(currentMonthStr)) return false;
       if (!matchesScope(t.scope, activeScope)) return false;
 

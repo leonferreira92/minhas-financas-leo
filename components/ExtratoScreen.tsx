@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, Clock, CheckCircle2, 
   ArrowUpRight, ArrowDownRight, Search, X, Calendar, 
   Landmark, Music, Tag, ArrowRightLeft, AlertCircle,
-  Eye, EyeOff, Check, Trash2, Edit3
+  Eye, EyeOff, Check, Trash2, Edit3, Handshake
 } from 'lucide-react';
 import { Transaction, matchesScope, Account } from '../types';
 import { getIcon } from '../constants';
@@ -17,6 +17,7 @@ import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { isLegacyArchivedTx } from '../services/legacyCutoffMigration';
+import { isLoanMovement } from '../services/aiReportService';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 
@@ -667,6 +668,12 @@ export const ExtratoScreen: React.FC = () => {
                               {isPending && (
                                 <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 uppercase shrink-0">
                                   Pendente
+                                </span>
+                              )}
+                              {isLoanMovement(t) && (
+                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-sky-600 text-white border border-sky-400/40 uppercase shrink-0 inline-flex items-center gap-1">
+                                  <Handshake size={10} strokeWidth={2.5} />
+                                  {t.loanPerson ? `Emprést. · ${t.loanPerson}` : 'Empréstimo'}
                                 </span>
                               )}
                               {t.showId && (

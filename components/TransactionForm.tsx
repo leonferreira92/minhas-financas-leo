@@ -7,7 +7,7 @@ import {
   AlertTriangle, Calendar as CalendarIcon,
   ChevronDown, Wallet, Target, Plus, Search, CheckCircle2,
   SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight,
-  Music, ChevronRight, User, MapPin, DollarSign, Calendar
+  Music, ChevronRight, User, MapPin, DollarSign, Calendar, Handshake
 } from 'lucide-react';
 import { getIcon } from '../constants';
 import { parseCurrencyInput } from '../services/financeAggregator';
@@ -17,6 +17,7 @@ import { CategorySelector } from './ui/CategorySelector';
 import { generateUUID } from '../services/uuidHelper';
 import { getLocalDateString } from '../services/dateUtils';
 import { PERSONAL_ONLY_MODE, isBusinessCategory } from '../services/personalOnlyMode';
+import { LOAN_IN_CATEGORY_ID, LOAN_OUT_CATEGORY_ID, isLoanMovement } from '../services/aiReportService';
 
 interface Props {
   onClose: () => void;
@@ -44,6 +45,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [hasReminder, setHasReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [isFixed, setIsFixed] = useState(false);
+  /** Empréstimo a pessoas: fora do relatório de despesas/receitas */
+  const [loanMode, setLoanMode] = useState(false);
+  const [loanPerson, setLoanPerson] = useState(transaction?.loanPerson || 'Mãe');
   
   // Scope State (Pessoal vs Músico) — Fase 1 trava em Pessoal
   const [scope, setScope] = useState<ScopeType>(() => {
@@ -106,6 +110,10 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       setDestinationAccountId(transaction.destinationAccountId || '');
       setDate(transaction.date);
       setStatus(transaction.status);
+      if (isLoanMovement(transaction) || transaction.loanPerson) {
+        setLoanMode(true);
+        setLoanPerson(transaction.loanPerson || 'Mãe');
+      }
       if (transaction.reminderDate) {
         setHasReminder(true);
         setReminderDate(transaction.reminderDate);
@@ -437,7 +445,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       return;
     }
 
-    if (type !== 'transfer' && !categoryId) {
+    if (type !== 'transfer' && !loanMode && !categoryId) {
       setValidationError("Por favor, selecione uma categoria.");
       return;
     }
@@ -453,12 +461,26 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     }
 
+    if (loanMode && !loanPerson.trim()) {
+      setValidationError("Informe para quem é o empréstimo (ex.: Mãe).");
+      return;
+    }
+
     setValidationError(null);
 
     const finalScope: ScopeType = PERSONAL_ONLY_MODE
       ? 'PERSONAL'
       : (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
     const finalShowId = (finalScope === 'BUSINESS' && selectedShowId) ? selectedShowId : undefined;
+
+    const resolvedType: TransactionType = loanMode
+      ? (type === 'income' ? 'income' : 'expense')
+      : type;
+    const resolvedCategoryId = type === 'transfer'
+      ? 'cat_transfer'
+      : loanMode
+        ? (resolvedType === 'income' ? LOAN_IN_CATEGORY_ID : LOAN_OUT_CATEGORY_ID)
+        : categoryId;
 
     // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status 'pending' se o evento não tiver sido realizado
     let finalDate = date;
@@ -469,17 +491,20 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
         if (linkedShow.date) {
           finalDate = linkedShow.date;
         }
-        if (type === 'expense' && linkedShow.status !== 'Realizado') {
+        if (resolvedType === 'expense' && linkedShow.status !== 'Realizado') {
           finalStatus = 'pending';
         }
       }
     }
 
+    const personLabel = loanPerson.trim();
     const data: any = {
-      type, 
+      type: resolvedType, 
       amount: val, 
-      description, 
-      categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
+      description: description.trim() || (loanMode
+        ? (resolvedType === 'income' ? `Devolução · ${personLabel}` : `Empréstimo · ${personLabel}`)
+        : description), 
+      categoryId: resolvedCategoryId,
       accountId, 
       destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
       date: finalDate, 
@@ -490,6 +515,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       interest: 0,
       scope: finalScope,
       showId: finalShowId,
+      loanPerson: loanMode ? personLabel : undefined,
       importedFromBank: transaction?.importedFromBank,
       originalBankDescription: transaction?.originalBankDescription,
       bankFitId: transaction?.bankFitId
@@ -519,11 +545,20 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       : (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
     const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
 
+    const resolvedType: TransactionType = loanMode
+      ? (type === 'income' ? 'income' : 'expense')
+      : type;
+    const resolvedCategoryId = type === 'transfer'
+      ? 'cat_transfer'
+      : loanMode
+        ? (resolvedType === 'income' ? LOAN_IN_CATEGORY_ID : LOAN_OUT_CATEGORY_ID)
+        : categoryId;
+    const personLabel = loanPerson.trim();
     const data: any = {
-      type, 
+      type: resolvedType, 
       amount: val, 
       description, 
-      categoryId: type === 'transfer' ? 'cat_transfer' : categoryId,
+      categoryId: resolvedCategoryId,
       accountId, 
       destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
       date, 
@@ -532,7 +567,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
       isFixed,
       scope: finalScope,
-      showId: finalShowId
+      showId: finalShowId,
+      loanPerson: loanMode ? personLabel : undefined
     };
     updateTransactionSeries({ ...transaction, ...data }, updateFuture);
     onClose();
@@ -542,10 +578,16 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const confirmDelete = () => { if (transaction) { deleteTransaction(transaction.id); onClose(); } };
 
   // Theme styling based on active transaction type
-  const activeColor = type === 'expense' ? 'rose' : type === 'income' ? 'emerald' : 'blue';
-  const activeBg = type === 'expense' ? 'bg-rose-600' : type === 'income' ? 'bg-emerald-500' : 'bg-blue-600';
-  const activeBtnText = type === 'income' ? 'text-black' : 'text-white';
-  const activeText = type === 'expense' ? 'text-rose-600 dark:text-rose-400' : type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400';
+  const activeColor = loanMode ? 'sky' : type === 'expense' ? 'rose' : type === 'income' ? 'emerald' : 'blue';
+  const activeBg = loanMode ? 'bg-sky-600' : type === 'expense' ? 'bg-rose-600' : type === 'income' ? 'bg-emerald-500' : 'bg-blue-600';
+  const activeBtnText = !loanMode && type === 'income' ? 'text-black' : 'text-white';
+  const activeText = loanMode
+    ? 'text-sky-600 dark:text-sky-400'
+    : type === 'expense'
+      ? 'text-rose-600 dark:text-rose-400'
+      : type === 'income'
+        ? 'text-emerald-600 dark:text-emerald-400'
+        : 'text-blue-600 dark:text-blue-400';
 
   return (
     <>
@@ -559,29 +601,60 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             <div className="flex bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl flex-1 mr-2">
               <button 
                 type="button"
-                onClick={() => { setType('expense'); setUserManuallySetCategory(false); }} 
-                className={`flex-1 py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'expense' ? 'bg-rose-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                onClick={() => {
+                  setLoanMode(false);
+                  setType('expense');
+                  setUserManuallySetCategory(false);
+                }} 
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === 'expense' ? 'bg-rose-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <ArrowDownRight size={14} strokeWidth={2.5} className={type === 'expense' ? 'text-white' : ''} />
+                <ArrowDownRight size={14} strokeWidth={2.5} className={!loanMode && type === 'expense' ? 'text-white' : ''} />
                 <span>Despesa</span>
               </button>
 
               <button 
                 type="button"
-                onClick={() => { setType('income'); setUserManuallySetCategory(false); }} 
-                className={`flex-1 py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'income' ? 'bg-emerald-500 text-black shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                onClick={() => {
+                  setLoanMode(false);
+                  setType('income');
+                  setUserManuallySetCategory(false);
+                }} 
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === 'income' ? 'bg-emerald-500 text-black shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <ArrowUpRight size={14} strokeWidth={2.5} className={type === 'income' ? 'text-black' : ''} />
+                <ArrowUpRight size={14} strokeWidth={2.5} className={!loanMode && type === 'income' ? 'text-black' : ''} />
                 <span>Receita</span>
               </button>
 
               <button 
                 type="button"
-                onClick={() => { setType('transfer'); if (!description) setDescription('Transferência'); }} 
-                className={`flex-1 py-2 px-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${type === 'transfer' ? 'bg-blue-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                onClick={() => {
+                  setLoanMode(false);
+                  setType('transfer');
+                  if (!description) setDescription('Transferência');
+                }} 
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === 'transfer' ? 'bg-blue-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                <ArrowRightLeft size={14} strokeWidth={2.5} className={type === 'transfer' ? 'text-white' : ''} />
+                <ArrowRightLeft size={14} strokeWidth={2.5} className={!loanMode && type === 'transfer' ? 'text-white' : ''} />
                 <span>Transf.</span>
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  setLoanMode(true);
+                  setType('expense');
+                  setCategoryId(LOAN_OUT_CATEGORY_ID);
+                  setUserManuallySetCategory(true);
+                  if (!loanPerson) setLoanPerson('Mãe');
+                  if (!description || description === 'Transferência') {
+                    setDescription(`Empréstimo · ${loanPerson || 'Mãe'}`);
+                  }
+                }} 
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${loanMode ? 'bg-sky-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                title="Empréstimo a pessoas — não conta como despesa no relatório"
+              >
+                <Handshake size={14} strokeWidth={2.5} className={loanMode ? 'text-white' : ''} />
+                <span>Emprést.</span>
               </button>
             </div>
 
@@ -596,6 +669,69 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
           </div>
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-36">
+
+            {/* Empréstimo a pessoas */}
+            {loanMode && (
+              <div className="mx-6 mt-2 p-3.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/70 space-y-3 animate-fade-in">
+                <div className="flex items-center space-x-2">
+                  <Handshake size={14} className="text-sky-600 dark:text-sky-400" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-800 dark:text-sky-300">
+                    Empréstimo a pessoas · fora do relatório
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-white/70 dark:bg-slate-900/50 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setType('expense');
+                      setCategoryId(LOAN_OUT_CATEGORY_ID);
+                      setDescription(`Empréstimo · ${loanPerson || 'Mãe'}`);
+                    }}
+                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                      type === 'expense'
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'text-slate-500 hover:text-sky-700'
+                    }`}
+                  >
+                    Emprestei / Enviei
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setType('income');
+                      setCategoryId(LOAN_IN_CATEGORY_ID);
+                      setDescription(`Devolução · ${loanPerson || 'Mãe'}`);
+                    }}
+                    className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
+                      type === 'income'
+                        ? 'bg-emerald-500 text-black shadow-sm'
+                        : 'text-slate-500 hover:text-emerald-700'
+                    }`}
+                  >
+                    Devolveu / Recebi
+                  </button>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-sky-700/80 dark:text-sky-400 block mb-1">
+                    Pessoa
+                  </label>
+                  <input
+                    type="text"
+                    value={loanPerson}
+                    onChange={e => {
+                      const next = e.target.value;
+                      setLoanPerson(next);
+                      setDescription(type === 'income' ? `Devolução · ${next || '…'}` : `Empréstimo · ${next || '…'}`);
+                    }}
+                    placeholder="Ex.: Mãe"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-sky-500"
+                  />
+                </div>
+                <p className="text-[10px] text-sky-800/70 dark:text-sky-400/80 leading-relaxed">
+                  Sai ou entra no saldo da conta, mas não conta como gasto nem como renda nos relatórios (igual transferência).
+                </p>
+              </div>
+            )}
             
             {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO — oculto na Fase 1 */}
             {!PERSONAL_ONLY_MODE && (
@@ -696,7 +832,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             {/* ========================================== */}
             <div className="modal-amount-container mx-6 mt-4 mb-3 py-5 px-4 rounded-3xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800 flex flex-col items-center justify-center relative scroll-mt-6">
               <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 block ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>
-                {type === 'expense' ? 'Valor da Despesa' : type === 'income' ? 'Valor da Receita' : 'Valor da Transferência'}
+                {loanMode
+                  ? (type === 'income' ? 'Valor da Devolução' : 'Valor do Empréstimo')
+                  : type === 'expense' ? 'Valor da Despesa' : type === 'income' ? 'Valor da Receita' : 'Valor da Transferência'}
               </span>
 
               <div className="flex items-center justify-center relative w-full py-1.5 overflow-visible">
@@ -749,11 +887,19 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                   value={description} 
                   onChange={handleDescriptionChange} 
                   className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200/80 dark:border-slate-700/80 focus:border-indigo-500 dark:focus:border-indigo-500 px-4 py-4 text-base font-bold text-slate-800 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl transition-all shadow-sm"
-                  placeholder={type === 'expense' ? "O que foi? (ex: Almoço, Gasolina 100)" : type === 'income' ? (scope === 'BUSINESS' ? "Cachê / Contratante (ex: Bar do Zé, Casamento Pedro)" : "De onde veio? (ex: Pró-Labore, Salário)") : "Descrição da transferência"}
+                  placeholder={
+                    loanMode
+                      ? (type === 'income' ? 'Devolução (ex: Devolução · Mãe)' : 'Empréstimo (ex: Empréstimo · Mãe)')
+                      : type === 'expense'
+                        ? "O que foi? (ex: Almoço, Gasolina 100)"
+                        : type === 'income'
+                          ? (scope === 'BUSINESS' ? "Cachê / Contratante (ex: Bar do Zé, Casamento Pedro)" : "De onde veio? (ex: Pró-Labore, Salário)")
+                          : "Descrição da transferência"
+                  }
                   required 
                 />
                 
-                {type !== 'transfer' && !transaction && description.length >= 3 && (
+                {type !== 'transfer' && !loanMode && !transaction && description.length >= 3 && (
                   <button 
                     type="button" 
                     onClick={handleSmartFillWithAI} 
@@ -769,7 +915,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               {/* ========================================== */}
               {/* 4. CARD DE SUGESTÃO INTELIGENTE & HISTÓRICO*/}
               {/* ========================================== */}
-              {smartSuggestion && smartSuggestion.matchCount > 0 && type !== 'transfer' && (
+              {smartSuggestion && smartSuggestion.matchCount > 0 && type !== 'transfer' && !loanMode && (
                 <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 space-y-2.5 animate-fade-in">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -824,7 +970,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               {/* ========================================== */}
               {/* 5. CATEGORIAS RECENTES & BOTÃO VER TODAS   */}
               {/* ========================================== */}
-              {type !== 'transfer' && (
+              {type !== 'transfer' && !loanMode && (
                 <div className="space-y-2.5">
                   <div className="flex justify-between items-center px-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -950,7 +1096,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                     </div>
 
                     {/* Recorrência / Lembrete */}
-                    {!transaction && !transaction?.debtId && type !== 'transfer' && (
+                    {!transaction && !transaction?.debtId && type !== 'transfer' && !loanMode && (
                       <div className="flex space-x-3 pt-1">
                         <button 
                           type="button"

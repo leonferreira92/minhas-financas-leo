@@ -11,7 +11,7 @@ import { DEFAULT_FINANCIAL_SETTINGS } from '../constants';
 import { 
   isEssentialExpense, 
   isDebtExpense, 
-  isTransferMovement, 
+  isNeutralCashFlowMovement, 
   isGoalMovement 
 } from '../services/aiReportService';
 
@@ -29,8 +29,8 @@ export const ShowTargetSection: React.FC = () => {
   const [customSavingsGoal, setCustomSavingsGoal] = useState<number | null>(null);
 
   const formatBRL = (val: number | null | undefined) => {
-    if (val === null || val === undefined) return '‚Äî';
-    if (isBlurred) return 'R$ ‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢';
+    if (val === null || val === undefined) return 'ó';
+    if (isBlurred) return 'R$ ïïïïï';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
@@ -39,15 +39,15 @@ export const ShowTargetSection: React.FC = () => {
   }, [settings.financialSettings]);
 
   // ---------------------------------------------------------------------------
-  // MOTOR DE C√ÅLCULO: M√âTRICAS DE SHOWS E CONVERS√ÉO EM METAS
+  // MOTOR DE C¡LCULO: M…TRICAS DE SHOWS E CONVERS√O EM METAS
   // ---------------------------------------------------------------------------
   const metrics = useMemo(() => {
-    // 1. Filtrar eventos v√°lidos (exclui cancelados)
+    // 1. Filtrar eventos v·lidos (exclui cancelados)
     const safeShows = Array.isArray(shows) ? shows : [];
     const validShows = safeShows.filter(s => s && s.status !== 'Cancelado');
     const totalShowsCount = validShows.length;
 
-    // Calcular faturamento bruto, custos totais e lucro l√≠quido de cada show
+    // Calcular faturamento bruto, custos totais e lucro lÌquido de cada show
     let totalGrossRevenue = 0;
     let totalCosts = 0;
     let showsWithoutExpenses = 0;
@@ -80,23 +80,23 @@ export const ShowTargetSection: React.FC = () => {
     const totalNetProfit = totalGrossRevenue - totalCosts;
     const monthsSpan = Math.max(1, showMonthsSet.size);
 
-    // Indicadores m√©dios por show
+    // Indicadores mÈdios por show
     const avgShowsPerMonth = totalShowsCount > 0 ? totalShowsCount / monthsSpan : 0;
     const avgGrossPerShow = totalShowsCount > 0 ? totalGrossRevenue / totalShowsCount : 0;
     const avgCostPerShow = totalShowsCount > 0 ? totalCosts / totalShowsCount : 0;
     const avgNetProfitPerShow = totalShowsCount > 0 ? totalNetProfit / totalShowsCount : 0;
     const profitMargin = avgGrossPerShow > 0 ? (avgNetProfitPerShow / avgGrossPerShow) * 100 : 0;
 
-    // Confiabilidade hist√≥rica
+    // Confiabilidade histÛrica
     const isLowReliability = totalShowsCount > 0 && totalShowsCount < 3;
     const hasNoShows = totalShowsCount === 0;
 
     // -------------------------------------------------------------------------
-    // 2. APURA√á√ÉO DOS CUSTOS MENSAIS REAIS (ESSENCIAL, ESTILO DE VIDA, D√çVIDAS)
+    // 2. APURA«√O DOS CUSTOS MENSAIS REAIS (ESSENCIAL, ESTILO DE VIDA, DÕVIDAS)
     // -------------------------------------------------------------------------
     const validExpenseTxs = transactions.filter(t => 
       t.type === 'expense' && 
-      !isTransferMovement(t) && 
+      !isNeutralCashFlowMovement(t) && 
       !isGoalMovement(t)
     );
 
@@ -121,7 +121,7 @@ export const ShowTargetSection: React.FC = () => {
     const avgEssentialExpenses = totalEssentialAll / expenseMonthsCount;
     const avgTotalExpenses = totalAllExpenses / expenseMonthsCount;
 
-    // D√≠vidas ativas
+    // DÌvidas ativas
     const activeDebts = debts.filter(d => {
       const prog = getDebtProgress(d.id);
       return prog.status !== 'paid' && prog.remaining > 0.1;
@@ -131,10 +131,10 @@ export const ShowTargetSection: React.FC = () => {
       return sum + inst;
     }, 0);
 
-    // Custo Essencial Total Mensal = Despesas Essenciais + Parcelas de D√≠vidas
+    // Custo Essencial Total Mensal = Despesas Essenciais + Parcelas de DÌvidas
     const monthlyEssentialCost = avgEssentialExpenses + monthlyDebtInstallments;
 
-    // Custo de Vida Atual Mensal = Despesas Totais + Parcelas de D√≠vidas
+    // Custo de Vida Atual Mensal = Despesas Totais + Parcelas de DÌvidas
     const monthlyCurrentLivingCost = avgTotalExpenses + monthlyDebtInstallments;
 
     // -------------------------------------------------------------------------
@@ -149,7 +149,7 @@ export const ShowTargetSection: React.FC = () => {
     const totalLivingAndSavingsCost = monthlyCurrentLivingCost + activeMonthlySavingsTarget;
 
     // -------------------------------------------------------------------------
-    // 4. QUANTIDADES DE SHOWS NECESS√ÅRIAS (BASEADAS NO LUCRO L√çQUIDO)
+    // 4. QUANTIDADES DE SHOWS NECESS¡RIAS (BASEADAS NO LUCRO LÕQUIDO)
     // -------------------------------------------------------------------------
     let showsForEssential = 0;
     let showsForLiving = 0;
@@ -191,7 +191,7 @@ export const ShowTargetSection: React.FC = () => {
   return (
     <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
       
-      {/* HEADER DA SE√á√ÉO */}
+      {/* HEADER DA SE«√O */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
@@ -207,7 +207,7 @@ export const ShowTargetSection: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              C√°lculo baseado no <strong>lucro l√≠quido real</strong> dos seus eventos (cach√™ bruto menos custos)
+              C·lculo baseado no <strong>lucro lÌquido real</strong> dos seus eventos (cachÍ bruto menos custos)
             </p>
           </div>
         </div>
@@ -221,7 +221,7 @@ export const ShowTargetSection: React.FC = () => {
         </Link>
       </div>
 
-      {/* AVISO DE BAIXA CONFIABILIDADE OU AUS√äNCIA DE EVENTOS */}
+      {/* AVISO DE BAIXA CONFIABILIDADE OU AUS NCIA DE EVENTOS */}
       {metrics.hasNoShows ? (
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 flex items-start space-x-3">
           <Info size={18} className="text-slate-400 shrink-0 mt-0.5" />
@@ -230,7 +230,7 @@ export const ShowTargetSection: React.FC = () => {
               Nenhum show ou evento cadastrado
             </h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              Para calcular o faturamento, custos e quantidade de apresenta√ß√µes necess√°rias para custear sua vida, registre seus eventos em "Gerenciar Eventos". N√£o inventamos valores estimados.
+              Para calcular o faturamento, custos e quantidade de apresentaÁıes necess·rias para custear sua vida, registre seus eventos em "Gerenciar Eventos". N„o inventamos valores estimados.
             </p>
           </div>
         </div>
@@ -239,10 +239,10 @@ export const ShowTargetSection: React.FC = () => {
           <AlertTriangle size={17} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
             <span className="text-xs font-black text-amber-800 dark:text-amber-300 block">
-              Aviso: M√©dia com baixa confiabilidade estat√≠stica
+              Aviso: MÈdia com baixa confiabilidade estatÌstica
             </span>
             <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 leading-relaxed">
-              Foram cadastrados apenas {metrics.totalShowsCount} evento(s). √Ä medida que voc√™ registrar mais apresenta√ß√µes e suas respectivas despesas reais (combust√≠vel, ped√°gio, alimenta√ß√£o, comiss√µes), as proje√ß√µes de shows se tornar√£o mais precisas.
+              Foram cadastrados apenas {metrics.totalShowsCount} evento(s). ¿ medida que vocÍ registrar mais apresentaÁıes e suas respectivas despesas reais (combustÌvel, ped·gio, alimentaÁ„o, comissıes), as projeÁıes de shows se tornar„o mais precisas.
             </p>
           </div>
         </div>
@@ -254,25 +254,25 @@ export const ShowTargetSection: React.FC = () => {
           <span className="flex items-center space-x-1.5">
             <Info size={13} className="text-amber-500 shrink-0" />
             <span>
-              {metrics.showsWithoutExpenses} evento(s) ainda n√£o t√™m custos de log√≠stica cadastrados. O lucro l√≠quido considerar√° despesas zeradas para esses eventos.
+              {metrics.showsWithoutExpenses} evento(s) ainda n„o tÍm custos de logÌstica cadastrados. O lucro lÌquido considerar· despesas zeradas para esses eventos.
             </span>
           </span>
           <Link to="/musician-shows" className="text-amber-600 font-bold hover:underline shrink-0 ml-2">
-            Lan√ßar Custos
+            LanÁar Custos
           </Link>
         </div>
       )}
 
       {/* --------------------------------------------------------------------- */}
-      {/* OS 4 INDICADORES M√âDIOS OBRIGAT√ìRIOS DO SHOW                          */}
+      {/* OS 4 INDICADORES M…DIOS OBRIGAT”RIOS DO SHOW                          */}
       {/* --------------------------------------------------------------------- */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         
-        {/* 1. N√öMERO M√âDIO DE SHOWS POR M√äS */}
+        {/* 1. N⁄MERO M…DIO DE SHOWS POR M S */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              M√©dia de Shows
+              MÈdia de Shows
             </span>
             <Calendar size={15} className="text-indigo-500" />
           </div>
@@ -282,19 +282,19 @@ export const ShowTargetSection: React.FC = () => {
               <span className="text-xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
                 {metrics.avgShowsPerMonth.toFixed(1)}
               </span>
-              <span className="text-[11px] font-bold text-slate-400">shows/m√™s</span>
+              <span className="text-[11px] font-bold text-slate-400">shows/mÍs</span>
             </div>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              Distribu√≠dos em {metrics.monthsSpan} {metrics.monthsSpan === 1 ? 'm√™s' : 'meses'}
+              DistribuÌdos em {metrics.monthsSpan} {metrics.monthsSpan === 1 ? 'mÍs' : 'meses'}
             </span>
           </div>
         </div>
 
-        {/* 2. FATURAMENTO M√âDIO POR SHOW (BRUTO) */}
+        {/* 2. FATURAMENTO M…DIO POR SHOW (BRUTO) */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Cach√™ M√©dio Bruto
+              CachÍ MÈdio Bruto
             </span>
             <ArrowUpRight size={15} className="text-emerald-500" />
           </div>
@@ -304,16 +304,16 @@ export const ShowTargetSection: React.FC = () => {
               {formatBRL(metrics.avgGrossPerShow)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              Faturamento m√©dio por evento
+              Faturamento mÈdio por evento
             </span>
           </div>
         </div>
 
-        {/* 3. CUSTOS M√âDIOS POR SHOW */}
+        {/* 3. CUSTOS M…DIOS POR SHOW */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Custos M√©dios
+              Custos MÈdios
             </span>
             <ArrowDownRight size={15} className="text-rose-500" />
           </div>
@@ -323,16 +323,16 @@ export const ShowTargetSection: React.FC = () => {
               {formatBRL(metrics.avgCostPerShow)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              Combust√≠vel, ped√°gios e taxas
+              CombustÌvel, ped·gios e taxas
             </span>
           </div>
         </div>
 
-        {/* 4. LUCRO M√âDIO L√çQUIDO POR SHOW */}
+        {/* 4. LUCRO M…DIO LÕQUIDO POR SHOW */}
         <div className="p-4 rounded-2xl bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              Lucro L√≠quido Real
+              Lucro LÌquido Real
             </span>
             <Sparkles size={15} className="text-amber-500" />
           </div>
@@ -344,7 +344,7 @@ export const ShowTargetSection: React.FC = () => {
               </span>
             </div>
             <span className="text-[10px] font-bold text-amber-700/80 dark:text-amber-400/80 block mt-0.5">
-              Margem l√≠quida: {metrics.profitMargin.toFixed(0)}% do cach√™
+              Margem lÌquida: {metrics.profitMargin.toFixed(0)}% do cachÍ
             </span>
           </div>
         </div>
@@ -352,12 +352,12 @@ export const ShowTargetSection: React.FC = () => {
       </div>
 
       {/* --------------------------------------------------------------------- */}
-      {/* AS 3 METAS DE QUANTIDADE DE SHOWS NECESS√ÅRIAS                        */}
+      {/* AS 3 METAS DE QUANTIDADE DE SHOWS NECESS¡RIAS                        */}
       {/* --------------------------------------------------------------------- */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Quantidade de Shows Necess√°ria (Meta Mensal)
+            Quantidade de Shows Necess·ria (Meta Mensal)
           </h3>
           <span className="text-[11px] text-slate-400">
             Calculado com base no lucro de <strong>{formatBRL(metrics.avgNetProfitPerShow)}/show</strong>
@@ -371,7 +371,7 @@ export const ShowTargetSection: React.FC = () => {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Degrau 1: Sobreviv√™ncia
+                  Degrau 1: SobrevivÍncia
                 </span>
                 <ShieldAlert size={16} className="text-rose-500" />
               </div>
@@ -380,19 +380,19 @@ export const ShowTargetSection: React.FC = () => {
                 Custo Essencial
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                Moradia, alimenta√ß√£o b√°sica e parcelas de d√≠vidas ativas ({formatBRL(metrics.monthlyEssentialCost)}/m√™s).
+                Moradia, alimentaÁ„o b·sica e parcelas de dÌvidas ativas ({formatBRL(metrics.monthlyEssentialCost)}/mÍs).
               </p>
             </div>
 
             <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-baseline justify-between">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                Necess√°rios:
+                Necess·rios:
               </span>
               <div className="text-right">
                 <span className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
-                  {metrics.avgNetProfitPerShow > 0 ? metrics.showsForEssential : '‚Äî'}
+                  {metrics.avgNetProfitPerShow > 0 ? metrics.showsForEssential : 'ó'}
                 </span>
-                <span className="text-xs font-bold text-slate-400 ml-1">shows/m√™s</span>
+                <span className="text-xs font-bold text-slate-400 ml-1">shows/mÍs</span>
               </div>
             </div>
           </div>
@@ -402,7 +402,7 @@ export const ShowTargetSection: React.FC = () => {
             <div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Degrau 2: Manuten√ß√£o
+                  Degrau 2: ManutenÁ„o
                 </span>
                 <TrendingUp size={16} className="text-indigo-500" />
               </div>
@@ -411,19 +411,19 @@ export const ShowTargetSection: React.FC = () => {
                 Custo de Vida Atual
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                Estilo de vida atual completo com lazer, assinaturas e d√≠vidas ({formatBRL(metrics.monthlyCurrentLivingCost)}/m√™s).
+                Estilo de vida atual completo com lazer, assinaturas e dÌvidas ({formatBRL(metrics.monthlyCurrentLivingCost)}/mÍs).
               </p>
             </div>
 
             <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-baseline justify-between">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                Necess√°rios:
+                Necess·rios:
               </span>
               <div className="text-right">
                 <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
-                  {metrics.avgNetProfitPerShow > 0 ? metrics.showsForLiving : '‚Äî'}
+                  {metrics.avgNetProfitPerShow > 0 ? metrics.showsForLiving : 'ó'}
                 </span>
-                <span className="text-xs font-bold text-slate-400 ml-1">shows/m√™s</span>
+                <span className="text-xs font-bold text-slate-400 ml-1">shows/mÍs</span>
               </div>
             </div>
           </div>
@@ -440,7 +440,7 @@ export const ShowTargetSection: React.FC = () => {
 
               <div className="flex items-center justify-between mt-1">
                 <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                  Vida + Poupan√ßa
+                  Vida + PoupanÁa
                 </h4>
                 <div className="flex items-center space-x-1">
                   <span className="text-[10px] font-bold text-slate-400">Meta:</span>
@@ -454,19 +454,19 @@ export const ShowTargetSection: React.FC = () => {
               </div>
 
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                Pagar todo o custo de vida ({formatBRL(metrics.monthlyCurrentLivingCost)}) e poupar {formatBRL(metrics.activeMonthlySavingsTarget)}/m√™s.
+                Pagar todo o custo de vida ({formatBRL(metrics.monthlyCurrentLivingCost)}) e poupar {formatBRL(metrics.activeMonthlySavingsTarget)}/mÍs.
               </p>
             </div>
 
             <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/60 flex items-baseline justify-between">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                Necess√°rios:
+                Necess·rios:
               </span>
               <div className="text-right">
                 <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  {metrics.avgNetProfitPerShow > 0 ? metrics.showsForLivingAndSavings : '‚Äî'}
+                  {metrics.avgNetProfitPerShow > 0 ? metrics.showsForLivingAndSavings : 'ó'}
                 </span>
-                <span className="text-xs font-bold text-slate-400 ml-1">shows/m√™s</span>
+                <span className="text-xs font-bold text-slate-400 ml-1">shows/mÍs</span>
               </div>
             </div>
           </div>
@@ -474,12 +474,12 @@ export const ShowTargetSection: React.FC = () => {
         </div>
       </div>
 
-      {/* RODAP√â EXPLICATIVO */}
+      {/* RODAP… EXPLICATIVO */}
       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
         <div className="flex items-center space-x-1.5">
           <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
           <span>
-            Os c√°lculos consideram estritamente o lucro l√≠quido m√©dio apurado ({formatBRL(metrics.avgNetProfitPerShow)}). Cach√™s brutos foram deduzidos das despesas operacionais cadastradas.
+            Os c·lculos consideram estritamente o lucro lÌquido mÈdio apurado ({formatBRL(metrics.avgNetProfitPerShow)}). CachÍs brutos foram deduzidos das despesas operacionais cadastradas.
           </span>
         </div>
       </div>
