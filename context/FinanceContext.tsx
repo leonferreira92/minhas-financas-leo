@@ -16,6 +16,11 @@ import {
 } from '../services/balanceEngine';
 import { isGoalMovement, isTransferMovement } from '../services/aiReportService';
 import {
+  applyPersonalCutoffMigration,
+  ensureLegacyArchiveMarkers,
+  LEGACY_MIGRATION_FLAG
+} from '../services/legacyCutoffMigration';
+import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
   resolveDefaultPersonalDebtCategoryId,
@@ -590,7 +595,46 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // 2. Escutador em tempo real: Transações / Lançamentos
     const unsubTransactions = subscribeToUserTransactions(uid, (cloudTxs) => {
       setAccounts(currentAccs => {
-        const normalizedTxs = deduplicateItemsById(cloudTxs).map(t => normalizeTransactionRecord(t, currentAccs));
+        let normalizedTxs = deduplicateItemsById(cloudTxs).map(t =>
+          normalizeTransactionRecord(t, currentAccs)
+        );
+        const st = StorageService.getSettings();
+
+        if (st.legacyPersonalCutoffApplied === LEGACY_MIGRATION_FLAG) {
+          const marked = ensureLegacyArchiveMarkers(normalizedTxs);
+          normalizedTxs = marked.transactions;
+          if (marked.changed) {
+            marked.transactions
+              .filter(t => t.legacyArchived)
+              .forEach(t => {
+                void saveTransactionToFirestore(uid, t);
+              });
+          }
+        } else {
+          const mig = applyPersonalCutoffMigration({
+            accounts: currentAccs,
+            transactions: normalizedTxs,
+            alreadyAppliedFlag: st.legacyPersonalCutoffApplied
+          });
+          if (mig.applied) {
+            normalizedTxs = mig.transactions;
+            StorageService.saveAccounts(mig.accounts);
+            const newSt = { ...st, legacyPersonalCutoffApplied: LEGACY_MIGRATION_FLAG };
+            StorageService.saveSettings(newSt);
+            setSettings(newSt);
+            mig.accounts.forEach(a => {
+              void saveAccountToFirestore(uid, a);
+            });
+            mig.transactions.forEach(t => {
+              void saveTransactionToFirestore(uid, t);
+            });
+            void saveSettingsToFirestore(uid, newSt);
+            setTransactions(normalizedTxs);
+            StorageService.saveTransactions(normalizedTxs);
+            return mig.accounts;
+          }
+        }
+
         setTransactions(normalizedTxs);
         StorageService.saveTransactions(normalizedTxs);
         return currentAccs;
@@ -772,7 +816,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const storedDebts = StorageService.getDebts();
     let storedAccounts = loadPersistedAccountsRaw();
     const storedBudgets = StorageService.getBudgets();
-    const storedSettings = StorageService.getSettings();
+    let storedSettings = StorageService.getSettings();
 
     // =========================================================================
     // DIRETRIZ: UNIFICAÇÃO AUTOMÁTICA DE CATEGORIAS DUPLICADAS (MIGRATION)
@@ -1019,15 +1063,58 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.info('[FinanceContext] Contas empresa locais arquivadas (enabled:false). Transações preservadas.');
     }
 
+    // Corte 01/10/2026: congela abertura, arquiva pré-corte e cancela pendências show/empresa
+    let finalTransactions = normalizedTransactions;
+    const cutoffMig = applyPersonalCutoffMigration({
+      accounts: storedAccounts,
+      transactions: finalTransactions,
+      alreadyAppliedFlag: storedSettings.legacyPersonalCutoffApplied
+    });
+    if (cutoffMig.applied) {
+      storedAccounts = cutoffMig.accounts;
+      finalTransactions = cutoffMig.transactions;
+      storedSettings = {
+        ...storedSettings,
+        legacyPersonalCutoffApplied: LEGACY_MIGRATION_FLAG
+      };
+      console.info('[legacyCutoff] Migração aplicada', {
+        paidBeforeCutoff: cutoffMig.report.paidBeforeCutoff,
+        pendingBeforeCutoff: cutoffMig.report.pendingBeforeCutoff,
+        showCareerPending: cutoffMig.report.showCareerPendingAnyDate,
+        balancesMatch: cutoffMig.report.balancesMatch,
+        maxDrift: cutoffMig.report.maxBalanceDrift,
+        opening: cutoffMig.report.openingByAccount.map(a => ({
+          name: a.name,
+          opening: a.openingBalance
+        })),
+        sampleJunk: cutoffMig.report.samplePendingJunk
+      });
+      if (currentUser) {
+        const uid = currentUser.uid;
+        cutoffMig.accounts.forEach(a => {
+          void saveAccountToFirestore(uid, a);
+        });
+        cutoffMig.transactions.forEach(t => {
+          void saveTransactionToFirestore(uid, t);
+        });
+        void saveSettingsToFirestore(uid, {
+          ...storedSettings,
+          legacyPersonalCutoffApplied: LEGACY_MIGRATION_FLAG
+        });
+      }
+    } else if (cutoffMig.alreadyApplied) {
+      console.info('[legacyCutoff] Já aplicada — saldos/painel usam só pós-01/10 + pessoal');
+    }
+
     StorageService.saveShows(normalizedShows);
-    StorageService.saveTransactions(normalizedTransactions);
+    StorageService.saveTransactions(finalTransactions);
     StorageService.saveAccounts(storedAccounts);
 
     setCategories(finalCategories);
     setDebts(storedDebts);
     setAccounts(storedAccounts);
     setBudgets(storedBudgets);
-    setTransactions(normalizedTransactions);
+    setTransactions(finalTransactions);
     setShows(normalizedShows);
     setVenues(StorageService.getVenues());
     setCrew(StorageService.getCrew());
@@ -1181,7 +1268,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
 
     transactions.forEach(t => {
-      if (!t || t.status !== 'paid') return;
+      if (!t || t.status !== 'paid' || t.legacyArchived) return;
       const amt = Math.abs(Number(t.amount) || 0);
       if (amt === 0) return;
 

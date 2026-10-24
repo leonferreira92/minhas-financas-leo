@@ -91,7 +91,15 @@ export const PlanningScreen = () => {
   // B) DINHEIRO COMPROMETIDO (Despesas e dívidas pendentes no mês selecionado)
   const monthPendingExpenses = useMemo(() => {
     return transactions
-      .filter(t => t.date.startsWith(selectedMonth) && t.type === 'expense' && t.status === 'pending')
+      .filter(
+        t =>
+          !t.legacyArchived &&
+          t.scope !== 'BUSINESS' &&
+          !t.showId &&
+          t.date.startsWith(selectedMonth) &&
+          t.type === 'expense' &&
+          t.status === 'pending'
+      )
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [transactions, selectedMonth]);
 
@@ -113,7 +121,15 @@ export const PlanningScreen = () => {
 
   const monthPendingIncomes = useMemo(() => {
     return transactions
-      .filter(t => t.date.startsWith(selectedMonth) && t.type === 'income' && t.status === 'pending')
+      .filter(
+        t =>
+          !t.legacyArchived &&
+          t.scope !== 'BUSINESS' &&
+          !t.showId &&
+          t.date.startsWith(selectedMonth) &&
+          t.type === 'income' &&
+          t.status === 'pending'
+      )
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [transactions, selectedMonth]);
 
@@ -123,7 +139,14 @@ export const PlanningScreen = () => {
 
   const monthPaidExpenses = useMemo(() => {
     return transactions
-      .filter(t => t.date.startsWith(selectedMonth) && t.type === 'expense' && t.status === 'paid')
+      .filter(
+        t =>
+          !t.legacyArchived &&
+          t.scope !== 'BUSINESS' &&
+          t.date.startsWith(selectedMonth) &&
+          t.type === 'expense' &&
+          t.status === 'paid'
+      )
       .reduce((sum, t) => sum + Number(t.amount), 0);
   }, [transactions, selectedMonth]);
 

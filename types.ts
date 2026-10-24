@@ -118,6 +118,11 @@ export interface Transaction {
   importedFromBank?: boolean;
   originalBankDescription?: string;
   bankFitId?: string;
+  /**
+   * Soft-archive: não entra em saldo/painel/orçamento.
+   * Usado no corte 01/10/2026 (legado empresa/shows + pré-corte).
+   */
+  legacyArchived?: boolean;
 }
 
 export interface SystemAlert {
@@ -174,6 +179,8 @@ export interface AppSettings {
   financialSettings?: FinancialSettings;
   personalDefaultAccountId?: string;
   businessDefaultAccountId?: string;
+  /** Flag da migração de corte pessoal (ex.: '2026-10-01') */
+  legacyPersonalCutoffApplied?: string;
 }
 
 export interface ShowExpenses {

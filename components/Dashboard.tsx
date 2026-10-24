@@ -125,7 +125,7 @@ export const Dashboard: React.FC = () => {
     let pendingExpense = 0;
 
     transactions.forEach(t => {
-      if (t.type !== 'expense' || t.status === 'cancelled') return;
+      if (t.type !== 'expense' || t.status === 'cancelled' || t.legacyArchived) return;
       if (!t.date || !t.date.startsWith(currentMonthStr)) return;
       if (!matchesScope(t.scope, activeScope)) return;
 
@@ -164,7 +164,12 @@ export const Dashboard: React.FC = () => {
   // Transações Recentes
   const recentTransactions = useMemo(() => {
     return transactions
-      .filter(t => matchesScope(t.scope, activeScope) && t.status !== 'cancelled')
+      .filter(
+        t =>
+          matchesScope(t.scope, activeScope) &&
+          t.status !== 'cancelled' &&
+          !t.legacyArchived
+      )
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0))
       .slice(0, 5);
   }, [transactions, activeScope]);

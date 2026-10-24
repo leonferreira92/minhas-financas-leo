@@ -2,6 +2,7 @@ import { Account, ScopeType, Transaction } from '../types';
 import { getAccountVinculo } from './financeAggregator';
 import { isGoalMovement, isTransferMovement } from './aiReportService';
 import { getCurrentMonthPrefix, getLocalDateString } from './dateUtils';
+import { isLegacyArchivedTx, isShowOrCareerTransaction, PERSONAL_CUTOFF_DATE } from './legacyCutoffMigration';
 
 export type BalanceFn = (accountId: string) => number;
 
@@ -33,7 +34,18 @@ export const lastDayOfMonthPrefix = (monthPrefix: string): string => {
 };
 
 const isCashFlowTx = (t: Transaction): boolean =>
-  t.status !== 'cancelled' && !isTransferMovement(t) && !isGoalMovement(t);
+  t.status !== 'cancelled' &&
+  !isLegacyArchivedTx(t) &&
+  !isTransferMovement(t) &&
+  !isGoalMovement(t) &&
+  !isShowOrCareerTransaction(t);
+
+/** Fluxo do painel: só pessoal ativo (pós-corte implícito via legacyArchived). */
+const isPersonalCashFlowTx = (t: Transaction): boolean => {
+  if (!isCashFlowTx(t)) return false;
+  if (t.scope === 'BUSINESS') return false;
+  return true;
+};
 
 /**
  * Soma saldos pagos (regime de caixa) das contas filtradas.
@@ -101,7 +113,10 @@ export const computeHomeBalanceSnapshot = (params: {
   const totalPersonal = parseFloat((cashToday + savingsTotal).toFixed(2));
 
   const monthFlow = params.transactions.filter(
-    t => isCashFlowTx(t) && t.date?.startsWith(monthPrefix)
+    t =>
+      isPersonalCashFlowTx(t) &&
+      t.date?.startsWith(monthPrefix) &&
+      t.date >= PERSONAL_CUTOFF_DATE
   );
 
   const paidIncomeMonth = monthFlow
@@ -113,14 +128,15 @@ export const computeHomeBalanceSnapshot = (params: {
     .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
 
   /**
-   * Pendentes que ainda afetam o caixa até o fim do mês:
-   * - qualquer pendente com date <= fim do mês (inclui atraso deste e de meses anteriores)
+   * Pendentes pessoais do mês (e atrasados pessoais só se data >= corte 01/10/2026).
+   * Legado empresa/pré-corte não entra (legacyArchived / show).
    */
   const pendingAffectingMonth = params.transactions.filter(
     t =>
-      isCashFlowTx(t) &&
+      isPersonalCashFlowTx(t) &&
       t.status === 'pending' &&
       !!t.date &&
+      t.date >= PERSONAL_CUTOFF_DATE &&
       t.date <= monthEnd &&
       (t.type === 'income' || t.type === 'expense')
   );

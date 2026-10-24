@@ -103,7 +103,7 @@ export const ExtratoScreen: React.FC = () => {
     const normTerm = normalizeSearchText(searchTerm);
 
     return transactions.filter(t => {
-      if (!t || t.status === 'cancelled') return false;
+      if (!t || t.status === 'cancelled' || t.legacyArchived) return false;
 
       // 1. Filtro por Conta (independente da pílula ativa, respeita a conta selecionada)
       if (selectedAccountId !== 'all') {

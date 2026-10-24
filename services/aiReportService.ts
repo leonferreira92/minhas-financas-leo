@@ -180,8 +180,9 @@ export const getPeriodDateRange = (
  * REGRA: Transferências não são receitas nem despesas. Devem ser excluídas.
  */
 export const isTransferMovement = (t: Transaction): boolean => {
-  return t.type === 'transfer' || t.categoryId === 'cat_transfer' || Boolean(t.destinationAccountId);
-};
+  // Só transferência explícita — destinationAccountId sozinho NÃO basta
+  // (receitas com conta destino eram excluídas do painel por engano)
+  return t.type === 'transfer' || t.categoryId === 'cat_transfer';};
 
 /**
  * 2. ECONOMIA / RESERVA
