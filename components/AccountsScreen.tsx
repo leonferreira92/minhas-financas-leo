@@ -10,6 +10,7 @@ import { Account, AccountType, ScopeType } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { parseCurrencyInput } from '../services/financeAggregator';
 import { isAccountActive } from '../context/FinanceContext';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 export const AccountsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -56,7 +57,8 @@ export const AccountsScreen: React.FC = () => {
     if (!newAccName.trim()) return;
 
     const initialBal = parseCurrencyInput(newAccBalance);
-    const finalScope: ScopeType = newAccVinculo === 'MUSICO' ? 'BUSINESS' : newAccVinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH';
+    const vinculo = PERSONAL_ONLY_MODE ? 'PESSOAL' : newAccVinculo;
+    const finalScope: ScopeType = vinculo === 'MUSICO' ? 'BUSINESS' : vinculo === 'PESSOAL' ? 'PERSONAL' : 'BOTH';
 
     addAccount({
       name: newAccName.trim(),
@@ -65,7 +67,7 @@ export const AccountsScreen: React.FC = () => {
       initialBalance: initialBal,
       enabled: true,
       scope: finalScope,
-      vinculo: newAccVinculo
+      vinculo
     });
 
     setNewAccName('');
@@ -188,69 +190,71 @@ export const AccountsScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* LISTA DE CONTAS DA MÚSICA / CARREIRA */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-            <Music size={14} className="text-[#fcca00]" />
-            <span>Contas de Música & Shows</span>
-          </h3>
-          <span className="text-[10px] text-zinc-400 font-bold">{musicAccounts.length} contas</span>
-        </div>
-
-        {musicAccounts.length === 0 ? (
-          <div className="p-4 rounded-2xl bg-zinc-900 border border-dashed border-zinc-800 text-center text-xs text-zinc-400">
-            Nenhuma conta vinculada exclusivamente à carreira. Crie uma para isolar o caixa dos shows!
+      {/* LISTA DE CONTAS DA MÚSICA / CARREIRA — oculto na Fase 1 (contas arquivadas) */}
+      {!PERSONAL_ONLY_MODE && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+              <Music size={14} className="text-[#fcca00]" />
+              <span>Contas de Música & Shows</span>
+            </h3>
+            <span className="text-[10px] text-zinc-400 font-bold">{musicAccounts.length} contas</span>
           </div>
-        ) : (
-          <div className="space-y-2.5">
-            {musicAccounts.map(acc => {
-              const Icon = getAccountIcon(acc.type);
-              const balance = getAccountBalance(acc.id);
-              return (
-                <div 
-                  key={acc.id}
-                  onClick={() => setSelectedAccountForEdit(acc)}
-                  className="p-4 rounded-2xl bg-[#18181b] border border-amber-900/30 hover:border-amber-700/60 transition flex items-center justify-between cursor-pointer group shadow-xs active:scale-[0.99]"
-                >
-                  <div className="flex items-center space-x-3.5 min-w-0">
-                    <div 
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner bg-amber-500/10 text-[#fcca00]"
-                    >
-                      <Icon size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center space-x-1.5">
-                        <span className="text-sm font-black text-white group-hover:text-[#fcca00] transition truncate">
-                          {acc.name}
-                        </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
-                          Música
+
+          {musicAccounts.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-zinc-900 border border-dashed border-zinc-800 text-center text-xs text-zinc-400">
+              Nenhuma conta vinculada exclusivamente à carreira. Crie uma para isolar o caixa dos shows!
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {musicAccounts.map(acc => {
+                const Icon = getAccountIcon(acc.type);
+                const balance = getAccountBalance(acc.id);
+                return (
+                  <div 
+                    key={acc.id}
+                    onClick={() => setSelectedAccountForEdit(acc)}
+                    className="p-4 rounded-2xl bg-[#18181b] border border-amber-900/30 hover:border-amber-700/60 transition flex items-center justify-between cursor-pointer group shadow-xs active:scale-[0.99]"
+                  >
+                    <div className="flex items-center space-x-3.5 min-w-0">
+                      <div 
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner bg-amber-500/10 text-[#fcca00]"
+                      >
+                        <Icon size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-sm font-black text-white group-hover:text-[#fcca00] transition truncate">
+                            {acc.name}
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
+                            Música
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-zinc-400 capitalize block">
+                          Caixa Profissional
                         </span>
                       </div>
-                      <span className="text-[10px] text-zinc-400 capitalize block">
-                        Caixa Profissional
-                      </span>
                     </div>
-                  </div>
 
-                  <div className="text-right shrink-0 flex items-center space-x-2">
-                    <div>
-                      <span className="text-sm font-black text-white block">
-                        {formatCurrency(balance)}
-                      </span>
-                      <span className="text-[10px] text-[#fcca00] flex items-center justify-end gap-1 font-semibold">
-                        <Pencil size={10} /> Ajustar Saldo
-                      </span>
+                    <div className="text-right shrink-0 flex items-center space-x-2">
+                      <div>
+                        <span className="text-sm font-black text-white block">
+                          {formatCurrency(balance)}
+                        </span>
+                        <span className="text-[10px] text-[#fcca00] flex items-center justify-end gap-1 font-semibold">
+                          <Pencil size={10} /> Ajustar Saldo
+                        </span>
+                      </div>
+                      <ChevronRight size={16} className="text-zinc-400 group-hover:text-white transition" />
                     </div>
-                    <ChevronRight size={16} className="text-zinc-400 group-hover:text-white transition" />
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* MODAL PARA CADASTRO DE NOVA CONTA */}
       {isNewAccountModalOpen && (
@@ -272,7 +276,7 @@ export const AccountsScreen: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${PERSONAL_ONLY_MODE ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <div>
                   <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Tipo</label>
                   <select
@@ -287,18 +291,20 @@ export const AccountsScreen: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Vínculo</label>
-                  <select
-                    value={newAccVinculo}
-                    onChange={e => setNewAccVinculo(e.target.value as any)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-sm focus:border-blue-500 outline-none"
-                  >
-                    <option value="PESSOAL">Pessoal / Família</option>
-                    <option value="MUSICO">Músico / Shows</option>
-                    <option value="NEUTRO">Neutro (Ambos)</option>
-                  </select>
-                </div>
+                {!PERSONAL_ONLY_MODE && (
+                  <div>
+                    <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Vínculo</label>
+                    <select
+                      value={newAccVinculo}
+                      onChange={e => setNewAccVinculo(e.target.value as 'PESSOAL' | 'MUSICO' | 'NEUTRO')}
+                      className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-sm focus:border-blue-500 outline-none"
+                    >
+                      <option value="PESSOAL">Pessoal / Família</option>
+                      <option value="MUSICO">Músico / Shows</option>
+                      <option value="NEUTRO">Neutro (Ambos)</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>

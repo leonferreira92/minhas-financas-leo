@@ -17,6 +17,7 @@ import { ShowFormModal } from './shows/ShowFormModal';
 import { getAccountVinculo, getMonthlyCareerMetrics } from '../services/financeAggregator';
 import { getIcon } from '../constants';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -42,9 +43,11 @@ export const Dashboard: React.FC = () => {
   const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  // Carousel Active Card: 0 = Pessoal/Consolidado, 1 = Músico/Shows, 2 = Dívidas/Passivos
+  // Carousel: 0 = Pessoal | (opcional) 1 = Músico | último = Dívidas
+  const maxCardIndex = PERSONAL_ONLY_MODE ? 1 : 2;
+  const debtsCardIndex = PERSONAL_ONLY_MODE ? 1 : 2;
   const [activeCardIndex, setActiveCardIndex] = useState(
-    activeScope === 'BUSINESS' ? 1 : 0
+    PERSONAL_ONLY_MODE ? 0 : (activeScope === 'BUSINESS' ? 1 : 0)
   );
 
   const carouselRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.4 });
@@ -169,11 +172,13 @@ export const Dashboard: React.FC = () => {
   // Sincroniza o contexto de escopo ao mudar de card no carrossel
   const handleSelectCard = (index: number) => {
     setActiveCardIndex(index);
-    if (index === 0) {
+    if (PERSONAL_ONLY_MODE) {
+      setActiveScope('PERSONAL');
+    } else if (index === 0) {
       setActiveScope('PERSONAL');
     } else if (index === 1) {
       setActiveScope('BUSINESS');
-    } else if (index === 2) {
+    } else {
       setActiveScope('ALL');
     }
 
@@ -192,11 +197,12 @@ export const Dashboard: React.FC = () => {
     const scrollLeft = carouselRef.current.scrollLeft;
     const cardWidth = carouselRef.current.offsetWidth * 0.85;
     const newIdx = Math.round(scrollLeft / cardWidth);
-    if (newIdx !== activeCardIndex && newIdx >= 0 && newIdx <= 2) {
+    if (newIdx !== activeCardIndex && newIdx >= 0 && newIdx <= maxCardIndex) {
       setActiveCardIndex(newIdx);
-      if (newIdx === 0) setActiveScope('PERSONAL');
+      if (PERSONAL_ONLY_MODE) setActiveScope('PERSONAL');
+      else if (newIdx === 0) setActiveScope('PERSONAL');
       else if (newIdx === 1) setActiveScope('BUSINESS');
-      else if (newIdx === 2) setActiveScope('ALL');
+      else setActiveScope('ALL');
     }
   };
 
@@ -325,69 +331,70 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* CARD 2 (VISÃO MÚSICO / SHOWS) */}
-            <div 
-              onClick={() => handleSelectCard(1)}
-              className={`snap-center shrink-0 w-[92%] sm:w-[94%] p-5 rounded-3xl transition-all duration-300 shadow-xl cursor-pointer ${
-                activeCardIndex === 1
-                  ? 'bg-gradient-to-br from-[#1c1917] via-[#292524] to-[#121214] border border-[#fcca00]/70 ring-1 ring-[#fcca00]/40'
-                  : 'bg-zinc-900/90 border border-zinc-800 opacity-75'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider font-black text-amber-200 flex items-center gap-1.5">
-                  <Music size={14} className="text-[#fcca00]" />
-                  Visão Músico / Shows
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
-                  Carreira
-                </span>
-              </div>
+            {/* CARD 2 (VISÃO MÚSICO / SHOWS) — oculto na Fase 1 */}
+            {!PERSONAL_ONLY_MODE && (
+              <div 
+                onClick={() => handleSelectCard(1)}
+                className={`snap-center shrink-0 w-[92%] sm:w-[94%] p-5 rounded-3xl transition-all duration-300 shadow-xl cursor-pointer ${
+                  activeCardIndex === 1
+                    ? 'bg-gradient-to-br from-[#1c1917] via-[#292524] to-[#121214] border border-[#fcca00]/70 ring-1 ring-[#fcca00]/40'
+                    : 'bg-zinc-900/90 border border-zinc-800 opacity-75'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-wider font-black text-amber-200 flex items-center gap-1.5">
+                    <Music size={14} className="text-[#fcca00]" />
+                    Visão Músico / Shows
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
+                    Carreira
+                  </span>
+                </div>
 
-              <div className="mt-3">
-                <h2 className="text-3xl font-black text-[#fcca00] tracking-tight">
-                  {formatCurrency(musicCash)}
-                </h2>
-                <div className="flex items-center space-x-2 text-[10px] text-zinc-300 mt-1 font-medium">
-                  <span>A receber no mês:</span>
-                  <span className="font-bold text-emerald-400">+{formatCurrency(monthMusicReceivables)}</span>
+                <div className="mt-3">
+                  <h2 className="text-3xl font-black text-[#fcca00] tracking-tight">
+                    {formatCurrency(musicCash)}
+                  </h2>
+                  <div className="flex items-center space-x-2 text-[10px] text-zinc-300 mt-1 font-medium">
+                    <span>A receber no mês:</span>
+                    <span className="font-bold text-emerald-400">+{formatCurrency(monthMusicReceivables)}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-zinc-800">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate('/shows'); }}
+                    className="py-2 px-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
+                    title="Abrir Módulo Sou Artista"
+                  >
+                    <Music size={13} />
+                    <span>Carreira</span>
+                  </button>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setIsNewShowModalOpen(true); }}
+                    className="py-2 px-2 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-zinc-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
+                  >
+                    <Plus size={13} />
+                    <span>Novo Show</span>
+                  </button>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenAddMusicExpense(); }}
+                    className="py-2 px-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
+                  >
+                    <Plus size={13} />
+                    <span>Despesa</span>
+                  </button>
                 </div>
               </div>
+            )}
 
-              {/* Botões de Ação Rápida */}
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-zinc-800">
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigate('/shows'); }}
-                  className="py-2 px-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
-                  title="Abrir Módulo Sou Artista"
-                >
-                  <Music size={13} />
-                  <span>Carreira</span>
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); setIsNewShowModalOpen(true); }}
-                  className="py-2 px-2 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-zinc-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
-                >
-                  <Plus size={13} />
-                  <span>Novo Show</span>
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleOpenAddMusicExpense(); }}
-                  className="py-2 px-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
-                >
-                  <Plus size={13} />
-                  <span>Despesa</span>
-                </button>
-              </div>
-            </div>
-
-            {/* CARD 3 (VISÃO PASSIVOS & DÍVIDAS) */}
+            {/* CARD Dívidas (índice 2 no modo completo; 1 no só pessoal) */}
             <div 
-              onClick={() => handleSelectCard(2)}
+              onClick={() => handleSelectCard(debtsCardIndex)}
               className={`snap-center shrink-0 w-[92%] sm:w-[94%] p-5 rounded-3xl transition-all duration-300 shadow-xl cursor-pointer ${
-                activeCardIndex === 2
+                activeCardIndex === debtsCardIndex
                   ? 'bg-gradient-to-br from-[#1a1114] via-[#241318] to-[#120a0d] border border-rose-500/60 ring-1 ring-rose-500/40'
                   : 'bg-zinc-900/90 border border-zinc-800 opacity-75'
               }`}
@@ -436,7 +443,7 @@ export const Dashboard: React.FC = () => {
 
           {/* Dots Indicadores do Carrossel */}
           <div className="flex items-center justify-center space-x-1.5 mt-3">
-            {[0, 1, 2].map(idx => (
+            {Array.from({ length: maxCardIndex + 1 }, (_, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSelectCard(idx)}
@@ -476,16 +483,16 @@ export const Dashboard: React.FC = () => {
               </span>
             </button>
 
-            {/* 2. Agenda Shows */}
+            {/* 2. Contas (substitui Agenda Shows na Fase 1) */}
             <button
-              onClick={() => navigate('/shows')}
+              onClick={() => navigate('/contas')}
               className="p-3 rounded-2xl bg-[#141416] hover:bg-zinc-800/80 border border-zinc-800 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-[#fcca00] group-hover:bg-amber-500 group-hover:text-zinc-950 flex items-center justify-center mb-1.5 transition">
-                <Music size={18} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-zinc-950 flex items-center justify-center mb-1.5 transition">
+                <Landmark size={18} />
               </div>
               <span className="text-[11px] font-bold text-zinc-200 group-hover:text-white leading-tight">
-                Agenda Shows
+                Contas
               </span>
             </button>
 
@@ -795,8 +802,8 @@ export const Dashboard: React.FC = () => {
         />
       )}
 
-      {/* MODAL DE NOVO SHOW */}
-      {isNewShowModalOpen && (
+      {/* MODAL DE NOVO SHOW — desativado na Fase 1 */}
+      {!PERSONAL_ONLY_MODE && isNewShowModalOpen && (
         <ShowFormModal
           isOpen={isNewShowModalOpen}
           onClose={() => setIsNewShowModalOpen(false)}

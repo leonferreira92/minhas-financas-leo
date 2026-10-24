@@ -1,8 +1,9 @@
 import React from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { ActiveScopeFilter } from '../types';
-import { RefreshCw, User, Music } from 'lucide-react';
+import { RefreshCw, User } from 'lucide-react';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 interface Props {
   className?: string;
@@ -13,6 +14,10 @@ interface Props {
 export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fullWidth = false }) => {
   const { activeScope, setActiveScope } = useFinance();
   const scrollRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
+
+  if (PERSONAL_ONLY_MODE) {
+    return null;
+  }
 
   const options: { id: ActiveScopeFilter; label: string; icon: React.ReactNode; activeClass: string }[] = [
     { 
@@ -26,12 +31,6 @@ export const ScopeSelector: React.FC<Props> = ({ className = '', size = 'md', fu
       label: 'Pessoal', 
       icon: <User size={size === 'sm' ? 11 : 13} className="shrink-0" />,
       activeClass: 'bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20'
-    },
-    { 
-      id: 'BUSINESS', 
-      label: 'Empresa (Shows)', 
-      icon: <Music size={size === 'sm' ? 11 : 13} className="shrink-0" />,
-      activeClass: 'bg-purple-500 text-white font-black shadow-md shadow-purple-500/20'
     }
   ];
 

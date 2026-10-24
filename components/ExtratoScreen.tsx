@@ -15,6 +15,7 @@ import { BankImportModal } from './BankImportModal';
 import { ScopeSelector } from './ScopeSelector';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 
@@ -544,7 +545,7 @@ export const ExtratoScreen: React.FC = () => {
           { id: 'all', label: 'Tudo' },
           { id: 'paid', label: 'Realizado / Efetivado' },
           { id: 'pending', label: 'Pendente / Futuro' },
-          { id: 'shows', label: 'Shows' },
+          ...(!PERSONAL_ONLY_MODE ? [{ id: 'shows', label: 'Shows' }] : []),
           { id: 'accounts', label: 'Por Conta' }
         ].map(pill => {
           const isActive = statusFilter === pill.id;

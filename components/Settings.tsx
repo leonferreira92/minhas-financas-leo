@@ -16,6 +16,7 @@ import { Account, DashboardWidgetConfig } from '../types';
 import { parseCurrencyInput } from '../constants';
 import { loadBackupIntoStorage } from '../services/backupImporter';
 import { applyOfficialBackupRestore } from '../services/safeRecovery';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 export const Settings = () => {
   const { 
@@ -373,27 +374,31 @@ export const Settings = () => {
                   <span className="text-[9px] text-zinc-400 block">Usada por padrão em despesas e compras pessoais</span>
                 </div>
 
-                {/* Conta Padrão Empresa */}
-                <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
-                  <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-1">
-                    <Music size={12} />
-                    <span>Conta Padrão Empresa (Shows)</span>
-                  </label>
-                  <select
-                    value={settings.businessDefaultAccountId || 'acc_mp'}
-                    onChange={e => updateSettings({ businessDefaultAccountId: e.target.value })}
-                    className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-purple-500"
-                  >
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
-                    ))}
-                  </select>
-                  <span className="text-[9px] text-zinc-400 block">Usada por padrão para recebimentos e custos de shows</span>
-                </div>
+                {/* Conta Padrão Empresa — ocultada na Fase 1 (app só pessoal) */}
+                {!PERSONAL_ONLY_MODE && (
+                  <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
+                    <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-1">
+                      <Music size={12} />
+                      <span>Conta Padrão Empresa (Shows)</span>
+                    </label>
+                    <select
+                      value={settings.businessDefaultAccountId || 'acc_mp'}
+                      onChange={e => updateSettings({ businessDefaultAccountId: e.target.value })}
+                      className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-purple-500"
+                    >
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>{acc.name}</option>
+                      ))}
+                    </select>
+                    <span className="text-[9px] text-zinc-400 block">Usada por padrão para recebimentos e custos de shows</span>
+                  </div>
+                )}
               </div>
-              <p className="text-[10px] text-zinc-400">
-                💡 A <strong>Carteira (Dinheiro)</strong> pertence ao Pessoal, mas pode receber entradas de shows quando pago em espécie no evento.
-              </p>
+              {!PERSONAL_ONLY_MODE && (
+                <p className="text-[10px] text-zinc-400">
+                  💡 A <strong>Carteira (Dinheiro)</strong> pertence ao Pessoal, mas pode receber entradas de shows quando pago em espécie no evento.
+                </p>
+              )}
            </div>
 
            {/* Settings Grid */}

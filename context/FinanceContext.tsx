@@ -68,6 +68,10 @@ import {
   isCloudSyncPendingAfterRestore,
   clearCloudSyncPending
 } from '../services/safeRecovery';
+import {
+  PERSONAL_ONLY_MODE,
+  archiveCompanyAccounts
+} from '../services/personalOnlyMode';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -536,9 +540,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         setAccounts(StorageService.getAccounts().filter(isAccountActive));
         return;
       }
-      const cleanAccounts = deduplicateItemsById(cloudAccounts).filter(isAccountActive);
-      setAccounts(cleanAccounts);
+      let cleanAccounts = deduplicateItemsById(cloudAccounts);
+      if (PERSONAL_ONLY_MODE) {
+        const pack = archiveCompanyAccounts(cleanAccounts);
+        cleanAccounts = pack.accounts;
+        // Persistência soft (enabled:false) no Firestore — evita reativar no próximo sync
+        if (pack.changed) {
+          pack.archivedIds.forEach(id => {
+            const acc = cleanAccounts.find(a => a.id === id);
+            if (acc) saveAccountToFirestore(uid, acc);
+          });
+          console.info('[personalOnly] Contas empresa arquivadas (cloud):', pack.archivedIds);
+        }
+      }
       StorageService.saveAccounts(cleanAccounts);
+      setAccounts(cleanAccounts.filter(isAccountActive));
     });
 
     // 2. Escutador em tempo real: Transações / Lançamentos
@@ -650,13 +666,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   });
 
   const [activeScope, setActiveScopeState] = useState<ActiveScopeFilter>(() => {
+    if (PERSONAL_ONLY_MODE) {
+      localStorage.setItem('fin_app_scope', 'PERSONAL');
+      return 'PERSONAL';
+    }
     const saved = localStorage.getItem('fin_app_scope');
     return (saved === 'PERSONAL' || saved === 'BUSINESS') ? saved : 'PERSONAL';
   });
 
   const setActiveScope = (scope: ActiveScopeFilter) => {
-    setActiveScopeState(scope);
-    localStorage.setItem('fin_app_scope', scope);
+    // Fase 1: trava em Pessoal (módulo empresa fora da UI)
+    const next: ActiveScopeFilter = PERSONAL_ONLY_MODE ? 'PERSONAL' : scope;
+    setActiveScopeState(next);
+    localStorage.setItem('fin_app_scope', next);
   };
 
   const getDefaultAccountForScope = useCallback((scope?: ScopeType | ActiveScopeFilter): string => {
@@ -794,7 +816,23 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let storedTransactions = StorageService.getTransactions();
     let storedCategories = StorageService.getCategories();
     const storedDebts = StorageService.getDebts();
-    const storedAccounts = loadPersistedAccountsRaw();
+    // Contas completas (inclui arquivadas) — soft-archive empresa sem apagar txs
+    let allAccounts = deduplicateItemsById(StorageService.getAccounts());
+    if (PERSONAL_ONLY_MODE) {
+      const archivedPack = archiveCompanyAccounts(allAccounts);
+      if (archivedPack.changed) {
+        allAccounts = archivedPack.accounts;
+        StorageService.saveAccounts(allAccounts);
+        if (currentUser?.uid) {
+          archivedPack.archivedIds.forEach(id => {
+            const acc = allAccounts.find(a => a.id === id);
+            if (acc) saveAccountToFirestore(currentUser.uid, acc);
+          });
+        }
+        console.info('[personalOnly] Contas empresa arquivadas (enabled:false):', archivedPack.archivedIds);
+      }
+    }
+    const storedAccounts = allAccounts.filter(isAccountActive);
     const storedBudgets = StorageService.getBudgets();
     const storedSettings = StorageService.getSettings();
 
@@ -1015,11 +1053,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     StorageService.saveShows(normalizedShows);
     StorageService.saveTransactions(normalizedTransactions);
-    StorageService.saveAccounts(storedAccounts);
+    // Persistência: mantém contas arquivadas no storage; estado React só com ativas
+    const accountsToPersist = PERSONAL_ONLY_MODE
+      ? archiveCompanyAccounts(
+          deduplicateItemsById([
+            ...StorageService.getAccounts().filter(a => !isAccountActive(a)),
+            ...storedAccounts
+          ])
+        ).accounts
+      : storedAccounts;
+    StorageService.saveAccounts(accountsToPersist);
 
     setCategories(finalCategories);
     setDebts(storedDebts);
-    setAccounts(storedAccounts);
+    setAccounts(storedAccounts.filter(isAccountActive));
     setBudgets(storedBudgets);
     setTransactions(normalizedTransactions);
     setShows(normalizedShows);

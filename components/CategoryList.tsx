@@ -4,6 +4,7 @@ import { Category, TransactionType, ScopeType } from '../types';
 import { getIcon, ICON_MAP } from '../constants';
 import { Trash2, Plus, X, ChevronLeft, Lock, CheckCircle2, Search, ArrowDownCircle, ArrowUpCircle, ChevronRight, User, Music, Sparkles, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 const COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', 
@@ -16,7 +17,9 @@ export const CategoryList = () => {
   
   // UI State
   const [activeTab, setActiveTab] = useState<TransactionType>('expense');
-  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'PERSONAL' | 'BUSINESS'>('ALL');
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'PERSONAL' | 'BUSINESS'>(
+    PERSONAL_ONLY_MODE ? 'PERSONAL' : 'ALL'
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -109,45 +112,49 @@ export const CategoryList = () => {
           </Link>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white">Categorias</h1>
-            <p className="text-[11px] text-slate-400 font-medium">Organização exclusiva por módulo (Pessoal vs Músico)</p>
+            <p className="text-[11px] text-slate-400 font-medium">
+              {PERSONAL_ONLY_MODE ? 'Organização das categorias pessoais' : 'Organização exclusiva por módulo (Pessoal vs Músico)'}
+            </p>
           </div>
         </div>
 
-        {/* --- Filtro de Módulo (Pessoal vs Músico) --- */}
-        <div className="bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-2xl grid grid-cols-3 gap-1 mb-2">
-          <button
-            onClick={() => setScopeFilter('ALL')}
-            className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
-              scopeFilter === 'ALL'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-            }`}
-          >
-            <span>Todas</span>
-          </button>
-          <button
-            onClick={() => setScopeFilter('PERSONAL')}
-            className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
-              scopeFilter === 'PERSONAL'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-            }`}
-          >
-            <User size={12} />
-            <span>Pessoal</span>
-          </button>
-          <button
-            onClick={() => setScopeFilter('BUSINESS')}
-            className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
-              scopeFilter === 'BUSINESS'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-            }`}
-          >
-            <Music size={12} />
-            <span>Músico</span>
-          </button>
-        </div>
+        {/* --- Filtro de Módulo (Pessoal vs Músico) — oculto na Fase 1 --- */}
+        {!PERSONAL_ONLY_MODE && (
+          <div className="bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-2xl grid grid-cols-3 gap-1 mb-2">
+            <button
+              onClick={() => setScopeFilter('ALL')}
+              className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
+                scopeFilter === 'ALL'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+              }`}
+            >
+              <span>Todas</span>
+            </button>
+            <button
+              onClick={() => setScopeFilter('PERSONAL')}
+              className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
+                scopeFilter === 'PERSONAL'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+              }`}
+            >
+              <User size={12} />
+              <span>Pessoal</span>
+            </button>
+            <button
+              onClick={() => setScopeFilter('BUSINESS')}
+              className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
+                scopeFilter === 'BUSINESS'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+              }`}
+            >
+              <Music size={12} />
+              <span>Músico</span>
+            </button>
+          </div>
+        )}
 
         {/* --- Tabs Despesas vs Receitas --- */}
         <div className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl flex space-x-1 border border-slate-200 dark:border-slate-800">
@@ -265,37 +272,39 @@ export const CategoryList = () => {
                     />
                  </div>
 
-                 {/* Module Selector: Pessoal vs Músico */}
-                 <div>
-                    <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">Módulo Exclusivo</label>
-                    <div className="grid grid-cols-2 gap-2">
-                       <button
-                         type="button"
-                         onClick={() => setScope('PERSONAL')}
-                         className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                           scope === 'PERSONAL'
-                             ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                             : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400'
-                         }`}
-                       >
-                         <User size={14} />
-                         <span>Pessoal</span>
-                       </button>
+                 {/* Module Selector: Pessoal vs Músico — oculto na Fase 1 */}
+                 {!PERSONAL_ONLY_MODE && (
+                   <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">Módulo Exclusivo</label>
+                      <div className="grid grid-cols-2 gap-2">
+                         <button
+                           type="button"
+                           onClick={() => setScope('PERSONAL')}
+                           className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
+                             scope === 'PERSONAL'
+                               ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                               : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400'
+                           }`}
+                         >
+                           <User size={14} />
+                           <span>Pessoal</span>
+                         </button>
 
-                       <button
-                         type="button"
-                         onClick={() => setScope('BUSINESS')}
-                         className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                           scope === 'BUSINESS'
-                             ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 shadow-xs'
-                             : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400'
-                         }`}
-                       >
-                         <Music size={14} />
-                         <span>Músico / Empresa</span>
-                       </button>
-                    </div>
-                 </div>
+                         <button
+                           type="button"
+                           onClick={() => setScope('BUSINESS')}
+                           className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
+                             scope === 'BUSINESS'
+                               ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 shadow-xs'
+                               : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-400'
+                           }`}
+                         >
+                           <Music size={14} />
+                           <span>Músico / Empresa</span>
+                         </button>
+                      </div>
+                   </div>
+                 )}
 
                  {/* Type Selector (Locked if used) */}
                  <div>

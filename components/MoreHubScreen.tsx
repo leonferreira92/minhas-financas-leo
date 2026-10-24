@@ -14,6 +14,7 @@ import { Settings } from './Settings';
 import { FinancialSettingsScreen } from './FinancialSettingsScreen';
 import { CategoryList } from './CategoryList';
 import { AlertsScreen } from './AlertsScreen';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 interface MenuItem {
   id: string;
@@ -262,13 +263,18 @@ export const MoreHubScreen: React.FC = () => {
     }
   ], [navigate, alertsCount]);
 
+  const visibleMenuCategories = useMemo(
+    () => (PERSONAL_ONLY_MODE ? menuCategories.filter(c => c.id !== 'musician') : menuCategories),
+    [menuCategories]
+  );
+
   // Filtro de Busca em Tempo Real
   const filteredResults = useMemo(() => {
     if (!searchTerm.trim()) return null;
     const term = searchTerm.toLowerCase();
 
     const matches: MenuItem[] = [];
-    menuCategories.forEach(cat => {
+    visibleMenuCategories.forEach(cat => {
       cat.items.forEach(item => {
         if (
           item.title.toLowerCase().includes(term) ||
@@ -280,7 +286,7 @@ export const MoreHubScreen: React.FC = () => {
       });
     });
     return matches;
-  }, [searchTerm, menuCategories]);
+  }, [searchTerm, visibleMenuCategories]);
 
   // Se uma sub-tela específica estiver ativa (Configurações, Categorias, etc.)
   if (activeSubScreen) {
@@ -405,7 +411,7 @@ export const MoreHubScreen: React.FC = () => {
         /* 3. CORPO DO MENU: ACCORDION EXPANSÍVEL POR CATEGORIA (ESTILO BB)          */
         /* ========================================================================= */
         <div className="space-y-3">
-          {menuCategories.map(category => {
+          {visibleMenuCategories.map(category => {
             const isOpen = openSections[category.id] ?? false;
             const CategoryIcon = category.icon;
 

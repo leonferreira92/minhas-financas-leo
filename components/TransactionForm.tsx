@@ -16,6 +16,7 @@ import { CalendarModal } from './CalendarModal';
 import { CategorySelector } from './ui/CategorySelector';
 import { generateUUID } from '../services/uuidHelper';
 import { getLocalDateString } from '../services/dateUtils';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 interface Props {
   onClose: () => void;
@@ -44,8 +45,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [reminderDate, setReminderDate] = useState('');
   const [isFixed, setIsFixed] = useState(false);
   
-  // Scope State (Pessoal vs Músico)
+  // Scope State (Pessoal vs Músico) — Fase 1 trava em Pessoal
   const [scope, setScope] = useState<ScopeType>(() => {
+    if (PERSONAL_ONLY_MODE) return 'PERSONAL';
     if (transaction?.scope === 'BUSINESS') return 'BUSINESS';
     if (transaction?.scope === 'PERSONAL') return 'PERSONAL';
     if (initialCategoryId === 'cat_33' || initialCategoryId === 'cat_equipamentos' || initialCategoryId === 'cat_producao_shows' || transaction?.showId) return 'BUSINESS';
@@ -452,7 +454,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     setValidationError(null);
 
-    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
+    const finalScope: ScopeType = PERSONAL_ONLY_MODE
+      ? 'PERSONAL'
+      : (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
     const finalShowId = (finalScope === 'BUSINESS' && selectedShowId) ? selectedShowId : undefined;
 
     // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status 'pending' se o evento não tiver sido realizado
@@ -509,7 +513,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleConfirmRecurringUpdate = (updateFuture: boolean) => {
     if (!transaction) return;
     const val = parseCurrencyInput(amount);
-    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
+    const finalScope: ScopeType = PERSONAL_ONLY_MODE
+      ? 'PERSONAL'
+      : (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
     const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
 
     const data: any = {
@@ -590,44 +596,46 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-36">
             
-            {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO */}
-            <div className="px-6 pt-2">
-              <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/60 dark:border-slate-700/60">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScope('PERSONAL');
-                    setSelectedShowId('');
-                  }}
-                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
-                    scope === 'PERSONAL'
-                      ? 'bg-emerald-500 text-black shadow-sm'
-                      : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <User size={13} className={scope === 'PERSONAL' ? 'text-black' : ''} />
-                  <span>👤 Pessoal</span>
-                </button>
+            {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO — oculto na Fase 1 */}
+            {!PERSONAL_ONLY_MODE && (
+              <div className="px-6 pt-2">
+                <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/60 dark:border-slate-700/60">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScope('PERSONAL');
+                      setSelectedShowId('');
+                    }}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
+                      scope === 'PERSONAL'
+                        ? 'bg-emerald-500 text-black shadow-sm'
+                        : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <User size={13} className={scope === 'PERSONAL' ? 'text-black' : ''} />
+                    <span>👤 Pessoal</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setScope('BUSINESS')}
-                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
-                    scope === 'BUSINESS'
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-slate-500 dark:text-slate-300 hover:text-purple-500 dark:hover:text-purple-300'
-                  }`}
-                >
-                  <Music size={13} className={scope === 'BUSINESS' ? 'text-white' : ''} />
-                  <span>🎸 Músico / Carreira</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setScope('BUSINESS')}
+                    className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
+                      scope === 'BUSINESS'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-500 dark:text-slate-300 hover:text-purple-500 dark:hover:text-purple-300'
+                    }`}
+                  >
+                    <Music size={13} className={scope === 'BUSINESS' ? 'text-white' : ''} />
+                    <span>🎸 Músico / Carreira</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* ========================================== */}
             {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO)      */}
             {/* ========================================== */}
-            {scope === 'BUSINESS' && type !== 'transfer' && (
+            {!PERSONAL_ONLY_MODE && scope === 'BUSINESS' && type !== 'transfer' && (
               <div className="mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/70 space-y-2 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
