@@ -70,107 +70,105 @@ export function sanitizeDescription(raw: string): string {
   return text || 'Lançamento Bancário';
 }
 
+const normalizeText = (s: string) =>
+  (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const findCat = (
+  categories: Category[],
+  ids: string[],
+  nameIncludes?: string[]
+): Category | undefined => {
+  for (const id of ids) {
+    const c = categories.find(x => x.id === id);
+    if (c) return c;
+  }
+  if (nameIncludes) {
+    return categories.find(c =>
+      nameIncludes.some(n => normalizeText(c.name).includes(normalizeText(n)))
+    );
+  }
+  return undefined;
+};
+
 /**
- * Heurística inteligente para sugerir Categoria e Módulo (Pessoal vs Música/Empresa)
+ * Heurística pessoal: sugere categoria. Escopo sempre PERSONAL (app sem módulo músico).
  */
 export function suggestCategoryAndScope(
   description: string,
   type: 'income' | 'expense',
   categories: Category[]
 ): { suggestedCategoryId: string; suggestedScope: ScopeType } {
-  const norm = description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const norm = normalizeText(description);
+  const personal = 'PERSONAL' as ScopeType;
 
-  // 1. MÚSICA / EMPRESA: Shows, Cachês, Eventos
+  // Receitas de trabalho / cachê → Pró-labore (pessoal)
   if (
-    norm.includes('cache') ||
-    norm.includes('show') ||
-    norm.includes('contratante') ||
-    norm.includes('couvert') ||
-    norm.includes('musica') ||
-    norm.includes('apresentacao') ||
-    norm.includes('honorario artistico') ||
-    norm.includes('sesc') ||
-    norm.includes('prefeitura') ||
-    norm.includes('evento')
+    type === 'income' &&
+    (norm.includes('cache') ||
+      norm.includes('show') ||
+      norm.includes('pix recebido') ||
+      norm.includes('honorario') ||
+      norm.includes('prolabore') ||
+      norm.includes('pro labore') ||
+      norm.includes('sesc') ||
+      norm.includes('evento') ||
+      norm.includes('apresentacao'))
   ) {
-    if (type === 'income') {
-      const showCat = categories.find(c => c.id === 'cat_33' || c.name.toLowerCase().includes('show') || c.name.toLowerCase().includes('cach'));
-      return {
-        suggestedCategoryId: showCat ? showCat.id : 'cat_33',
-        suggestedScope: 'BUSINESS'
-      };
-    }
+    const cat =
+      findCat(categories, ['cat_7'], ['pro-labore', 'prolabore', 'vida de artista']) ||
+      findCat(categories, ['cat_6'], ['salario', 'renda']);
+    return { suggestedCategoryId: cat?.id || 'cat_7', suggestedScope: personal };
   }
 
-  // 2. MÚSICA / EMPRESA: Equipamentos e Instrumentos
-  if (
-    norm.includes('equipamento') ||
-    norm.includes('instrumento') ||
-    norm.includes('guitarra') ||
-    norm.includes('violao') ||
-    norm.includes('baixo') ||
-    norm.includes('teclado') ||
-    norm.includes('bateria') ||
-    norm.includes('microfone') ||
-    norm.includes('cabo ') ||
-    norm.includes('cabos') ||
-    norm.includes('pedal') ||
-    norm.includes('amplificador') ||
-    norm.includes('caixa de som') ||
-    norm.includes('fone') ||
-    norm.includes('in-ear') ||
-    norm.includes('luthier') ||
-    norm.includes('corda') ||
-    norm.includes('palheta') ||
-    norm.includes('audio') ||
-    norm.includes('gravação') ||
-    norm.includes('estudio') ||
-    norm.includes('roadie')
-  ) {
-    const equipCat = categories.find(c => c.id === 'cat_equipamentos' || c.name.toLowerCase().includes('equipamento') || c.name.toLowerCase().includes('produção'));
-    return {
-      suggestedCategoryId: equipCat ? equipCat.id : 'cat_equipamentos',
-      suggestedScope: 'BUSINESS'
-    };
-  }
-
-  // 3. PESSOAL: Alimentação
+  // Mercado / alimentação
   if (
     norm.includes('ifood') ||
     norm.includes('rappi') ||
     norm.includes('aiqfome') ||
     norm.includes('restaurante') ||
     norm.includes('padaria') ||
-    norm.includes('panificadora') ||
     norm.includes('supermercado') ||
     norm.includes('mercado') ||
     norm.includes('carrefour') ||
     norm.includes('pao de acucar') ||
     norm.includes('atacad') ||
     norm.includes('assai') ||
-    norm.includes('acougue') ||
     norm.includes('hortifruti') ||
     norm.includes('mcdonald') ||
     norm.includes('burger') ||
     norm.includes('lanche') ||
     norm.includes('pizza') ||
-    norm.includes('cafe') ||
-    norm.includes('barbearia') === false && norm.includes('bar ')
+    /\bbar\b/.test(norm)
   ) {
-    const cat = categories.find(c => c.id === 'cat_1' || c.name.toLowerCase().includes('alimenta'));
+    const isDelivery =
+      norm.includes('ifood') || norm.includes('rappi') || norm.includes('delivery');
+    const isRest =
+      norm.includes('restaurante') ||
+      norm.includes('mcdonald') ||
+      norm.includes('burger') ||
+      norm.includes('pizza') ||
+      /\bbar\b/.test(norm);
+    const cat = isDelivery
+      ? findCat(categories, ['cat_22'], ['delivery', 'fast food'])
+      : isRest
+        ? findCat(categories, ['cat_5'], ['restaurante'])
+        : findCat(categories, ['cat_1'], ['mercado', 'alimenta']);
     return {
-      suggestedCategoryId: cat ? cat.id : 'cat_1',
-      suggestedScope: 'PERSONAL'
+      suggestedCategoryId: cat?.id || 'cat_1',
+      suggestedScope: personal
     };
   }
 
-  // 4. PESSOAL: Transporte
+  // Transporte / combustível
   if (
     norm.includes('uber') ||
-    norm.includes('99app') ||
-    norm.includes('99 app') ||
-    norm.includes('99pay') ||
-    norm.includes('99 pop') ||
+    norm.includes('99') ||
     norm.includes('posto') ||
     norm.includes('combustivel') ||
     norm.includes('gasolina') ||
@@ -181,16 +179,26 @@ export function suggestCategoryAndScope(
     norm.includes('veloe') ||
     norm.includes('pedagio') ||
     norm.includes('ipiranga') ||
-    norm.includes('shell')
+    norm.includes('shell') ||
+    norm.includes('br distrib')
   ) {
-    const cat = categories.find(c => c.id === 'cat_2' || c.name.toLowerCase().includes('transporte'));
+    const isFuel =
+      norm.includes('posto') ||
+      norm.includes('gasolina') ||
+      norm.includes('combustivel') ||
+      norm.includes('etanol') ||
+      norm.includes('ipiranga') ||
+      norm.includes('shell');
+    const cat = isFuel
+      ? findCat(categories, ['cat_21'], ['combustivel'])
+      : findCat(categories, ['cat_3'], ['transporte']);
     return {
-      suggestedCategoryId: cat ? cat.id : 'cat_2',
-      suggestedScope: 'PERSONAL'
+      suggestedCategoryId: cat?.id || (isFuel ? 'cat_21' : 'cat_3'),
+      suggestedScope: personal
     };
   }
 
-  // 5. PESSOAL: Moradia e Contas Fixas
+  // Moradia / contas
   if (
     norm.includes('aluguel') ||
     norm.includes('condominio') ||
@@ -199,25 +207,37 @@ export function suggestCategoryAndScope(
     norm.includes('cemig') ||
     norm.includes('sabesp') ||
     norm.includes('copasa') ||
-    norm.includes('luz') ||
     norm.includes('energia') ||
-    norm.includes('agua') ||
-    norm.includes('gas') ||
     norm.includes('comgas') ||
     norm.includes('internet') ||
     norm.includes('claro') ||
     norm.includes('vivo') ||
     norm.includes('tim') ||
-    norm.includes('iptu')
+    norm.includes('oi fibra') ||
+    norm.includes('iptu') ||
+    norm.includes('net ') ||
+    norm.includes('sky ')
   ) {
-    const cat = categories.find(c => c.id === 'cat_3' || c.name.toLowerCase().includes('moradia'));
+    const isTelecom =
+      norm.includes('internet') ||
+      norm.includes('claro') ||
+      norm.includes('vivo') ||
+      norm.includes('tim') ||
+      norm.includes('net ') ||
+      norm.includes('sky ');
+    const isRent = norm.includes('aluguel') || norm.includes('condominio');
+    const cat = isRent
+      ? findCat(categories, ['cat_2'], ['aluguel', 'condominio'])
+      : isTelecom
+        ? findCat(categories, ['cat_14'], ['internet', 'celular'])
+        : findCat(categories, ['cat_13'], ['luz', 'agua', 'energia']);
     return {
-      suggestedCategoryId: cat ? cat.id : 'cat_3',
-      suggestedScope: 'PERSONAL'
+      suggestedCategoryId: cat?.id || 'cat_13',
+      suggestedScope: personal
     };
   }
 
-  // 6. PESSOAL: Saúde
+  // Saúde
   if (
     norm.includes('farmacia') ||
     norm.includes('drogaria') ||
@@ -230,16 +250,26 @@ export function suggestCategoryAndScope(
     norm.includes('dentista') ||
     norm.includes('hospital') ||
     norm.includes('laboratorio') ||
-    norm.includes('unimed')
+    norm.includes('unimed') ||
+    norm.includes('amil') ||
+    norm.includes('bradesco saude')
   ) {
-    const cat = categories.find(c => c.id === 'cat_4' || c.name.toLowerCase().includes('saude'));
+    const isPharma =
+      norm.includes('farmacia') ||
+      norm.includes('drogaria') ||
+      norm.includes('drogasil') ||
+      norm.includes('raia') ||
+      norm.includes('panvel');
+    const cat = isPharma
+      ? findCat(categories, ['cat_11'], ['farmacia'])
+      : findCat(categories, ['cat_4'], ['saude', 'plano']);
     return {
-      suggestedCategoryId: cat ? cat.id : 'cat_4',
-      suggestedScope: 'PERSONAL'
+      suggestedCategoryId: cat?.id || (isPharma ? 'cat_11' : 'cat_4'),
+      suggestedScope: personal
     };
   }
 
-  // 7. PESSOAL: Lazer
+  // Lazer / assinaturas
   if (
     norm.includes('netflix') ||
     norm.includes('spotify') ||
@@ -252,29 +282,122 @@ export function suggestCategoryAndScope(
     norm.includes('sympla') ||
     norm.includes('eventim') ||
     norm.includes('airbnb') ||
-    norm.includes('booking')
+    norm.includes('booking') ||
+    norm.includes('steam') ||
+    norm.includes('playstation') ||
+    norm.includes('xbox')
   ) {
-    const cat = categories.find(c => c.id === 'cat_5' || c.name.toLowerCase().includes('lazer'));
+    const isStream =
+      norm.includes('netflix') ||
+      norm.includes('spotify') ||
+      norm.includes('prime') ||
+      norm.includes('hbo') ||
+      norm.includes('disney');
+    const cat = isStream
+      ? findCat(categories, ['cat_15'], ['assinatura', 'streaming'])
+      : findCat(categories, ['cat_16', 'cat_28', 'cat_5'], ['cinema', 'lazer', 'hobby']);
     return {
-      suggestedCategoryId: cat ? cat.id : 'cat_5',
-      suggestedScope: 'PERSONAL'
+      suggestedCategoryId: cat?.id || 'cat_15',
+      suggestedScope: personal
     };
   }
 
-  // Fallbacks
+  // Roupas / compras
+  if (
+    norm.includes('renner') ||
+    norm.includes('zara') ||
+    norm.includes('shein') ||
+    norm.includes('magazine luiza') ||
+    norm.includes('magalu') ||
+    norm.includes('americanas') ||
+    norm.includes('shopee') ||
+    norm.includes('mercado livre') ||
+    norm.includes('mlivre')
+  ) {
+    const cat = findCat(categories, ['cat_9'], ['roupa', 'compra']);
+    return { suggestedCategoryId: cat?.id || 'cat_9', suggestedScope: personal };
+  }
+
+  // Transferências / TED entre contas próprias (heurística leve)
+  if (
+    norm.includes('transferencia') ||
+    norm.includes('ted ') ||
+    norm.includes('doc ') ||
+    norm.includes('entre contas')
+  ) {
+    const cat = findCat(categories, ['cat_transfer'], ['transferencia']);
+    if (cat) return { suggestedCategoryId: cat.id, suggestedScope: personal };
+  }
+
+  // Hobby / instrumentos → lazer pessoal (não módulo empresa)
+  if (
+    norm.includes('guitarra') ||
+    norm.includes('violao') ||
+    norm.includes('luthier') ||
+    norm.includes('instrumento') ||
+    norm.includes('corda') ||
+    norm.includes('palheta')
+  ) {
+    const cat = findCat(categories, ['cat_28'], ['hobby', 'diversao']);
+    return { suggestedCategoryId: cat?.id || 'cat_28', suggestedScope: personal };
+  }
+
   if (type === 'income') {
-    const salaryCat = categories.find(c => c.id === 'cat_6' || c.type === 'income');
+    const salaryCat =
+      findCat(categories, ['cat_6', 'cat_7'], ['salario', 'pro-labore', 'renda']) ||
+      categories.find(c => c.type === 'income');
     return {
-      suggestedCategoryId: salaryCat ? salaryCat.id : 'cat_6',
-      suggestedScope: 'PERSONAL'
+      suggestedCategoryId: salaryCat?.id || 'cat_6',
+      suggestedScope: personal
     };
   }
 
-  const otherExpense = categories.find(c => c.id === 'cat_7' || c.type === 'expense') || categories[0];
+  const otherExpense =
+    findCat(categories, ['cat_20'], ['outro', 'divers']) ||
+    categories.find(c => c.type === 'expense' && c.scope !== 'BUSINESS') ||
+    categories.find(c => c.type === 'expense');
   return {
-    suggestedCategoryId: otherExpense ? otherExpense.id : 'cat_7',
-    suggestedScope: 'PERSONAL'
+    suggestedCategoryId: otherExpense?.id || 'cat_20',
+    suggestedScope: personal
   };
+}
+
+/**
+ * Aprende categoria a partir do histórico do usuário (descrições parecidas).
+ */
+export function suggestCategoryFromHistory(
+  description: string,
+  type: 'income' | 'expense',
+  history: { description?: string; type: string; categoryId: string; status?: string }[]
+): string | null {
+  const norm = normalizeText(description);
+  if (norm.length < 4) return null;
+
+  const tokens = norm.split(' ').filter(t => t.length >= 3);
+  if (tokens.length === 0) return null;
+
+  let bestId: string | null = null;
+  let bestScore = 0;
+
+  history.forEach(t => {
+    if (t.type !== type || t.status === 'cancelled' || !t.categoryId) return;
+    const h = normalizeText(t.description || '');
+    if (!h) return;
+    let score = 0;
+    if (h === norm) score = 100;
+    else if (h.includes(norm) || norm.includes(h)) score = 70;
+    else {
+      tokens.forEach(tok => {
+        if (h.includes(tok)) score += 8;
+      });
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = t.categoryId;
+    }
+  });
+
+  return bestScore >= 24 ? bestId : null;
 }
 
 /**
@@ -644,7 +767,7 @@ export function detectDuplicates(
           ...item,
           selected: false,
           categoryId: item.suggestedCategoryId || 'cat_7',
-          scope: item.suggestedScope || 'PERSONAL',
+          scope: 'PERSONAL',
           accountId: targetAccountId,
           isDuplicate: true,
           duplicateReason: 'Identificador bancário único (FITID) já registrado anteriormente.'
@@ -675,8 +798,9 @@ export function detectDuplicates(
       return {
         ...item,
         selected: false, // Desmarca duplicata por padrão para proteger o usuário
-        categoryId: item.suggestedCategoryId || 'cat_7',
-        scope: item.suggestedScope || 'PERSONAL',
+        categoryId:
+          item.suggestedCategoryId || (item.type === 'income' ? 'cat_7' : 'cat_1'),
+        scope: 'PERSONAL',
         accountId: targetAccountId,
         isDuplicate: true,
         duplicateReason: `Transação idêntica (R$ ${item.amount.toFixed(2)} em ${item.date}) já existe no extrato.`
@@ -686,8 +810,9 @@ export function detectDuplicates(
     return {
       ...item,
       selected: true, // Itens novos vêm selecionados
-      categoryId: item.suggestedCategoryId || (item.type === 'income' ? 'cat_6' : 'cat_7'),
-      scope: item.suggestedScope || 'PERSONAL',
+      categoryId:
+        item.suggestedCategoryId || (item.type === 'income' ? 'cat_7' : 'cat_1'),
+      scope: 'PERSONAL',
       accountId: targetAccountId,
       isDuplicate: false
     };
