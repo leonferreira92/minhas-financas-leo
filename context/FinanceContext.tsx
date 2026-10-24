@@ -10,6 +10,12 @@ import {
   PERSONAL_LIFESTYLE_CATEGORY_IDS
 } from '../services/categoryIntelligence';
 import {
+  computeProjectedBalance,
+  isOperationalAccount,
+  isSavingsAccount
+} from '../services/balanceEngine';
+import { isGoalMovement, isTransferMovement } from '../services/aiReportService';
+import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
   resolveDefaultPersonalDebtCategoryId,
@@ -1202,12 +1208,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         map[t.destinationAccountId] += amt;
       }
 
+      // Depósito em meta/reserva: credita só a conta destino (evita inflar várias savings)
       if (t.type === 'goal_deposit') {
-        activeAccounts.forEach(acc => {
-          if ((acc.type === 'savings' || acc.id === 'acc_savings') && t.accountId !== acc.id) {
-            map[acc.id] = (map[acc.id] || 0) + amt;
-          }
-        });
+        const destId =
+          t.destinationAccountId ||
+          activeAccounts.find(a => a.type === 'savings' || a.id === 'acc_savings')?.id;
+        if (destId && map[destId] !== undefined && destId !== t.accountId) {
+          map[destId] += amt;
+        }
       }
     });
 
@@ -2966,75 +2974,86 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const getBalanceSummary = (viewMonthStr: string, projectionDateStr: string, scopeOverride?: ActiveScopeFilter): ExtendedSummary => {
-    const projLimit = new Date(projectionDateStr + 'T23:59:59').getTime();
     const today = new Date();
     const dayOfMonth = today.getDate() || 1;
     const currentScope = scopeOverride || activeScope;
 
     const filteredAccounts = activeAccounts.filter(acc => matchesScope(acc.scope, currentScope));
     const accountsTotal = filteredAccounts.reduce((s, acc) => s + getAccountBalance(acc.id), 0);
-    const realBalance = Number(accountsTotal.toFixed(2));
-
+    /** Saldo atual = caixa operacional (paid). Reserva fica fora do "disponível". */
     const operatingAccountsTotal = filteredAccounts
-      .filter(acc => !(acc.type === 'savings' || acc.name.toLowerCase().includes('economia') || acc.name.toLowerCase().includes('reserva')))
+      .filter(acc => isOperationalAccount(acc))
       .reduce((s, acc) => s + getAccountBalance(acc.id), 0);
-    let projectedBalance = Number(operatingAccountsTotal.toFixed(2));
-
-    let monthlyIncome = 0, monthlyExpense = 0, pendingIncome = 0, pendingExpense = 0;
+    const savingsTotal = filteredAccounts
+      .filter(acc => isSavingsAccount(acc))
+      .reduce((s, acc) => s + getAccountBalance(acc.id), 0);
+    const realBalance = Number(operatingAccountsTotal.toFixed(2));
 
     const filteredTransactions = transactions.filter(t => matchesScope(t.scope, currentScope));
     const cancelledShowIds = new Set(
       shows.filter(s => s.status === 'Cancelado').map(s => s.id)
     );
 
+    let monthlyIncome = 0;
+    let monthlyExpense = 0;
+    let pendingIncome = 0;
+    let pendingExpense = 0;
+
     filteredTransactions.forEach(t => {
       if (t.status === 'cancelled') return;
       if (t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid') return;
+      if (isTransferMovement(t) || isGoalMovement(t)) return;
+      if (!(t.type === 'income' || t.type === 'expense')) return;
+
       const amount = Math.abs(Number(t.amount)) || 0;
       const isPaid = t.status === 'paid';
-      const tTime = new Date(t.date + 'T12:00:00').getTime();
 
-      if (!isPaid && tTime <= projLimit) {
-        if (t.type === 'income') projectedBalance += amount;
-        else if (t.type === 'expense') projectedBalance -= amount;
-      }
-
-      if (t.date.startsWith(viewMonthStr)) {
+      if (t.date?.startsWith(viewMonthStr)) {
         if (t.type === 'income') {
           if (isPaid) monthlyIncome += amount;
           else pendingIncome += amount;
-        } else if (t.type === 'expense') {
+        } else {
           if (isPaid) monthlyExpense += amount;
           else pendingExpense += amount;
         }
       }
     });
 
+    const projectedBalance = computeProjectedBalance({
+      operatingCash: operatingAccountsTotal,
+      transactions: filteredTransactions.filter(
+        t => !(t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid')
+      ),
+      projectionDateStr
+    });
+
     monthlyIncome = Number(monthlyIncome.toFixed(2));
     monthlyExpense = Number(monthlyExpense.toFixed(2));
     pendingIncome = Number(pendingIncome.toFixed(2));
     pendingExpense = Number(pendingExpense.toFixed(2));
-    projectedBalance = Number(projectedBalance.toFixed(2));
 
-    // Smart Metrics Calculation
     const dailyBurnRate = monthlyExpense > 0 ? Number((monthlyExpense / dayOfMonth).toFixed(2)) : 0;
     const safetyMargin = Number((realBalance - pendingExpense).toFixed(2));
-    const savingsRate = monthlyIncome > 0 ? Number((((monthlyIncome - monthlyExpense) / monthlyIncome) * 100).toFixed(1)) : 0;
+    const savingsRate =
+      monthlyIncome > 0
+        ? Number((((monthlyIncome - monthlyExpense) / monthlyIncome) * 100).toFixed(1))
+        : 0;
     const freeToSpend = Number((realBalance - pendingExpense).toFixed(2));
 
-    return { 
-      realBalance: Number(realBalance.toFixed(2)), 
-      projectedBalance: Number(projectedBalance.toFixed(2)), 
-      monthlyIncome, 
-      monthlyExpense, 
-      pendingIncome, 
+    return {
+      realBalance,
+      projectedBalance,
+      monthlyIncome,
+      monthlyExpense,
+      pendingIncome,
       pendingExpense,
       dailyBurnRate,
       safetyMargin,
       savingsRate,
       comparisonToLastMonth: 0,
       freeToSpend,
-      accountsTotal: Number(accountsTotal.toFixed(2))
+      accountsTotal: Number(accountsTotal.toFixed(2)),
+      savingsTotal: Number(savingsTotal.toFixed(2))
     };
   };
 

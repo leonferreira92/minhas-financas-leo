@@ -14,6 +14,12 @@ import {
   isTransferMovement, 
   isGoalMovement 
 } from '../services/aiReportService';
+import {
+  isOperationalAccount,
+  isPersonalAccount,
+  isSavingsAccount
+} from '../services/balanceEngine';
+import { getCurrentMonthPrefix, getLocalDateString } from '../services/dateUtils';
 
 export const FinancialOverviewSection: React.FC = () => {
   const navigate = useNavigate();
@@ -29,55 +35,64 @@ export const FinancialOverviewSection: React.FC = () => {
     getDebtProgress
   } = useFinance();
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const currentMonthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
+  const todayStr = useMemo(() => getLocalDateString(), []);
+  const currentMonthPrefix = useMemo(() => getCurrentMonthPrefix(todayStr), [todayStr]);
 
   const financialSettings = useMemo(() => {
     return settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
   }, [settings.financialSettings]);
 
-  // 1. DINHEIRO DISPONÍVEL HOJE (Contas operacionais: conta corrente, carteira, investimentos)
+  // 1. DINHEIRO DISPONÍVEL HOJE — mesmo critério da home (pessoal + operacional)
   const cashAvailableToday = useMemo(() => {
-    const operationalAccounts = accounts.filter(a => a.type !== 'savings');
-    return operationalAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
+    return accounts
+      .filter(a => isPersonalAccount(a) && isOperationalAccount(a))
+      .reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // Total guardado em contas de poupança (Reserva Real Existente)
   const actualReservedMoney = useMemo(() => {
-    const savingsAccounts = accounts.filter(a => a.type === 'savings');
-    return savingsAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
+    return accounts
+      .filter(a => isPersonalAccount(a) && isSavingsAccount(a))
+      .reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // 2. COMPROMISSOS FUTUROS JÁ CONHECIDOS (Despesas pendentes registradas a partir de hoje + mês atual)
+  // 2. Compromissos: todos os pendentes até o fim do mês (inclui atrasados)
   const futureCommitments = useMemo(() => {
-    // Despesas pendentes com data >= hoje
-    const pendingFromToday = transactions.filter(t => 
-      t.type === 'expense' && 
-      t.status === 'pending' && 
-      t.date >= todayStr &&
-      !isTransferMovement(t) && 
-      !isGoalMovement(t)
+    const monthEnd = (() => {
+      const [y, m] = currentMonthPrefix.split('-').map(Number);
+      const last = new Date(y, m, 0).getDate();
+      return `${currentMonthPrefix}-${String(last).padStart(2, '0')}`;
+    })();
+
+    const pendingAffecting = transactions.filter(
+      t =>
+        t.type === 'expense' &&
+        t.status === 'pending' &&
+        !!t.date &&
+        t.date <= monthEnd &&
+        !isTransferMovement(t) &&
+        !isGoalMovement(t)
     );
 
-    // Despesas pendentes do mês corrente
-    const pendingThisMonth = transactions.filter(t => 
-      t.type === 'expense' && 
-      t.status === 'pending' && 
-      t.date.startsWith(currentMonthPrefix) &&
-      !isTransferMovement(t) && 
-      !isGoalMovement(t)
+    const pendingThisMonth = pendingAffecting.filter(t =>
+      t.date.startsWith(currentMonthPrefix)
     );
 
-    const totalFromToday = pendingFromToday.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
-    const totalThisMonth = pendingThisMonth.reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
+    const totalKnown = pendingAffecting.reduce(
+      (sum, t) => sum + Math.abs(Number(t.amount) || 0),
+      0
+    );
+    const totalThisMonth = pendingThisMonth.reduce(
+      (sum, t) => sum + Math.abs(Number(t.amount) || 0),
+      0
+    );
 
     return {
-      totalKnown: totalFromToday,
+      totalKnown,
       totalThisMonth,
-      countFromToday: pendingFromToday.length,
+      countFromToday: pendingAffecting.length,
       countThisMonth: pendingThisMonth.length
     };
-  }, [transactions, todayStr, currentMonthPrefix]);
+  }, [transactions, currentMonthPrefix]);
 
   // 3. CUSTO ESSENCIAL MENSAL (Calculado com as categorias essenciais do usuário)
   const monthlyEssentialCost = useMemo(() => {

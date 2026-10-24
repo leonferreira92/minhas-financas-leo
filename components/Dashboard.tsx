@@ -1,12 +1,13 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { 
   Landmark, Eye, EyeOff, Plus, 
   ShieldAlert, ChevronRight, Bell,
   CreditCard, Sparkles,
-  UploadCloud, User, Menu,
-  BarChart3, FolderTree, Receipt, Building2, Lock
+  UploadCloud, Menu,
+  BarChart3, FolderTree, Receipt, Building2, Lock,
+  ArrowDownRight, ArrowUpRight, PiggyBank, Wallet
 } from 'lucide-react';
 import { Account, ScopeType, matchesScope } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
@@ -17,9 +18,12 @@ import { MonthPanelCard } from './MonthPanelCard';
 import { IncomeTargetCard } from './IncomeTargetCard';
 import { WhereToSaveCard } from './WhereToSaveCard';
 import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
+import { useMonthInsights } from '../hooks/useMonthInsights';
 import { getAccountVinculo } from '../services/financeAggregator';
+import { isOperationalAccount, isSavingsAccount } from '../services/balanceEngine';
 import { getIcon } from '../constants';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
+import { getCurrentMonthPrefix, formatDateBR } from '../services/dateUtils';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -39,7 +43,7 @@ export const Dashboard: React.FC = () => {
   } = useFinance();
 
   const userName = settings.userName || 'Leo';
-  const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const currentMonthStr = useMemo(() => getCurrentMonthPrefix(), []);
 
   // Carousel: 0 = Pessoal, 1 = Dívidas/Passivos
   const [activeCardIndex, setActiveCardIndex] = useState(0);
@@ -61,29 +65,36 @@ export const Dashboard: React.FC = () => {
 
   const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
   const companyEstimate = useProLaboreEstimate();
+  const { monthPanel } = useMonthInsights();
 
-  // Formatação de Moeda
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
   const personalAccountsList = useMemo(
-    () => accounts.filter(a => a.enabled !== false && getAccountVinculo(a) !== 'MUSICO' && a.scope !== 'BUSINESS'),
+    () =>
+      accounts.filter(
+        a => a.enabled !== false && getAccountVinculo(a) !== 'MUSICO' && a.scope !== 'BUSINESS'
+      ),
     [accounts]
   );
 
-  // Caixa pessoal (contas MUSICO locais arquivadas — não entram)
-  const personalCash = useMemo(() => {
-    return personalAccountsList.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
-  }, [personalAccountsList, getAccountBalance]);
+  const operationalAccounts = useMemo(
+    () => personalAccountsList.filter(isOperationalAccount),
+    [personalAccountsList]
+  );
 
-  /** Mesmo valor do card Estimativa de Pró-Labore Disponível */
+  /** Mesmo motor do Painel do Mês — evita divergência visual */
+  const cashToday = monthPanel.cashToday;
+  const projectedEnd = monthPanel.projectedEndBalance;
+  const savingsTotal = monthPanel.savingsTotal;
+
   const companyMirror = companyEstimate.availableEstimate;
 
   const consolidatedPatrimony = useMemo(() => {
-    return personalCash + (Number(companyMirror) || 0);
-  }, [personalCash, companyMirror]);
+    return monthPanel.totalPersonal + (Number(companyMirror) || 0);
+  }, [monthPanel.totalPersonal, companyMirror]);
 
   // Métricas de Dívidas / Parcelas Abertas do Mês
   const debtsMonthMetrics = useMemo(() => {
@@ -107,36 +118,46 @@ export const Dashboard: React.FC = () => {
     };
   }, [debts, transactions, currentMonthStr, getDebtProgress]);
 
-  // Gastos por Categoria no Mês (para o gráfico vertical)
+  // Gastos pagos do mês (pendentes não entram — evita inflar o total)
   const topCategories = useMemo(() => {
     const map = new Map<string, number>();
     let totalExpense = 0;
+    let pendingExpense = 0;
 
     transactions.forEach(t => {
-      if (t.type !== 'expense' || t.status === 'cancelled') return false;
-      if (!t.date || !t.date.startsWith(currentMonthStr)) return false;
-      if (!matchesScope(t.scope, activeScope)) return false;
+      if (t.type !== 'expense' || t.status === 'cancelled') return;
+      if (!t.date || !t.date.startsWith(currentMonthStr)) return;
+      if (!matchesScope(t.scope, activeScope)) return;
 
       const amt = Math.abs(Number(t.amount) || 0);
+      if (t.status === 'pending') {
+        pendingExpense += amt;
+        return;
+      }
+      if (t.status !== 'paid') return;
+
       totalExpense += amt;
       const catId = t.categoryId || 'cat_other';
       map.set(catId, (map.get(catId) || 0) + amt);
     });
 
-    const list = Array.from(map.entries()).map(([catId, amount]) => {
-      const cat = categories.find(c => c.id === catId) || {
-        id: catId,
-        name: 'Geral',
-        color: '#3b82f6',
-        icon: 'Tag'
-      };
-      const percentage = totalExpense > 0 ? (amount / totalExpense) * 100 : 0;
-      return { cat, amount, percentage };
-    }).sort((a, b) => b.amount - a.amount);
+    const list = Array.from(map.entries())
+      .map(([catId, amount]) => {
+        const cat = categories.find(c => c.id === catId) || {
+          id: catId,
+          name: 'Geral',
+          color: '#3b82f6',
+          icon: 'Tag'
+        };
+        const percentage = totalExpense > 0 ? (amount / totalExpense) * 100 : 0;
+        return { cat, amount, percentage };
+      })
+      .sort((a, b) => b.amount - a.amount);
 
     return {
       list: list.slice(0, 5),
-      totalExpense
+      totalExpense,
+      pendingExpense
     };
   }, [transactions, categories, currentMonthStr, activeScope]);
 
@@ -245,7 +266,7 @@ export const Dashboard: React.FC = () => {
             onScroll={handleScrollCarousel}
             className="overflow-x-auto no-scrollbar flex snap-x snap-mandatory gap-3 pb-1 cursor-grab active:cursor-grabbing select-none"
           >
-            {/* CARD 1 (VISÃO CONSOLIDADA / PESSOAL) */}
+            {/* CARD 1 — Saldo atual (mesmo motor do Painel do Mês) */}
             <div 
               onClick={() => handleSelectCard(0)}
               className={`snap-center shrink-0 w-[92%] sm:w-[94%] p-5 rounded-3xl transition-all duration-300 shadow-xl cursor-pointer ${
@@ -256,29 +277,67 @@ export const Dashboard: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider font-black text-blue-200 flex items-center gap-1.5">
-                  <User size={14} className="text-[#fcca00]" />
-                  Visão Pessoal & Saldo Livre
+                  <Wallet size={14} className="text-[#fcca00]" />
+                  Saldo atual · Caixa
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#fcca00]/20 text-[#fcca00] border border-[#fcca00]/30">
-                  Dia a Dia
+                  Só pagos
                 </span>
               </div>
 
               <div className="mt-3">
                 <h2 className="text-3xl font-black text-white tracking-tight">
-                  {formatCurrency(personalCash)}
+                  {formatCurrency(cashToday)}
                 </h2>
-                <p className="text-[10px] text-blue-200 mt-1 font-medium">Saldo disponível para gastos pessoais</p>
+                <p className="text-[10px] text-blue-200 mt-1 font-medium">
+                  Contas do dia a dia · reservas à parte
+                </p>
               </div>
 
-              {/* Botões de Ação Rápida */}
+              <div className="grid grid-cols-3 gap-1.5 mt-4">
+                <div className="rounded-xl bg-blue-950/50 border border-blue-500/20 px-2 py-2">
+                  <p className="text-[8px] font-bold uppercase text-blue-300/90 tracking-wide">Previsto</p>
+                  <p className={`text-[11px] font-black mt-0.5 truncate ${
+                    projectedEnd >= 0 ? 'text-[#fcca00]' : 'text-rose-300'
+                  }`}>
+                    {formatCurrency(projectedEnd)}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-blue-950/50 border border-blue-500/20 px-2 py-2">
+                  <p className="text-[8px] font-bold uppercase text-emerald-300/90 tracking-wide flex items-center gap-0.5">
+                    <ArrowUpRight size={9} /> Receber
+                  </p>
+                  <p className="text-[11px] font-black text-emerald-300 mt-0.5 truncate">
+                    {formatCurrency(monthPanel.pendingIncome)}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-blue-950/50 border border-blue-500/20 px-2 py-2">
+                  <p className="text-[8px] font-bold uppercase text-rose-300/90 tracking-wide flex items-center gap-0.5">
+                    <ArrowDownRight size={9} /> Pagar
+                  </p>
+                  <p className="text-[11px] font-black text-rose-300 mt-0.5 truncate">
+                    {formatCurrency(monthPanel.pendingExpense)}
+                  </p>
+                </div>
+              </div>
+
+              {savingsTotal > 0 && (
+                <div className="mt-2.5 flex items-center justify-between text-[10px] text-blue-200/90 px-0.5">
+                  <span className="inline-flex items-center gap-1 font-medium">
+                    <PiggyBank size={11} className="text-[#fcca00]" />
+                    Reserva
+                  </span>
+                  <span className="font-bold text-white/90">{formatCurrency(savingsTotal)}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2 mt-4 pt-3.5 border-t border-blue-700/40">
                 <button
                   onClick={(e) => { e.stopPropagation(); handleOpenAddExpense(); }}
-                  className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-700 border border-rose-500/30 font-black text-xs transition active:scale-95 flex items-center justify-center space-x-1"
+                  className="py-2 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-100 border border-rose-400/30 font-black text-xs transition active:scale-95 flex items-center justify-center space-x-1"
                 >
                   <Plus size={14} />
-                  <span>Nova Despesa</span>
+                  <span>Despesa</span>
                 </button>
 
                 <button
@@ -286,7 +345,7 @@ export const Dashboard: React.FC = () => {
                   className="py-2 px-3 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-blue-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
                 >
                   <Plus size={14} />
-                  <span>Nova Receita</span>
+                  <span>Receita</span>
                 </button>
               </div>
             </div>
@@ -514,9 +573,8 @@ export const Dashboard: React.FC = () => {
                 </button>
               </div>
 
-              {/* Lista: pessoais + empresa (ao vivo, só leitura) */}
-              <div className="divide-y divide-zinc-800/60 pt-1">
-                {personalAccountsList.slice(0, 3).map(acc => {
+              <div className="divide-y divide-slate-100 pt-1">
+                {operationalAccounts.slice(0, 4).map(acc => {
                   const balance = getAccountBalance(acc.id);
                   return (
                     <div 
@@ -535,9 +593,7 @@ export const Dashboard: React.FC = () => {
                           <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate block">
                             {acc.name}
                           </span>
-                          <span className="text-[10px] text-slate-600 block">
-                            Pessoal
-                          </span>
+                          <span className="text-[10px] text-slate-500 block">Caixa · pago</span>
                         </div>
                       </div>
 
@@ -548,7 +604,27 @@ export const Dashboard: React.FC = () => {
                   );
                 })}
 
-                {/* Conta empresa — espelho Vida de Artista (somente leitura) */}
+                {personalAccountsList.filter(isSavingsAccount).slice(0, 2).map(acc => (
+                  <div
+                    key={acc.id}
+                    onClick={() => setSelectedAccountForEdit(acc)}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50/40 px-1 rounded-xl transition cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/15 text-emerald-700">
+                        <PiggyBank size={15} />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-slate-900 truncate block">{acc.name}</span>
+                        <span className="text-[10px] text-emerald-700 block">Reserva</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-emerald-700">
+                      {formatCurrency(getAccountBalance(acc.id))}
+                    </span>
+                  </div>
+                ))}
+
                 <div className="py-2.5 flex items-center justify-between px-1 rounded-xl bg-indigo-50/50">
                   <div className="flex items-center space-x-3 min-w-0">
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-indigo-500/15 text-indigo-600">
@@ -560,7 +636,7 @@ export const Dashboard: React.FC = () => {
                       </span>
                       <span className="text-[10px] text-indigo-600 font-medium flex items-center gap-1">
                         <Lock size={9} />
-                        Somente leitura · mesmo valor do card
+                        Somente leitura
                       </span>
                     </div>
                   </div>
@@ -575,11 +651,17 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-zinc-800/60 flex items-center justify-between text-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-600">Pessoal + Pró-labore:</span>
-              <span className="text-sm font-black text-[#fcca00]">
-                {formatCurrency(consolidatedPatrimony)}
-              </span>
+            <div className="pt-2 border-t border-slate-100 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-500">Caixa (saldo atual)</span>
+                <span className="text-sm font-black text-slate-900">{formatCurrency(cashToday)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[10px] uppercase font-bold text-slate-500">Caixa + reserva + pró-labore</span>
+                <span className="text-sm font-black text-[#003882]">
+                  {formatCurrency(consolidatedPatrimony)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -601,18 +683,26 @@ export const Dashboard: React.FC = () => {
               </button>
             </div>
 
-            <div className="flex items-baseline justify-between">
+            <div className="flex items-baseline justify-between gap-2">
               <div>
                 <span className="text-2xl font-black text-slate-900 tracking-tight">
                   {formatCurrency(topCategories.totalExpense)}
                 </span>
-                <p className="text-[10px] text-slate-600 mt-0.5">Total gasto em {new Date().toLocaleDateString('pt-BR', { month: 'long' })}</p>
+                <p className="text-[10px] text-slate-600 mt-0.5">
+                  Pagos neste mês
+                  {topCategories.pendingExpense > 0 && (
+                    <span className="text-amber-700 font-semibold">
+                      {' '}
+                      · {formatCurrency(topCategories.pendingExpense)} pendentes
+                    </span>
+                  )}
+                </p>
               </div>
               <button
                 onClick={() => navigate('/gastos')}
-                className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-[10px] font-bold hover:bg-blue-500/20 transition"
+                className="px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 text-[10px] font-bold hover:bg-blue-500/20 transition shrink-0"
               >
-                Gráficos completos
+                Gráficos
               </button>
             </div>
 
@@ -697,6 +787,7 @@ export const Dashboard: React.FC = () => {
                 const cat = categories.find(c => c.id === t.categoryId);
                 const Icon = getIcon(cat?.icon || 'Tag');
                 const isIncome = t.type === 'income';
+                const isPending = t.status === 'pending';
 
                 return (
                   <div
@@ -715,14 +806,32 @@ export const Dashboard: React.FC = () => {
                         <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate block">
                           {t.description}
                         </span>
-                        <span className="text-[10px] text-slate-600 block">
-                          {cat?.name || 'Geral'} · {t.date}
+                        <span className="text-[10px] text-slate-500 block flex items-center gap-1.5">
+                          <span>{cat?.name || 'Geral'} · {formatDateBR(t.date)}</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wide ${
+                              isPending
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {isPending ? 'Pendente' : 'Pago'}
+                          </span>
                         </span>
                       </div>
                     </div>
 
-                    <span className={`text-xs font-black ${isIncome ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {isIncome ? '+' : '-'}{formatCurrency(Math.abs(Number(t.amount) || 0))}
+                    <span
+                      className={`text-xs font-black shrink-0 ${
+                        isPending
+                          ? 'text-amber-600'
+                          : isIncome
+                            ? 'text-emerald-600'
+                            : 'text-rose-600'
+                      }`}
+                    >
+                      {isIncome ? '+' : '-'}
+                      {formatCurrency(Math.abs(Number(t.amount) || 0))}
                     </span>
                   </div>
                 );

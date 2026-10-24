@@ -131,13 +131,18 @@ export interface SystemAlert {
 }
 
 export interface BalanceSummary {
+  /** Caixa operacional (contas paid, sem reserva) */
   realBalance: number;
+  /** Caixa + pendentes até a data de projeção */
   projectedBalance: number;
   monthlyIncome: number;
   monthlyExpense: number;
   pendingIncome: number;
   pendingExpense: number;
+  /** Soma de todas as contas do escopo (caixa + reserva) */
   accountsTotal?: number;
+  /** Total em contas tipo savings */
+  savingsTotal?: number;
 }
 
 export type DashboardWidgetId = 'balance' | 'shortcuts' | 'status' | 'recent' | 'debts' | 'radar';
