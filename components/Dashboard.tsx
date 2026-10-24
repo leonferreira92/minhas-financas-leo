@@ -6,13 +6,14 @@ import {
   ShieldAlert, ChevronRight, Bell,
   CreditCard, Sparkles,
   UploadCloud, User, Menu,
-  BarChart3, FolderTree, Receipt
+  BarChart3, FolderTree, Receipt, Building2, Lock
 } from 'lucide-react';
 import { Account, ScopeType, matchesScope } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
 import { ProLaboreEstimateCard } from './ProLaboreEstimateCard';
+import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 import { getAccountVinculo } from '../services/financeAggregator';
 import { getIcon } from '../constants';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
@@ -56,6 +57,7 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
+  const companyEstimate = useProLaboreEstimate();
 
   // Formatação de Moeda
   const formatCurrency = (val: number) => {
@@ -63,18 +65,32 @@ export const Dashboard: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  // 1. PATRIMÔNIO CONSOLIDADO: Soma de todas as contas ativas
-  const consolidatedPatrimony = useMemo(() => {
-    return accounts
-      .filter(a => a.enabled !== false)
-      .reduce((acc, a) => acc + getAccountBalance(a.id), 0);
-  }, [accounts, getAccountBalance]);
+  const personalAccountsList = useMemo(
+    () => accounts.filter(a => a.enabled !== false && getAccountVinculo(a) !== 'MUSICO' && a.scope !== 'BUSINESS'),
+    [accounts]
+  );
 
-  // 2. CAIXA PESSOAL
+  const legacyCompanyAccounts = useMemo(
+    () => accounts.filter(a => a.enabled !== false && (getAccountVinculo(a) === 'MUSICO' || a.scope === 'BUSINESS')),
+    [accounts]
+  );
+
+  // Caixa pessoal (exclui contas legado empresa locais)
   const personalCash = useMemo(() => {
-    const personalAccounts = accounts.filter(a => a.enabled !== false && getAccountVinculo(a) !== 'MUSICO');
-    return personalAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
-  }, [accounts, getAccountBalance]);
+    return personalAccountsList.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+  }, [personalAccountsList, getAccountBalance]);
+
+  const liveCompanyCash = companyEstimate.companyCashBalance;
+
+  // Total exibido: pessoal + saldo vivo da empresa (Firestore), sem somar o legado local (evita duplicar)
+  const consolidatedPatrimony = useMemo(() => {
+    const companyLive = liveCompanyCash != null ? liveCompanyCash : 0;
+    return personalCash + companyLive;
+  }, [personalCash, liveCompanyCash]);
+
+  const legacyCompanyLocalTotal = useMemo(() => {
+    return legacyCompanyAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
+  }, [legacyCompanyAccounts, getAccountBalance]);
 
   // Métricas de Dívidas / Parcelas Abertas do Mês
   const debtsMonthMetrics = useMemo(() => {
@@ -495,9 +511,9 @@ export const Dashboard: React.FC = () => {
                 </button>
               </div>
 
-              {/* Lista Compacta de Contas */}
+              {/* Lista: pessoais + empresa (ao vivo, só leitura) */}
               <div className="divide-y divide-zinc-800/60 pt-1">
-                {accounts.slice(0, 3).map(acc => {
+                {personalAccountsList.slice(0, 3).map(acc => {
                   const balance = getAccountBalance(acc.id);
                   return (
                     <div 
@@ -516,8 +532,8 @@ export const Dashboard: React.FC = () => {
                           <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition truncate block">
                             {acc.name}
                           </span>
-                          <span className="text-[10px] text-slate-600 block capitalize">
-                            {getAccountVinculo(acc) === 'MUSICO' ? 'Empresa / Legado' : 'Pessoal'}
+                          <span className="text-[10px] text-slate-600 block">
+                            Pessoal
                           </span>
                         </div>
                       </div>
@@ -528,11 +544,49 @@ export const Dashboard: React.FC = () => {
                     </div>
                   );
                 })}
+
+                {/* Conta empresa — espelho Vida de Artista (somente leitura) */}
+                <div className="py-2.5 flex items-center justify-between px-1 rounded-xl bg-indigo-50/50">
+                  <div className="flex items-center space-x-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-indigo-500/15 text-indigo-600">
+                      <Building2 size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-900 truncate block">
+                        Empresa · Vida de Artista
+                      </span>
+                      <span className="text-[10px] text-indigo-600 font-medium flex items-center gap-1">
+                        <Lock size={9} />
+                        Somente leitura · Firestore
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-indigo-700">
+                    {companyEstimate.isLoading
+                      ? '…'
+                      : liveCompanyCash != null
+                        ? formatCurrency(liveCompanyCash)
+                        : companyEstimate.needsCompanyAuth
+                          ? '—'
+                          : formatCurrency(0)}
+                  </span>
+                </div>
+
+                {/* Legado local: extrato antigo no app pessoal (não é o saldo oficial) */}
+                {legacyCompanyAccounts.length > 0 && (
+                  <div className="py-2 px-1">
+                    <p className="text-[9px] text-slate-500 leading-snug">
+                      Legado local ({legacyCompanyAccounts.map(a => a.name).join(', ')}):{' '}
+                      <span className="font-bold text-slate-600">{formatCurrency(legacyCompanyLocalTotal)}</span>
+                      {' '}— histórico de lançamentos neste app; não altera o saldo oficial da empresa.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="pt-2 border-t border-zinc-800/60 flex items-center justify-between text-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-600">Total Consolidado:</span>
+              <span className="text-[10px] uppercase font-bold text-slate-600">Pessoal + Empresa (vivo):</span>
               <span className="text-sm font-black text-[#fcca00]">
                 {formatCurrency(consolidatedPatrimony)}
               </span>

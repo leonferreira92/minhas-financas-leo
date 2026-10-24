@@ -4,16 +4,18 @@ import { useFinance } from '../context/FinanceContext';
 import { 
   Landmark, Plus, Wallet, PiggyBank, CreditCard, 
   ArrowLeft, Pencil, CheckCircle2, ChevronRight, RefreshCw, 
-  Layers, Sparkles, User, Music, HelpCircle
+  Layers, Sparkles, User, Music, HelpCircle, Building2, Lock
 } from 'lucide-react';
 import { Account, AccountType, ScopeType } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { parseCurrencyInput } from '../services/financeAggregator';
 import { isAccountActive } from '../context/FinanceContext';
+import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 
 export const AccountsScreen: React.FC = () => {
   const navigate = useNavigate();
   const { accounts, getAccountBalance, addAccount, isBlurred } = useFinance();
+  const companyEstimate = useProLaboreEstimate();
 
   const [selectedAccountForEdit, setSelectedAccountForEdit] = useState<Account | null>(null);
   const [isNewAccountModalOpen, setIsNewAccountModalOpen] = useState(false);
@@ -35,14 +37,7 @@ export const AccountsScreen: React.FC = () => {
     return accounts.filter(isAccountActive);
   }, [accounts]);
 
-  // Soma consolidada de todas as contas ativas
-  const consolidatedTotal = useMemo(() => {
-    return parseFloat(
-      activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0).toFixed(2)
-    );
-  }, [activeAccounts, getAccountBalance]);
-
-  // Contas Pessoais vs Músico
+  // Contas Pessoais vs legado empresa (local)
   const personalAccounts = useMemo(() => {
     return activeAccounts.filter(a => a.vinculo !== 'MUSICO' && a.scope !== 'BUSINESS');
   }, [activeAccounts]);
@@ -50,6 +45,19 @@ export const AccountsScreen: React.FC = () => {
   const musicAccounts = useMemo(() => {
     return activeAccounts.filter(a => a.vinculo === 'MUSICO' || a.scope === 'BUSINESS');
   }, [activeAccounts]);
+
+  const personalTotal = useMemo(() => {
+    return parseFloat(
+      personalAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0).toFixed(2)
+    );
+  }, [personalAccounts, getAccountBalance]);
+
+  const liveCompanyCash = companyEstimate.companyCashBalance;
+
+  // Pessoal + saldo vivo empresa (não soma legado local)
+  const consolidatedTotal = useMemo(() => {
+    return parseFloat((personalTotal + (liveCompanyCash != null ? liveCompanyCash : 0)).toFixed(2));
+  }, [personalTotal, liveCompanyCash]);
 
   const handleCreateAccount = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +138,46 @@ export const AccountsScreen: React.FC = () => {
           <h2 className="text-3xl font-black text-white tracking-tight">
             {formatCurrency(consolidatedTotal)}
           </h2>
-          <p className="text-[11px] text-blue-200/80 mt-1">Soma de todos os saldos de contas correntes, carteiras e investimentos</p>
+          <p className="text-[11px] text-blue-200/80 mt-1">
+            Contas pessoais + saldo vivo da empresa (Vida de Artista). Legado local não entra nesta soma.
+          </p>
+        </div>
+      </div>
+
+      {/* EMPRESA AO VIVO (SOMENTE LEITURA) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+            <Building2 size={14} className="text-indigo-600" />
+            <span>Empresa · Vida de Artista</span>
+          </h3>
+          <span className="text-[10px] text-indigo-600 font-bold flex items-center gap-1">
+            <Lock size={10} /> Somente leitura
+          </span>
+        </div>
+        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-between shadow-xs">
+          <div className="flex items-center space-x-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-indigo-500/15 text-indigo-600">
+              <Building2 size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-sm font-black text-slate-900 block truncate">
+                Saldo em Conta (empresa)
+              </span>
+              <span className="text-[10px] text-indigo-700 block">
+                Espelho Firestore · companyCashBalance
+              </span>
+            </div>
+          </div>
+          <span className="text-sm font-black text-indigo-800">
+            {companyEstimate.isLoading
+              ? '…'
+              : liveCompanyCash != null
+                ? formatCurrency(liveCompanyCash)
+                : companyEstimate.needsCompanyAuth
+                  ? 'Conecte no card de pró-labore'
+                  : formatCurrency(0)}
+          </span>
         </div>
       </div>
 
@@ -188,21 +235,19 @@ export const AccountsScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* LISTA DE CONTAS DA MÚSICA / CARREIRA */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-            <Music size={14} className="text-[#fcca00]" />
-            <span>Contas de Música & Shows</span>
-          </h3>
-          <span className="text-[10px] text-slate-600 font-bold">{musicAccounts.length} contas</span>
-        </div>
-
-        {musicAccounts.length === 0 ? (
-          <div className="p-4 rounded-2xl bg-white border border-dashed border-slate-200 text-center text-xs text-slate-600">
-            Nenhuma conta vinculada exclusivamente à carreira. Crie uma para isolar o caixa dos shows!
+      {/* LEGADO LOCAL — extrato antigo neste app (não é o saldo oficial) */}
+      {musicAccounts.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <Music size={14} className="text-slate-500" />
+              <span>Legado local (histórico)</span>
+            </h3>
+            <span className="text-[10px] text-slate-600 font-bold">{musicAccounts.length} contas</span>
           </div>
-        ) : (
+          <p className="text-[10px] text-slate-500 px-1 leading-snug">
+            Saldos calculados pelos lançamentos antigos neste app. Preservados para o extrato; o saldo oficial da empresa é o card acima (Vida de Artista).
+          </p>
           <div className="space-y-2.5">
             {musicAccounts.map(acc => {
               const Icon = getAccountIcon(acc.type);
@@ -211,36 +256,34 @@ export const AccountsScreen: React.FC = () => {
                 <div 
                   key={acc.id}
                   onClick={() => setSelectedAccountForEdit(acc)}
-                  className="p-4 rounded-2xl bg-slate-50 border border-amber-900/30 hover:border-amber-700/60 transition flex items-center justify-between cursor-pointer group shadow-xs active:scale-[0.99]"
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex items-center justify-between cursor-pointer group shadow-xs active:scale-[0.99] opacity-90"
                 >
                   <div className="flex items-center space-x-3.5 min-w-0">
-                    <div 
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner bg-amber-500/10 text-[#fcca00]"
-                    >
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-inner bg-slate-200 text-slate-600">
                       <Icon size={20} />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center space-x-1.5">
-                        <span className="text-sm font-black text-slate-900 group-hover:text-[#fcca00] transition truncate">
+                        <span className="text-sm font-black text-slate-900 group-hover:text-slate-700 transition truncate">
                           {acc.name}
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
-                          Música
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 border border-slate-300">
+                          Legado
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-600 capitalize block">
-                        Caixa Profissional
+                      <span className="text-[10px] text-slate-600 block">
+                        Extrato local · não é o caixa oficial
                       </span>
                     </div>
                   </div>
 
                   <div className="text-right shrink-0 flex items-center space-x-2">
                     <div>
-                      <span className="text-sm font-black text-slate-900 block">
+                      <span className="text-sm font-black text-slate-700 block">
                         {formatCurrency(balance)}
                       </span>
-                      <span className="text-[10px] text-[#fcca00] flex items-center justify-end gap-1 font-semibold">
-                        <Pencil size={10} /> Ajustar Saldo
+                      <span className="text-[10px] text-slate-500 flex items-center justify-end gap-1 font-semibold">
+                        <Pencil size={10} /> Conciliar legado
                       </span>
                     </div>
                     <ChevronRight size={16} className="text-slate-600 group-hover:text-slate-900 transition" />
@@ -249,8 +292,8 @@ export const AccountsScreen: React.FC = () => {
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* MODAL PARA CADASTRO DE NOVA CONTA */}
       {isNewAccountModalOpen && (

@@ -546,6 +546,8 @@ export const subscribeToUserSettings = (
 /** Resumo da empresa (Vida de Artista) — espelho em Firestore para o app pessoal */
 export interface CompanySummaryCurrent {
   availableProLabore?: number;
+  /** Saldo em conta / caixa da empresa (saldoDisponivelConta) */
+  companyCashBalance?: number;
   [key: string]: unknown;
 }
 
