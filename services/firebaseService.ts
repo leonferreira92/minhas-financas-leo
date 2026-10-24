@@ -9,7 +9,9 @@ import {
   updateProfile,
   sendPasswordResetEmail,
   GoogleAuthProvider,
-  signInWithCredential
+  signInWithCredential,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { 
   doc, 
@@ -29,6 +31,11 @@ import { companyAuth, companyDb } from '../src/firebase/companyConfig';
 
 export { app, auth, db, oldDb, googleProvider, firebaseConfig };
 export { companyAuth, companyDb };
+
+/** Persistência local da sessão no Auth leo-ferreira-app */
+void setPersistence(companyAuth, browserLocalPersistence).catch((err) => {
+  console.warn('[companyAuth] setPersistence falhou:', err);
+});
 
 /**
  * Remove recursivamente propriedades undefined para evitar erro
@@ -119,6 +126,15 @@ async function syncCompanyAuthWithEmail(email: string, password: string): Promis
     console.warn('[companyAuth] Login e-mail no leo-ferreira-app indisponível (pró-labore pode ficar em 0):', err);
   }
 }
+
+/**
+ * Login explícito no Auth do Vida de Artista (leo-ferreira-app).
+ * Use a mesma conta/senha do painel da empresa — UIDs entre projetos Firebase são diferentes.
+ */
+export const linkCompanyAuthWithEmail = async (email: string, password: string): Promise<User> => {
+  const result = await signInWithEmailAndPassword(companyAuth, email.trim(), password);
+  return result.user;
+};
 
 // Authentication Helpers
 export const signInWithGoogle = async () => {

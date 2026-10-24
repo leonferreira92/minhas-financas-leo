@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRightLeft, BadgeDollarSign, CloudOff, Loader2, LogIn } from 'lucide-react';
+import { ArrowRightLeft, BadgeDollarSign, CloudOff, Loader2, Building2 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
@@ -10,11 +10,13 @@ import { parseCurrencyInput } from '../constants';
  * (users/{companyUid}/companySummary/current).
  */
 export const ProLaboreEstimateCard: React.FC = () => {
-  const { isBlurred, signInWithGoogle } = useFinance();
+  const { isBlurred, currentUser } = useFinance();
   const estimate = useProLaboreEstimate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [manualInput, setManualInput] = useState('');
-  const [isRelinking, setIsRelinking] = useState(false);
+  const [companyEmail, setCompanyEmail] = useState(currentUser?.email || '');
+  const [companyPassword, setCompanyPassword] = useState('');
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
@@ -33,14 +35,14 @@ export const ProLaboreEstimateCard: React.FC = () => {
     }
   };
 
-  const handleRelinkCompany = async () => {
-    setIsRelinking(true);
+  const handleCompanyLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLinkError(null);
     try {
-      await signInWithGoogle();
+      await estimate.linkCompanyWithEmail(companyEmail, companyPassword);
+      setCompanyPassword('');
     } catch (err) {
-      console.warn('Falha ao religar Auth do Vida de Artista:', err);
-    } finally {
-      setIsRelinking(false);
+      setLinkError(err instanceof Error ? err.message : 'Falha ao conectar');
     }
   };
 
@@ -63,53 +65,91 @@ export const ProLaboreEstimateCard: React.FC = () => {
           </div>
           {estimate.hasFirestoreSummary ? (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-              leo-ferreira-app
+              Sync OK
             </span>
           ) : estimate.needsCompanyAuth ? (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
-              Auth empresa
+              Login empresa
             </span>
-          ) : showManualFallback ? (
+          ) : (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 flex items-center gap-1">
               <CloudOff size={10} />
-              Sem sync
+              Sem doc
             </span>
-          ) : null}
+          )}
         </div>
 
         <div>
           {estimate.isLoading ? (
             <div className="flex items-center gap-2 text-slate-500 py-1">
               <Loader2 size={18} className="animate-spin" />
-              <span className="text-xs font-medium">Lendo companySummary no leo-ferreira-app…</span>
+              <span className="text-xs font-medium">Lendo leo-ferreira-app…</span>
             </div>
           ) : (
             <p className="text-2xl font-black text-slate-900 tracking-tight">
               {formatCurrency(estimate.availableEstimate)}
             </p>
           )}
-          <p className="text-[10px] text-slate-500 mt-1">
-            {estimate.hasFirestoreSummary
-              ? 'Fonte: leo-ferreira-app · companySummary/current · availableProLabore'
-              : estimate.needsCompanyAuth
-                ? 'Faça login Google de novo para espelhar a sessão no Vida de Artista'
-                : 'Documento ainda não disponível — use 0 ou valor manual temporário'}
-          </p>
+          {estimate.statusMessage && (
+            <p className="text-[10px] text-amber-700 mt-1.5 leading-snug font-medium">
+              {estimate.statusMessage}
+            </p>
+          )}
+          {estimate.companyUid && (
+            <p className="text-[9px] text-slate-400 mt-1 font-mono">
+              UID empresa: {estimate.companyUid.slice(0, 12)}…
+            </p>
+          )}
           <p className="text-[10px] text-slate-500 mt-0.5">
-            Entrada registrada em: {estimate.categoryLabel}
+            Entrada: {estimate.categoryLabel}
           </p>
         </div>
 
         {estimate.needsCompanyAuth && (
-          <button
-            type="button"
-            onClick={handleRelinkCompany}
-            disabled={isRelinking}
-            className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs transition active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-60"
+          <form
+            onSubmit={handleCompanyLogin}
+            className="space-y-2 p-3 rounded-2xl bg-amber-50/80 border border-amber-200"
           >
-            {isRelinking ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
-            <span>Conectar conta Vida de Artista (Google)</span>
-          </button>
+            <div className="flex items-center gap-1.5 text-amber-900">
+              <Building2 size={14} />
+              <span className="text-[10px] font-black uppercase tracking-wide">
+                Conta do Vida de Artista (leo-ferreira-app)
+              </span>
+            </div>
+            <p className="text-[10px] text-amber-800/90 leading-snug">
+              Use o <strong>mesmo e-mail e senha</strong> do painel da empresa. Google do app pessoal
+              não compartilha o UID com o projeto leo-ferreira-app.
+            </p>
+            <input
+              type="email"
+              required
+              value={companyEmail}
+              onChange={(e) => setCompanyEmail(e.target.value)}
+              placeholder="E-mail da empresa"
+              className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-amber-400"
+            />
+            <input
+              type="password"
+              required
+              value={companyPassword}
+              onChange={(e) => setCompanyPassword(e.target.value)}
+              placeholder="Senha da empresa"
+              className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-amber-400"
+            />
+            {linkError && (
+              <p className="text-[10px] text-rose-600 font-bold">{linkError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={estimate.isLinkingCompany}
+              className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs transition active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {estimate.isLinkingCompany ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : null}
+              <span>Conectar e ler pró-labore</span>
+            </button>
+          </form>
         )}
 
         {showManualFallback && (
