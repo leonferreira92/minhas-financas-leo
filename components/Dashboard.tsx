@@ -13,6 +13,8 @@ import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
 import { ProLaboreEstimateCard } from './ProLaboreEstimateCard';
+import { MonthPanelCard } from './MonthPanelCard';
+import { IncomeTargetCard } from './IncomeTargetCard';
 import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 import { getAccountVinculo } from '../services/financeAggregator';
 import { getIcon } from '../constants';
@@ -356,6 +358,14 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="px-3.5 sm:px-4 space-y-6">
+        {/* ========================================================================= */}
+        {/* PAINEL DO MÊS + RENDA-ALVO (visão clara ao abrir o app)                   */}
+        {/* ========================================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <MonthPanelCard />
+          <IncomeTargetCard />
+        </div>
+
         {/* ========================================================================= */}
         {/* GRID CENTRAL DE ACESSO RÁPIDO (ESTILO BANCO DO BRASIL)                    */}
         {/* ========================================================================= */}
