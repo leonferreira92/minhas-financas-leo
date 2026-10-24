@@ -1,21 +1,22 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
+import { subscribeToCompanySummary } from '../services/firebaseService';
 import { getAccountVinculo } from '../services/financeAggregator';
 
 export interface ProLaboreEstimate {
-  /** Estimativa segura disponível para retirar como pró-labore */
+  /** Valor de `availableProLabore` no Firestore (ou override manual / 0) */
   availableEstimate: number;
-  /** Saldo em contas da empresa / legado carreira */
-  companyCash: number;
-  /** Despesas BUSINESS pendentes no mês */
-  companyPendingBills: number;
-  /** Reserva sugerida de reinvestimento (20% do lucro líquido do mês) */
-  recommendedReinvestment: number;
-  /** Lucro líquido BUSINESS do mês (receitas − despesas, excl. pró-labore) */
-  companyNetProfit: number;
+  /** Valor bruto lido do Firestore (null se documento ausente) */
+  firestoreAvailableProLabore: number | null;
+  /** Documento `users/{uid}/companySummary/current` existe */
+  hasFirestoreSummary: boolean;
+  /** Ainda aguardando primeira resposta do snapshot */
+  isLoading: boolean;
+  /** Override manual temporário quando o doc ainda não existe */
+  manualOverride: number | null;
+  setManualOverride: (value: number | null) => void;
   sourceAccountId: string | null;
   destinationAccountId: string | null;
-  hasCompanyAccount: boolean;
   categoryId: 'cat_7';
   categoryLabel: string;
 }
@@ -24,90 +25,92 @@ const PROLABORE_CATEGORY_ID = 'cat_7' as const;
 const PROLABORE_CATEGORY_LABEL = 'Pró-labore / Transferência Vida de Artista';
 
 /**
- * Hook leve de leitura: estima pró-labore disponível a partir do caixa
- * da conta empresa/legado (Vida de Artista → Pessoal), sem criar lançamentos.
+ * Lê a estimativa REAL de pró-labore exposta pelo Vida de Artista em
+ * `users/{uid}/companySummary/current.availableProLabore`.
+ * Sem cálculos locais (20%, pendências, etc.).
  */
 export function useProLaboreEstimate(): ProLaboreEstimate {
-  const { accounts, transactions, getAccountBalance } = useFinance();
+  const { currentUser, accounts } = useFinance();
+  const [firestoreValue, setFirestoreValue] = useState<number | null>(null);
+  const [hasFirestoreSummary, setHasFirestoreSummary] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [manualOverride, setManualOverride] = useState<number | null>(null);
 
-  return useMemo(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const currentMonthPrefix = todayStr.slice(0, 7);
+  useEffect(() => {
+    const uid = currentUser?.uid;
+    if (!uid) {
+      setFirestoreValue(null);
+      setHasFirestoreSummary(false);
+      setIsLoading(false);
+      return;
+    }
 
+    setIsLoading(true);
+    const unsub = subscribeToCompanySummary(
+      uid,
+      (summary) => {
+        if (summary == null) {
+          setHasFirestoreSummary(false);
+          setFirestoreValue(null);
+        } else {
+          setHasFirestoreSummary(true);
+          const raw = Number(summary.availableProLabore);
+          setFirestoreValue(Number.isFinite(raw) ? Math.max(0, raw) : 0);
+        }
+        setIsLoading(false);
+      },
+      () => {
+        setHasFirestoreSummary(false);
+        setFirestoreValue(null);
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [currentUser?.uid]);
+
+  const { sourceAccountId, destinationAccountId } = useMemo(() => {
     const companyAccounts = accounts.filter(
       a => a.enabled !== false && (getAccountVinculo(a) === 'MUSICO' || a.scope === 'BUSINESS')
     );
     const personalAccounts = accounts.filter(
       a => a.enabled !== false && (getAccountVinculo(a) === 'PESSOAL' || a.scope === 'PERSONAL')
     );
-
-    const sourceAccount =
-      companyAccounts[0] ||
-      accounts.find(a => a.enabled !== false) ||
-      null;
-    const destinationAccount =
-      personalAccounts.find(a => a.id !== sourceAccount?.id) ||
-      accounts.find(a => a.enabled !== false && a.id !== sourceAccount?.id) ||
+    const source =
+      companyAccounts[0] || accounts.find(a => a.enabled !== false) || null;
+    const dest =
+      personalAccounts.find(a => a.id !== source?.id) ||
+      accounts.find(a => a.enabled !== false && a.id !== source?.id) ||
       personalAccounts[0] ||
       null;
-
-    const companyCash =
-      companyAccounts.length > 0
-        ? companyAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0)
-        : sourceAccount
-          ? getAccountBalance(sourceAccount.id)
-          : 0;
-
-    const companyMonthIncome = transactions
-      .filter(
-        t =>
-          t.type === 'income' &&
-          t.status !== 'cancelled' &&
-          (t.scope === 'BUSINESS' || Boolean(t.showId)) &&
-          t.date?.startsWith(currentMonthPrefix)
-      )
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    const companyMonthExpenses = transactions
-      .filter(t => {
-        if (t.type !== 'expense' || t.status === 'cancelled') return false;
-        if (!(t.scope === 'BUSINESS' || Boolean(t.showId))) return false;
-        if (!t.date?.startsWith(currentMonthPrefix)) return false;
-        const desc = (t.description || '').toLowerCase();
-        if (desc.includes('pró-labore') || desc.includes('pro-labore')) return false;
-        return true;
-      })
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    const companyNetProfit = Math.max(0, companyMonthIncome - companyMonthExpenses);
-    const recommendedReinvestment = Math.round(companyNetProfit * 0.2);
-
-    const companyPendingBills = transactions
-      .filter(
-        t =>
-          t.type === 'expense' &&
-          t.status === 'pending' &&
-          (t.scope === 'BUSINESS' || Boolean(t.showId)) &&
-          t.date?.startsWith(currentMonthPrefix)
-      )
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-    const availableEstimate = Math.max(
-      0,
-      companyCash - companyPendingBills - recommendedReinvestment
-    );
-
     return {
-      availableEstimate,
-      companyCash,
-      companyPendingBills,
-      recommendedReinvestment,
-      companyNetProfit,
-      sourceAccountId: sourceAccount?.id || null,
-      destinationAccountId: destinationAccount?.id || null,
-      hasCompanyAccount: companyAccounts.length > 0,
-      categoryId: PROLABORE_CATEGORY_ID,
-      categoryLabel: PROLABORE_CATEGORY_LABEL
+      sourceAccountId: source?.id || null,
+      destinationAccountId: dest?.id || null
     };
-  }, [accounts, transactions, getAccountBalance]);
+  }, [accounts]);
+
+  const availableEstimate = useMemo(() => {
+    if (hasFirestoreSummary && firestoreValue !== null) {
+      return firestoreValue;
+    }
+    if (manualOverride !== null && Number.isFinite(manualOverride)) {
+      return Math.max(0, manualOverride);
+    }
+    return 0;
+  }, [hasFirestoreSummary, firestoreValue, manualOverride]);
+
+  return {
+    availableEstimate,
+    firestoreAvailableProLabore: firestoreValue,
+    hasFirestoreSummary,
+    isLoading,
+    manualOverride,
+    setManualOverride,
+    sourceAccountId,
+    destinationAccountId,
+    categoryId: PROLABORE_CATEGORY_ID,
+    categoryLabel: PROLABORE_CATEGORY_LABEL
+  };
 }

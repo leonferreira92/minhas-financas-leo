@@ -485,6 +485,39 @@ export const subscribeToUserSettings = (
   }
 };
 
+/** Resumo da empresa (Vida de Artista) — espelho em Firestore para o app pessoal */
+export interface CompanySummaryCurrent {
+  availableProLabore?: number;
+  [key: string]: unknown;
+}
+
+// 8. Resumo da Empresa / Pró-labore disponível (Vida de Artista)
+export const subscribeToCompanySummary = (
+  userId: string,
+  onData: (summary: CompanySummaryCurrent | null) => void,
+  onError?: (error: unknown) => void
+) => {
+  const path = `users/${userId}/companySummary/current`;
+  try {
+    return onSnapshot(doc(db, 'users', userId, 'companySummary', 'current'), (docSnap) => {
+      if (!docSnap.exists()) {
+        onData(null);
+        return;
+      }
+      onData(docSnap.data() as CompanySummaryCurrent);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.GET, path);
+      if (onError) onError(err);
+      onData(null);
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    if (onError) onError(err);
+    onData(null);
+    return () => {};
+  }
+};
+
 // =========================================================================
 // WRITE OPERATIONS (PERSISTÊNCIA FIRESTORE)
 // =========================================================================

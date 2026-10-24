@@ -1,21 +1,34 @@
 import React, { useState } from 'react';
-import { ArrowRightLeft, BadgeDollarSign, Sparkles } from 'lucide-react';
+import { ArrowRightLeft, BadgeDollarSign, CloudOff, Loader2 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
+import { parseCurrencyInput } from '../constants';
 
 /**
- * Card do Dashboard Pessoal: estimativa de pró-labore disponível
- * (leitura via useProLaboreEstimate) + atalho para registrar entrada em cat_7.
+ * Card do Dashboard: `availableProLabore` de
+ * `users/{uid}/companySummary/current` (Vida de Artista).
  */
 export const ProLaboreEstimateCard: React.FC = () => {
   const { isBlurred } = useFinance();
   const estimate = useProLaboreEstimate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [manualInput, setManualInput] = useState('');
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  };
+
+  const showManualFallback = !estimate.isLoading && !estimate.hasFirestoreSummary;
+
+  const handleApplyManual = () => {
+    const parsed = parseCurrencyInput(manualInput);
+    if (parsed > 0) {
+      estimate.setManualOverride(parsed);
+    } else {
+      estimate.setManualOverride(null);
+    }
   };
 
   return (
@@ -35,31 +48,59 @@ export const ProLaboreEstimateCard: React.FC = () => {
               </h3>
             </div>
           </div>
-          {estimate.hasCompanyAccount && (
-            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 flex items-center gap-1">
-              <Sparkles size={10} />
-              Caixa empresa
+          {estimate.hasFirestoreSummary ? (
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+              Firestore
             </span>
-          )}
+          ) : showManualFallback ? (
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 flex items-center gap-1">
+              <CloudOff size={10} />
+              Sem sync
+            </span>
+          ) : null}
         </div>
 
         <div>
-          <p className="text-2xl font-black text-slate-900 tracking-tight">
-            {formatCurrency(estimate.availableEstimate)}
-          </p>
-          <p className="text-[11px] text-slate-600 mt-1 font-medium">
-            Caixa legado {formatCurrency(estimate.companyCash)}
-            {estimate.companyPendingBills > 0 && (
-              <> · Pendências −{formatCurrency(estimate.companyPendingBills)}</>
-            )}
-            {estimate.recommendedReinvestment > 0 && (
-              <> · Reserva −{formatCurrency(estimate.recommendedReinvestment)}</>
-            )}
-          </p>
+          {estimate.isLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 py-1">
+              <Loader2 size={18} className="animate-spin" />
+              <span className="text-xs font-medium">Carregando estimativa da empresa…</span>
+            </div>
+          ) : (
+            <p className="text-2xl font-black text-slate-900 tracking-tight">
+              {formatCurrency(estimate.availableEstimate)}
+            </p>
+          )}
           <p className="text-[10px] text-slate-500 mt-1">
+            {estimate.hasFirestoreSummary
+              ? 'Fonte: companySummary/current · availableProLabore'
+              : 'Documento ainda não disponível — use 0 ou valor manual temporário'}
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5">
             Entrada registrada em: {estimate.categoryLabel}
           </p>
         </div>
+
+        {showManualFallback && (
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="number"
+              step="any"
+              min="0"
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
+              placeholder="Valor manual (R$)"
+              className="flex-1 min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-400"
+            />
+            <button
+              type="button"
+              onClick={handleApplyManual}
+              className="shrink-0 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wide transition"
+            >
+              Aplicar
+            </button>
+          </div>
+        )}
 
         <button
           type="button"
