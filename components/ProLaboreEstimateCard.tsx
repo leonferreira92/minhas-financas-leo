@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
-import { ArrowRightLeft, BadgeDollarSign, CloudOff, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, BadgeDollarSign, CloudOff, Loader2, LogIn } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { useProLaboreEstimate } from '../hooks/useProLaboreEstimate';
 import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
 import { parseCurrencyInput } from '../constants';
 
 /**
- * Card do Dashboard: `availableProLabore` de
- * `users/{uid}/companySummary/current` (Vida de Artista).
+ * Card: availableProLabore de leo-ferreira-app
+ * (users/{companyUid}/companySummary/current).
  */
 export const ProLaboreEstimateCard: React.FC = () => {
-  const { isBlurred } = useFinance();
+  const { isBlurred, signInWithGoogle } = useFinance();
   const estimate = useProLaboreEstimate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [manualInput, setManualInput] = useState('');
+  const [isRelinking, setIsRelinking] = useState(false);
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  const showManualFallback = !estimate.isLoading && !estimate.hasFirestoreSummary;
+  const showManualFallback =
+    !estimate.isLoading && !estimate.hasFirestoreSummary && !estimate.needsCompanyAuth;
 
   const handleApplyManual = () => {
     const parsed = parseCurrencyInput(manualInput);
@@ -28,6 +30,17 @@ export const ProLaboreEstimateCard: React.FC = () => {
       estimate.setManualOverride(parsed);
     } else {
       estimate.setManualOverride(null);
+    }
+  };
+
+  const handleRelinkCompany = async () => {
+    setIsRelinking(true);
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      console.warn('Falha ao religar Auth do Vida de Artista:', err);
+    } finally {
+      setIsRelinking(false);
     }
   };
 
@@ -50,7 +63,11 @@ export const ProLaboreEstimateCard: React.FC = () => {
           </div>
           {estimate.hasFirestoreSummary ? (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-              Firestore
+              leo-ferreira-app
+            </span>
+          ) : estimate.needsCompanyAuth ? (
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+              Auth empresa
             </span>
           ) : showManualFallback ? (
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 flex items-center gap-1">
@@ -64,7 +81,7 @@ export const ProLaboreEstimateCard: React.FC = () => {
           {estimate.isLoading ? (
             <div className="flex items-center gap-2 text-slate-500 py-1">
               <Loader2 size={18} className="animate-spin" />
-              <span className="text-xs font-medium">Carregando estimativa da empresa…</span>
+              <span className="text-xs font-medium">Lendo companySummary no leo-ferreira-app…</span>
             </div>
           ) : (
             <p className="text-2xl font-black text-slate-900 tracking-tight">
@@ -73,13 +90,27 @@ export const ProLaboreEstimateCard: React.FC = () => {
           )}
           <p className="text-[10px] text-slate-500 mt-1">
             {estimate.hasFirestoreSummary
-              ? 'Fonte: companySummary/current · availableProLabore'
-              : 'Documento ainda não disponível — use 0 ou valor manual temporário'}
+              ? 'Fonte: leo-ferreira-app · companySummary/current · availableProLabore'
+              : estimate.needsCompanyAuth
+                ? 'Faça login Google de novo para espelhar a sessão no Vida de Artista'
+                : 'Documento ainda não disponível — use 0 ou valor manual temporário'}
           </p>
           <p className="text-[10px] text-slate-500 mt-0.5">
             Entrada registrada em: {estimate.categoryLabel}
           </p>
         </div>
+
+        {estimate.needsCompanyAuth && (
+          <button
+            type="button"
+            onClick={handleRelinkCompany}
+            disabled={isRelinking}
+            className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-xs transition active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-60"
+          >
+            {isRelinking ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
+            <span>Conectar conta Vida de Artista (Google)</span>
+          </button>
+        )}
 
         {showManualFallback && (
           <div className="flex items-center gap-2 pt-1">

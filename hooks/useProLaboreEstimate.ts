@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { subscribeToCompanySummary } from '../services/firebaseService';
+import {
+  subscribeToCompanyAuth,
+  subscribeToCompanySummary,
+  getCompanyAuthUid
+} from '../services/firebaseService';
 import { getAccountVinculo } from '../services/financeAggregator';
 
 export interface ProLaboreEstimate {
-  /** Valor de `availableProLabore` no Firestore (ou override manual / 0) */
+  /** Valor de `availableProLabore` no Firestore leo-ferreira-app (ou override / 0) */
   availableEstimate: number;
-  /** Valor bruto lido do Firestore (null se documento ausente) */
   firestoreAvailableProLabore: number | null;
-  /** Documento `users/{uid}/companySummary/current` existe */
   hasFirestoreSummary: boolean;
-  /** Ainda aguardando primeira resposta do snapshot */
   isLoading: boolean;
-  /** Override manual temporário quando o doc ainda não existe */
+  /** UID autenticado no projeto leo-ferreira-app (necessário para ler o doc) */
+  companyUid: string | null;
+  /** Sessão no Auth da empresa ainda não espelhada */
+  needsCompanyAuth: boolean;
   manualOverride: number | null;
   setManualOverride: (value: number | null) => void;
   sourceAccountId: string | null;
@@ -25,20 +29,33 @@ const PROLABORE_CATEGORY_ID = 'cat_7' as const;
 const PROLABORE_CATEGORY_LABEL = 'Pró-labore / Transferência Vida de Artista';
 
 /**
- * Lê a estimativa REAL de pró-labore exposta pelo Vida de Artista em
- * `users/{uid}/companySummary/current.availableProLabore`.
- * Sem cálculos locais (20%, pendências, etc.).
+ * Lê `availableProLabore` em
+ * leo-ferreira-app → users/{companyUid}/companySummary/current
  */
 export function useProLaboreEstimate(): ProLaboreEstimate {
   const { currentUser, accounts } = useFinance();
+  const [companyUid, setCompanyUid] = useState<string | null>(() => getCompanyAuthUid());
   const [firestoreValue, setFirestoreValue] = useState<number | null>(null);
   const [hasFirestoreSummary, setHasFirestoreSummary] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [manualOverride, setManualOverride] = useState<number | null>(null);
 
   useEffect(() => {
-    const uid = currentUser?.uid;
-    if (!uid) {
+    const unsubAuth = subscribeToCompanyAuth((user) => {
+      setCompanyUid(user?.uid ?? null);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setFirestoreValue(null);
+      setHasFirestoreSummary(false);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!companyUid) {
       setFirestoreValue(null);
       setHasFirestoreSummary(false);
       setIsLoading(false);
@@ -47,7 +64,7 @@ export function useProLaboreEstimate(): ProLaboreEstimate {
 
     setIsLoading(true);
     const unsub = subscribeToCompanySummary(
-      uid,
+      companyUid,
       (summary) => {
         if (summary == null) {
           setHasFirestoreSummary(false);
@@ -69,7 +86,7 @@ export function useProLaboreEstimate(): ProLaboreEstimate {
     return () => {
       if (typeof unsub === 'function') unsub();
     };
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, companyUid]);
 
   const { sourceAccountId, destinationAccountId } = useMemo(() => {
     const companyAccounts = accounts.filter(
@@ -106,6 +123,8 @@ export function useProLaboreEstimate(): ProLaboreEstimate {
     firestoreAvailableProLabore: firestoreValue,
     hasFirestoreSummary,
     isLoading,
+    companyUid,
+    needsCompanyAuth: Boolean(currentUser) && !companyUid,
     manualOverride,
     setManualOverride,
     sourceAccountId,

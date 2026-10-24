@@ -7,7 +7,9 @@ import {
   createUserWithEmailAndPassword,
   signInAnonymously,
   updateProfile,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
 import { 
   doc, 
@@ -23,8 +25,10 @@ import {
 } from 'firebase/firestore';
 import { Account, Transaction, Show, ShowStatus, Category, Debt, Budget, AppSettings } from '../types';
 import { app, auth, db, oldDb, googleProvider, firebaseConfig } from '../src/firebase/config';
+import { companyAuth, companyDb } from '../src/firebase/companyConfig';
 
 export { app, auth, db, oldDb, googleProvider, firebaseConfig };
+export { companyAuth, companyDb };
 
 /**
  * Remove recursivamente propriedades undefined para evitar erro
@@ -93,10 +97,35 @@ export async function testFirestoreConnection() {
   }
 }
 
+/**
+ * Espelha a sessão no Auth do Vida de Artista (leo-ferreira-app)
+ * para ler `users/{uid}/companySummary/current` com o UID correto.
+ */
+async function syncCompanyAuthFromGoogleCredential(
+  credential: ReturnType<typeof GoogleAuthProvider.credentialFromResult>
+): Promise<void> {
+  if (!credential) return;
+  try {
+    await signInWithCredential(companyAuth, credential);
+  } catch (err) {
+    console.warn('[companyAuth] Falha ao sincronizar login Google no leo-ferreira-app:', err);
+  }
+}
+
+async function syncCompanyAuthWithEmail(email: string, password: string): Promise<void> {
+  try {
+    await signInWithEmailAndPassword(companyAuth, email.trim(), password);
+  } catch (err) {
+    console.warn('[companyAuth] Login e-mail no leo-ferreira-app indisponível (pró-labore pode ficar em 0):', err);
+  }
+}
+
 // Authentication Helpers
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    await syncCompanyAuthFromGoogleCredential(credential);
     return result.user;
   } catch (error) {
     console.error('Erro ao fazer login com Google:', error);
@@ -107,6 +136,7 @@ export const signInWithGoogle = async () => {
 export const signInWithEmail = async (email: string, password: string): Promise<User> => {
   try {
     const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+    await syncCompanyAuthWithEmail(email, password);
     return result.user;
   } catch (error) {
     console.error('Erro ao fazer login com E-mail:', error);
@@ -151,12 +181,24 @@ export const signInGuest = async () => {
 };
 
 export const logoutUser = async () => {
+  try {
+    await firebaseSignOut(companyAuth);
+  } catch {
+    /* ignore */
+  }
   await firebaseSignOut(auth);
 };
 
 export const subscribeToAuth = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
 };
+
+/** Sessão Auth no projeto leo-ferreira-app (Vida de Artista) */
+export const subscribeToCompanyAuth = (callback: (user: User | null) => void) => {
+  return onAuthStateChanged(companyAuth, callback);
+};
+
+export const getCompanyAuthUid = (): string | null => companyAuth.currentUser?.uid ?? null;
 
 // Check if user record is initialized in Firestore
 export const checkUserInitialized = async (userId: string): Promise<boolean> => {
@@ -491,25 +533,29 @@ export interface CompanySummaryCurrent {
   [key: string]: unknown;
 }
 
-// 8. Resumo da Empresa / Pró-labore disponível (Vida de Artista)
+// 8. Resumo da Empresa / Pró-labore — Firestore do projeto leo-ferreira-app
 export const subscribeToCompanySummary = (
-  userId: string,
+  companyUserId: string,
   onData: (summary: CompanySummaryCurrent | null) => void,
   onError?: (error: unknown) => void
 ) => {
-  const path = `users/${userId}/companySummary/current`;
+  const path = `users/${companyUserId}/companySummary/current`;
   try {
-    return onSnapshot(doc(db, 'users', userId, 'companySummary', 'current'), (docSnap) => {
-      if (!docSnap.exists()) {
+    return onSnapshot(
+      doc(companyDb, 'users', companyUserId, 'companySummary', 'current'),
+      (docSnap) => {
+        if (!docSnap.exists()) {
+          onData(null);
+          return;
+        }
+        onData(docSnap.data() as CompanySummaryCurrent);
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.GET, path);
+        if (onError) onError(err);
         onData(null);
-        return;
       }
-      onData(docSnap.data() as CompanySummaryCurrent);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, path);
-      if (onError) onError(err);
-      onData(null);
-    });
+    );
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, path);
     if (onError) onError(err);
