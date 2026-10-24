@@ -12,6 +12,7 @@ import {
 import { getIcon } from '../constants';
 import { parseCurrencyInput } from '../services/financeAggregator';
 import { GeminiService } from '../services/geminiService';
+import { suggestCategorySmart, getCategoryUsageHint } from '../services/categoryIntelligence';
 import { CalendarModal } from './CalendarModal';
 import { CategorySelector } from './ui/CategorySelector';
 import { generateUUID } from '../services/uuidHelper';
@@ -186,15 +187,14 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   // 2. MEMÓRIA OPERACIONAL & SUGESTÕES INTELIGENTES
   // ==========================================
   const smartSuggestion = useMemo(() => {
-    const cleanDesc = description.trim().toLowerCase();
-    if (!cleanDesc || cleanDesc.length < 2) return null;
+    const cleanDesc = description.trim();
+    if (!cleanDesc || cleanDesc.length < 2 || type === 'transfer') return null;
 
     const matches = transactions.filter(t => {
-      const tDesc = t.description.toLowerCase();
-      return tDesc === cleanDesc || tDesc.includes(cleanDesc) || cleanDesc.includes(tDesc);
+      const tDesc = (t.description || '').toLowerCase();
+      const d = cleanDesc.toLowerCase();
+      return tDesc === d || tDesc.includes(d) || d.includes(tDesc);
     });
-
-    if (matches.length === 0) return null;
 
     const categoryCounts: Record<string, number> = {};
     const accountCounts: Record<string, number> = {};
@@ -210,15 +210,6 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (t.isFixed) fixedCount++;
     });
 
-    let bestCatId = '';
-    let maxCatCount = 0;
-    Object.entries(categoryCounts).forEach(([catId, count]) => {
-      if (count > maxCatCount) {
-        maxCatCount = count;
-        bestCatId = catId;
-      }
-    });
-
     let bestAccId = '';
     let maxAccCount = 0;
     Object.entries(accountCounts).forEach(([accId, count]) => {
@@ -228,21 +219,38 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     });
 
-    const isLikelyFixed = fixedCount / matches.length >= 0.5;
+    const isLikelyFixed = matches.length > 0 && fixedCount / matches.length >= 0.5;
 
+    const smart =
+      type === 'income' || type === 'expense'
+        ? suggestCategorySmart({
+            description: cleanDesc,
+            type,
+            categories,
+            history: transactions
+          })
+        : { categoryId: null as string | null, source: 'none' as const };
+
+    const bestCatId = smart.categoryId || '';
     const suggestedCat = categories.find(c => c.id === bestCatId);
     const suggestedAcc = accounts.find(a => a.id === bestAccId);
+    const usageHint =
+      suggestedCat?.usageHint || (bestCatId ? getCategoryUsageHint(bestCatId) : undefined);
+
+    if (!bestCatId && matches.length === 0) return null;
 
     return {
       categoryId: bestCatId,
       categoryName: suggestedCat?.name || '',
       categoryIcon: suggestedCat?.icon || '',
+      categoryHint: usageHint || '',
+      suggestionSource: smart.source,
       accountId: bestAccId,
       accountName: suggestedAcc?.name || '',
       isLikelyFixed,
       matchCount: matches.length
     };
-  }, [description, transactions, categories, accounts]);
+  }, [description, transactions, categories, accounts, type]);
 
   // Pré-preenchimento automático inteligente
   useEffect(() => {
@@ -666,13 +674,15 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               {/* ========================================== */}
               {/* 4. CARD DE SUGESTÃO INTELIGENTE & HISTÓRICO*/}
               {/* ========================================== */}
-              {smartSuggestion && smartSuggestion.matchCount > 0 && type !== 'transfer' && (
+              {smartSuggestion && smartSuggestion.categoryId && type !== 'transfer' && (
                 <div className="p-4 rounded-2xl bg-indigo-50/80  border border-indigo-200/80  space-y-2.5 animate-fade-in">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <History size={15} className="text-indigo-600 " />
                       <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 ">
-                        Sugestão pelo Histórico ({smartSuggestion.matchCount}x)
+                        {smartSuggestion.suggestionSource === 'history'
+                          ? `Sugestão pelo Histórico (${smartSuggestion.matchCount}x)`
+                          : 'Sugestão pela descrição'}
                       </span>
                     </div>
 
@@ -702,6 +712,12 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                       <span>{status === 'paid' ? (type === 'expense' ? 'Pago' : 'Recebido') : 'Pendente'}</span>
                     </span>
                   </div>
+
+                  {smartSuggestion.categoryHint && (
+                    <p className="text-[10px] text-indigo-700/80 font-medium leading-snug">
+                      Ideal para: {smartSuggestion.categoryHint}
+                    </p>
+                  )}
 
                   {smartSuggestion.isLikelyFixed && (
                     <div className="pt-1 flex items-center justify-between text-[10px] text-indigo-700  font-medium">

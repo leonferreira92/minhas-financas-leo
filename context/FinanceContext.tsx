@@ -5,6 +5,11 @@ import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
 import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
 import {
+  syncPersonalCategoryCatalog,
+  PERSONAL_ESSENTIAL_CATEGORY_IDS,
+  PERSONAL_LIFESTYLE_CATEGORY_IDS
+} from '../services/categoryIntelligence';
+import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
   resolveDefaultPersonalDebtCategoryId,
@@ -909,6 +914,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (missingDefaults.length > 0) {
       finalCategories = [...finalCategories, ...missingDefaults];
     }
+
+    // Soft sync: renomeia catálogo pessoal (Bar/Festas, Lazer & Cultura, Carro/Oficina…) sem apagar IDs/histórico
+    const catalogSync = syncPersonalCategoryCatalog(finalCategories);
+    finalCategories = catalogSync.categories;
     StorageService.saveCategories(finalCategories);
 
     // Migração das transações (preservando rigorosamente datas, valores e vínculos)
@@ -1019,9 +1028,24 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setLocomotionExpenses(StorageService.getLocomotionExpenses());
     setMusicCostItems(StorageService.getMusicCostItems());
     
+    const mergeCategoryIds = (stored: string[] | undefined, defaults: string[], extras: string[]) => {
+      const set = new Set([...(stored || defaults), ...extras]);
+      return Array.from(set);
+    };
+
     const finalFinancialSettings: FinancialSettings = storedSettings.financialSettings ? {
       ...DEFAULT_FINANCIAL_SETTINGS,
-      ...storedSettings.financialSettings
+      ...storedSettings.financialSettings,
+      essentialCategoryIds: mergeCategoryIds(
+        storedSettings.financialSettings.essentialCategoryIds,
+        DEFAULT_FINANCIAL_SETTINGS.essentialCategoryIds,
+        PERSONAL_ESSENTIAL_CATEGORY_IDS.filter(id => ['cat_34', 'cat_21', 'cat_dividas'].includes(id))
+      ),
+      lifestyleCategoryIds: mergeCategoryIds(
+        storedSettings.financialSettings.lifestyleCategoryIds,
+        DEFAULT_FINANCIAL_SETTINGS.lifestyleCategoryIds,
+        PERSONAL_LIFESTYLE_CATEGORY_IDS.filter(id => ['cat_28', 'cat_16', 'cat_35'].includes(id))
+      )
     } : {
       ...DEFAULT_FINANCIAL_SETTINGS,
       essentialCategoryIds: finalCategories.filter(c => c.classification === 'essential').map(c => c.id).length > 0 
@@ -1041,6 +1065,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       financialSettings: finalFinancialSettings
     };
     setSettings(mergedSettings);
+    StorageService.saveSettings(mergedSettings);
   };
 
   const saveTransactions = (ts: Transaction[]) => { 

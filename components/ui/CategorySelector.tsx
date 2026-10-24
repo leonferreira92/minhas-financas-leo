@@ -90,6 +90,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           <button
             key={cat.id}
             type="button"
+            title={cat.usageHint || cat.name}
             aria-selected={isSelected}
             data-selected={isSelected ? 'true' : 'false'}
             onClick={() => onSelect(cat.id)}
@@ -116,15 +117,26 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
               />
             </div>
 
-            <span
-              className={`category-card-label text-xs truncate flex-1 ${
-                isSelected
-                  ? activeStyle.label
-                  : 'text-slate-800 dark:text-slate-100 font-bold group-hover:text-black dark:group-hover:text-white'
-              }`}
-            >
-              {cat.name}
-            </span>
+            <div className="min-w-0 flex-1">
+              <span
+                className={`category-card-label text-xs truncate block ${
+                  isSelected
+                    ? activeStyle.label
+                    : 'text-slate-800 dark:text-slate-100 font-bold group-hover:text-black dark:group-hover:text-white'
+                }`}
+              >
+                {cat.name}
+              </span>
+              {columns === 'modal' && cat.usageHint && (
+                <span
+                  className={`text-[9px] leading-tight line-clamp-2 mt-0.5 block ${
+                    isSelected ? 'text-white/80' : 'text-slate-500'
+                  }`}
+                >
+                  {cat.usageHint}
+                </span>
+              )}
+            </div>
 
             {isSelected && (
               <span

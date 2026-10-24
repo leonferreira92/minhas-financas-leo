@@ -22,10 +22,10 @@ import {
   readBankFileAsText,
   parseBankStatement,
   detectDuplicates,
-  suggestCategoryFromHistory,
   StagingBankTransaction,
   MatchConfidence
 } from '../services/bankStatementParser';
+import { suggestCategorySmart } from '../services/categoryIntelligence';
 import { getAccountVinculo } from '../services/financeAggregator';
 
 interface BankImportModalProps {
@@ -112,13 +112,15 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     accountId: string
   ): StagingBankTransaction[] =>
     staged.map(item => {
-      const fromHistory = suggestCategoryFromHistory(
-        item.description || item.originalDescription,
-        item.type,
-        transactions
-      );
+      const desc = item.description || item.originalDescription;
+      const smart = suggestCategorySmart({
+        description: desc,
+        type: item.type,
+        categories,
+        history: transactions
+      });
       const categoryId =
-        fromHistory ||
+        smart.categoryId ||
         item.categoryId ||
         item.suggestedCategoryId ||
         (item.type === 'income' ? 'cat_7' : 'cat_1');
@@ -127,6 +129,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
         ...item,
         accountId: item.accountId || accountId,
         categoryId,
+        suggestedCategoryId: categoryId,
         scope: 'PERSONAL',
         showId: undefined,
         suggestedScope: 'PERSONAL'

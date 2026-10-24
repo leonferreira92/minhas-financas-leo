@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { Category, TransactionType, ScopeType } from '../types';
 import { getIcon, ICON_MAP } from '../constants';
+import { getCategoryUsageHint, getCategoryNotForHint } from '../services/categoryIntelligence';
 import { Trash2, Plus, X, ChevronLeft, Lock, CheckCircle2, Search, ArrowDownCircle, ArrowUpCircle, ChevronRight, User, Music, Sparkles, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -109,7 +110,9 @@ export const CategoryList = () => {
           </Link>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-800 ">Categorias</h1>
-            <p className="text-[11px] text-slate-600 font-medium">Organização exclusiva por módulo (Pessoal vs Músico)</p>
+            <p className="text-[11px] text-slate-600 font-medium">
+              Use a dica de cada categoria para relatórios e importação ficarem claros
+            </p>
           </div>
         </div>
 
@@ -173,6 +176,8 @@ export const CategoryList = () => {
            const usageCount = getUsageCount(cat.id);
            const isInUse = usageCount > 0;
            const isMusician = cat.scope === 'BUSINESS';
+           const hint = cat.usageHint || getCategoryUsageHint(cat.id);
+           const notFor = getCategoryNotForHint(cat.id);
            
            return (
              <div 
@@ -196,6 +201,12 @@ export const CategoryList = () => {
                           {isMusician ? 'Músico' : 'Pessoal'}
                         </span>
                       </div>
+                      {hint && (
+                        <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-snug">{hint}</p>
+                      )}
+                      {notFor && (
+                        <p className="text-[10px] text-amber-700/80 mt-0.5 line-clamp-1">Não use para: {notFor}</p>
+                      )}
                       <div className="flex items-center mt-0.5">
                          <span className={`text-[11px] ${isInUse ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-400'}`}>
                             {usageCount} {usageCount === 1 ? 'lançamento' : 'lançamentos'}

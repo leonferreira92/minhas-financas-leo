@@ -103,16 +103,16 @@ export const SpendingAveragesSection: React.FC = () => {
         name: 'Carro / Transporte',
         icon: Car,
         color: '#eab308',
-        categoryIds: ['cat_3', 'cat_21'],
-        keywords: ['carro', 'transporte', 'combustível', 'combustivel', 'gasolina', 'etanol', 'uber', '99', 'estacionamento', 'pedágio', 'pedagio', 'oficina', 'mecânico', 'mecanico', 'ipva', 'seguro auto', 'ônibus', 'onibus', 'metrô', 'metro']
+        categoryIds: ['cat_3', 'cat_21', 'cat_34'],
+        keywords: ['carro', 'transporte', 'combustível', 'combustivel', 'gasolina', 'etanol', 'uber', '99', 'estacionamento', 'pedágio', 'pedagio', 'oficina', 'mecânico', 'mecanico', 'ipva', 'seguro auto', 'ônibus', 'onibus', 'metrô', 'metro', 'pneu', 'autopeças']
       },
       {
         id: 'group_lazer',
-        name: 'Lazer',
+        name: 'Lazer & saídas',
         icon: Gamepad2,
         color: '#8b5cf6',
-        categoryIds: ['cat_16', 'cat_19', 'cat_28', 'cat_29'],
-        keywords: ['lazer', 'cinema', 'teatro', 'diversão', 'diversao', 'jogo', 'game', 'viagem', 'férias', 'ferias', 'passeio', 'bar', 'praia', 'clube', 'hotel', 'balada']
+        categoryIds: ['cat_16', 'cat_28', 'cat_35', 'cat_19', 'cat_29'],
+        keywords: ['lazer', 'cinema', 'teatro', 'diversão', 'diversao', 'jogo', 'game', 'viagem', 'férias', 'ferias', 'passeio', 'bar', 'praia', 'clube', 'hotel', 'balada', 'festa', 'hobby', 'cigarro']
       },
       {
         id: 'group_streaming',

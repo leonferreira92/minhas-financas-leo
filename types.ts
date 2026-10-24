@@ -33,6 +33,8 @@ export interface Category {
   icon: string;
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   scope?: ScopeType;
+  /** Dica curta: quando usar esta categoria (relatórios / importação) */
+  usageHint?: string;
 }
 
 export interface Budget {

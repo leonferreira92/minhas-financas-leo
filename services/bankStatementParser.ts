@@ -1,5 +1,6 @@
 import { Category, ScopeType } from '../types';
 import { getLocalDateString } from './dateUtils';
+import { suggestCategoryByKeywords } from './categoryIntelligence';
 
 export interface ParsedBankTransaction {
   tempId: string;
@@ -240,6 +241,14 @@ export function suggestCategoryAndScope(
   const norm = normalizeText(description);
   const personal = 'PERSONAL' as ScopeType;
 
+  // Guia inteligente (mercado vs bar vs combustível vs oficina…)
+  if (type === 'expense') {
+    const smartId = suggestCategoryByKeywords(description, type, categories);
+    if (smartId) {
+      return { suggestedCategoryId: smartId, suggestedScope: personal };
+    }
+  }
+
   // Receitas de trabalho / cachê → Pró-labore (pessoal)
   if (
     type === 'income' &&
@@ -259,7 +268,7 @@ export function suggestCategoryAndScope(
     return { suggestedCategoryId: cat?.id || 'cat_7', suggestedScope: personal };
   }
 
-  // Mercado / alimentação
+  // Mercado / alimentação (fallback se o guia não casou)
   if (
     norm.includes('ifood') ||
     norm.includes('rappi') ||
@@ -281,24 +290,28 @@ export function suggestCategoryAndScope(
   ) {
     const isDelivery =
       norm.includes('ifood') || norm.includes('rappi') || norm.includes('delivery');
+    const isBar = /\bbar\b/.test(norm) || norm.includes('boteco') || norm.includes('balada');
     const isRest =
-      norm.includes('restaurante') ||
-      norm.includes('mcdonald') ||
-      norm.includes('burger') ||
-      norm.includes('pizza') ||
-      /\bbar\b/.test(norm);
+      !isBar &&
+      (norm.includes('restaurante') ||
+        norm.includes('mcdonald') ||
+        norm.includes('burger') ||
+        norm.includes('pizza') ||
+        norm.includes('lanche'));
     const cat = isDelivery
       ? findCat(categories, ['cat_22'], ['delivery', 'fast food'])
-      : isRest
-        ? findCat(categories, ['cat_5'], ['restaurante'])
-        : findCat(categories, ['cat_1'], ['mercado', 'alimenta']);
+      : isBar
+        ? findCat(categories, ['cat_28'], ['bar', 'festa'])
+        : isRest
+          ? findCat(categories, ['cat_5'], ['restaurante'])
+          : findCat(categories, ['cat_1'], ['mercado', 'alimenta']);
     return {
-      suggestedCategoryId: cat?.id || 'cat_1',
+      suggestedCategoryId: cat?.id || (isBar ? 'cat_28' : 'cat_1'),
       suggestedScope: personal
     };
   }
 
-  // Transporte / combustível
+  // Transporte / combustível / oficina
   if (
     norm.includes('uber') ||
     norm.includes('99') ||
@@ -313,7 +326,11 @@ export function suggestCategoryAndScope(
     norm.includes('pedagio') ||
     norm.includes('ipiranga') ||
     norm.includes('shell') ||
-    norm.includes('br distrib')
+    norm.includes('br distrib') ||
+    norm.includes('oficina') ||
+    norm.includes('autopecas') ||
+    norm.includes('pneu') ||
+    norm.includes('borracharia')
   ) {
     const isFuel =
       norm.includes('posto') ||
@@ -322,11 +339,23 @@ export function suggestCategoryAndScope(
       norm.includes('etanol') ||
       norm.includes('ipiranga') ||
       norm.includes('shell');
+    const isCarMaint =
+      norm.includes('oficina') ||
+      norm.includes('autopecas') ||
+      norm.includes('pneu') ||
+      norm.includes('borracharia') ||
+      norm.includes('estacionamento') ||
+      norm.includes('sem parar') ||
+      norm.includes('pedagio') ||
+      norm.includes('conectcar') ||
+      norm.includes('veloe');
     const cat = isFuel
       ? findCat(categories, ['cat_21'], ['combustivel'])
-      : findCat(categories, ['cat_3'], ['transporte']);
+      : isCarMaint
+        ? findCat(categories, ['cat_34'], ['carro', 'oficina'])
+        : findCat(categories, ['cat_3'], ['transporte']);
     return {
-      suggestedCategoryId: cat?.id || (isFuel ? 'cat_21' : 'cat_3'),
+      suggestedCategoryId: cat?.id || (isFuel ? 'cat_21' : isCarMaint ? 'cat_34' : 'cat_3'),
       suggestedScope: personal
     };
   }
@@ -402,7 +431,7 @@ export function suggestCategoryAndScope(
     };
   }
 
-  // Lazer / assinaturas
+  // Lazer / assinaturas / jogos / viagem
   if (
     norm.includes('netflix') ||
     norm.includes('spotify') ||
@@ -426,9 +455,16 @@ export function suggestCategoryAndScope(
       norm.includes('prime') ||
       norm.includes('hbo') ||
       norm.includes('disney');
+    const isGame =
+      norm.includes('steam') || norm.includes('playstation') || norm.includes('xbox');
+    const isTravel = norm.includes('airbnb') || norm.includes('booking');
     const cat = isStream
       ? findCat(categories, ['cat_15'], ['assinatura', 'streaming'])
-      : findCat(categories, ['cat_16', 'cat_28', 'cat_5'], ['cinema', 'lazer', 'hobby']);
+      : isGame
+        ? findCat(categories, ['cat_19'], ['jogo', 'game'])
+        : isTravel
+          ? findCat(categories, ['cat_29'], ['viagem', 'hotel'])
+          : findCat(categories, ['cat_16'], ['cinema', 'lazer', 'teatro']);
     return {
       suggestedCategoryId: cat?.id || 'cat_15',
       suggestedScope: personal
@@ -462,17 +498,18 @@ export function suggestCategoryAndScope(
     if (cat) return { suggestedCategoryId: cat.id, suggestedScope: personal };
   }
 
-  // Hobby / instrumentos → lazer pessoal (não módulo empresa)
+  // Hobby / instrumentos → Hobby / Passatempo (não Bar / Festas)
   if (
     norm.includes('guitarra') ||
     norm.includes('violao') ||
     norm.includes('luthier') ||
     norm.includes('instrumento') ||
     norm.includes('corda') ||
-    norm.includes('palheta')
+    norm.includes('palheta') ||
+    norm.includes('artesanato')
   ) {
-    const cat = findCat(categories, ['cat_28'], ['hobby', 'diversao']);
-    return { suggestedCategoryId: cat?.id || 'cat_28', suggestedScope: personal };
+    const cat = findCat(categories, ['cat_35'], ['hobby', 'passatempo']);
+    return { suggestedCategoryId: cat?.id || 'cat_35', suggestedScope: personal };
   }
 
   if (type === 'income') {
