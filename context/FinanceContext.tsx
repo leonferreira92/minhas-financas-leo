@@ -62,6 +62,12 @@ import {
   checkUserInitialized,
   initializeNewUserInFirestore
 } from '../services/firebaseService';
+import {
+  ensureSafeRestoreOnce,
+  sanitizeCloudTransaction,
+  isCloudSyncPendingAfterRestore,
+  clearCloudSyncPending
+} from '../services/safeRecovery';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -466,6 +472,30 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const isLeo = currentUser.email === 'leobov2@gmail.com';
     StorageService.setActiveUser(uid, isLeo);
 
+    // Garante restore local do backup 21/10 antes de ouvir o cloud
+    ensureSafeRestoreOnce(uid);
+
+    // Se acabamos de restaurar, empurra o backup para o Firestore (evita cloud quebrado sobrescrever)
+    if (isCloudSyncPendingAfterRestore()) {
+      const payload = {
+        accounts: StorageService.getAccounts(),
+        transactions: StorageService.getTransactions(),
+        debts: StorageService.getDebts(),
+        categories: StorageService.getCategories(),
+        budgets: StorageService.getBudgets(),
+        settings: StorageService.getSettings(),
+        shows: StorageService.getShows()
+      };
+      void syncLocalDataToFirestore(uid, payload)
+        .then(() => {
+          clearCloudSyncPending();
+          console.info('[safeRecovery] Backup 21/10 sincronizado para o Firestore');
+        })
+        .catch(err => {
+          console.warn('[safeRecovery] Falha ao sincronizar backup para o cloud:', err);
+        });
+    }
+
     // Sincronização e consolidação automática para o banco de dados (default)
     const consolidationFlag = `fin_consolidated_default_${uid}`;
     const hasConsolidated = localStorage.getItem(consolidationFlag);
@@ -502,6 +532,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // 1. Escutador em tempo real: Contas Bancárias (filtrando contas arquivadas/ocultas)
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
+      if (isCloudSyncPendingAfterRestore()) {
+        setAccounts(StorageService.getAccounts().filter(isAccountActive));
+        return;
+      }
       const cleanAccounts = deduplicateItemsById(cloudAccounts).filter(isAccountActive);
       setAccounts(cleanAccounts);
       StorageService.saveAccounts(cleanAccounts);
@@ -510,7 +544,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // 2. Escutador em tempo real: Transações / Lançamentos
     const unsubTransactions = subscribeToUserTransactions(uid, (cloudTxs) => {
       setAccounts(currentAccs => {
-        const normalizedTxs = deduplicateItemsById(cloudTxs).map(t => normalizeTransactionRecord(t, currentAccs));
+        // Enquanto o push do backup não termina, mantém local (JSON 21/10) como fonte
+        if (isCloudSyncPendingAfterRestore()) {
+          const localTxs = StorageService.getTransactions();
+          setTransactions(localTxs);
+          return currentAccs;
+        }
+
+        const normalizedTxs = deduplicateItemsById(cloudTxs)
+          .map(sanitizeCloudTransaction)
+          .map(t => normalizeTransactionRecord(t, currentAccs));
         setTransactions(normalizedTxs);
         StorageService.saveTransactions(normalizedTxs);
         return currentAccs;
@@ -745,6 +788,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, [settings.primaryColor]);
 
   const refreshData = () => {
+    // Recuperação pós-rollback: restaura JSON oficial 21/10 uma vez (local)
+    ensureSafeRestoreOnce(currentUser?.uid || null);
+
     let storedTransactions = StorageService.getTransactions();
     let storedCategories = StorageService.getCategories();
     const storedDebts = StorageService.getDebts();

@@ -15,6 +15,7 @@ import { useFinance } from '../context/FinanceContext';
 import { Account, DashboardWidgetConfig } from '../types';
 import { parseCurrencyInput } from '../constants';
 import { loadBackupIntoStorage } from '../services/backupImporter';
+import { applyOfficialBackupRestore } from '../services/safeRecovery';
 
 export const Settings = () => {
   const { 
@@ -133,6 +134,33 @@ export const Settings = () => {
                 setConfirmation({ title: 'Erro', message: 'Falha ao restaurar.', isAlert: true });
             }
         }
+    });
+  };
+
+  const handleOfficialBackupRestore = () => {
+    setConfirmation({
+      title: 'Backup oficial 21/10/2026',
+      message:
+        'Restaura a cópia estável do app (financas_pro_backup_2026-10-21). Substitui os dados locais atuais. Continuar?',
+      onConfirm: () => {
+        try {
+          localStorage.removeItem('fin_safe_restore_20261024');
+        } catch {
+          /* ignore */
+        }
+        const success = applyOfficialBackupRestore(currentUser?.uid || null);
+        if (success) {
+          refreshData();
+          setConfirmation({
+            title: 'Sucesso',
+            message: 'Backup oficial de 21/10 restaurado. Recarregando…',
+            isAlert: true
+          });
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          setConfirmation({ title: 'Erro', message: 'Falha ao restaurar o backup oficial.', isAlert: true });
+        }
+      }
     });
   };
 
@@ -556,6 +584,13 @@ export const Settings = () => {
                  <button onClick={handleRestoreClick} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
                     <Upload size={20} className="text-emerald-400 mb-2" />
                     <span className="text-[10px] font-bold text-zinc-300">Restaurar JSON</span>
+                 </button>
+                 <button
+                   onClick={handleOfficialBackupRestore}
+                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-700/50 rounded-2xl transition active:scale-95 text-white"
+                 >
+                    <ShieldCheck size={20} className="text-amber-400 mb-2" />
+                    <span className="text-[10px] font-bold text-amber-200">Restaurar backup oficial 21/10/2026</span>
                  </button>
                  <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
               </div>
