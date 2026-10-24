@@ -102,7 +102,7 @@ export const ProLaboreWithdrawModal: React.FC<Props> = ({ isOpen, onClose, defau
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [sourceAccountId, setSourceAccountId] = useState(defaultSourceAccount?.id || '');
   const [destAccountId, setDestAccountId] = useState(defaultDestAccount?.id || '');
-  const [notes, setNotes] = useState('Retirada de Pró-Labore da Carreira Musical');
+  const [notes, setNotes] = useState('Pró-labore / Transferência Vida de Artista');
   const [isSuccess, setIsSuccess] = useState(false);
 
   // Source account current balance
@@ -151,15 +151,15 @@ export const ProLaboreWithdrawModal: React.FC<Props> = ({ isOpen, onClose, defau
       scope: 'BUSINESS'
     });
 
-    // 2. ENTRADA no escopo PESSOAL (Categoria: Pró-Labore / Renda da Música)
+    // 2. ENTRADA pessoal — cat_7 Pró-labore / Transferência Vida de Artista
     addTransaction({
-      description: `Recebimento de Pró-Labore: ${notes.trim() || 'Renda da Música'}`,
+      description: `Recebimento de Pró-Labore: ${notes.trim() || 'Transferência Vida de Artista'}`,
       amount: parsedAmount,
       type: 'income',
       date,
       status: 'paid',
       accountId: destAccountId || defaultDestAccount?.id || 'acc_bank',
-      categoryId: categoryPersonal?.id || 'cat_7',
+      categoryId: 'cat_7',
       scope: 'PERSONAL'
     });
 

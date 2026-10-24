@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { 
   Search, Settings as SettingsIcon, ChevronDown, ChevronRight, ChevronLeft,
-  User, Music, CreditCard, Sparkles, Sliders, Receipt, Landmark, 
-  BarChart3, FolderTree, Plus, Calendar, DollarSign, FileText, 
+  User, CreditCard, Sparkles, Sliders, Receipt, Landmark, 
+  BarChart3, FolderTree, Plus,
   ShieldAlert, RefreshCw, UploadCloud, Database, Bell, X, ShieldCheck
 } from 'lucide-react';
 import { AuthHeaderWidget } from './AuthHeaderWidget';
@@ -57,7 +57,6 @@ export const MoreHubScreen: React.FC = () => {
   // Accordion open/close state
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     personal: true,
-    musician: true,
     debts: false,
     ai: false,
     system: false
@@ -118,46 +117,6 @@ export const MoreHubScreen: React.FC = () => {
           action: () => setIsTxModalOpen(true),
           badge: 'Atalho',
           keywords: 'novo lancamento despesa receita adicionar'
-        }
-      ]
-    },
-    {
-      id: 'musician',
-      title: 'Gestão de Carreira (Músico)',
-      icon: Music,
-      color: 'text-[#fcca00]',
-      items: [
-        {
-          id: 'agenda_shows',
-          title: 'Agenda de Shows',
-          desc: 'Calendário de apresentações e fichas de eventos',
-          icon: Calendar,
-          action: () => navigate('/shows'),
-          keywords: 'shows agenda apresentacoes eventos apresentacao'
-        },
-        {
-          id: 'caches_receber',
-          title: 'Cachês a Receber',
-          desc: 'Sinais pendentes, quitações e propostas',
-          icon: DollarSign,
-          action: () => navigate('/shows?tab=history'),
-          keywords: 'caches receber sinal pix contratos'
-        },
-        {
-          id: 'relatorio_shows',
-          title: 'Relatório de Shows',
-          desc: 'Diagnóstico financeiro e faturamento musical',
-          icon: FileText,
-          action: () => navigate('/relatorios'),
-          keywords: 'relatorio carreira musica shows lucros'
-        },
-        {
-          id: 'gastos_logisticos',
-          title: 'Gastos Logísticos',
-          desc: 'Combustível, equipe e custos de palco',
-          icon: Receipt,
-          action: () => navigate('/lancamentos?status=all&type=expense'),
-          keywords: 'logistica gasolina combustivel equipe musicos'
         }
       ]
     },

@@ -151,7 +151,7 @@ export const LoginScreen: React.FC = () => {
                 Finanças Pro
               </h1>
               <p className="text-xs text-slate-600 font-medium mt-0.5">
-                Fintech & Gestão de Carreira Musical
+                Gestão de Finanças Pessoais
               </p>
             </div>
           </div>

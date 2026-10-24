@@ -12,7 +12,6 @@ import { Transaction, matchesScope, Account } from '../types';
 import { getIcon } from '../constants';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
-import { ScopeSelector } from './ScopeSelector';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
@@ -283,7 +282,6 @@ export const ExtratoScreen: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-2">
-          <ScopeSelector size="sm" />
           <button
             onClick={() => toggleBlur()}
             className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 transition active:scale-95"
@@ -344,7 +342,7 @@ export const ExtratoScreen: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-[11px] uppercase tracking-wider font-black text-emerald-700 flex items-center gap-1.5">
                 <ArrowUpRight size={14} className="text-emerald-600" />
-                Futuros & Cachês a Receber
+                Receitas Futuras a Receber
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-700 border border-emerald-500/30">
                 A Entrar
@@ -358,7 +356,7 @@ export const ExtratoScreen: React.FC = () => {
             </div>
 
             <div className="mt-4 pt-3.5 border-t border-emerald-800/30 text-xs flex items-center justify-between">
-              <span className="text-slate-600 text-[10px]">Cachês agendados e receitas pendentes</span>
+              <span className="text-slate-600 text-[10px]">Receitas e entradas pendentes</span>
               <span className="text-xs font-bold text-emerald-700">Entrada prevista</span>
             </div>
           </div>
@@ -544,7 +542,6 @@ export const ExtratoScreen: React.FC = () => {
           { id: 'all', label: 'Tudo' },
           { id: 'paid', label: 'Realizado / Efetivado' },
           { id: 'pending', label: 'Pendente / Futuro' },
-          { id: 'shows', label: 'Shows' },
           { id: 'accounts', label: 'Por Conta' }
         ].map(pill => {
           const isActive = statusFilter === pill.id;
@@ -631,17 +628,12 @@ export const ExtratoScreen: React.FC = () => {
                                   Pendente
                                 </span>
                               )}
-                              {t.showId && (
-                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-purple-600 text-white border border-purple-400/40 uppercase shrink-0">
-                                  Show
-                                </span>
-                              )}
                               <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-md border uppercase shrink-0 ${
                                 t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId)
-                                  ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
+                                  ? 'bg-slate-700 text-slate-200 border-slate-600'
                                   : 'bg-zinc-800 text-zinc-200 border-zinc-700'
                               }`}>
-                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId) ? 'Música' : 'Pessoal'}
+                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId) ? 'Legado' : 'Pessoal'}
                               </span>
                               <span className="text-[10px] text-slate-600 truncate">
                                 {cat?.name || 'Geral'}

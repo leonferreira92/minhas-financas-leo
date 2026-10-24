@@ -296,14 +296,13 @@ export const CalendarScreen: React.FC = () => {
             {selectedShows.length > 0 && (
               <div className="space-y-2">
                 <span className="text-[10px] font-black uppercase text-purple-600 tracking-wider flex items-center">
-                  <Music size={12} className="mr-1" /> Shows & Apresentações do Dia
+                  <Music size={12} className="mr-1" /> Eventos legados do dia
                 </span>
                 
                 {selectedShows.map(show => (
                   <div
                     key={show.id}
-                    onClick={() => navigate(`/shows?showId=${show.id}`)}
-                    className="p-3.5 rounded-2xl bg-white hover:bg-slate-50 border border-purple-500/30 hover:border-purple-500/60 transition cursor-pointer flex items-center justify-between gap-3 shadow-xs group"
+                    className="p-3.5 rounded-2xl bg-white border border-slate-200 flex items-center justify-between gap-3 shadow-xs"
                   >
                     <div className="flex items-center space-x-3 min-w-0">
                       <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-600 flex items-center justify-center shrink-0">

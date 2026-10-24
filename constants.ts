@@ -70,7 +70,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   // --- RECEITAS ---
   { id: 'cat_6', name: 'Salário', type: 'income', color: '#3b82f6', icon: 'Briefcase', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_33', name: 'Shows / Cachês', type: 'income', color: '#8b5cf6', icon: 'Music', classification: 'professional', scope: 'BUSINESS' },
-  { id: 'cat_7', name: 'Pró-Labore', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future', scope: 'PERSONAL' },
+  { id: 'cat_7', name: 'Pró-labore / Transferência Vida de Artista', type: 'income', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_24', name: 'Bônus / PLR', type: 'income', color: '#2dd4bf', icon: 'Coins', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_25', name: 'Venda de Usados', type: 'income', color: '#8b5cf6', icon: 'DollarSign', classification: 'future', scope: 'PERSONAL' },
   { id: 'cat_32', name: 'Rendimentos', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future', scope: 'PERSONAL' },

@@ -2,19 +2,18 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { 
-  Landmark, Wallet, PiggyBank, Eye, EyeOff, Plus, 
-  Music, ShieldAlert, ChevronRight, Calendar, Bell,
-  ArrowUpRight, ArrowDownRight, CreditCard, Sparkles,
-  UploadCloud, ArrowRightLeft, User, TrendingDown,
-  BarChart3, FolderTree, Receipt, CheckCircle2, ChevronLeft,
-  DollarSign
+  Landmark, Eye, EyeOff, Plus, 
+  ShieldAlert, ChevronRight, Bell,
+  CreditCard, Sparkles,
+  UploadCloud, User, Menu,
+  BarChart3, FolderTree, Receipt
 } from 'lucide-react';
-import { Account, Show, ScopeType, matchesScope, Transaction } from '../types';
+import { Account, ScopeType, matchesScope } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
-import { ShowFormModal } from './shows/ShowFormModal';
-import { getAccountVinculo, getMonthlyCareerMetrics } from '../services/financeAggregator';
+import { ProLaboreEstimateCard } from './ProLaboreEstimateCard';
+import { getAccountVinculo } from '../services/financeAggregator';
 import { getIcon } from '../constants';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 
@@ -22,7 +21,6 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { 
     accounts, 
-    shows, 
     transactions,
     categories,
     debts,
@@ -31,21 +29,16 @@ export const Dashboard: React.FC = () => {
     toggleBlur, 
     activeScope,
     setActiveScope,
-    getBalanceSummary, 
     getSystemAlerts,
     getAccountBalance,
-    addShow,
     getDebtProgress
   } = useFinance();
 
   const userName = settings.userName || 'Leo';
   const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  // Carousel Active Card: 0 = Pessoal/Consolidado, 1 = Músico/Shows, 2 = Dívidas/Passivos
-  const [activeCardIndex, setActiveCardIndex] = useState(
-    activeScope === 'BUSINESS' ? 1 : 0
-  );
+  // Carousel: 0 = Pessoal, 1 = Dívidas/Passivos
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
 
   const carouselRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.4 });
 
@@ -53,9 +46,14 @@ export const Dashboard: React.FC = () => {
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txInitialType, setTxInitialType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [txInitialScope, setTxInitialScope] = useState<ScopeType | undefined>(undefined);
-  const [isNewShowModalOpen, setIsNewShowModalOpen] = useState(false);
   const [isBankImportOpen, setIsBankImportOpen] = useState(false);
   const [selectedAccountForEdit, setSelectedAccountForEdit] = useState<Account | null>(null);
+
+  useEffect(() => {
+    if (activeScope === 'BUSINESS') {
+      setActiveScope('PERSONAL');
+    }
+  }, []);
 
   const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
 
@@ -77,31 +75,6 @@ export const Dashboard: React.FC = () => {
     const personalAccounts = accounts.filter(a => a.enabled !== false && getAccountVinculo(a) !== 'MUSICO');
     return personalAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [accounts, getAccountBalance]);
-
-  // 3. CAIXA MÚSICO / EMPRESA
-  const musicCash = useMemo(() => {
-    const musicAccounts = accounts.filter(a => a.enabled !== false && getAccountVinculo(a) === 'MUSICO');
-    if (musicAccounts.length > 0) {
-      return musicAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
-    }
-    let net = 0;
-    transactions.forEach(t => {
-      if (t.status !== 'paid') return;
-      if (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId) {
-        const amt = Math.abs(Number(t.amount) || 0);
-        if (t.type === 'income') net += amt;
-        else if (t.type === 'expense') net -= amt;
-      }
-    });
-    return Math.max(0, net);
-  }, [accounts, transactions, getAccountBalance]);
-
-  // Cachês a Receber no Mês
-  const monthMusicReceivables = useMemo(() => {
-    return transactions
-      .filter(t => t.status === 'pending' && t.type === 'income' && (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || !!t.showId))
-      .reduce((sum, t) => sum + Math.abs(Number(t.amount) || 0), 0);
-  }, [transactions]);
 
   // Métricas de Dívidas / Parcelas Abertas do Mês
   const debtsMonthMetrics = useMemo(() => {
@@ -166,16 +139,9 @@ export const Dashboard: React.FC = () => {
       .slice(0, 5);
   }, [transactions, activeScope]);
 
-  // Sincroniza o contexto de escopo ao mudar de card no carrossel
   const handleSelectCard = (index: number) => {
     setActiveCardIndex(index);
-    if (index === 0) {
-      setActiveScope('PERSONAL');
-    } else if (index === 1) {
-      setActiveScope('BUSINESS');
-    } else if (index === 2) {
-      setActiveScope('ALL');
-    }
+    setActiveScope(index === 0 ? 'PERSONAL' : 'ALL');
 
     if (carouselRef.current) {
       const cardWidth = carouselRef.current.offsetWidth * 0.9;
@@ -186,35 +152,26 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // Escuta o scroll nativo do carrossel para atualizar o índice
   const handleScrollCarousel = () => {
     if (!carouselRef.current) return;
     const scrollLeft = carouselRef.current.scrollLeft;
     const cardWidth = carouselRef.current.offsetWidth * 0.85;
     const newIdx = Math.round(scrollLeft / cardWidth);
-    if (newIdx !== activeCardIndex && newIdx >= 0 && newIdx <= 2) {
+    if (newIdx !== activeCardIndex && newIdx >= 0 && newIdx <= 1) {
       setActiveCardIndex(newIdx);
-      if (newIdx === 0) setActiveScope('PERSONAL');
-      else if (newIdx === 1) setActiveScope('BUSINESS');
-      else if (newIdx === 2) setActiveScope('ALL');
+      setActiveScope(newIdx === 0 ? 'PERSONAL' : 'ALL');
     }
   };
 
   const handleOpenAddExpense = () => {
     setTxInitialType('expense');
-    setTxInitialScope(activeScope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL');
+    setTxInitialScope('PERSONAL');
     setIsTxModalOpen(true);
   };
 
   const handleOpenAddIncome = () => {
     setTxInitialType('income');
-    setTxInitialScope(activeScope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL');
-    setIsTxModalOpen(true);
-  };
-
-  const handleOpenAddMusicExpense = () => {
-    setTxInitialType('expense');
-    setTxInitialScope('BUSINESS');
+    setTxInitialScope('PERSONAL');
     setIsTxModalOpen(true);
   };
 
@@ -325,69 +282,11 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* CARD 2 (VISÃO MÚSICO / SHOWS) */}
+            {/* CARD 2 (VISÃO PASSIVOS & DÍVIDAS) */}
             <div 
               onClick={() => handleSelectCard(1)}
               className={`snap-center shrink-0 w-[92%] sm:w-[94%] p-5 rounded-3xl transition-all duration-300 shadow-xl cursor-pointer ${
                 activeCardIndex === 1
-                  ? 'bg-gradient-to-br from-[#1c1917] via-[#292524] to-[#121214] border border-[#fcca00]/70 ring-1 ring-[#fcca00]/40'
-                  : 'bg-zinc-900/90 border border-zinc-800 opacity-75'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wider font-black text-amber-200 flex items-center gap-1.5">
-                  <Music size={14} className="text-[#fcca00]" />
-                  Visão Músico / Shows
-                </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
-                  Carreira
-                </span>
-              </div>
-
-              <div className="mt-3">
-                <h2 className="text-3xl font-black text-[#fcca00] tracking-tight">
-                  {formatCurrency(musicCash)}
-                </h2>
-                <div className="flex items-center space-x-2 text-[10px] text-slate-600 mt-1 font-medium">
-                  <span>A receber no mês:</span>
-                  <span className="font-bold text-emerald-600">+{formatCurrency(monthMusicReceivables)}</span>
-                </div>
-              </div>
-
-              {/* Botões de Ação Rápida */}
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-slate-200">
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigate('/shows'); }}
-                  className="py-2 px-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
-                  title="Abrir Módulo Sou Artista"
-                >
-                  <Music size={13} />
-                  <span>Carreira</span>
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); setIsNewShowModalOpen(true); }}
-                  className="py-2 px-2 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-blue-950 font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center space-x-1"
-                >
-                  <Plus size={13} />
-                  <span>Novo Show</span>
-                </button>
-
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleOpenAddMusicExpense(); }}
-                  className="py-2 px-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-300 font-bold text-xs transition active:scale-95 flex items-center justify-center space-x-1"
-                >
-                  <Plus size={13} />
-                  <span>Despesa</span>
-                </button>
-              </div>
-            </div>
-
-            {/* CARD 3 (VISÃO PASSIVOS & DÍVIDAS) */}
-            <div 
-              onClick={() => handleSelectCard(2)}
-              className={`snap-center shrink-0 w-[92%] sm:w-[94%] p-5 rounded-3xl transition-all duration-300 shadow-xl cursor-pointer ${
-                activeCardIndex === 2
                   ? 'bg-gradient-to-br from-[#1a1114] via-[#241318] to-[#120a0d] border border-rose-500/60 ring-1 ring-rose-500/40'
                   : 'bg-zinc-900/90 border border-zinc-800 opacity-75'
               }`}
@@ -436,7 +335,7 @@ export const Dashboard: React.FC = () => {
 
           {/* Dots Indicadores do Carrossel */}
           <div className="flex items-center justify-center space-x-1.5 mt-3">
-            {[0, 1, 2].map(idx => (
+            {[0, 1].map(idx => (
               <button
                 key={idx}
                 onClick={() => handleSelectCard(idx)}
@@ -476,16 +375,16 @@ export const Dashboard: React.FC = () => {
               </span>
             </button>
 
-            {/* 2. Agenda Shows */}
+            {/* 2. Contas */}
             <button
-              onClick={() => navigate('/shows')}
+              onClick={() => navigate('/contas')}
               className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-[#fcca00] group-hover:bg-amber-500 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
-                <Music size={18} />
+              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-700 group-hover:bg-teal-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
+                <Landmark size={18} />
               </div>
               <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
-                Agenda Shows
+                Contas
               </span>
             </button>
 
@@ -554,20 +453,23 @@ export const Dashboard: React.FC = () => {
               </span>
             </button>
 
-            {/* 8. Saldo das Contas */}
+            {/* 8. Mais / Ajustes */}
             <button
-              onClick={() => navigate('/contas')}
+              onClick={() => navigate('/mais')}
               className="p-3 rounded-2xl bg-white hover:bg-slate-50/80 border border-slate-200 transition active:scale-95 flex flex-col items-center justify-center text-center group shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-700 group-hover:bg-teal-600 group-hover:text-slate-900 flex items-center justify-center mb-1.5 transition">
-                <Landmark size={18} />
+              <div className="w-10 h-10 rounded-xl bg-slate-500/10 text-slate-600 group-hover:bg-slate-700 group-hover:text-white flex items-center justify-center mb-1.5 transition">
+                <Menu size={18} />
               </div>
               <span className="text-[11px] font-bold text-slate-600 group-hover:text-slate-900 leading-tight">
-                Contas
+                Mais
               </span>
             </button>
           </div>
         </div>
+
+        {/* Pró-labore: estimativa Vida de Artista → Pessoal */}
+        <ProLaboreEstimateCard />
 
         {/* ========================================================================= */}
         {/* CAMADA 2: PAINÉIS LADO A LADO NO DESKTOP (CONTAS & GASTOS DO MÊS)         */}
@@ -615,7 +517,7 @@ export const Dashboard: React.FC = () => {
                             {acc.name}
                           </span>
                           <span className="text-[10px] text-slate-600 block capitalize">
-                            {acc.vinculo === 'MUSICO' ? 'Música' : 'Pessoal'}
+                            {getAccountVinculo(acc) === 'MUSICO' ? 'Empresa / Legado' : 'Pessoal'}
                           </span>
                         </div>
                       </div>
@@ -792,19 +694,6 @@ export const Dashboard: React.FC = () => {
         <TransactionForm
           initialType={txInitialType}
           onClose={() => setIsTxModalOpen(false)}
-        />
-      )}
-
-      {/* MODAL DE NOVO SHOW */}
-      {isNewShowModalOpen && (
-        <ShowFormModal
-          isOpen={isNewShowModalOpen}
-          onClose={() => setIsNewShowModalOpen(false)}
-          existingShows={shows}
-          onSave={(showData, initialDepositTx) => {
-            addShow(showData as any);
-            setIsNewShowModalOpen(false);
-          }}
         />
       )}
 

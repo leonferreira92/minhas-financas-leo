@@ -452,23 +452,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     setValidationError(null);
 
-    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
-    const finalShowId = (finalScope === 'BUSINESS' && selectedShowId) ? selectedShowId : undefined;
-
-    // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status 'pending' se o evento não tiver sido realizado
-    let finalDate = date;
-    let finalStatus = status;
-    if (finalShowId) {
-      const linkedShow = shows.find(s => s.id === finalShowId);
-      if (linkedShow) {
-        if (linkedShow.date) {
-          finalDate = linkedShow.date;
-        }
-        if (type === 'expense' && linkedShow.status !== 'Realizado') {
-          finalStatus = 'pending';
-        }
-      }
-    }
+    // Novos lançamentos são sempre pessoais; edição preserva showId/scope legado se já existirem
+    const finalScope: ScopeType = transaction?.scope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL';
+    const finalShowId = transaction?.showId || undefined;
+    const finalDate = date;
+    const finalStatus = status;
 
     const data: any = {
       type, 
@@ -509,8 +497,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleConfirmRecurringUpdate = (updateFuture: boolean) => {
     if (!transaction) return;
     const val = parseCurrencyInput(amount);
-    const finalScope: ScopeType = (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
-    const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
+    const finalScope: ScopeType = transaction.scope === 'BUSINESS' ? 'BUSINESS' : 'PERSONAL';
+    const finalShowId = transaction.showId || undefined;
 
     const data: any = {
       type, 
@@ -590,97 +578,15 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-36">
             
-            {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO */}
+            {/* Escopo fixo: Finanças Pessoais */}
             <div className="px-6 pt-2">
-              <div className="p-1 bg-slate-100  rounded-2xl flex items-center justify-between gap-1 border border-slate-200/60 ">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScope('PERSONAL');
-                    setSelectedShowId('');
-                  }}
-                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
-                    scope === 'PERSONAL'
-                      ? 'bg-emerald-500 text-black shadow-sm'
-                      : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <User size={13} className={scope === 'PERSONAL' ? 'text-black' : ''} />
-                  <span>👤 Pessoal</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setScope('BUSINESS')}
-                  className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
-                    scope === 'BUSINESS'
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-slate-500 dark:text-slate-300 hover:text-purple-500 dark:hover:text-purple-300'
-                  }`}
-                >
-                  <Music size={13} className={scope === 'BUSINESS' ? 'text-slate-900' : ''} />
-                  <span>🎸 Músico / Carreira</span>
-                </button>
+              <div className="py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center space-x-1.5">
+                <User size={13} className="text-emerald-700" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                  Lançamento Pessoal
+                </span>
               </div>
             </div>
-
-            {/* ========================================== */}
-            {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO)      */}
-            {/* ========================================== */}
-            {scope === 'BUSINESS' && type !== 'transfer' && (
-              <div className="mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50  border border-purple-200  space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center">
-                      <Music size={13} />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 ">
-                      Vincular ao Show / Evento
-                    </span>
-                  </div>
-
-                  {activeLinkedShow && (
-                    <span className="text-[9px] font-black text-emerald-600  bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
-                      <CheckCircle2 size={11} />
-                      <span>Vinculado</span>
-                    </span>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <select
-                    value={selectedShowId || ''}
-                    onChange={(e) => handleSelectShow(e.target.value)}
-                    className="w-full bg-white  border-2 border-purple-200  rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800  outline-none focus:border-purple-500 appearance-none pr-8 cursor-pointer"
-                  >
-                    <option value="">-- Não vincular a nenhum show ({type === 'expense' ? 'Despesa Geral' : 'Receita Geral'}) --</option>
-                    <option value="__create_new__" className="text-purple-600 font-black">+ Criar Novo Show / Evento...</option>
-                    {availableShows.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.contractorName || s.name} ({new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}) - Cachê: R$ {s.totalCache?.toLocaleString('pt-BR')}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
-                </div>
-
-                {activeLinkedShow && (
-                  <div className="p-2.5 rounded-xl bg-white/80  border border-purple-100  flex items-center justify-between text-[11px]">
-                    <div>
-                      <p className="font-extrabold text-slate-800 ">{activeLinkedShow.contractorName || activeLinkedShow.name}</p>
-                      <p className="text-[10px] text-slate-600">{new Date(activeLinkedShow.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {activeLinkedShow.city || activeLinkedShow.location}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedShowId('')}
-                      className="text-[10px] font-bold text-rose-600 hover:underline"
-                    >
-                      Desvincular
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* ========================================== */}
             {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA)   */}

@@ -4,8 +4,6 @@ import { FinanceProvider, useFinance } from './context/FinanceContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { ExtratoScreen } from './components/ExtratoScreen';
-import { MusicianShowScreen } from './components/MusicianShowScreen';
-import { ErrorBoundary } from './components/ErrorBoundary';
 import { DebtsScreen } from './components/DebtsScreen';
 import { ExpenseAnalysisScreen } from './components/ExpenseAnalysisScreen';
 import { AccountsScreen } from './components/AccountsScreen';
@@ -75,13 +73,9 @@ const AppContent = () => {
           <Route path="/relatorios" element={<ReportsHubScreen />} />
 
           {/* ========================================================================= */}
-          {/* PRESERVAÇÃO: Histórico e Rotas do Banco Mantidos Intactos                 */}
+          {/* CARREIRA / SHOWS: rota desativada (legado preservado no banco)            */}
           {/* ========================================================================= */}
-          <Route path="/shows" element={
-            <ErrorBoundary>
-              <MusicianShowScreen />
-            </ErrorBoundary>
-          } />
+          <Route path="/shows" element={<Navigate to="/" replace />} />
           <Route path="/flow" element={<ReportsHubScreen initialTab="flow" />} />
           <Route path="/summary" element={<ReportsHubScreen initialTab="summary" />} />
           <Route path="/ai-report" element={<ReportsHubScreen initialTab="ai" />} />

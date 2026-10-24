@@ -7,7 +7,6 @@ import {
   Sparkles, Layers, Wallet, Tag
 } from 'lucide-react';
 import { getIcon } from '../constants';
-import { ScopeSelector } from './ScopeSelector';
 import { matchesScope, Transaction } from '../types';
 import {
   isCareerExpenseTransaction,
@@ -165,7 +164,6 @@ export const ExpenseAnalysisScreen: React.FC = () => {
           </div>
         </div>
 
-        <ScopeSelector size="sm" />
       </div>
 
       {/* SELETOR DE MÊS NAVEGÁVEL */}

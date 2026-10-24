@@ -15,16 +15,17 @@ import {
 } from '../services/financeAggregator';
 import {
   normalizeShowFinancials,
-  syncShowWithTransactions,
   cancelShowFutureTransactions,
   validateShowTransaction,
   resolveShowExpenseClassification,
   resolveIncomeCategoryId,
   getShowFinancialSummary,
-  reconcileAllShowsAndTransactions,
   isShowOrMusicIncomeTransaction,
   deduplicateItemsById
 } from '../services/showFinanceSyncService';
+
+/** Congela syncs de show → txs (app 100% pessoal). Shows legados ficam só como metadado. */
+const SHOW_FINANCE_SYNC_FROZEN = true;
 import { generateUUID } from '../services/uuidHelper';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { User } from 'firebase/auth';
@@ -555,21 +556,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       });
     });
 
-    // 3. Escutador em tempo real: Shows / Apresentações
+    // 3. Shows legados: somente leitura (sem rewrite no Firestore / sem sync financeiro)
     const unsubShows = subscribeToUserShows(uid, (cloudShows) => {
-      const cleanShows = deduplicateItemsById(cloudShows).map(s => {
-        const hadDupPayments = Array.isArray(s.payments) && deduplicateItemsById(s.payments).length !== s.payments.length;
-        const hadDupCrew = Array.isArray(s.crewMembers) && deduplicateItemsById(s.crewMembers).length !== s.crewMembers.length;
-        const hadDupLog = Array.isArray(s.logistics) && deduplicateItemsById(s.logistics).length !== s.logistics.length;
-        const hadDupOther = Array.isArray(s.otherExpenses) && deduplicateItemsById(s.otherExpenses).length !== s.otherExpenses.length;
-        const hadDupExp = Array.isArray(s.expenseItems) && deduplicateItemsById(s.expenseItems).length !== s.expenseItems.length;
-
-        const normalized = normalizeShowFinancials(s, 'acc_mp');
-        if (hadDupPayments || hadDupCrew || hadDupLog || hadDupOther || hadDupExp) {
-          saveShowToFirestore(uid, normalized);
-        }
-        return normalized;
-      });
+      const cleanShows = deduplicateItemsById(cloudShows).map(s =>
+        normalizeShowFinancials(s, 'acc_mp')
+      );
       setShows(cleanShows);
       StorageService.saveShows(cleanShows);
     });
@@ -692,52 +683,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
-  const syncShowsWithTransactions = useCallback((currentTransactions: Transaction[], currentShows: Show[]) => {
-    let showsChanged = false;
-
-    // Sincroniza pagamentos vinculados com transações existentes sem NUNCA criar shows automáticos
-    const updatedShows = currentShows.map(show => {
-      let showReceiptsChanged = false;
-      const updatedPayments = show.payments ? show.payments.map(p => {
-        if (p.transactionId) {
-          const correspondingTx = currentTransactions.find(tx => tx.id === p.transactionId);
-          if (correspondingTx) {
-            const txStatusMapped = correspondingTx.status === 'paid' ? 'Recebido' : 'Agendado';
-            if (
-              p.amount !== correspondingTx.amount ||
-              p.expectedDate !== correspondingTx.date ||
-              p.accountId !== correspondingTx.accountId ||
-              p.status !== txStatusMapped
-            ) {
-              showReceiptsChanged = true;
-              return {
-                ...p,
-                amount: correspondingTx.amount,
-                expectedDate: correspondingTx.date,
-                effectiveDate: correspondingTx.status === 'paid' ? correspondingTx.date : undefined,
-                accountId: correspondingTx.accountId,
-                status: txStatusMapped as any
-              };
-            }
-          }
-        }
-        return p;
-      }) : [];
-
-      if (showReceiptsChanged) {
-        showsChanged = true;
-        return {
-          ...show,
-          payments: updatedPayments
-        };
-      }
-      return show;
-    });
-
-    if (showsChanged) {
-      setShows(updatedShows);
-      StorageService.saveShows(updatedShows);
-    }
+  // Sync show↔txs desativado (SHOW_FINANCE_SYNC_FROZEN) — saldos históricos ficam intactos
+  const syncShowsWithTransactions = useCallback((_currentTransactions: Transaction[], _currentShows: Show[]) => {
+    if (SHOW_FINANCE_SYNC_FROZEN) return;
   }, []);
 
   useEffect(() => {
@@ -896,6 +844,25 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     } else {
       catDividas.scope = 'PERSONAL';
       catDividas.type = 'expense';
+    }
+
+    // Garantir cat_7: Pró-labore / Transferência Vida de Artista (receita pessoal)
+    let catProLabore = storedCategories.find(c => c.id === 'cat_7');
+    if (!catProLabore) {
+      catProLabore = {
+        id: 'cat_7',
+        name: 'Pró-labore / Transferência Vida de Artista',
+        type: 'income',
+        color: '#6366f1',
+        icon: 'BadgeDollarSign',
+        classification: 'future',
+        scope: 'PERSONAL'
+      };
+      storedCategories.push(catProLabore);
+    } else {
+      catProLabore.name = 'Pró-labore / Transferência Vida de Artista';
+      catProLabore.type = 'income';
+      catProLabore.scope = 'PERSONAL';
     }
 
     // Remover categorias duplicadas
@@ -2376,13 +2343,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addShow = (s: Omit<Show, 'id' | 'createdAt'> & { id?: string }) => {
+    // Metadado legado apenas — não cria/atualiza transações (sync congelado)
     const id = s.id || generateUUID();
     const defaultAccId = accounts.length > 0 ? accounts[0].id : 'acc_bank';
     const showWithId: Show = { ...s, id, createdAt: Date.now() };
-    const normalized = normalizeShowFinancials(showWithId, defaultAccId);
-
-    // Sincronizar automaticamente com as movimentações financeiras
-    const { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, transactions, categories);
+    const updatedShow = normalizeShowFinancials(showWithId, defaultAccId);
 
     setShows(prev => {
       const exists = prev.some(sh => sh.id === updatedShow.id);
@@ -2393,35 +2358,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return deduplicateItemsById(updated);
     });
 
-    setTransactions(updatedTransactions);
-    StorageService.saveTransactions(updatedTransactions);
-
     if (currentUser) {
       saveShowToFirestore(currentUser.uid, updatedShow);
-      updatedTransactions.filter(t => t.showId === updatedShow.id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
     }
   };
 
   const updateShow = (s: Show) => {
+    // Atualiza ficha de show sem reconciliar / criar / apagar transações
     const defaultAccId = getDefaultAccountForScope('BUSINESS');
-    const normalized = normalizeShowFinancials(s, defaultAccId);
-
-    let currentTxs = transactions;
-    if (s.status === 'Cancelado') {
-      currentTxs = cancelShowFutureTransactions(s.id, currentTxs);
-    }
-
-    const prevShowTxIds = new Set(currentTxs.filter(t => t.showId === s.id).map(t => t.id));
-    let { updatedShow, updatedTransactions } = syncShowWithTransactions(normalized, currentTxs, categories);
-
-    if (s.status === 'Cancelado') {
-      updatedTransactions = cancelShowFutureTransactions(s.id, updatedTransactions);
-    }
-
-    const nextShowTxIds = new Set(updatedTransactions.filter(t => t.showId === s.id).map(t => t.id));
-
-    setTransactions(updatedTransactions);
-    StorageService.saveTransactions(updatedTransactions);
+    const updatedShow = normalizeShowFinancials(s, defaultAccId);
 
     setShows(prevShows => {
       const exists = prevShows.some(show => show.id === s.id);
@@ -2434,16 +2379,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (currentUser) {
       saveShowToFirestore(currentUser.uid, updatedShow);
-      updatedTransactions.filter(t => t.showId === s.id).forEach(t => saveTransactionToFirestore(currentUser.uid, t));
-      prevShowTxIds.forEach(oldId => {
-        if (!nextShowTxIds.has(oldId)) {
-          deleteTransactionFromFirestore(currentUser.uid, oldId);
-        }
-      });
     }
   };
 
-  const deleteShow = (id: string, deleteTransactions: boolean = false) => {
+  const deleteShow = (id: string, _deleteTransactions: boolean = false) => {
+    // NUNCA apaga transações (pagas ou não) — preserva saldo histórico de caixa
     setShows(prev => {
       const updated = prev.filter(show => show.id !== id);
       StorageService.saveShows(updated);
@@ -2452,18 +2392,6 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (currentUser) {
       deleteShowFromFirestore(currentUser.uid, id);
-    }
-
-    if (deleteTransactions) {
-      setTransactions(prev => {
-        const toDelete = prev.filter(t => t.showId === id);
-        if (currentUser) {
-          toDelete.forEach(t => deleteTransactionFromFirestore(currentUser.uid, t.id));
-        }
-        const updated = prev.filter(t => t.showId !== id);
-        StorageService.saveTransactions(updated);
-        return updated;
-      });
     }
   };
 

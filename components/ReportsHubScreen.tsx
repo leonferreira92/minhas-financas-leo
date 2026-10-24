@@ -4,14 +4,10 @@ import {
   FileText, Bot, FileSpreadsheet, Activity, 
   Calendar as CalendarIcon, Download, Sparkles 
 } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
 import { AIReportScreen } from './AIReportScreen';
 import { FinancialSummary } from './FinancialSummary';
 import { MonthlyFlow } from './MonthlyFlow';
 import { CalendarScreen } from './CalendarScreen';
-import { ScopeSelector } from './ScopeSelector';
-import { CareerDRECard } from './CareerDRECard';
-
 export type ReportTab = 'ai' | 'summary' | 'flow' | 'calendar';
 
 interface Props {
@@ -19,7 +15,6 @@ interface Props {
 }
 
 export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
-  const { activeScope } = useFinance();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = (searchParams.get('tab') as ReportTab) || initialTab;
   const [activeTab, setActiveTab] = useState<ReportTab>(tabParam);
@@ -54,15 +49,7 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
             Relatórios
           </h1>
         </div>
-
-        {/* Seletor Global de Escopo */}
-        <ScopeSelector size="sm" />
       </div>
-
-      {/* DRE Simplificado no Módulo de Relatórios (Quando BUSINESS ou ALL ativo) */}
-      {(activeScope === 'BUSINESS' || activeScope === 'ALL') && (
-        <CareerDRECard />
-      )}
 
       {/* SUB-MENU DE ABAS ROLÁVEL */}
       <div className="overflow-x-auto no-scrollbar w-full">
