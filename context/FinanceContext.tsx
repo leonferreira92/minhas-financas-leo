@@ -198,31 +198,53 @@ export const isAccountActive = (acc: Account | null | undefined): boolean => {
   return true;
 };
 
+/** Conta local de carreira/empresa — arquivada na UI (saldo oficial vem do Vida de Artista). */
+export const isLegacyCompanyAccount = (acc: Account | null | undefined): boolean => {
+  if (!acc) return false;
+  return acc.vinculo === 'MUSICO' || acc.scope === 'BUSINESS';
+};
+
+/**
+ * Soft-archive: enabled=false. Não apaga a conta nem as transações.
+ * Persistimos as contas arquivadas no storage para o extrato histórico continuar válido.
+ */
+export const archiveLegacyCompanyAccounts = (list: Account[]): { accounts: Account[]; changed: boolean } => {
+  let changed = false;
+  const accounts = list.map(acc => {
+    if (!isLegacyCompanyAccount(acc) || acc.enabled === false) return acc;
+    changed = true;
+    return { ...acc, enabled: false };
+  });
+  return { accounts, changed };
+};
+
 const loadPersistedAccountsRaw = (): Account[] => {
   try {
     const raw = localStorage.getItem('fin_app_accounts');
     if (raw) {
       const parsed: Account[] = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const active = deduplicateItemsById(parsed).filter(isAccountActive);
+        // Mantém contas arquivadas (enabled:false) no estado — totais usam isAccountActive
+        let all = deduplicateItemsById(parsed);
         const rawTxs = localStorage.getItem('fin_app_transactions');
         const txs: Transaction[] = rawTxs ? JSON.parse(rawTxs) : [];
         const hasSavingsTx = Array.isArray(txs) && txs.some(
           t => t && (t.accountId === 'acc_savings' || t.destinationAccountId === 'acc_savings' || t.type === 'goal_deposit' || t.type === 'goal_withdraw')
         );
+        const activeCount = all.filter(isAccountActive).length;
         // Evita que a conta fantasma 'Economia' auto-injetada pelo StorageService altere a contagem do Patrimônio Consolidado ao recarregar
-        if (active.length > 1 && !hasSavingsTx) {
-          return active.filter(
+        if (activeCount > 1 && !hasSavingsTx) {
+          all = all.filter(
             a => !(a.id === 'acc_savings' && a.name === 'Economia' && Number(a.initialBalance || 0) === 0)
           );
         }
-        return active;
+        return all;
       }
     }
   } catch (e) {
     console.error('Erro ao carregar contas persistidas:', e);
   }
-  return deduplicateItemsById(StorageService.getAccounts()).filter(isAccountActive);
+  return deduplicateItemsById(StorageService.getAccounts());
 };
 
 const normalizeTransactionRecord = (t: Transaction, accountsList: Account[]): Transaction => {
@@ -514,18 +536,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let accountCleanupInProgress = false;
     let accountCleanupCompleted = false;
     const unsubAccounts = subscribeToUserAccounts(uid, (cloudAccounts) => {
-      const activeCloudAccounts = deduplicateItemsById(cloudAccounts).filter(isAccountActive);
-      let cleanAccounts = activeCloudAccounts;
+      // Inclui arquivadas do cloud; soft-archive MUSICO locais em seguida
+      let cleanAccounts = deduplicateItemsById(cloudAccounts);
 
       if (isLeo && hasCurrentAccountSet) {
         const retainedIds = new Set(localAccounts.map(account => account.id));
         const accountsById = new Map(localAccounts.map(account => [account.id, account]));
-        activeCloudAccounts.forEach(account => {
+        cleanAccounts.forEach(account => {
           if (retainedIds.has(account.id)) accountsById.set(account.id, account);
         });
         cleanAccounts = [...accountsById.values()];
 
-        const hasObsoleteCloudAccounts = activeCloudAccounts.some(account => !retainedIds.has(account.id));
+        const hasObsoleteCloudAccounts = cleanAccounts.some(
+          account => isAccountActive(account) && !retainedIds.has(account.id)
+        );
         if (!accountCleanupInProgress && (!accountCleanupCompleted || hasObsoleteCloudAccounts)) {
           accountCleanupInProgress = true;
           void deleteUserAccountDocumentsExcept(uid, [...retainedIds])
@@ -542,8 +566,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
       }
 
-      setAccounts(cleanAccounts);
-      StorageService.saveAccounts(cleanAccounts);
+      const { accounts: archivedAccounts, changed } = archiveLegacyCompanyAccounts(cleanAccounts);
+      setAccounts(archivedAccounts);
+      StorageService.saveAccounts(archivedAccounts);
+      if (changed && currentUser) {
+        archivedAccounts
+          .filter(a => isLegacyCompanyAccount(a) && a.enabled === false)
+          .forEach(a => saveAccountToFirestore(uid, a));
+      }
     });
 
     // 2. Escutador em tempo real: Transações / Lançamentos
@@ -729,7 +759,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     let storedTransactions = StorageService.getTransactions();
     let storedCategories = StorageService.getCategories();
     const storedDebts = StorageService.getDebts();
-    const storedAccounts = loadPersistedAccountsRaw();
+    let storedAccounts = loadPersistedAccountsRaw();
     const storedBudgets = StorageService.getBudgets();
     const storedSettings = StorageService.getSettings();
 
@@ -967,6 +997,13 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     );
     const normalizedTransactions = deduplicateItemsById(migratedTransactions);
 
+    // Arquiva contas MUSICO/BUSINESS locais (não apaga txs) — saldo oficial vem do Vida de Artista
+    const archivedPack = archiveLegacyCompanyAccounts(storedAccounts);
+    storedAccounts = archivedPack.accounts;
+    if (archivedPack.changed) {
+      console.info('[FinanceContext] Contas empresa locais arquivadas (enabled:false). Transações preservadas.');
+    }
+
     StorageService.saveShows(normalizedShows);
     StorageService.saveTransactions(normalizedTransactions);
     StorageService.saveAccounts(storedAccounts);
@@ -1018,10 +1055,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     setDebts(ds); 
     StorageService.saveDebts(ds); 
   };
-  const saveAccounts = (as: Account[]) => { 
-    const clean = deduplicateItemsById(as).filter(isAccountActive);
-    setAccounts(clean); 
-    StorageService.saveAccounts(clean); 
+  const saveAccounts = (as: Account[]) => {
+    // Mantém contas arquivadas (enabled:false) no storage — só a UI filtra via isAccountActive
+    const clean = deduplicateItemsById(as);
+    setAccounts(clean);
+    StorageService.saveAccounts(clean);
   };
   const saveBudgetsInternal = (bs: Budget[]) => { 
     setBudgets(bs); 

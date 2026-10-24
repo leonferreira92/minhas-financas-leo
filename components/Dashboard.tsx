@@ -70,27 +70,17 @@ export const Dashboard: React.FC = () => {
     [accounts]
   );
 
-  const legacyCompanyAccounts = useMemo(
-    () => accounts.filter(a => a.enabled !== false && (getAccountVinculo(a) === 'MUSICO' || a.scope === 'BUSINESS')),
-    [accounts]
-  );
-
-  // Caixa pessoal (exclui contas legado empresa locais)
+  // Caixa pessoal (contas MUSICO locais arquivadas — não entram)
   const personalCash = useMemo(() => {
     return personalAccountsList.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
   }, [personalAccountsList, getAccountBalance]);
 
-  const liveCompanyCash = companyEstimate.companyCashBalance;
+  /** Mesmo valor do card Estimativa de Pró-Labore Disponível */
+  const companyMirror = companyEstimate.availableEstimate;
 
-  // Total exibido: pessoal + saldo vivo da empresa (Firestore), sem somar o legado local (evita duplicar)
   const consolidatedPatrimony = useMemo(() => {
-    const companyLive = liveCompanyCash != null ? liveCompanyCash : 0;
-    return personalCash + companyLive;
-  }, [personalCash, liveCompanyCash]);
-
-  const legacyCompanyLocalTotal = useMemo(() => {
-    return legacyCompanyAccounts.reduce((sum, a) => sum + getAccountBalance(a.id), 0);
-  }, [legacyCompanyAccounts, getAccountBalance]);
+    return personalCash + (Number(companyMirror) || 0);
+  }, [personalCash, companyMirror]);
 
   // Métricas de Dívidas / Parcelas Abertas do Mês
   const debtsMonthMetrics = useMemo(() => {
@@ -553,40 +543,27 @@ export const Dashboard: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <span className="text-xs font-bold text-slate-900 truncate block">
-                        Empresa · Vida de Artista
+                        Empresa · Pró-labore disponível
                       </span>
                       <span className="text-[10px] text-indigo-600 font-medium flex items-center gap-1">
                         <Lock size={9} />
-                        Somente leitura · Firestore
+                        Somente leitura · mesmo valor do card
                       </span>
                     </div>
                   </div>
                   <span className="text-xs font-black text-indigo-700">
                     {companyEstimate.isLoading
                       ? '…'
-                      : liveCompanyCash != null
-                        ? formatCurrency(liveCompanyCash)
-                        : companyEstimate.needsCompanyAuth
-                          ? '—'
-                          : formatCurrency(0)}
+                      : companyEstimate.needsCompanyAuth
+                        ? '—'
+                        : formatCurrency(companyMirror)}
                   </span>
                 </div>
-
-                {/* Legado local: extrato antigo no app pessoal (não é o saldo oficial) */}
-                {legacyCompanyAccounts.length > 0 && (
-                  <div className="py-2 px-1">
-                    <p className="text-[9px] text-slate-500 leading-snug">
-                      Legado local ({legacyCompanyAccounts.map(a => a.name).join(', ')}):{' '}
-                      <span className="font-bold text-slate-600">{formatCurrency(legacyCompanyLocalTotal)}</span>
-                      {' '}— histórico de lançamentos neste app; não altera o saldo oficial da empresa.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 
             <div className="pt-2 border-t border-zinc-800/60 flex items-center justify-between text-xs">
-              <span className="text-[10px] uppercase font-bold text-slate-600">Pessoal + Empresa (vivo):</span>
+              <span className="text-[10px] uppercase font-bold text-slate-600">Pessoal + Pró-labore:</span>
               <span className="text-sm font-black text-[#fcca00]">
                 {formatCurrency(consolidatedPatrimony)}
               </span>
