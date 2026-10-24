@@ -17,6 +17,7 @@ import { parseCurrencyInput } from '../constants';
 import { loadBackupIntoStorage } from '../services/backupImporter';
 import { applyOfficialBackupRestore } from '../services/safeRecovery';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
+import { CutoffDryRunSummary, PERSONAL_CUTOFF_DATE } from '../services/legacyCutoffMigration';
 
 export const Settings = () => {
   const { 
@@ -24,11 +25,14 @@ export const Settings = () => {
     debts, accounts, budgets, 
     addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance, 
     restoreAutoBackup, getBackupInfo,
-    currentUser, consolidateToDefaultDatabase 
+    currentUser, consolidateToDefaultDatabase,
+    previewPersonalCutoff, applyPersonalCutoff
   } = useFinance();
   
   const [isConsolidating, setIsConsolidating] = useState(false);
   const [consolidationResult, setConsolidationResult] = useState<string | null>(null);
+  const [cutoffPreview, setCutoffPreview] = useState<CutoffDryRunSummary | null>(null);
+  const [cutoffMessage, setCutoffMessage] = useState<string | null>(null);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false);
@@ -400,6 +404,88 @@ export const Settings = () => {
                 </p>
               )}
            </div>
+
+           {/* Fase 4 — Corte pessoal 01/10/2026 (opt-in) */}
+           {PERSONAL_ONLY_MODE && (
+             <div className="space-y-3 p-4 rounded-3xl bg-[#121212] border border-zinc-800">
+               <div className="flex items-start justify-between gap-3">
+                 <div>
+                   <h3 className="text-sm font-black text-white">Corte do legado · {PERSONAL_CUTOFF_DATE}</h3>
+                   <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                     Arquiva shows/empresa e lançamentos anteriores a 01/10 sem apagar histórico.
+                     O efeito dos pagos entra no saldo de abertura — o caixa atual não muda.
+                   </p>
+                 </div>
+                 {settings.legacyPersonalCutoffApplied && (
+                   <span className="shrink-0 text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                     Aplicado
+                   </span>
+                 )}
+               </div>
+
+               {cutoffPreview && (
+                 <div className="text-[11px] text-zinc-300 space-y-1 p-3 rounded-2xl bg-zinc-900 border border-zinc-800">
+                   <p>Pagos a arquivar: <strong className="text-white">{cutoffPreview.toArchivePaid}</strong></p>
+                   <p>Pendentes a cancelar/arquivar: <strong className="text-white">{cutoffPreview.toCancelPending}</strong></p>
+                   <p>Shows/carreira: <strong className="text-white">{cutoffPreview.showOrCareerCount}</strong> · Pré-corte pessoal: <strong className="text-white">{cutoffPreview.preCutoffCount}</strong></p>
+                   {cutoffPreview.accountOpenings.length > 0 && (
+                     <div className="pt-2 mt-2 border-t border-zinc-800 space-y-0.5">
+                       <p className="text-[10px] font-black uppercase text-zinc-500">Aberturas propostas</p>
+                       {cutoffPreview.accountOpenings.map(a => (
+                         <p key={a.accountId}>
+                           {a.accountName}: {a.currentInitial.toFixed(2)} → <strong className="text-[#fcca00]">{a.proposedInitial.toFixed(2)}</strong>
+                           {' '}({a.delta >= 0 ? '+' : ''}{a.delta.toFixed(2)})
+                         </p>
+                       ))}
+                     </div>
+                   )}
+                 </div>
+               )}
+
+               {cutoffMessage && (
+                 <p className="text-[11px] text-emerald-400 font-medium">{cutoffMessage}</p>
+               )}
+
+               <div className="flex flex-wrap gap-2">
+                 <button
+                   type="button"
+                   onClick={() => {
+                     setCutoffMessage(null);
+                     setCutoffPreview(previewPersonalCutoff());
+                   }}
+                   className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-bold text-white transition active:scale-95"
+                 >
+                   Simular (dry-run)
+                 </button>
+                 <button
+                   type="button"
+                   disabled={Boolean(settings.legacyPersonalCutoffApplied)}
+                   onClick={() => {
+                     const preview = cutoffPreview || previewPersonalCutoff();
+                     setCutoffPreview(preview);
+                     setConfirmation({
+                       title: 'Aplicar corte 01/10/2026?',
+                       message: `Serão arquivados ${preview.toArchivePaid} pagos e cancelados ${preview.toCancelPending} pendentes. Saldos atuais das contas permanecem iguais (ajuste no saldo de abertura). Esta ação roda só uma vez.`,
+                       onConfirm: () => {
+                         const result = applyPersonalCutoff();
+                         if (result.applied) {
+                           setCutoffPreview(result.summary);
+                           setCutoffMessage('Corte aplicado. Extrato ativo começa em 01/10; histórico arquivado preservado.');
+                           refreshData();
+                         } else {
+                           setCutoffMessage('Corte já havia sido aplicado anteriormente.');
+                         }
+                         setConfirmation(null);
+                       }
+                     });
+                   }}
+                   className="px-3.5 py-2 rounded-xl bg-[#003882] hover:bg-[#002d6c] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-black text-white transition active:scale-95 border border-[#fcca00]/30"
+                 >
+                   Aplicar corte
+                 </button>
+               </div>
+             </div>
+           )}
 
            {/* Settings Grid */}
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

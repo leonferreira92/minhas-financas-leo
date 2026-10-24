@@ -73,6 +73,13 @@ import {
   archiveCompanyAccounts
 } from '../services/personalOnlyMode';
 import { isTransferMovement } from '../services/aiReportService';
+import {
+  applyPersonalCutoffMigration,
+  dryRunPersonalCutoff,
+  isLegacyArchivedTx,
+  CutoffDryRunSummary,
+  LEGACY_MIGRATION_FLAG
+} from '../services/legacyCutoffMigration';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -170,6 +177,10 @@ interface FinanceContextType {
   restoreAutoBackup: () => boolean;
   getBackupInfo: () => { timestamp: number; date: Date } | null;
   requestNotificationPermission: () => Promise<boolean>;
+  /** Fase 4 — dry-run do corte 01/10 (sem gravar). */
+  previewPersonalCutoff: () => CutoffDryRunSummary;
+  /** Fase 4 — aplica uma vez (opt-in). Preserva saldo via initialBalance. */
+  applyPersonalCutoff: () => { applied: boolean; summary: CutoffDryRunSummary };
 
   // Firebase Auth & Cloud Sync & Multi-Tenant
   currentUser: User | null;
@@ -1207,6 +1218,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     transactions.forEach(t => {
       if (!t || t.status !== 'paid') return;
+      if (isLegacyArchivedTx(t)) return; // efeito já congelado no initialBalance
       const amt = Math.abs(Number(t.amount) || 0);
       if (amt === 0) return;
 
@@ -3069,6 +3081,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid') return;
       // Transferências / cat_transfer não são receita nem despesa
       if (isTransferMovement(t)) return;
+      if (isLegacyArchivedTx(t)) return;
       const amount = Math.abs(Number(t.amount)) || 0;
       const isPaid = t.status === 'paid';
       const tTime = new Date(t.date + 'T12:00:00').getTime();
@@ -3223,6 +3236,53 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return stats;
   };
 
+  const previewPersonalCutoff = (): CutoffDryRunSummary => {
+    return dryRunPersonalCutoff({
+      accounts: StorageService.getAccounts(),
+      transactions: StorageService.getTransactions(),
+      settings: StorageService.getSettings()
+    });
+  };
+
+  const applyPersonalCutoff = (): { applied: boolean; summary: CutoffDryRunSummary } => {
+    const allAccounts = StorageService.getAccounts();
+    const allTxs = StorageService.getTransactions();
+    const allSettings = StorageService.getSettings();
+
+    const result = applyPersonalCutoffMigration({
+      accounts: allAccounts,
+      transactions: allTxs,
+      settings: allSettings
+    });
+
+    if (!result.applied) {
+      return { applied: false, summary: result.summary };
+    }
+
+    StorageService.saveAccounts(result.accounts);
+    StorageService.saveTransactions(result.transactions);
+    StorageService.saveSettings(result.settings);
+
+    setAccounts(result.accounts.filter(isAccountActive));
+    setTransactions(result.transactions);
+    setSettings(result.settings);
+
+    // Persistência pontual (uma vez) — não reexecuta no listener
+    if (currentUser) {
+      result.summary.accountOpenings.forEach(row => {
+        const acc = result.accounts.find(a => a.id === row.accountId);
+        if (acc) saveAccountToFirestore(currentUser.uid, acc);
+      });
+      result.transactions
+        .filter(t => isLegacyArchivedTx(t))
+        .forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      saveSettingsToFirestore(currentUser.uid, result.settings);
+      console.info('[personalCutoff] Aplicado', LEGACY_MIGRATION_FLAG, result.summary);
+    }
+
+    return { applied: true, summary: result.summary };
+  };
+
   return (
     <FinanceContext.Provider value={{
       transactions: normalizedTransactions, categories, debts, accounts: derivedAccounts, budgets, shows: normalizedShows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
@@ -3239,6 +3299,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       addMusicCostItem, updateMusicCostItem, deleteMusicCostItem,
       getSystemAlerts, updateSettings, updateFinancialSettings, getBalanceSummary, refreshData,
       restoreAutoBackup, getBackupInfo, requestNotificationPermission,
+      previewPersonalCutoff, applyPersonalCutoff,
       currentUser, 
       isAuthLoading, 
       isDemoMode,

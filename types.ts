@@ -116,6 +116,11 @@ export interface Transaction {
   importedFromBank?: boolean;
   originalBankDescription?: string;
   bankFitId?: string;
+  /**
+   * Soft-archive (corte 01/10/2026): fora do saldo ativo / painel / extrato padrão.
+   * Histórico preservado; efeito pago congelado no initialBalance.
+   */
+  legacyArchived?: boolean;
 }
 
 export interface SystemAlert {
@@ -167,6 +172,8 @@ export interface AppSettings {
   financialSettings?: FinancialSettings;
   personalDefaultAccountId?: string;
   businessDefaultAccountId?: string;
+  /** Flag da migração de corte pessoal (ex.: '2026-10-01') */
+  legacyPersonalCutoffApplied?: string;
 }
 
 export interface ShowExpenses {

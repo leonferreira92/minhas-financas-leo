@@ -16,6 +16,7 @@ import { ScopeSelector } from './ScopeSelector';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
+import { isLegacyArchivedTx } from '../services/legacyCutoffMigration';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 
@@ -128,6 +129,7 @@ export const ExtratoScreen: React.FC = () => {
 
     return transactions.filter(t => {
       if (!t || t.status === 'cancelled') return false;
+      if (isLegacyArchivedTx(t)) return false; // fora do extrato ativo (corte 01/10)
 
       // 1. Filtro por Conta (independente da pílula ativa, respeita a conta selecionada)
       if (selectedAccountId !== 'all') {

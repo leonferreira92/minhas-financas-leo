@@ -2,6 +2,7 @@ import { Account, Transaction, matchesScope } from '../types';
 import { isTransferMovement } from './aiReportService';
 import { getAccountVinculo } from './financeAggregator';
 import { getCurrentMonthPrefix } from './dateUtils';
+import { isLegacyArchivedTx } from './legacyCutoffMigration';
 
 export interface MonthCashPanelData {
   monthPrefix: string;
@@ -41,6 +42,7 @@ export const computeMonthCashPanel = (params: {
 
   const monthPending = params.transactions.filter(t => {
     if (!t || t.status !== 'pending') return false;
+    if (isLegacyArchivedTx(t)) return false;
     if (!t.date || !t.date.startsWith(monthPrefix)) return false;
     if (isTransferMovement(t)) return false;
     if (!matchesScope(t.scope, 'PERSONAL')) return false;
