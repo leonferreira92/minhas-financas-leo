@@ -8,14 +8,11 @@ import {
   Transaction
 } from '../types';
 import { DEFAULT_FINANCIAL_SETTINGS } from '../constants';
-import {
-  isGoalMovement,
-  isIncomeGuaranteed,
-  isTransferMovement
-} from './aiReportService';
-import { estimateMonthlyEssential, estimateMonthlyLifestyle } from './monthPanelService';
+import { isGoalMovement, isTransferMovement } from './aiReportService';
+import { computeIncomeTarget } from './monthPanelService';
 
 export type PurchaseVerdict = 'go' | 'careful' | 'wait';
+export type PreferredPath = 'cash' | 'installments' | 'mixed' | 'wait' | 'none';
 
 export interface PurchaseRoute {
   id: string;
@@ -25,15 +22,37 @@ export interface PurchaseRoute {
 }
 
 export interface PurchaseCapacity {
+  /** Caixa pessoal operacional (sem poupança) */
   cashAvailableToday: number;
+  /** Contas a pagar pendentes a partir de hoje */
   pendingCommitmentsFromToday: number;
+  /** Quanto ainda falta para a meta de reserva (informativo) */
   reserveDeficit: number;
   targetSafetyReserve: number;
+  targetReserveMonths: number;
   monthlyEssential: number;
   monthlyLifestyle: number;
+  /** Quanto guardar / mês para montar a reserva (meta em construção) */
+  monthlyReserveContribution: number;
+  /** Média de entradas dos últimos 3 meses */
+  avgIncomeLast3Months: number;
+  /** Essenciais + parcela da reserva + parcelas de dívidas já existentes */
+  safeMonthlyNeed: number;
+  /** Folga mensal = média de ganho − necessidade segura */
+  monthlySurplus: number;
+  /**
+   * Limite à vista: caixa − a pagar − colchão mínimo (1 mês de essencial * 0,25).
+   * NÃO desconta o déficit total da reserva de uma vez.
+   */
   spotPurchaseCapacity: number;
+  /**
+   * Parcela máxima saudável: 85% da folga mensal (independente do à vista).
+   */
   maxMonthlyInstallment: number;
-  lowestProjectedBalance: number;
+  /** Parcelas de dívidas já ativas (estimativa mensal) */
+  existingDebtInstallments: number;
+  /** Explicação curta dos números-base */
+  howItWorks: string[];
 }
 
 export interface PurchaseAdvice extends PurchaseCapacity {
@@ -41,11 +60,41 @@ export interface PurchaseAdvice extends PurchaseCapacity {
   verdict: PurchaseVerdict;
   verdictLabel: string;
   summary: string;
+  preferredPath: PreferredPath;
+  bestInstallments: number | null;
+  installmentValue: number;
   routes: PurchaseRoute[];
 }
 
 type BalanceFn = (accountId: string) => number;
 type DebtProgressFn = (debtId: string) => { status: DebtStatus | string; remaining: number };
+
+const fmt = (v: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+const computeExistingDebtInstallments = (
+  debts: Debt[],
+  transactions: Transaction[],
+  getDebtProgress: DebtProgressFn,
+  monthPrefix: string
+): number => {
+  const active = debts.filter(d => {
+    const prog = getDebtProgress(d.id);
+    return prog.status !== 'paid' && prog.remaining > 0.1;
+  });
+
+  return active.reduce((sum, d) => {
+    if (d.installmentAmount && d.installmentAmount > 0) {
+      return sum + Number(d.installmentAmount);
+    }
+    const tx = transactions.find(
+      t => t.debtId === d.id && t.date?.startsWith(monthPrefix)
+    );
+    if (tx) return sum + Math.abs(Number(tx.amount) || 0);
+    const count = Math.max(1, d.installmentCount || 1);
+    return sum + Number(d.totalAmount) / count;
+  }, 0);
+};
 
 const computeCapacity = (params: {
   accounts: Account[];
@@ -56,12 +105,11 @@ const computeCapacity = (params: {
   financialSettings?: FinancialSettings;
   getAccountBalance: BalanceFn;
   getDebtProgress: DebtProgressFn;
-  /** Se informado, restringe o caixa às contas pessoais (mesmo critério do painel). */
   cashAccountIds?: string[];
 }): PurchaseCapacity => {
   const fs = { ...DEFAULT_FINANCIAL_SETTINGS, ...(params.financialSettings || {}) };
   const todayStr = new Date().toISOString().slice(0, 10);
-  const currentMonthPrefix = todayStr.slice(0, 7);
+  const monthPrefix = todayStr.slice(0, 7);
 
   const operational = params.accounts.filter(a => {
     if (a.enabled === false) return false;
@@ -75,176 +123,91 @@ const computeCapacity = (params: {
     0
   );
 
-  const actualReservedInGoals = params.accounts
-    .filter(a => a.enabled !== false && a.type === 'savings')
-    .reduce((s, a) => s + params.getAccountBalance(a.id), 0);
-
-  const monthlyEssential = estimateMonthlyEssential(
-    params.transactions,
-    params.categories,
-    params.debts,
-    fs
-  );
-  const monthlyLifestyle = estimateMonthlyLifestyle(
-    params.transactions,
-    params.categories,
-    params.debts,
-    fs
-  );
-
-  const minReserveConfigured = fs.minReserveAmount ?? 5000;
-  const targetReserveMonths = fs.targetReserveMonths ?? 6;
-  const targetFromMonths =
-    monthlyEssential > 0 ? targetReserveMonths * monthlyEssential : 0;
-  const targetSafetyReserve = Math.max(minReserveConfigured, targetFromMonths);
-  const reserveDeficit = Math.max(0, targetSafetyReserve - actualReservedInGoals);
-
-  const pendingFromToday = params.transactions.filter(
-    t =>
-      t.type === 'expense' &&
-      t.status === 'pending' &&
-      t.date >= todayStr &&
-      !isTransferMovement(t) &&
-      !isGoalMovement(t)
-  );
-  const pendingCommitmentsFromToday = pendingFromToday.reduce(
-    (s, t) => s + Math.abs(Number(t.amount) || 0),
-    0
-  );
-
-  const activeDebts = params.debts.filter(d => {
-    const prog = params.getDebtProgress(d.id);
-    return prog.status !== 'paid' && prog.remaining > 0.1;
+  const incomeTarget = computeIncomeTarget({
+    accounts: params.accounts,
+    transactions: params.transactions,
+    categories: params.categories,
+    debts: params.debts,
+    financialSettings: fs,
+    getAccountBalance: params.getAccountBalance
   });
 
-  const totalMonthlyDebtInstallments = activeDebts.reduce((sum, d) => {
-    if (d.installmentAmount && d.installmentAmount > 0) {
-      return sum + Number(d.installmentAmount);
-    }
-    const tx = params.transactions.find(
-      t => t.debtId === d.id && t.date?.startsWith(currentMonthPrefix)
-    );
-    if (tx) return sum + Math.abs(Number(tx.amount) || 0);
-    const count = d.installmentCount || 1;
-    return sum + Number(d.totalAmount) / count;
-  }, 0);
-
-  // Projeção 6 meses (mesma regra prudente do HowMuchCanISpend)
-  const monthsList: string[] = [];
-  const now = new Date();
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    monthsList.push(d.toISOString().slice(0, 7));
-  }
-
-  const confirmedFutureShows = params.shows.filter(
-    s =>
-      (s.status === 'Confirmado' || s.status === 'Realizado') && s.date >= todayStr
-  );
-
-  let runningBalance = cashAvailableToday;
-  const monthlyNets: number[] = [];
-  const endBalances: number[] = [];
-
-  monthsList.forEach((monthStr, idx) => {
-    const isCurrent = idx === 0;
-
-    const monthIncomes = params.transactions.filter(
-      t =>
-        t.type === 'income' &&
-        t.date?.startsWith(monthStr) &&
-        (isCurrent ? t.status === 'pending' && t.date >= todayStr : true) &&
-        !isTransferMovement(t) &&
-        !isGoalMovement(t) &&
-        isIncomeGuaranteed(t, params.shows, params.categories)
-    );
-
-    let guaranteedInflow = monthIncomes.reduce(
-      (s, t) => s + Math.abs(Number(t.amount) || 0),
-      0
-    );
-
-    confirmedFutureShows
-      .filter(s => s.date?.startsWith(monthStr))
-      .forEach(s => {
-        const showToReceive = Math.max(
-          0,
-          (Number(s.totalCache) || 0) - (Number(s.cacheReceived) || 0)
-        );
-        const hasTx = monthIncomes.some(
-          t =>
-            (s.receipts && s.receipts.some(r => r.transactionId === t.id)) ||
-            (t.description &&
-              s.name &&
-              t.description.toLowerCase().includes(s.name.toLowerCase()))
-        );
-        if (!hasTx && showToReceive > 0) guaranteedInflow += showToReceive;
-      });
-
-    const monthExpenses = params.transactions.filter(
+  const pendingCommitmentsFromToday = params.transactions
+    .filter(
       t =>
         t.type === 'expense' &&
-        t.date?.startsWith(monthStr) &&
-        (isCurrent ? t.status === 'pending' && t.date >= todayStr : true) &&
+        t.status === 'pending' &&
+        t.date >= todayStr &&
         !isTransferMovement(t) &&
         !isGoalMovement(t)
-    );
+    )
+    .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
 
-    let outflows = monthExpenses.reduce(
-      (s, t) => s + Math.abs(Number(t.amount) || 0),
-      0
-    );
+  const existingDebtInstallments = computeExistingDebtInstallments(
+    params.debts,
+    params.transactions,
+    params.getDebtProgress,
+    monthPrefix
+  );
 
-    if (!isCurrent && outflows === 0) {
-      outflows = monthlyEssential + totalMonthlyDebtInstallments;
-    }
+  const monthlyEssential = incomeTarget.essentialMonthly;
+  const monthlyLifestyle = incomeTarget.lifestyleMonthly;
+  const monthlyReserveContribution = incomeTarget.monthlyReserveContribution;
+  const avgIncomeLast3Months = incomeTarget.avgIncomeLast3Months;
+  const targetReserveMonths = incomeTarget.targetReserveMonths;
+  const targetSafetyReserve = incomeTarget.targetReserveAmount;
+  const reserveDeficit = incomeTarget.reserveDeficit;
 
-    const net = guaranteedInflow - outflows;
-    runningBalance += net;
-    monthlyNets.push(net);
-    endBalances.push(runningBalance);
-  });
+  // Necessidade mensal segura: viver + ir montando reserva + parcelas já assumidas
+  const safeMonthlyNeed =
+    monthlyEssential + monthlyReserveContribution + existingDebtInstallments;
 
-  const allPoints = [
-    cashAvailableToday - pendingCommitmentsFromToday,
-    ...endBalances
+  const monthlySurplus = avgIncomeLast3Months - safeMonthlyNeed;
+
+  // Colchão líquido mínimo (não zera a compra só porque a reserva de 6 meses ainda não está completa)
+  const liquidCushion = monthlyEssential > 0 ? monthlyEssential * 0.25 : 0;
+
+  const spotPurchaseCapacity = Math.max(
+    0,
+    cashAvailableToday - pendingCommitmentsFromToday - liquidCushion
+  );
+
+  // Parcela desacoplada do à vista: baseada na folga da média de ganho
+  const maxMonthlyInstallment =
+    monthlySurplus > 0 ? Math.max(0, Math.round(monthlySurplus * 0.85)) : 0;
+
+  const howItWorks = [
+    `Média de ganho (3 meses): ${fmt(avgIncomeLast3Months)}`,
+    `Mês seguro (essencial + reserva + parcelas atuais): ${fmt(safeMonthlyNeed)}`,
+    `Folga mensal: ${fmt(monthlySurplus)}`,
+    `À vista = caixa ${fmt(cashAvailableToday)} − a pagar ${fmt(pendingCommitmentsFromToday)} − colchão ${fmt(liquidCushion)}`,
+    `Parcela máx. = 85% da folga mensal (não depende do à vista)`,
+    reserveDeficit > 0
+      ? `Reserva de ${targetReserveMonths} meses ainda em construção (falta ${fmt(reserveDeficit)}) — isso não bloqueia compra sozinho`
+      : `Reserva de ${targetReserveMonths} meses já atingida`
   ];
-  const lowestProjectedBalance = Math.min(...allPoints);
-  const minMonthlyNet = monthlyNets.length > 0 ? Math.min(...monthlyNets) : 0;
-
-  const immediateHeadroom = cashAvailableToday - pendingCommitmentsFromToday;
-  const projectedHeadroom = lowestProjectedBalance;
-
-  let spotPurchaseCapacity = 0;
-  if (immediateHeadroom > 0 && projectedHeadroom > 0) {
-    const rawHeadroom = Math.min(immediateHeadroom, projectedHeadroom);
-    spotPurchaseCapacity = Math.max(0, rawHeadroom - reserveDeficit);
-  }
-
-  let maxMonthlyInstallment = 0;
-  if (
-    lowestProjectedBalance > 0 &&
-    minMonthlyNet > 0 &&
-    spotPurchaseCapacity > 0
-  ) {
-    maxMonthlyInstallment = Math.max(0, Math.round(minMonthlyNet * 0.7));
-  }
 
   return {
     cashAvailableToday,
     pendingCommitmentsFromToday,
     reserveDeficit,
     targetSafetyReserve,
+    targetReserveMonths,
     monthlyEssential,
     monthlyLifestyle,
+    monthlyReserveContribution,
+    avgIncomeLast3Months,
+    safeMonthlyNeed,
+    monthlySurplus,
     spotPurchaseCapacity,
     maxMonthlyInstallment,
-    lowestProjectedBalance
+    existingDebtInstallments,
+    howItWorks
   };
 };
 
 /**
- * Analisa um valor de compra e sugere a melhor rota sem furar essenciais/reserva.
+ * Analisa compra com base em média de ganho, mês seguro e à vista vs parcelas.
  */
 export const analyzePurchase = (params: {
   amount: number;
@@ -262,44 +225,29 @@ export const analyzePurchase = (params: {
   const capacity = computeCapacity(params);
   const routes: PurchaseRoute[] = [];
 
-  const fmt = (v: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-
   if (amount <= 0) {
     return {
       ...capacity,
       amount: 0,
       verdict: 'wait',
       verdictLabel: 'Informe um valor',
-      summary: 'Digite quanto custa o que você quer comprar.',
+      summary: 'Digite o preço do que você quer comprar. A análise usa sua média de ganho e o mês seguro.',
+      preferredPath: 'none',
+      bestInstallments: null,
+      installmentValue: 0,
       routes: []
     };
   }
 
-  // Rota 1: à vista
-  if (amount <= capacity.spotPurchaseCapacity) {
-    routes.push({
-      id: 'spot',
-      title: 'Comprar à vista agora',
-      detail: `Cabe no limite seguro de ${fmt(capacity.spotPurchaseCapacity)} sem mexer na reserva nem nas contas essenciais.`,
-      recommended: true
-    });
-  } else {
-    routes.push({
-      id: 'spot',
-      title: 'À vista agora — não recomendado',
-      detail: `O limite seguro à vista é ${fmt(capacity.spotPurchaseCapacity)}. Faltam ${fmt(amount - capacity.spotPurchaseCapacity)}.`,
-      recommended: false
-    });
-  }
+  const cashOk = amount <= capacity.spotPurchaseCapacity + 0.009;
 
-  // Rota 2: parcelar
+  // Melhor N de parcelas (2–12) que cabe na folga mensal
   let bestInstallments: number | null = null;
   let installmentValue = 0;
   if (capacity.maxMonthlyInstallment > 0) {
     for (let n = 2; n <= 12; n++) {
       const parcela = amount / n;
-      if (parcela <= capacity.maxMonthlyInstallment) {
+      if (parcela <= capacity.maxMonthlyInstallment + 0.009) {
         bestInstallments = n;
         installmentValue = parcela;
         break;
@@ -307,107 +255,131 @@ export const analyzePurchase = (params: {
     }
   }
 
+  // —— Rotas ——
+  if (cashOk) {
+    routes.push({
+      id: 'spot',
+      title: 'Comprar à vista',
+      detail: `Cabe no limite à vista de ${fmt(capacity.spotPurchaseCapacity)}. Você mantém o colchão e as contas a pagar cobertas.`,
+      recommended: true
+    });
+  } else {
+    routes.push({
+      id: 'spot',
+      title: 'À vista — aperta o caixa',
+      detail: `Limite à vista agora: ${fmt(capacity.spotPurchaseCapacity)}. Faltam ${fmt(Math.max(0, amount - capacity.spotPurchaseCapacity))} sem mexer no colchão de emergência curto.`,
+      recommended: false
+    });
+  }
+
   if (bestInstallments) {
+    const preferInstallments = !cashOk;
     routes.push({
       id: 'installments',
       title: `Parcelar em ${bestInstallments}× de ${fmt(installmentValue)}`,
-      detail: `Cabe na folga mensal estimada (até ${fmt(capacity.maxMonthlyInstallment)}/mês), sem estourar o essencial.`,
-      recommended: amount > capacity.spotPurchaseCapacity
+      detail: `A parcela cabe na folga da sua média de ganho (até ${fmt(capacity.maxMonthlyInstallment)}/mês), sem furar o mês seguro.`,
+      recommended: preferInstallments
     });
   } else if (capacity.maxMonthlyInstallment > 0) {
-    const minN = Math.ceil(amount / capacity.maxMonthlyInstallment);
+    const needN = Math.ceil(amount / capacity.maxMonthlyInstallment);
     routes.push({
       id: 'installments',
-      title: 'Parcelar — apertado',
+      title: 'Parcelar — parcela alta demais',
       detail:
-        minN > 12
-          ? `Mesmo em 12× a parcela (${fmt(amount / 12)}) passa da folga de ${fmt(capacity.maxMonthlyInstallment)}/mês.`
-          : `Precisaria de cerca de ${minN}×; a folga segura é só ${fmt(capacity.maxMonthlyInstallment)}/mês.`,
+        needN > 12
+          ? `Mesmo em 12× (${fmt(amount / 12)}/mês) passa da folga de ${fmt(capacity.maxMonthlyInstallment)}.`
+          : `Caberia em cerca de ${needN}×, mas a folga segura é só ${fmt(capacity.maxMonthlyInstallment)}/mês.`,
       recommended: false
     });
   } else {
     routes.push({
       id: 'installments',
-      title: 'Parcelar — sem folga',
-      detail: 'Não há superávit mensal projetado para assumir nova parcela agora.',
+      title: 'Parcelar — sem folga na média',
+      detail:
+        capacity.avgIncomeLast3Months <= 0
+          ? 'Cadastre mais receitas nos últimos meses para o app calcular sua média de ganho.'
+          : `Sua média (${fmt(capacity.avgIncomeLast3Months)}) não cobre o mês seguro (${fmt(capacity.safeMonthlyNeed)}). Nova parcela apertaria o essencial.`,
       recommended: false
     });
   }
 
-  // Rota 3: mistura (entrada + parcelas)
-  if (
-    amount > capacity.spotPurchaseCapacity &&
-    capacity.spotPurchaseCapacity > 50 &&
-    capacity.maxMonthlyInstallment > 0
-  ) {
+  // Mistura: entrada com o que cabe à vista + resto parcelado
+  if (!cashOk && capacity.spotPurchaseCapacity > 50 && capacity.maxMonthlyInstallment > 0) {
     const down = capacity.spotPurchaseCapacity;
     const rest = amount - down;
     for (let n = 2; n <= 12; n++) {
       const parcela = rest / n;
-      if (parcela <= capacity.maxMonthlyInstallment) {
+      if (parcela <= capacity.maxMonthlyInstallment + 0.009) {
         routes.push({
           id: 'mixed',
-          title: `Entrada de ${fmt(down)} + ${n}× de ${fmt(parcela)}`,
-          detail: 'Usa o limite à vista seguro e parcela só o restante.',
-          recommended: !routes.some(r => r.id === 'installments' && r.recommended)
+          title: `Entrada ${fmt(down)} + ${n}× de ${fmt(parcela)}`,
+          detail: 'Usa o que sobra à vista e parcela só o restante dentro da folga mensal.',
+          recommended: !routes.some(r => r.recommended)
         });
         break;
       }
     }
   }
 
-  // Rota 4: cortar lazer / juntar
-  if (amount > capacity.spotPurchaseCapacity && capacity.monthlyLifestyle > 0) {
-    const monthsToSave = Math.ceil(
-      (amount - capacity.spotPurchaseCapacity) / Math.max(capacity.monthlyLifestyle * 0.5, 1)
-    );
+  // Juntar cortando lazer
+  if (!cashOk && !bestInstallments && capacity.monthlyLifestyle > 0) {
+    const gap = amount - capacity.spotPurchaseCapacity;
+    const monthsToSave = Math.ceil(gap / Math.max(capacity.monthlyLifestyle * 0.5, 1));
     routes.push({
       id: 'cut_lifestyle',
       title:
         monthsToSave <= 1
           ? 'Segurar lazer neste mês e comprar'
-          : `Segurar parte do lazer por ~${monthsToSave} meses`,
-      detail: `Seu ritmo de lazer/compras é cerca de ${fmt(capacity.monthlyLifestyle)}/mês. Reduzindo pela metade, dá para juntar a diferença sem tocar no essencial.`,
+          : `Juntar ~${monthsToSave} meses segurando lazer`,
+      detail: `Seu lazer médio é ${fmt(capacity.monthlyLifestyle)}/mês. Cortando metade, dá para juntar sem tocar no essencial.`,
       recommended: !routes.some(r => r.recommended)
     });
   }
 
-  // Rota 5: esperar
   if (!routes.some(r => r.recommended)) {
     routes.push({
       id: 'wait',
       title: 'Esperar um mês melhor',
-      detail: `Essenciais (~${fmt(capacity.monthlyEssential)}/mês) e contas futuras (${fmt(capacity.pendingCommitmentsFromToday)}) têm prioridade. Cadastre a receita do próximo trabalho e tente de novo.`,
+      detail: `Priorize o mês seguro (${fmt(capacity.safeMonthlyNeed)}). Quando a média de ganho subir ou as contas pendentes caírem, tente de novo.`,
       recommended: true
     });
   }
 
-  const hasSafeSpot = amount <= capacity.spotPurchaseCapacity;
-  const hasSafePlan = routes.some(
-    r => r.recommended && (r.id === 'installments' || r.id === 'mixed' || r.id === 'spot')
-  );
-
+  // Veredito + caminho preferido
   let verdict: PurchaseVerdict = 'wait';
   let verdictLabel = 'Melhor esperar';
-  let summary = 'Agora a compra atrapalharia o essencial ou a reserva.';
+  let summary = 'Agora a compra atrapalharia o mês seguro ou a folga da média de ganho.';
+  let preferredPath: PreferredPath = 'wait';
 
-  if (hasSafeSpot) {
+  const rec = routes.find(r => r.recommended);
+
+  if (cashOk) {
     verdict = 'go';
-    verdictLabel = 'Pode comprar';
-    summary = 'À vista cabe no seu limite seguro. Essenciais e reserva ficam protegidos.';
-  } else if (hasSafePlan) {
+    verdictLabel = 'Pode comprar à vista';
+    summary =
+      bestInstallments && installmentValue < amount
+        ? `À vista é a melhor opção. Parcelar também caberia (${bestInstallments}×), mas pagar agora evita compromisso futuro.`
+        : 'À vista cabe no caixa depois das contas a pagar, mantendo um colchão mínimo.';
+    preferredPath = 'cash';
+    // Marca à vista como ideal; desmarca parcela se ambas ok
+    routes.forEach(r => {
+      r.recommended = r.id === 'spot';
+    });
+  } else if (rec?.id === 'installments' && bestInstallments) {
     verdict = 'careful';
-    verdictLabel = 'Dá, com cuidado';
-    summary = 'Não cabe tudo à vista, mas há um caminho (parcelar ou misturar) sem furar o essencial.';
-  } else if (routes.some(r => r.id === 'cut_lifestyle' && r.recommended)) {
+    verdictLabel = `Melhor parcelar em ${bestInstallments}×`;
+    summary = `À vista aperta o caixa. Em ${bestInstallments}× de ${fmt(installmentValue)} a parcela cabe na folga da sua média de ganho, sem furar essenciais + reserva em construção.`;
+    preferredPath = 'installments';
+  } else if (rec?.id === 'mixed') {
+    verdict = 'careful';
+    verdictLabel = 'Dá com entrada + parcelas';
+    summary = 'Nem tudo à vista, nem tudo parcelado — o meio-termo protege o colchão e a folga mensal.';
+    preferredPath = 'mixed';
+  } else if (rec?.id === 'cut_lifestyle') {
     verdict = 'careful';
     verdictLabel = 'Só se cortar lazer';
-    summary = 'Sem folga de caixa agora. Dá para juntar se reduzir compras/lazer por um tempo.';
-  }
-
-  // Garante uma rota marcada como recomendada
-  if (!routes.some(r => r.recommended) && routes.length > 0) {
-    routes[routes.length - 1].recommended = true;
+    summary = 'Sem folga à vista nem na média para parcelar. Dá para juntar reduzindo compras/lazer.';
+    preferredPath = 'wait';
   }
 
   return {
@@ -416,6 +388,9 @@ export const analyzePurchase = (params: {
     verdict,
     verdictLabel,
     summary,
+    preferredPath,
+    bestInstallments: cashOk ? null : bestInstallments,
+    installmentValue: cashOk ? 0 : installmentValue,
     routes
   };
 };
