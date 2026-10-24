@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { 
   Receipt, Plus, Filter, UploadCloud, Sparkles, 
@@ -21,6 +21,7 @@ type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 
 export const ExtratoScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { 
     transactions, 
     categories, 
@@ -48,13 +49,42 @@ export const ExtratoScreen: React.FC = () => {
   // Month selector
   const todayStr = useMemo(() => getLocalDateString(), []);
   const currentYearMonth = useMemo(() => getCurrentMonthPrefix(), []);
-  const [selectedMonth, setSelectedMonth] = useState<string>(currentYearMonth);
+  const monthFromUrl = searchParams.get('month');
+  const statusFromUrl = searchParams.get('status');
+  const highlightId = searchParams.get('highlightId');
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    monthFromUrl && /^\d{4}-\d{2}$/.test(monthFromUrl) ? monthFromUrl : currentYearMonth
+  );
   const [isFutureOnly, setIsFutureOnly] = useState(false);
 
   // Filter pills
-  const [statusFilter, setStatusFilter] = useState<TypeStatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<TypeStatusFilter>(() => {
+    if (statusFromUrl === 'paid' || statusFromUrl === 'pending' || statusFromUrl === 'all') {
+      return statusFromUrl;
+    }
+    return 'all';
+  });
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (monthFromUrl && /^\d{4}-\d{2}$/.test(monthFromUrl)) {
+      setSelectedMonth(monthFromUrl);
+      setIsFutureOnly(false);
+    }
+    if (statusFromUrl === 'paid' || statusFromUrl === 'pending' || statusFromUrl === 'all') {
+      setStatusFilter(statusFromUrl);
+    }
+  }, [monthFromUrl, statusFromUrl]);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = document.getElementById(`tx-${highlightId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId, selectedMonth, statusFilter, transactions]);
 
   // Carousel Active Card (0: Saldo Atual, 1: Futuros/Cachês, 2: Comprometido)
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -604,9 +634,14 @@ export const ExtratoScreen: React.FC = () => {
                     return (
                       <div
                         key={t.id}
+                        id={`tx-${t.id}`}
                         onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
                         className={`p-3.5 hover:bg-zinc-800/40 transition flex items-center justify-between cursor-pointer group ${
-                          isPending ? 'bg-amber-950/10' : ''
+                          highlightId === t.id
+                            ? 'bg-blue-950/40 ring-1 ring-blue-500/40'
+                            : isPending
+                              ? 'bg-amber-950/10'
+                              : ''
                         }`}
                       >
                         {/* Lado Esquerdo: Ícone da Categoria e Detalhes */}

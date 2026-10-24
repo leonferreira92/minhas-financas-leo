@@ -18,6 +18,8 @@ import { getAccountVinculo, getMonthlyCareerMetrics } from '../services/financeA
 import { getIcon } from '../constants';
 import { useDraggableScroll } from '../hooks/useDraggableScroll';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
+import { MonthCashPanel } from './MonthCashPanel';
+import { isTransferMovement } from '../services/aiReportService';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -135,6 +137,7 @@ export const Dashboard: React.FC = () => {
 
     transactions.forEach(t => {
       if (t.type !== 'expense' || t.status === 'cancelled') return false;
+      if (isTransferMovement(t)) return false;
       if (!t.date || !t.date.startsWith(currentMonthStr)) return false;
       if (!matchesScope(t.scope, activeScope)) return false;
 
@@ -458,6 +461,11 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="px-3.5 sm:px-4 space-y-6">
+        {/* ========================================================================= */}
+        {/* FASE 3: PAINEL DO MÊS (1 caixa — alinhado ao Extrato)                     */}
+        {/* ========================================================================= */}
+        <MonthCashPanel />
+
         {/* ========================================================================= */}
         {/* GRID CENTRAL DE ACESSO RÁPIDO (ESTILO BANCO DO BRASIL)                    */}
         {/* ========================================================================= */}
