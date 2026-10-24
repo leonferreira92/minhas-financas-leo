@@ -1,5 +1,11 @@
 import { Category, ScopeType } from '../types';
 import { getLocalDateString } from './dateUtils';
+import {
+  PERSONAL_ONLY_MODE,
+  looksLikeInternalTransfer
+} from './personalOnlyMode';
+
+export type BankTxType = 'income' | 'expense' | 'transfer';
 
 export interface ParsedBankTransaction {
   tempId: string;
@@ -8,7 +14,7 @@ export interface ParsedBankTransaction {
   description: string;
   originalDescription: string;
   amount: number; // Sempre positivo
-  type: 'income' | 'expense';
+  type: BankTxType;
   fitId?: string;
   suggestedCategoryId?: string;
   suggestedScope?: ScopeType;
@@ -20,6 +26,7 @@ export interface StagingBankTransaction extends ParsedBankTransaction {
   categoryId: string;
   scope: ScopeType;
   accountId: string;
+  destinationAccountId?: string;
   isDuplicate?: boolean;
   duplicateReason?: string;
   showId?: string; // ID do Show vinculado
@@ -75,23 +82,34 @@ export function sanitizeDescription(raw: string): string {
  */
 export function suggestCategoryAndScope(
   description: string,
-  type: 'income' | 'expense',
+  type: BankTxType,
   categories: Category[]
 ): { suggestedCategoryId: string; suggestedScope: ScopeType } {
   const norm = description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  // 1. MÚSICA / EMPRESA: Shows, Cachês, Eventos
+  // 0. Transferência entre contas próprias — nunca despesa/receita
+  if (type === 'transfer' || looksLikeInternalTransfer(description)) {
+    return {
+      suggestedCategoryId: 'cat_transfer',
+      suggestedScope: 'PERSONAL'
+    };
+  }
+
+  // 1. MÚSICA / EMPRESA: Shows, Cachês, Eventos (desativado no modo só pessoal)
   if (
-    norm.includes('cache') ||
-    norm.includes('show') ||
-    norm.includes('contratante') ||
-    norm.includes('couvert') ||
-    norm.includes('musica') ||
-    norm.includes('apresentacao') ||
-    norm.includes('honorario artistico') ||
-    norm.includes('sesc') ||
-    norm.includes('prefeitura') ||
-    norm.includes('evento')
+    !PERSONAL_ONLY_MODE &&
+    (
+      norm.includes('cache') ||
+      norm.includes('show') ||
+      norm.includes('contratante') ||
+      norm.includes('couvert') ||
+      norm.includes('musica') ||
+      norm.includes('apresentacao') ||
+      norm.includes('honorario artistico') ||
+      norm.includes('sesc') ||
+      norm.includes('prefeitura') ||
+      norm.includes('evento')
+    )
   ) {
     if (type === 'income') {
       const showCat = categories.find(c => c.id === 'cat_33' || c.name.toLowerCase().includes('show') || c.name.toLowerCase().includes('cach'));
@@ -104,28 +122,31 @@ export function suggestCategoryAndScope(
 
   // 2. MÚSICA / EMPRESA: Equipamentos e Instrumentos
   if (
-    norm.includes('equipamento') ||
-    norm.includes('instrumento') ||
-    norm.includes('guitarra') ||
-    norm.includes('violao') ||
-    norm.includes('baixo') ||
-    norm.includes('teclado') ||
-    norm.includes('bateria') ||
-    norm.includes('microfone') ||
-    norm.includes('cabo ') ||
-    norm.includes('cabos') ||
-    norm.includes('pedal') ||
-    norm.includes('amplificador') ||
-    norm.includes('caixa de som') ||
-    norm.includes('fone') ||
-    norm.includes('in-ear') ||
-    norm.includes('luthier') ||
-    norm.includes('corda') ||
-    norm.includes('palheta') ||
-    norm.includes('audio') ||
-    norm.includes('gravação') ||
-    norm.includes('estudio') ||
-    norm.includes('roadie')
+    !PERSONAL_ONLY_MODE &&
+    (
+      norm.includes('equipamento') ||
+      norm.includes('instrumento') ||
+      norm.includes('guitarra') ||
+      norm.includes('violao') ||
+      norm.includes('baixo') ||
+      norm.includes('teclado') ||
+      norm.includes('bateria') ||
+      norm.includes('microfone') ||
+      norm.includes('cabo ') ||
+      norm.includes('cabos') ||
+      norm.includes('pedal') ||
+      norm.includes('amplificador') ||
+      norm.includes('caixa de som') ||
+      norm.includes('fone') ||
+      norm.includes('in-ear') ||
+      norm.includes('luthier') ||
+      norm.includes('corda') ||
+      norm.includes('palheta') ||
+      norm.includes('audio') ||
+      norm.includes('gravação') ||
+      norm.includes('estudio') ||
+      norm.includes('roadie')
+    )
   ) {
     const equipCat = categories.find(c => c.id === 'cat_equipamentos' || c.name.toLowerCase().includes('equipamento') || c.name.toLowerCase().includes('produção'));
     return {
@@ -325,7 +346,7 @@ export function parseOFX(content: string, categories: Category[]): ParsedBankTra
 
     const trnType = (typeMatch ? typeMatch[1].trim().toUpperCase() : '');
     const isExpense = numAmt < 0 || trnType === 'DEBIT' || trnType === 'PAYMENT';
-    const finalType: 'income' | 'expense' = isExpense ? 'expense' : 'income';
+    let finalType: BankTxType = isExpense ? 'expense' : 'income';
     const positiveAmount = parseFloat(Math.abs(numAmt).toFixed(2));
 
     // Processa Descrição
@@ -336,6 +357,10 @@ export function parseOFX(content: string, categories: Category[]): ParsedBankTra
       description = `${name} - ${memo}`;
     } else {
       description = memo || name || 'Lançamento OFX';
+    }
+
+    if (looksLikeInternalTransfer(description) || trnType === 'XFER' || trnType === 'TRANSFER') {
+      finalType = 'transfer';
     }
     description = sanitizeDescription(description);
 
@@ -537,7 +562,7 @@ export function parseCSV(content: string, categories: Category[]): ParsedBankTra
 
     // Obtém valor e tipo
     let finalAmount = 0;
-    let finalType: 'income' | 'expense' = 'expense';
+    let finalType: BankTxType = 'expense';
 
     if (creditCol !== -1 && debitCol !== -1) {
       // Colunas separadas de crédito e débito
@@ -585,6 +610,10 @@ export function parseCSV(content: string, categories: Category[]): ParsedBankTra
         }
       }
       if (!foundAmt) continue;
+    }
+
+    if (looksLikeInternalTransfer(description)) {
+      finalType = 'transfer';
     }
 
     const { suggestedCategoryId, suggestedScope } = suggestCategoryAndScope(description, finalType, categories);
@@ -635,16 +664,32 @@ export function detectDuplicates(
   existingTransactions: Array<{ date: string; amount: number; type?: string; description?: string; fitId?: string }>,
   targetAccountId: string
 ): StagingBankTransaction[] {
+  const resolveScope = (scope?: ScopeType): ScopeType =>
+    PERSONAL_ONLY_MODE ? 'PERSONAL' : (scope || 'PERSONAL');
+
+  const resolveCategory = (item: ParsedBankTransaction, type: BankTxType): string => {
+    if (type === 'transfer') return 'cat_transfer';
+    return item.suggestedCategoryId || (type === 'income' ? 'cat_6' : 'cat_7');
+  };
+
   return parsed.map(item => {
+    const type: BankTxType =
+      item.type === 'transfer' || looksLikeInternalTransfer(item.description)
+        ? 'transfer'
+        : item.type;
+    const scope = resolveScope(item.suggestedScope);
+    const categoryId = resolveCategory(item, type);
+
     // 1. Verificação por FITID se existir no OFX
     if (item.fitId) {
       const matchFit = existingTransactions.find(t => (t as any).fitId === item.fitId || (t as any).bankFitId === item.fitId);
       if (matchFit) {
         return {
           ...item,
+          type,
           selected: false,
-          categoryId: item.suggestedCategoryId || 'cat_7',
-          scope: item.suggestedScope || 'PERSONAL',
+          categoryId,
+          scope,
           accountId: targetAccountId,
           isDuplicate: true,
           duplicateReason: 'Identificador bancário único (FITID) já registrado anteriormente.'
@@ -656,27 +701,31 @@ export function detectDuplicates(
     const matchSameDayAndAmount = existingTransactions.find(t => {
       const sameDate = t.date === item.date;
       const sameAmount = Math.abs(Number(t.amount) - item.amount) < 0.01;
-      const sameType = !t.type || t.type === item.type;
+      const sameType =
+        !t.type ||
+        t.type === type ||
+        (type === 'transfer' && (t.type === 'transfer' || t.type === 'expense' || t.type === 'income'));
 
       if (!sameDate || !sameAmount || !sameType) return false;
 
-      // Se data e valor batem, compara semelhança de texto ou considera duplicata de alta chance
       const normExisting = (t.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const normItem = (item.description || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-      // Se um texto contiver o outro ou forem idênticos
-      const textMatch = normExisting.includes(normItem) || normItem.includes(normExisting) || 
-                        normExisting.slice(0, 10) === normItem.slice(0, 10);
+      const textMatch =
+        normExisting.includes(normItem) ||
+        normItem.includes(normExisting) ||
+        normExisting.slice(0, 10) === normItem.slice(0, 10);
 
-      return textMatch || true; // Mesma data + mesmo valor + mesmo tipo no mesmo extrato
+      return textMatch || true;
     });
 
     if (matchSameDayAndAmount) {
       return {
         ...item,
-        selected: false, // Desmarca duplicata por padrão para proteger o usuário
-        categoryId: item.suggestedCategoryId || 'cat_7',
-        scope: item.suggestedScope || 'PERSONAL',
+        type,
+        selected: false,
+        categoryId,
+        scope,
         accountId: targetAccountId,
         isDuplicate: true,
         duplicateReason: `Transação idêntica (R$ ${item.amount.toFixed(2)} em ${item.date}) já existe no extrato.`
@@ -685,9 +734,10 @@ export function detectDuplicates(
 
     return {
       ...item,
-      selected: true, // Itens novos vêm selecionados
-      categoryId: item.suggestedCategoryId || (item.type === 'income' ? 'cat_6' : 'cat_7'),
-      scope: item.suggestedScope || 'PERSONAL',
+      type,
+      selected: true,
+      categoryId,
+      scope,
       accountId: targetAccountId,
       isDuplicate: false
     };

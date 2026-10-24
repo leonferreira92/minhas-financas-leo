@@ -11,9 +11,11 @@ import {
   detectDuplicates, 
   StagingBankTransaction 
 } from '../services/bankStatementParser';
-import { ScopeType } from '../types';
+import { ScopeType, TransactionType } from '../types';
 import { generateUUID } from '../services/uuidHelper';
 import { parseCurrencyInput } from '../services/financeAggregator';
+import { PERSONAL_ONLY_MODE, isBusinessCategory } from '../services/personalOnlyMode';
+import { BankTxType } from '../services/bankStatementParser';
 
 interface BankImportModalProps {
   isOpen: boolean;
@@ -68,8 +70,14 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
   // Shows disponíveis para vínculo (Agendados, Confirmados ou Realizados)
   const availableShows = useMemo(() => {
+    if (PERSONAL_ONLY_MODE) return [];
     return shows.filter(s => s.status !== 'Cancelado');
   }, [shows]);
+
+  const personalCategories = useMemo(
+    () => (PERSONAL_ONLY_MODE ? categories.filter(c => !isBusinessCategory(c)) : categories),
+    [categories]
+  );
 
   // Filtragem da lista para exibição (Hook posicionado no topo absoluto)
   const filteredStagingList = useMemo(() => {
@@ -78,7 +86,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
       if (stagingFilter === 'selected' && !item.selected) return false;
       if (stagingFilter === 'duplicates' && !item.isDuplicate) return false;
       if (stagingFilter === 'income' && item.type !== 'income') return false;
-      if (stagingFilter === 'expense' && item.type !== 'expense') return false;
+      if (stagingFilter === 'expense' && item.type !== 'expense' && item.type !== 'transfer') return false;
 
       // Filtro de busca textual
       if (stagingSearch.trim()) {
@@ -104,10 +112,11 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
     let expenseCount = 0;
 
     selectedItems.forEach(item => {
+      if (item.type === 'transfer') return; // não entra em receita/despesa
       if (item.type === 'income') {
         incomeTotal += item.amount;
         incomeCount++;
-      } else {
+      } else if (item.type === 'expense') {
         expenseTotal += item.amount;
         expenseCount++;
       }
@@ -299,25 +308,77 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
       return;
     }
 
-    const txsToSave = selectedItems.map(item => ({
-      date: item.date,
-      amount: item.amount,
-      type: item.type,
-      categoryId: item.showId ? 'cat_33' : (item.categoryId || (item.type === 'income' ? 'cat_6' : 'cat_7')),
-      description: item.description.trim() || item.originalDescription || 'Lançamento Bancário',
-      status: 'paid' as const,
-      accountId: item.accountId || selectedAccountId || (accounts[0] ? accounts[0].id : 'acc_bank'),
-      scope: item.showId ? 'BUSINESS' : (item.scope || 'PERSONAL'),
-      showId: item.showId,
-      importedFromBank: true,
-      originalBankDescription: item.originalDescription,
-      bankFitId: item.fitId
-    }));
+    const transferWithoutDest = selectedItems.find(
+      i => i.type === 'transfer' && !i.destinationAccountId
+    );
+    if (transferWithoutDest) {
+      setErrorMessage('Transferências precisam da conta de destino. Ajuste os itens marcados como transferência.');
+      return;
+    }
+
+    const txsToSave = selectedItems.map(item => {
+      const isTransfer = item.type === 'transfer';
+      const type: TransactionType = isTransfer
+        ? 'transfer'
+        : (item.type as 'income' | 'expense');
+      const scope: ScopeType = PERSONAL_ONLY_MODE
+        ? 'PERSONAL'
+        : (item.showId ? 'BUSINESS' : (item.scope || 'PERSONAL'));
+
+      return {
+        date: item.date,
+        amount: item.amount,
+        type,
+        categoryId: isTransfer
+          ? 'cat_transfer'
+          : (item.showId && !PERSONAL_ONLY_MODE
+            ? 'cat_33'
+            : (item.categoryId || (type === 'income' ? 'cat_6' : 'cat_7'))),
+        description: item.description.trim() || item.originalDescription || 'Lançamento Bancário',
+        status: 'paid' as const,
+        accountId: item.accountId || selectedAccountId || (accounts[0] ? accounts[0].id : 'acc_bank'),
+        destinationAccountId: isTransfer ? item.destinationAccountId : undefined,
+        scope,
+        showId: PERSONAL_ONLY_MODE ? undefined : item.showId,
+        importedFromBank: true,
+        originalBankDescription: item.originalDescription,
+        bankFitId: item.fitId
+      };
+    });
 
     importTransactions(txsToSave);
     setImportedCount(txsToSave.length);
     setStep('success');
     refreshData();
+  };
+
+  const setRowType = (tempId: string, nextType: BankTxType) => {
+    setStagingList(prev => prev.map(item => {
+      if (item.tempId !== tempId) return item;
+      if (nextType === 'transfer') {
+        const dest =
+          item.destinationAccountId ||
+          accounts.find(a => a.id !== item.accountId)?.id ||
+          '';
+        return {
+          ...item,
+          type: 'transfer',
+          categoryId: 'cat_transfer',
+          scope: 'PERSONAL',
+          showId: undefined,
+          destinationAccountId: dest || undefined
+        };
+      }
+      return {
+        ...item,
+        type: nextType,
+        destinationAccountId: undefined,
+        categoryId:
+          item.categoryId === 'cat_transfer'
+            ? (nextType === 'income' ? 'cat_6' : 'cat_7')
+            : item.categoryId
+      };
+    }));
   };
 
   const handleReset = () => {
@@ -543,27 +604,29 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       Aplicar nos Marcados:
                     </span>
 
-                    {/* Módulo em Lote */}
-                    <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                      <button
-                        type="button"
-                        onClick={() => applyBatchScope('PERSONAL')}
-                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 flex items-center space-x-1 transition"
-                        title="Definir Módulo Pessoal para os itens selecionados"
-                      >
-                        <User size={11} />
-                        <span>Pessoal</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyBatchScope('BUSINESS')}
-                        className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 flex items-center space-x-1 transition"
-                        title="Definir Módulo Músico / Empresa para os itens selecionados"
-                      >
-                        <Music size={11} />
-                        <span>Músico</span>
-                      </button>
-                    </div>
+                    {/* Módulo em Lote — oculto no modo só pessoal */}
+                    {!PERSONAL_ONLY_MODE && (
+                      <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => applyBatchScope('PERSONAL')}
+                          className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 flex items-center space-x-1 transition"
+                          title="Definir Módulo Pessoal para os itens selecionados"
+                        >
+                          <User size={11} />
+                          <span>Pessoal</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyBatchScope('BUSINESS')}
+                          className="px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/60 hover:text-purple-600 flex items-center space-x-1 transition"
+                          title="Definir Módulo Músico / Empresa para os itens selecionados"
+                        >
+                          <Music size={11} />
+                          <span>Músico</span>
+                        </button>
+                      </div>
+                    )}
 
                     {/* Conta Bancária em Lote */}
                     <select
@@ -586,25 +649,27 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       title="Definir Categoria para os itens selecionados"
                     >
                       <option value="">Definir Categoria...</option>
-                      {categories.map(cat => (
+                      {personalCategories.map(cat => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))}
                     </select>
 
-                    {/* Vincular Show em Lote */}
-                    <select
-                      value={batchShowId}
-                      onChange={(e) => applyBatchShow(e.target.value)}
-                      className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[11px] font-bold text-purple-900 dark:text-purple-200 outline-none shadow-xs max-w-[140px] truncate"
-                      title="Vincular Show em lote para receitas marcadas"
-                    >
-                      <option value="">Vincular Show...</option>
-                      {availableShows.map(s => (
-                        <option key={s.id} value={s.id}>
-                          🎤 {s.contractorName || s.name} ({s.date ? s.date.slice(5) : ''})
-                        </option>
-                      ))}
-                    </select>
+                    {/* Vincular Show em Lote — oculto no modo só pessoal */}
+                    {!PERSONAL_ONLY_MODE && (
+                      <select
+                        value={batchShowId}
+                        onChange={(e) => applyBatchShow(e.target.value)}
+                        className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-[11px] font-bold text-purple-900 dark:text-purple-200 outline-none shadow-xs max-w-[140px] truncate"
+                        title="Vincular Show em lote para receitas marcadas"
+                      >
+                        <option value="">Vincular Show...</option>
+                        {availableShows.map(s => (
+                          <option key={s.id} value={s.id}>
+                            🎤 {s.contractorName || s.name} ({s.date ? s.date.slice(5) : ''})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
 
@@ -662,7 +727,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                         <th className="p-3 w-28">Data</th>
                         <th className="p-3">Descrição / Lançamento</th>
                         <th className="p-3 w-40">Categoria</th>
-                        <th className="p-3 w-32">Módulo</th>
+                        <th className="p-3 w-32">{PERSONAL_ONLY_MODE ? 'Tipo' : 'Módulo'}</th>
                         <th className="p-3 w-32">Conta</th>
                         <th className="p-3 w-28 text-right">Valor</th>
                         <th className="p-3 w-10 text-center">Ações</th>
@@ -678,7 +743,8 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                       ) : (
                         filteredStagingList.map(item => {
                           const isIncome = item.type === 'income';
-                          const isMusician = item.scope === 'BUSINESS';
+                          const isTransfer = item.type === 'transfer';
+                          const isMusician = !PERSONAL_ONLY_MODE && item.scope === 'BUSINESS';
                           const linkedShow = item.showId ? shows.find(s => s.id === item.showId) : null;
 
                           return (
@@ -722,9 +788,13 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                   />
                                   <div className="flex items-center space-x-1.5 px-1.5 text-[10px] text-slate-400 truncate">
                                     <span className={`px-1 rounded text-[8px] font-black uppercase ${
-                                      isIncome ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
+                                      isTransfer
+                                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
+                                        : isIncome
+                                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400'
                                     }`}>
-                                      {isIncome ? 'Entrada' : 'Saída'}
+                                      {isTransfer ? 'Transferência' : isIncome ? 'Entrada' : 'Saída'}
                                     </span>
                                     <span className="truncate" title={item.originalDescription}>
                                       Original: {item.originalDescription}
@@ -736,8 +806,27 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                     )}
                                   </div>
 
+                                  {/* Destino da transferência */}
+                                  {isTransfer && (
+                                    <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center space-x-1.5">
+                                      <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 shrink-0">
+                                        Destino:
+                                      </span>
+                                      <select
+                                        value={item.destinationAccountId || ''}
+                                        onChange={(e) => updateRowField(item.tempId, 'destinationAccountId', e.target.value || undefined)}
+                                        className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/80 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-blue-900 dark:text-blue-200 outline-none focus:border-blue-500 w-full truncate"
+                                      >
+                                        <option value="">Selecione a conta...</option>
+                                        {accounts.filter(a => a.id !== item.accountId).map(acc => (
+                                          <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+
                                   {/* SELETOR DE VÍNCULO COM O SHOW (SE MÚSICO E RECEITA/ENTRADA) */}
-                                  {isIncome && isMusician && (
+                                  {!PERSONAL_ONLY_MODE && isIncome && isMusician && (
                                     <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center space-x-1.5">
                                       <span className="text-[9px] font-black uppercase text-purple-600 dark:text-purple-400 flex items-center shrink-0">
                                         <Music size={10} className="mr-0.5" /> Show:
@@ -776,9 +865,13 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 <select
                                   value={item.categoryId}
                                   onChange={(e) => updateRowField(item.tempId, 'categoryId', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 truncate"
+                                  disabled={isTransfer}
+                                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 truncate disabled:opacity-60"
                                 >
-                                  {categories.map(cat => (
+                                  {(isTransfer
+                                    ? [{ id: 'cat_transfer', name: 'Transferência' }]
+                                    : personalCategories
+                                  ).map(cat => (
                                     <option key={cat.id} value={cat.id}>
                                       {cat.name}
                                     </option>
@@ -786,37 +879,50 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
                                 </select>
                               </td>
 
-                              {/* Módulo / Conta Pertencente */}
+                              {/* Tipo (pessoal) ou Módulo (legado) */}
                               <td className="p-3">
-                                <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      updateRowField(item.tempId, 'scope', 'PERSONAL');
-                                      updateRowField(item.tempId, 'showId', undefined);
-                                    }}
-                                    className={`flex-1 py-1 rounded text-[9px] font-black uppercase tracking-wider transition ${
-                                      item.scope === 'PERSONAL'
-                                        ? 'bg-indigo-600 text-white shadow-xs'
-                                        : 'text-slate-500 hover:text-indigo-600'
-                                    }`}
-                                    title="Módulo Pessoal"
+                                {PERSONAL_ONLY_MODE ? (
+                                  <select
+                                    value={item.type}
+                                    onChange={(e) => setRowType(item.tempId, e.target.value as BankTxType)}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500"
+                                    title="Tipo do lançamento"
                                   >
-                                    👤 Pessoal
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateRowField(item.tempId, 'scope', 'BUSINESS')}
-                                    className={`flex-1 py-1 rounded text-[9px] font-black uppercase tracking-wider transition ${
-                                      item.scope === 'BUSINESS'
-                                        ? 'bg-purple-600 text-white shadow-xs'
-                                        : 'text-slate-500 hover:text-purple-600'
-                                    }`}
-                                    title="Módulo Músico / Empresa"
-                                  >
-                                    🎸 Músico
-                                  </button>
-                                </div>
+                                    <option value="expense">Saída</option>
+                                    <option value="income">Entrada</option>
+                                    <option value="transfer">Transferência</option>
+                                  </select>
+                                ) : (
+                                  <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateRowField(item.tempId, 'scope', 'PERSONAL');
+                                        updateRowField(item.tempId, 'showId', undefined);
+                                      }}
+                                      className={`flex-1 py-1 rounded text-[9px] font-black uppercase tracking-wider transition ${
+                                        item.scope === 'PERSONAL'
+                                          ? 'bg-indigo-600 text-white shadow-xs'
+                                          : 'text-slate-500 hover:text-indigo-600'
+                                      }`}
+                                      title="Módulo Pessoal"
+                                    >
+                                      👤 Pessoal
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateRowField(item.tempId, 'scope', 'BUSINESS')}
+                                      className={`flex-1 py-1 rounded text-[9px] font-black uppercase tracking-wider transition ${
+                                        item.scope === 'BUSINESS'
+                                          ? 'bg-purple-600 text-white shadow-xs'
+                                          : 'text-slate-500 hover:text-purple-600'
+                                      }`}
+                                      title="Módulo Músico / Empresa"
+                                    >
+                                      🎸 Músico
+                                    </button>
+                                  </div>
+                                )}
                               </td>
 
                               {/* Conta Bancária */}
@@ -834,9 +940,13 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
 
                               {/* Valor */}
                               <td className={`p-3 text-right font-black tabular-nums whitespace-nowrap ${
-                                isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                                isTransfer
+                                  ? 'text-blue-600 dark:text-blue-400'
+                                  : isIncome
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-rose-600 dark:text-rose-400'
                               }`}>
-                                {isIncome ? '+' : '-'} {formatCurrency(item.amount)}
+                                {isTransfer ? '↔' : isIncome ? '+' : '-'} {formatCurrency(item.amount)}
                               </td>
 
                               {/* Ação Excluir */}

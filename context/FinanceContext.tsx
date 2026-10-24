@@ -72,6 +72,7 @@ import {
   PERSONAL_ONLY_MODE,
   archiveCompanyAccounts
 } from '../services/personalOnlyMode';
+import { isTransferMovement } from '../services/aiReportService';
 
 interface ExtendedSummary extends BalanceSummary {
   dailyBurnRate: number;
@@ -1535,12 +1536,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const itemsToAdd: Transaction[] = newTxs.map((t, idx) => {
       const tid = t.id || generateUUID();
       const cleanAmount = Math.abs(Number(t.amount)) || 0;
-      const cleanScope: ScopeType = (t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_logistica_shows' || t.categoryId === 'cat_producao_shows') ? 'BUSINESS' : 'PERSONAL';
+      const isTransfer = t.type === 'transfer' || t.categoryId === 'cat_transfer' || Boolean(t.destinationAccountId);
+      const cleanScope: ScopeType = PERSONAL_ONLY_MODE
+        ? 'PERSONAL'
+        : ((t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || t.categoryId === 'cat_logistica_shows' || t.categoryId === 'cat_producao_shows') ? 'BUSINESS' : 'PERSONAL');
       return {
         ...t,
         id: tid,
         amount: cleanAmount,
+        type: isTransfer ? 'transfer' : t.type,
+        categoryId: isTransfer ? 'cat_transfer' : t.categoryId,
+        destinationAccountId: isTransfer ? t.destinationAccountId : undefined,
         scope: cleanScope,
+        showId: PERSONAL_ONLY_MODE ? undefined : t.showId,
         status: t.status || 'paid',
         createdAt: Date.now() + idx
       };
@@ -3059,6 +3067,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     filteredTransactions.forEach(t => {
       if (t.status === 'cancelled') return;
       if (t.showId && cancelledShowIds.has(t.showId) && t.status !== 'paid') return;
+      // Transferências / cat_transfer não são receita nem despesa
+      if (isTransferMovement(t)) return;
       const amount = Math.abs(Number(t.amount)) || 0;
       const isPaid = t.status === 'paid';
       const tTime = new Date(t.date + 'T12:00:00').getTime();

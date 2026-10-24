@@ -16,7 +16,7 @@ import { CalendarModal } from './CalendarModal';
 import { CategorySelector } from './ui/CategorySelector';
 import { generateUUID } from '../services/uuidHelper';
 import { getLocalDateString } from '../services/dateUtils';
-import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
+import { PERSONAL_ONLY_MODE, isBusinessCategory } from '../services/personalOnlyMode';
 
 interface Props {
   onClose: () => void;
@@ -268,9 +268,10 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     return categories.filter(c => {
       // Filtrar por tipo (expense / income)
       if (c.type !== type) return false;
+      if (PERSONAL_ONLY_MODE && isBusinessCategory(c)) return false;
 
       // Filtrar por escopo estrito
-      if (scope === 'PERSONAL') {
+      if (scope === 'PERSONAL' || PERSONAL_ONLY_MODE) {
         return c.scope === 'PERSONAL' || (!c.scope && c.id !== 'cat_33' && c.id !== 'cat_equipamentos' && c.id !== 'cat_producao_shows' && c.id !== 'cat_midia_marketing');
       } else {
         return c.scope === 'BUSINESS' || (!c.scope && (c.id === 'cat_33' || c.id === 'cat_equipamentos' || c.id === 'cat_producao_shows' || c.id === 'cat_midia_marketing'));
