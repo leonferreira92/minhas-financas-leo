@@ -1,0 +1,21 @@
+# Diretrizes Globais do Projeto - Finanças Pessoais
+
+## 1. Economia de Tokens e Eficiência
+- Seja direto, conciso e objetivo. Evite explicações teóricas longas no chat, focando em respostas práticas.
+- Modifique apenas os arquivos estritamente necessários para cumprir a tarefa solicitada.
+- Nunca reescreva arquivos inteiros se puder fazer alterações pontuais (diffs cirúrgicos).
+- Antes de criar novos componentes, bibliotecas ou utilitários, verifique se já existe algo reaproveitável no projeto.
+
+## 2. Preservação de Dados e Lógica do Banco
+- JAMAIS rode comandos, scripts ou atualizações em lote que apaguem registros de transações existentes no Firestore/estado sem autorização explícita.
+- Ao desativar ou refatorar funcionalidades comerciais/empresariais antigas, aplique isolamento lógico (soft deprecation), mantendo o histórico de saldos e lançamentos do caixa intacto.
+
+## 3. Padrão de Código e Arquitetura
+- Siga estritamente o padrão do Next.js (App Router/Pages), React e TypeScript já estabelecido no repositório.
+- Mantenha a tipagem rígida no TypeScript. Não use `any`.
+- Mantenha componentes focados e modulares. Evite criar arquivos gigantescos.
+- Certifique-se de tratar erros e estados de carregamento (loading/skeleton) em todas as requisições.
+
+## 4. Fluxo de Execução
+- Antes de aplicar alterações complexas que afetem a estrutura de dados, apresente um resumo rápido no chat e aguarde a confirmação.
+- Sempre verifique a integridade do build (`npm run build` ou validação do TypeScript) após alterações significativas.
