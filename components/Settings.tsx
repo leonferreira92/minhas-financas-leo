@@ -1,82 +1,49 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ChevronRight, Layers, Trash2, Moon, Sun, Download, 
-  Upload, Palette, Plus, X, Wallet, CheckCircle2, 
-  TrendingUp, FileSpreadsheet, RefreshCw,
-  ShieldCheck, Landmark, History, User, Bell, Clock,
-  ChevronLeft, LayoutGrid, Database, AppWindow,
-  GripVertical, Eye, EyeOff, ArrowUp, ArrowDown, AlertTriangle,
-  LogOut, Zap, PiggyBank, Sliders, Music
+  ChevronRight, Moon, Download, 
+  Palette, Plus, X, Wallet, CheckCircle2, 
+  TrendingUp, RefreshCw,
+  Landmark, User, Bell, Clock,
+  ChevronLeft, LayoutGrid,
+  Eye, EyeOff, ArrowUp, ArrowDown, AlertTriangle,
+  PiggyBank, Sliders
 } from 'lucide-react';
-import { StorageService } from '../services/storageService';
 import { useFinance } from '../context/FinanceContext';
-import { Account, DashboardWidgetConfig } from '../types';
+import { Account } from '../types';
 import { parseCurrencyInput } from '../constants';
-import { loadBackupIntoStorage } from '../services/backupImporter';
-import {
-  resetOfficialBackupAndWipeCloud,
-  pushCurrentLocalToCloud
-} from '../services/safeRecovery';
-import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
-import { CutoffDryRunSummary, PERSONAL_CUTOFF_DATE } from '../services/legacyCutoffMigration';
 
 export const Settings = () => {
   const { 
-    refreshData, settings, updateSettings, transactions, categories, 
+    settings, updateSettings, transactions, categories, 
     debts, accounts, budgets, 
     addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance, 
-    restoreAutoBackup, getBackupInfo,
-    currentUser, consolidateToDefaultDatabase,
-    previewPersonalCutoff, applyPersonalCutoff
+    getBackupInfo,
+    currentUser
   } = useFinance();
-  
-  const [isConsolidating, setIsConsolidating] = useState(false);
-  const [consolidationResult, setConsolidationResult] = useState<string | null>(null);
-  const [cutoffPreview, setCutoffPreview] = useState<CutoffDryRunSummary | null>(null);
-  const [cutoffMessage, setCutoffMessage] = useState<string | null>(null);
-  const [isResettingCloud, setIsResettingCloud] = useState(false);
-  const [isPushingCloud, setIsPushingCloud] = useState(false);
   
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isReconcileModalOpen, setIsReconcileModalOpen] = useState(false);
   const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
   
-  // Custom Confirmation Modal State
   const [confirmation, setConfirmation] = useState<{ title: string; message: string; onConfirm?: () => void; isAlert?: boolean } | null>(null);
 
-  // Account Form State
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [accName, setAccName] = useState('');
   const [accType, setAccType] = useState<'wallet'|'bank'|'savings'|'investment'|'other'>('bank');
   const [accColor, setAccColor] = useState('#6366f1');
 
-  // Reconcile State
   const [reconcileAccountId, setReconcileAccountId] = useState('');
   const [actualBalance, setActualBalance] = useState('');
 
-  const backupInputRef = useRef<HTMLInputElement>(null);
   const backupInfo = getBackupInfo();
-
-  const handleClearData = () => {
-    setConfirmation({
-        title: 'Apagar Tudo',
-        message: 'Tem certeza que deseja apagar todos os dados? Esta ação não pode ser desfeita.',
-        onConfirm: () => {
-            StorageService.clearData();
-            refreshData();
-            setConfirmation({ title: 'Sucesso', message: 'Dados apagados com sucesso.', isAlert: true });
-            setTimeout(() => window.location.reload(), 1500);
-        }
-    });
-  };
 
   const openAccountModal = (acc?: Account) => {
     if (acc) {
       setEditingAccount(acc);
       setAccName(acc.name);
-      setAccType(acc.type as any);
+      setAccType(acc.type as 'wallet'|'bank'|'savings'|'investment'|'other');
       setAccColor(acc.color);
     } else {
       setEditingAccount(null);
@@ -129,111 +96,6 @@ export const Settings = () => {
     reconcileBalance(reconcileAccountId, val);
     setIsReconcileModalOpen(false);
   };
-  
-  const handleAutoRestore = () => {
-    if (!backupInfo) return;
-    setConfirmation({
-        title: 'Restaurar Backup',
-        message: `Deseja restaurar o backup automático de ${backupInfo.date.toLocaleString()}? Os dados atuais serão substituídos.`,
-        onConfirm: () => {
-            const success = restoreAutoBackup();
-            if (success) {
-                setConfirmation({ title: 'Sucesso', message: 'Backup restaurado com sucesso!', isAlert: true });
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                setConfirmation({ title: 'Erro', message: 'Falha ao restaurar.', isAlert: true });
-            }
-        }
-    });
-  };
-
-  const handlePushLocalToCloud = () => {
-    if (!currentUser?.uid) {
-      setConfirmation({
-        title: 'Login necessário',
-        message: 'Entre na conta para publicar este aparelho na nuvem (sync desktop ↔ celular).',
-        isAlert: true
-      });
-      return;
-    }
-    setConfirmation({
-      title: 'Publicar este aparelho → nuvem',
-      message:
-        `Substitui o Firestore pelos dados DESTE aparelho agora (${transactions.length} lançamentos). O outro dispositivo (celular/desktop) passa a receber esse estado via autosync. Use no aparelho que estiver CORRETO. Continuar?`,
-      onConfirm: () => {
-        void (async () => {
-          setIsPushingCloud(true);
-          setConfirmation(null);
-          try {
-            const result = await pushCurrentLocalToCloud(currentUser.uid);
-            setConfirmation({
-              title: result.success ? 'Nuvem atualizada' : 'Falha',
-              message: result.success
-                ? `${result.message || 'Firestore substituído por este aparelho.'} Abra o outro dispositivo logado para sincronizar.`
-                : (result.message || 'Não foi possível publicar.'),
-              isAlert: true
-            });
-            if (result.success) {
-              refreshData();
-            }
-          } catch (err) {
-            setConfirmation({
-              title: 'Erro',
-              message: err instanceof Error ? err.message : 'Falha ao publicar na nuvem.',
-              isAlert: true
-            });
-          } finally {
-            setIsPushingCloud(false);
-          }
-        })();
-      }
-    });
-  };
-
-  const handleOfficialBackupRestore = () => {
-    setConfirmation({
-      title: 'PERIGO · Voltar ao backup 21/10',
-      message:
-        'Isto NÃO é o sync diário. Apaga no Firestore tudo depois de 21/10 e restaura aquele snapshot em todos os dispositivos. Só use em desastre. Prefira “Publicar este aparelho → nuvem” se um dos aparelhos estiver certo. Continuar mesmo assim?',
-      onConfirm: () => {
-        void (async () => {
-          setIsResettingCloud(true);
-          setConfirmation(null);
-          try {
-            const result = await resetOfficialBackupAndWipeCloud(currentUser?.uid || null);
-            if (!result.localOk) {
-              setConfirmation({
-                title: 'Erro',
-                message: 'Falha ao restaurar o backup local.',
-                isAlert: true
-              });
-              return;
-            }
-            refreshData();
-            const cloudMsg = result.cloud?.message || '';
-            setConfirmation({
-              title: result.cloud?.success === false ? 'Atenção' : 'Sucesso',
-              message: result.cloud?.success === false
-                ? `Local OK, mas o cloud falhou: ${cloudMsg}. Tente de novo logado.`
-                : `Backup 21/10 restaurado e Firestore limpo. ${cloudMsg} Recarregando…`,
-              isAlert: true
-            });
-            if (result.cloud?.success !== false) {
-              setTimeout(() => window.location.reload(), 1800);
-            }
-          } catch (err) {
-            setConfirmation({
-              title: 'Erro',
-              message: err instanceof Error ? err.message : 'Falha no reset.',
-              isAlert: true
-            });
-          } finally {
-            setIsResettingCloud(false);
-          }
-        })();
-      }
-    });
-  };
 
   const toggleWidget = (id: string) => {
     const newLayout = settings.dashboardLayout.map(w => 
@@ -252,7 +114,7 @@ export const Settings = () => {
   };
 
   const colors = [
-    { key: 'indigo', label: 'Lime', hex: '#84cc16' }, // Primary Lime (mapped to indigo var)
+    { key: 'indigo', label: 'Lime', hex: '#84cc16' },
     { key: 'blue', label: 'Azul', hex: '#3b82f6' },
     { key: 'emerald', label: 'Verde', hex: '#10b981' },
     { key: 'violet', label: 'Roxo', hex: '#8b5cf6' },
@@ -279,53 +141,6 @@ export const Settings = () => {
       URL.revokeObjectURL(url);
   };
 
-  const handleRestoreClick = () => { 
-      if (backupInputRef.current) {
-          backupInputRef.current.value = '';
-          backupInputRef.current.click();
-      }
-  };
-  
-  const processRestoreFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      setConfirmation({
-          title: 'Importar Backup',
-          message: 'ATENÇÃO: Restaurar um backup substituirá TODOS os dados atuais do aplicativo. Deseja continuar?',
-          onConfirm: async () => {
-              try {
-                  const text = await file.text(); 
-                  const data = JSON.parse(text);
-                  
-                  if (!Array.isArray(data.transactions) && !Array.isArray(data.categories)) {
-                      throw new Error("Arquivo de backup inválido ou corrompido.");
-                  }
-
-                  StorageService.saveTransactions(data.transactions || []); 
-                  StorageService.saveCategories(data.categories || []);
-                  StorageService.saveSettings(data.settings || {}); 
-                  StorageService.saveDebts(data.debts || []); 
-                  StorageService.saveAccounts(data.accounts || []);
-                  StorageService.saveBudgets(data.budgets || []);
-                  
-                  const txCount = (data.transactions || []).length;
-                  setConfirmation({ 
-                      title: 'Sucesso', 
-                      message: `Backup restaurado!\nRecuperados: ${txCount} Transações.`, 
-                      isAlert: true 
-                  });
-                  setTimeout(() => window.location.reload(), 2000);
-                  
-              } catch (err) { 
-                  setConfirmation({ title: 'Erro', message: 'Arquivo inválido.', isAlert: true });
-                  console.error(err);
-              }
-          }
-      });
-      if (backupInputRef.current) backupInputRef.current.value = '';
-  };
-
   const getAccountIcon = (type: string) => {
       switch(type) {
           case 'wallet': return Wallet;
@@ -333,12 +148,11 @@ export const Settings = () => {
           case 'investment': return TrendingUp;
           case 'bank': default: return Landmark;
       }
-  }
+  };
 
   return (
     <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-md mx-auto relative">
       
-      {/* --- Sticky App Header --- */}
       <div className="sticky top-0 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-lg z-30 pt-4 pb-4 px-2 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50">
         <div className="flex items-center">
           <Link to="/" className="p-2 mr-2 hover:bg-white dark:hover:bg-slate-800 rounded-full transition-all active:scale-90">
@@ -346,16 +160,15 @@ export const Settings = () => {
           </Link>
           <h1 className="text-xl font-black tracking-tight text-slate-800 dark:text-white">Ajustes</h1>
         </div>
-        <div className="w-8"></div> {/* Spacer for balance */}
+        <div className="w-8"></div>
       </div>
 
       <div className="space-y-6 px-3 pt-4">
         
-        {/* --- Profile & Main Settings --- */}
+        {/* Perfil e preferências */}
         <section className="bg-[#18181b] rounded-[2.2rem] p-6 shadow-sm border border-zinc-800 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
            
-           {/* Profile Input */}
            <div className="flex items-center space-x-4 relative z-10 mb-6">
               <div className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-[1.2rem] flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-emerald-500/20 shrink-0">
                  <User size={32} strokeWidth={2} />
@@ -368,194 +181,30 @@ export const Settings = () => {
                    placeholder="Seu Nome"
                    className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
                  />
-              </div>
-           </div>
-
-           {/* Nome do Projeto / Carreira */}
-           <div className="flex items-center space-x-4 relative z-10 mb-6 pt-4 border-t border-zinc-800">
-              <div className="w-16 h-16 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-[1.2rem] flex items-center justify-center text-white shadow-lg shadow-purple-500/20 shrink-0">
-                 <Music size={30} strokeWidth={2} />
-              </div>
-              <div className="flex-1">
-                 <label className="text-[10px] font-bold text-purple-400 uppercase tracking-widest block mb-1">
-                   Nome do Projeto / Carreira (Empresa)
-                 </label>
-                 <input 
-                   value={settings.careerProjectName !== undefined ? settings.careerProjectName : 'Leo Ferreira'} 
-                   onChange={(e) => updateSettings({ careerProjectName: e.target.value })} 
-                   placeholder="Ex: Leo Ferreira"
-                   className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-purple-400 transition-colors pb-1"
-                 />
-                 <span className="text-[10px] text-zinc-400 block mt-1">Nome exibido nos relatórios e recibos de shows</span>
-              </div>
-           </div>
-
-           {/* Dados Profissionais para Recibos e Comprovantes */}
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 pt-4 border-t border-zinc-800 relative z-10">
-              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800">
-                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">
-                   CPF do Músico (Recibos)
-                 </label>
-                 <input 
-                   value={settings.musicianCpf || ''} 
-                   onChange={(e) => updateSettings({ musicianCpf: e.target.value })} 
-                   placeholder="000.000.000-00"
-                   className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
-                 />
-                 <span className="text-[9px] text-zinc-500 block mt-1">Utilizado na assinatura do Recibo de Sinal</span>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800">
-                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">
-                   Cidade / UF Base
-                 </label>
-                 <input 
-                   value={settings.musicianCity || ''} 
-                   onChange={(e) => updateSettings({ musicianCity: e.target.value })} 
-                   placeholder="Ex: Baependi - MG"
-                   className="w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
-                 />
-                 <span className="text-[9px] text-zinc-500 block mt-1">Cidade da emissão no rodapé do comprovante</span>
-              </div>
-           </div>
-
-           {/* CONTAS PADRÃO POR MÓDULO (PESSOAL x EMPRESA) */}
-           <div className="pt-4 border-t border-zinc-800 space-y-3 mb-6">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">
-                Contas Bancárias Padrão por Módulo
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Conta Padrão Pessoal */}
-                <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
-                  <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1">
-                    <User size={12} />
-                    <span>Conta Padrão Pessoal</span>
-                  </label>
-                  <select
-                    value={settings.personalDefaultAccountId || 'acc_bb'}
-                    onChange={e => updateSettings({ personalDefaultAccountId: e.target.value })}
-                    className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-emerald-500"
-                  >
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>{acc.name}</option>
-                    ))}
-                  </select>
-                  <span className="text-[9px] text-zinc-400 block">Usada por padrão em despesas e compras pessoais</span>
-                </div>
-
-                {/* Conta Padrão Empresa — ocultada na Fase 1 (app só pessoal) */}
-                {!PERSONAL_ONLY_MODE && (
-                  <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
-                    <label className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center space-x-1">
-                      <Music size={12} />
-                      <span>Conta Padrão Empresa (Shows)</span>
-                    </label>
-                    <select
-                      value={settings.businessDefaultAccountId || 'acc_mp'}
-                      onChange={e => updateSettings({ businessDefaultAccountId: e.target.value })}
-                      className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-purple-500"
-                    >
-                      {accounts.map(acc => (
-                        <option key={acc.id} value={acc.id}>{acc.name}</option>
-                      ))}
-                    </select>
-                    <span className="text-[9px] text-zinc-400 block">Usada por padrão para recebimentos e custos de shows</span>
-                  </div>
-                )}
-              </div>
-              {!PERSONAL_ONLY_MODE && (
-                <p className="text-[10px] text-zinc-400">
-                  💡 A <strong>Carteira (Dinheiro)</strong> pertence ao Pessoal, mas pode receber entradas de shows quando pago em espécie no evento.
-                </p>
-              )}
-           </div>
-
-           {/* Fase 4 — Corte pessoal 01/10/2026 (opt-in) */}
-           {PERSONAL_ONLY_MODE && (
-             <div className="space-y-3 p-4 rounded-3xl bg-[#121212] border border-zinc-800">
-               <div className="flex items-start justify-between gap-3">
-                 <div>
-                   <h3 className="text-sm font-black text-white">Corte do legado · {PERSONAL_CUTOFF_DATE}</h3>
-                   <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                     Arquiva shows/empresa e lançamentos anteriores a 01/10 sem apagar histórico.
-                     O efeito dos pagos entra no saldo de abertura — o caixa atual não muda.
-                   </p>
-                 </div>
-                 {settings.legacyPersonalCutoffApplied && (
-                   <span className="shrink-0 text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                     Aplicado
-                   </span>
+                 {currentUser?.email && (
+                   <span className="text-[10px] text-zinc-500 block mt-1.5 truncate">{currentUser.email}</span>
                  )}
-               </div>
+              </div>
+           </div>
 
-               {cutoffPreview && (
-                 <div className="text-[11px] text-zinc-300 space-y-1 p-3 rounded-2xl bg-zinc-900 border border-zinc-800">
-                   <p>Pagos a arquivar: <strong className="text-white">{cutoffPreview.toArchivePaid}</strong></p>
-                   <p>Pendentes a cancelar/arquivar: <strong className="text-white">{cutoffPreview.toCancelPending}</strong></p>
-                   <p>Shows/carreira: <strong className="text-white">{cutoffPreview.showOrCareerCount}</strong> · Pré-corte pessoal: <strong className="text-white">{cutoffPreview.preCutoffCount}</strong></p>
-                   {cutoffPreview.accountOpenings.length > 0 && (
-                     <div className="pt-2 mt-2 border-t border-zinc-800 space-y-0.5">
-                       <p className="text-[10px] font-black uppercase text-zinc-500">Aberturas propostas</p>
-                       {cutoffPreview.accountOpenings.map(a => (
-                         <p key={a.accountId}>
-                           {a.accountName}: {a.currentInitial.toFixed(2)} → <strong className="text-[#fcca00]">{a.proposedInitial.toFixed(2)}</strong>
-                           {' '}({a.delta >= 0 ? '+' : ''}{a.delta.toFixed(2)})
-                         </p>
-                       ))}
-                     </div>
-                   )}
-                 </div>
-               )}
+           <div className="pt-4 border-t border-zinc-800 space-y-3 mb-6 relative z-10">
+              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">
+                Conta padrão nos lançamentos
+              </span>
+              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
+                <select
+                  value={settings.personalDefaultAccountId || accounts[0]?.id || ''}
+                  onChange={e => updateSettings({ personalDefaultAccountId: e.target.value })}
+                  className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-emerald-500"
+                >
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                  ))}
+                </select>
+              </div>
+           </div>
 
-               {cutoffMessage && (
-                 <p className="text-[11px] text-emerald-400 font-medium">{cutoffMessage}</p>
-               )}
-
-               <div className="flex flex-wrap gap-2">
-                 <button
-                   type="button"
-                   onClick={() => {
-                     setCutoffMessage(null);
-                     setCutoffPreview(previewPersonalCutoff());
-                   }}
-                   className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-bold text-white transition active:scale-95"
-                 >
-                   Simular (dry-run)
-                 </button>
-                 <button
-                   type="button"
-                   disabled={Boolean(settings.legacyPersonalCutoffApplied)}
-                   onClick={() => {
-                     const preview = cutoffPreview || previewPersonalCutoff();
-                     setCutoffPreview(preview);
-                     setConfirmation({
-                       title: 'Aplicar corte 01/10/2026?',
-                       message: `Serão arquivados ${preview.toArchivePaid} pagos e cancelados ${preview.toCancelPending} pendentes. Saldos atuais das contas permanecem iguais (ajuste no saldo de abertura). Esta ação roda só uma vez.`,
-                       onConfirm: () => {
-                         const result = applyPersonalCutoff();
-                         if (result.applied) {
-                           setCutoffPreview(result.summary);
-                           setCutoffMessage('Corte aplicado. Extrato ativo começa em 01/10; histórico arquivado preservado.');
-                           refreshData();
-                         } else {
-                           setCutoffMessage('Corte já havia sido aplicado anteriormente.');
-                         }
-                         setConfirmation(null);
-                       }
-                     });
-                   }}
-                   className="px-3.5 py-2 rounded-xl bg-[#003882] hover:bg-[#002d6c] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-black text-white transition active:scale-95 border border-[#fcca00]/30"
-                 >
-                   Aplicar corte
-                 </button>
-               </div>
-             </div>
-           )}
-
-           {/* Settings Grid */}
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Notification Toggle (Simulated cycle) */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
               <button 
                 onClick={() => {
                    const next = settings.notificationInterval === 0 ? 12 : settings.notificationInterval === 12 ? 24 : 0;
@@ -570,16 +219,14 @@ export const Settings = () => {
                  <span className="text-sm font-bold text-white">{settings.notificationInterval ? `A cada ${settings.notificationInterval}h` : 'Desligado'}</span>
               </button>
 
-              {/* Tema Fixo (Spotify / Fintech Dark) */}
               <div className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800">
                  <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Tema Padrão</span>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Tema</span>
                     <Moon size={16} className="text-emerald-400" />
                  </div>
-                 <span className="text-sm font-bold text-white">Fintech Dark (Spotify)</span>
+                 <span className="text-sm font-bold text-white">Escuro</span>
               </div>
 
-              {/* Configurações Financeiras */}
               <Link to="/financial-settings" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
                     <div className="p-2.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl">
@@ -587,13 +234,12 @@ export const Settings = () => {
                     </div>
                     <div className="text-left">
                        <span className="text-sm font-black text-white block">Parâmetros Financeiros</span>
-                       <span className="text-[11px] text-zinc-400 font-medium">Reserva mínima, meses de proteção e categorias</span>
+                       <span className="text-[11px] text-zinc-400 font-medium">Reserva mínima, meses de proteção</span>
                     </div>
                  </div>
                  <ChevronRight size={18} className="text-zinc-500" />
               </Link>
 
-              {/* Categories */}
               <Link to="/categories" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
                     <div className="p-2.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl">
@@ -601,7 +247,7 @@ export const Settings = () => {
                     </div>
                     <div className="text-left">
                        <span className="text-sm font-bold text-white block">Categorias</span>
-                       <span className="text-[10px] text-zinc-400">Gerenciar etiquetas de receitas e despesas</span>
+                       <span className="text-[10px] text-zinc-400">Etiquetas de receitas e despesas</span>
                     </div>
                  </div>
                  <ChevronRight size={18} className="text-zinc-500" />
@@ -609,7 +255,7 @@ export const Settings = () => {
            </div>
         </section>
 
-        {/* --- Accounts Management --- */}
+        {/* Contas */}
         <section>
            <div className="flex justify-between items-center mb-3 px-2">
               <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Minhas Contas</h2>
@@ -631,8 +277,7 @@ export const Settings = () => {
                         <div>
                            <h3 className="font-bold text-white text-sm leading-tight">{acc.name}</h3>
                            <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wide">
-                             {acc.type === 'wallet' ? 'Carteira (Espécie)' : acc.type === 'bank' ? 'Conta Bancária' : acc.type === 'savings' ? 'Reserva' : 'Investimento'}
-                             {acc.scope === 'BUSINESS' ? ' • Empresa' : ' • Pessoal'}
+                             {acc.type === 'wallet' ? 'Carteira' : acc.type === 'bank' ? 'Conta Bancária' : acc.type === 'savings' ? 'Reserva' : 'Investimento'}
                            </span>
                         </div>
                      </div>
@@ -653,138 +298,43 @@ export const Settings = () => {
            </div>
         </section>
 
-        {/* --- Centralização Banco de Dados (default) --- */}
-        <section className="bg-[#18181b] rounded-[2.2rem] p-5 border border-zinc-800 space-y-4">
-           <div className="flex items-center justify-between">
-              <h2 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center">
-                 <Database size={15} className="mr-2 text-yellow-400" /> Banco de Dados Principal
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase flex items-center gap-1">
-                 <CheckCircle2 size={11} /> (default) Ativo
-              </span>
-           </div>
-
-           <p className="text-xs text-zinc-300 leading-relaxed">
-              O backend está configurado para que <strong>todas as transações</strong> (antigas e novas) sejam salvas no banco de dados <strong>(default)</strong> do seu projeto Firebase.
-           </p>
-
-           <div className="p-3.5 rounded-2xl bg-[#121214] border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Destino Atual</span>
-                 <span className="text-xs font-bold text-white flex items-center gap-1.5 mt-0.5">
-                    <span>Firestore Database:</span>
-                    <code className="text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded text-[11px] font-mono">(default)</code>
-                 </span>
-              </div>
-
-              <button
-                onClick={async () => {
-                  if (isConsolidating) return;
-                  setIsConsolidating(true);
-                  setConsolidationResult(null);
-                  try {
-                    const res = await consolidateToDefaultDatabase();
-                    setConsolidationResult(res.message);
-                  } catch (e) {
-                    setConsolidationResult('Erro ao consolidar no banco (default).');
-                  } finally {
-                    setIsConsolidating(false);
-                  }
-                }}
-                disabled={isConsolidating}
-                className="py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-yellow-400 font-extrabold text-xs transition active:scale-95 shadow-sm flex items-center justify-center space-x-2 border border-blue-700 disabled:opacity-60 shrink-0"
-              >
-                <RefreshCw size={14} className={isConsolidating ? 'animate-spin text-yellow-400' : ''} />
-                <span>{isConsolidating ? 'Consolidando...' : 'Consolidar Tudo no (default)'}</span>
-              </button>
-           </div>
-
-           {consolidationResult && (
-              <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-xs font-semibold flex items-center gap-2">
-                 <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                 <span>{consolidationResult}</span>
-              </div>
-           )}
-        </section>
-
-        {/* --- Data & Security --- */}
+        {/* Backup seguro (só export) + status de sync */}
         <section className="bg-[#18181b] rounded-[2.2rem] overflow-hidden border border-zinc-800">
-           <div className="p-5 border-b border-zinc-800/80">
+           <div className="p-5">
               <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center">
-                 <Database size={14} className="mr-2 text-emerald-400" /> Dados e Backup
+                 <Clock size={14} className="mr-2 text-emerald-400" /> Sync e cópia de segurança
               </h2>
-              
-              {/* Backup Status */}
-              <div className="bg-emerald-950/30 p-4 rounded-2xl flex items-center justify-between border border-emerald-800/40 mb-4">
-                 <div className="flex items-center space-x-3">
+
+              <div className="bg-emerald-950/30 p-4 rounded-2xl border border-emerald-800/40 mb-4 space-y-1">
+                 <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                    <div>
-                       <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wide block">Backup Automático Local</span>
-                       <span className="text-xs text-zinc-400 font-medium">
-                          {backupInfo ? `Última cópia: ${backupInfo.date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` : 'Sincronizado'}
-                       </span>
-                    </div>
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wide">
+                      {currentUser ? 'Sincronizado na nuvem' : 'Sem login — só neste aparelho'}
+                    </span>
                  </div>
+                 <p className="text-[11px] text-zinc-400 leading-relaxed pl-4">
+                   Desktop e celular usam a mesma conta automaticamente. Não é preciso “publicar” nem restaurar banco.
+                 </p>
                  {backupInfo && (
-                    <button onClick={handleAutoRestore} className="p-2 bg-emerald-500 text-zinc-950 rounded-xl shadow-sm hover:bg-emerald-400 transition active:scale-95">
-                       <RefreshCw size={16} />
-                    </button>
+                   <p className="text-[10px] text-zinc-500 pl-4">
+                     Cópia local: {backupInfo.date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                   </p>
                  )}
               </div>
 
-              {/* Actions Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                 <button onClick={handleExport} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
-                    <Download size={20} className="text-emerald-400 mb-2" />
-                    <span className="text-[10px] font-bold text-zinc-300">Exportar Backup JSON</span>
-                 </button>
-                 <button onClick={handleRestoreClick} className="flex flex-col items-center justify-center p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white">
-                    <Upload size={20} className="text-emerald-400 mb-2" />
-                    <span className="text-[10px] font-bold text-zinc-300">Restaurar JSON</span>
-                 </button>
-                 <button
-                   onClick={handlePushLocalToCloud}
-                   disabled={isPushingCloud || isResettingCloud}
-                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-700/50 rounded-2xl transition active:scale-95 text-white disabled:opacity-50 disabled:cursor-wait"
-                 >
-                    <Database size={20} className="text-emerald-400 mb-2" />
-                    <span className="text-[10px] font-bold text-emerald-200">
-                      {isPushingCloud
-                        ? 'Publicando lançamentos na nuvem…'
-                        : 'Publicar este aparelho → nuvem (sync)'}
-                    </span>
-                    <span className="text-[9px] text-emerald-400/70 mt-1 px-2 text-center leading-snug">
-                      Use no desktop/celular que estiver com saldo e lançamentos corretos
-                    </span>
-                 </button>
-                 <button
-                   onClick={handleOfficialBackupRestore}
-                   disabled={isResettingCloud || isPushingCloud}
-                   className="col-span-2 flex flex-col items-center justify-center p-4 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-800/40 rounded-2xl transition active:scale-95 text-white disabled:opacity-50 disabled:cursor-wait"
-                 >
-                    <AlertTriangle size={20} className="text-rose-400 mb-2" />
-                    <span className="text-[10px] font-bold text-rose-200">
-                      {isResettingCloud
-                        ? 'Limpando Firestore e restaurando 21/10…'
-                        : 'PERIGO · Voltar ao snapshot 21/10 (apaga o restante)'}
-                    </span>
-                 </button>
-                 <input type="file" accept=".json" ref={backupInputRef} onChange={processRestoreFile} className="hidden" />
-              </div>
-
+              <button
+                onClick={handleExport}
+                className="w-full flex items-center justify-center gap-2 p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white"
+              >
+                <Download size={18} className="text-emerald-400" />
+                <span className="text-xs font-bold text-zinc-200">Baixar backup JSON</span>
+              </button>
+              <p className="text-[10px] text-zinc-500 mt-2 text-center px-2 leading-relaxed">
+                Só salva uma cópia no seu computador/celular. Não altera o banco.
+              </p>
            </div>
-
-           {/* Danger Zone */}
-           <button 
-             onClick={handleClearData}
-             className="w-full p-5 flex items-center justify-center space-x-2 text-rose-400 hover:bg-rose-950/30 transition-colors"
-           >
-              <LogOut size={16} />
-              <span className="text-xs font-black uppercase tracking-widest">Resetar Aplicativo</span>
-           </button>
         </section>
 
-        {/* --- Customization Link --- */}
         <button 
            onClick={() => setIsLayoutModalOpen(true)}
            className="w-full py-4 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-500 transition-colors flex items-center justify-center"
@@ -794,7 +344,6 @@ export const Settings = () => {
 
       </div>
 
-      {/* --- Dashboard Layout Modal --- */}
       {isLayoutModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
            <div className="bg-white dark:bg-slate-900 rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
@@ -865,7 +414,6 @@ export const Settings = () => {
         </div>
       )}
 
-      {/* --- Account Form Modal --- */}
       {isAccountModalOpen && (
          <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
             <div className="bg-white dark:bg-slate-900 rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-up">
@@ -903,7 +451,7 @@ export const Settings = () => {
                   </div>
 
                   <div>
-                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Cor Personalizada</label>
+                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Cor</label>
                      <div className="grid grid-cols-5 gap-3">
                         {['#6366f1', '#ef4444', '#10b981', '#f59e0b', '#ec4899'].map(c => (
                            <button 
@@ -940,7 +488,6 @@ export const Settings = () => {
          </div>
       )}
 
-      {/* --- Reconcile Modal --- */}
       {isReconcileModalOpen && (
          <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in">
@@ -950,7 +497,7 @@ export const Settings = () => {
                  </div>
                  <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Ajuste de Saldo</h3>
                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 px-4">
-                    O saldo real no banco é diferente? Informe o valor correto para sincronizar.
+                    Informe o saldo real do banco para alinhar o app.
                  </p>
                </div>
 
@@ -984,7 +531,6 @@ export const Settings = () => {
          </div>
       )}
 
-      {/* Global Confirmation Modal */}
       {confirmation && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-scale-in text-center">
