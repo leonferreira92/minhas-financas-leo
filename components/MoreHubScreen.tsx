@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
 import { 
   Search, Settings as SettingsIcon, ChevronDown, ChevronRight, ChevronLeft,
-  User, Music, CreditCard, Sparkles, Sliders, Receipt, Landmark, 
-  BarChart3, FolderTree, Plus, Calendar, DollarSign, FileText, 
+  User, CreditCard, Sparkles, Sliders, Receipt, Landmark, 
+  BarChart3, FolderTree, Plus, Target, 
   ShieldAlert, RefreshCw, UploadCloud, Database, Bell, X, ShieldCheck
 } from 'lucide-react';
 import { AuthHeaderWidget } from './AuthHeaderWidget';
@@ -14,8 +14,6 @@ import { Settings } from './Settings';
 import { FinancialSettingsScreen } from './FinancialSettingsScreen';
 import { CategoryList } from './CategoryList';
 import { AlertsScreen } from './AlertsScreen';
-import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
-
 interface MenuItem {
   id: string;
   title: string;
@@ -58,9 +56,8 @@ export const MoreHubScreen: React.FC = () => {
   // Accordion open/close state
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     personal: true,
-    musician: true,
-    debts: false,
-    ai: false,
+    debts: true,
+    ai: true,
     system: false
   });
 
@@ -119,46 +116,23 @@ export const MoreHubScreen: React.FC = () => {
           action: () => setIsTxModalOpen(true),
           badge: 'Atalho',
           keywords: 'novo lancamento despesa receita adicionar'
-        }
-      ]
-    },
-    {
-      id: 'musician',
-      title: 'Gestão de Carreira (Músico)',
-      icon: Music,
-      color: 'text-[#fcca00]',
-      items: [
-        {
-          id: 'agenda_shows',
-          title: 'Agenda de Shows',
-          desc: 'Calendário de apresentações e fichas de eventos',
-          icon: Calendar,
-          action: () => navigate('/shows'),
-          keywords: 'shows agenda apresentacoes eventos apresentacao'
         },
         {
-          id: 'caches_receber',
-          title: 'Cachês a Receber',
-          desc: 'Sinais pendentes, quitações e propostas',
-          icon: DollarSign,
-          action: () => navigate('/shows?tab=history'),
-          keywords: 'caches receber sinal pix contratos'
+          id: 'planejamento',
+          title: 'Orçamentos & Planejamento',
+          desc: 'Tetos por categoria, grupos e regra 50/30/20',
+          icon: Target,
+          action: () => navigate('/planejamento'),
+          badge: 'Novo',
+          keywords: 'orcamento planejamento tetos metas 50 30 20'
         },
         {
-          id: 'relatorio_shows',
-          title: 'Relatório de Shows',
-          desc: 'Diagnóstico financeiro e faturamento musical',
-          icon: FileText,
-          action: () => navigate('/relatorios'),
-          keywords: 'relatorio carreira musica shows lucros'
-        },
-        {
-          id: 'gastos_logisticos',
-          title: 'Gastos Logísticos',
-          desc: 'Combustível, equipe e custos de palco',
-          icon: Receipt,
-          action: () => navigate('/lancamentos?status=all&type=expense'),
-          keywords: 'logistica gasolina combustivel equipe musicos'
+          id: 'inteligencia',
+          title: 'Visão Inteligente',
+          desc: 'Quanto posso gastar, custo de vida e projeções',
+          icon: Sparkles,
+          action: () => navigate('/inteligencia'),
+          keywords: 'inteligencia insights posso gastar custo vida projecao'
         }
       ]
     },
@@ -263,10 +237,7 @@ export const MoreHubScreen: React.FC = () => {
     }
   ], [navigate, alertsCount]);
 
-  const visibleMenuCategories = useMemo(
-    () => (PERSONAL_ONLY_MODE ? menuCategories.filter(c => c.id !== 'musician') : menuCategories),
-    [menuCategories]
-  );
+  const visibleMenuCategories = menuCategories;
 
   // Filtro de Busca em Tempo Real
   const filteredResults = useMemo(() => {
@@ -338,7 +309,7 @@ export const MoreHubScreen: React.FC = () => {
         <Search className="absolute left-3.5 top-3 text-zinc-400" size={17} />
         <input
           type="text"
-          placeholder="O que você procura? (ex: extrato, shows, dívidas, backup...)"
+          placeholder="O que você procura? (ex: extrato, orçamento, dívidas, backup...)"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-[#141416] border border-zinc-800 text-white placeholder-zinc-400 text-xs focus:border-blue-500 outline-none shadow-inner"

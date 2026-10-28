@@ -7,6 +7,7 @@ import {
   Filter, Eye, Flame, Clock, Landmark
 } from 'lucide-react';
 import { DEFAULT_FINANCIAL_SETTINGS } from '../constants';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { 
   isEssentialExpense, 
   isDebtExpense, 
@@ -33,6 +34,8 @@ export const FinancialProjectionSection: React.FC = () => {
     getAccountBalance,
     getDebtProgress 
   } = useFinance();
+
+  const effectiveShows = PERSONAL_ONLY_MODE ? [] : shows;
 
   // Seletor de horizonte: 3, 6 ou 12 meses
   const [horizonMonths, setHorizonMonths] = useState<3 | 6 | 12>(6);
@@ -114,8 +117,8 @@ export const FinancialProjectionSection: React.FC = () => {
       ? pastEssentialTxs.reduce((s, t) => s + Number(t.amount), 0) / pastMonthsCount 
       : 0;
 
-    // Shows contratados futuros
-    const confirmedFutureShows = shows.filter(s => 
+    // Agenda de shows ignorada no modo pessoal (txs históricas já no saldo)
+    const confirmedFutureShows = effectiveShows.filter(s => 
       (s.status === 'Confirmado' || (s.status === 'Agendado' && Number(s.totalCache) > 0)) && 
       s.date >= todayStr
     );
@@ -161,7 +164,7 @@ export const FinancialProjectionSection: React.FC = () => {
 
       monthIncomes.forEach(t => {
         const amt = Number(t.amount) || 0;
-        if (isIncomeGuaranteed(t, shows, categories) || isExtraordinaryIncome(t, categories) || isRecurringIncome(t, categories)) {
+        if (isIncomeGuaranteed(t, effectiveShows, categories) || isExtraordinaryIncome(t, categories) || isRecurringIncome(t, categories)) {
           confirmedIncomes += amt;
         } else {
           estimatedIncomes += amt;
@@ -289,7 +292,7 @@ export const FinancialProjectionSection: React.FC = () => {
     horizonMonths, 
     accounts, 
     debts, 
-    shows, 
+    effectiveShows, 
     transactions, 
     categories, 
     financialSettings, 

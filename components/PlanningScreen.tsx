@@ -271,7 +271,7 @@ export const PlanningScreen = () => {
                 Adaptativo
               </span>
             </h1>
-            <p className="text-[11px] font-medium text-slate-400">Orçamento focado em Renda Variável</p>
+            <p className="text-[11px] font-medium text-slate-400">Orçamento e tetos para o caixa pessoal</p>
           </div>
 
           <button 
@@ -344,7 +344,7 @@ export const PlanningScreen = () => {
         <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-start space-x-3 text-indigo-900 dark:text-indigo-200">
           <Info size={20} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs font-medium leading-relaxed">
-            <strong className="font-black text-indigo-700 dark:text-indigo-300">Regra de Renda Variável:</strong> O planejamento prioriza o <u className="decoration-indigo-400 underline-offset-2">dinheiro disponível hoje</u>. Entradas futuras entram na projeção, mas nunca liberam saldo para gastos antes de serem recebidas.
+            <strong className="font-black text-indigo-700 dark:text-indigo-300">Regra do caixa pessoal:</strong> O planejamento prioriza o <u className="decoration-indigo-400 underline-offset-2">dinheiro disponível hoje</u>. Entradas futuras entram na projeção, mas nunca liberam saldo para gastos antes de serem recebidas.
           </p>
         </div>
       </div>

@@ -401,8 +401,8 @@ export const Dashboard: React.FC = () => {
               { label: 'Contas', icon: Landmark, color: 'bg-emerald-50 text-emerald-700', go: () => navigate('/contas') },
               { label: 'Dívidas', icon: CreditCard, color: 'bg-rose-50 text-rose-600', go: () => navigate('/dividas') },
               { label: 'Conciliação', icon: UploadCloud, color: 'bg-violet-50 text-violet-700', go: () => setIsBankImportOpen(true) },
-              { label: 'Relatório IA', icon: Sparkles, color: 'bg-amber-50 text-amber-700', go: () => navigate('/relatorios?tab=ai') },
-              { label: 'Categorias', icon: FolderTree, color: 'bg-indigo-50 text-indigo-700', go: () => navigate('/mais?tab=categories') },
+              { label: 'Inteligência', icon: Sparkles, color: 'bg-amber-50 text-amber-700', go: () => navigate('/inteligencia') },
+              { label: 'Orçamentos', icon: FolderTree, color: 'bg-indigo-50 text-indigo-700', go: () => navigate('/planejamento') },
               { label: 'Meus gastos', icon: BarChart3, color: 'bg-sky-50 text-sky-700', go: () => navigate('/gastos') },
               { label: 'Avisos', icon: ShieldAlert, color: 'bg-orange-50 text-orange-700', go: () => navigate('/mais?tab=alerts') }
             ].map(item => {

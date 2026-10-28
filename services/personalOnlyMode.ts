@@ -2,8 +2,10 @@ import { Account, Category } from '../types';
 import { getAccountVinculo } from './financeAggregator';
 
 /**
- * Fase 1+ — App 100% pessoal na UI.
- * Não apaga transações; só esconde módulo empresa e arquiva contas MUSICO/BUSINESS.
+ * App 100% pessoal na UI.
+ * - Não apaga transações de shows/carreira (histórico entra no saldo via accountBalancesMap).
+ * - Esconde módulo empresa e soft-arquiva contas MUSICO/BUSINESS.
+ * - Novos lançamentos são forçados como PERSONAL no FinanceContext.
  */
 export const PERSONAL_ONLY_MODE = true;
 

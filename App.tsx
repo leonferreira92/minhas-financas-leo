@@ -11,6 +11,8 @@ import { AccountsScreen } from './components/AccountsScreen';
 import { ReportsHubScreen } from './components/ReportsHubScreen';
 import { MoreHubScreen } from './components/MoreHubScreen';
 import { FixedRecurringScreen } from './components/FixedRecurringScreen';
+import { PlanningScreen } from './components/PlanningScreen';
+import { PersonalInsightsScreen } from './components/PersonalInsightsScreen';
 import { TransactionForm } from './components/TransactionForm';
 import { LoginScreen } from './components/auth/LoginScreen';
 
@@ -55,11 +57,15 @@ const AppContent = () => {
           <Route path="/mais" element={<MoreHubScreen />} />
           <Route path="/contas-fixas" element={<FixedRecurringScreen />} />
           <Route path="/fixas" element={<FixedRecurringScreen />} />
+          <Route path="/planejamento" element={<PlanningScreen />} />
+          <Route path="/orcamentos" element={<PlanningScreen />} />
+          <Route path="/inteligencia" element={<PersonalInsightsScreen />} />
+          <Route path="/insights" element={<PersonalInsightsScreen />} />
           <Route path="/gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/analise-gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/contas" element={<AccountsScreen />} />
           <Route path="/relatorios" element={<ReportsHubScreen />} />
-          {/* Shows/carreira desativados na UI — dados preservados no storage */}
+          {/* Shows/carreira desativados — txs históricas preservadas no saldo */}
           <Route path="/shows" element={<Navigate to="/" replace />} />
           <Route path="/shows/*" element={<Navigate to="/" replace />} />
           <Route path="/flow" element={<ReportsHubScreen initialTab="flow" />} />

@@ -31,7 +31,7 @@ import { getIcon } from '../constants';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
-import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
+import { PERSONAL_ONLY_MODE, isCompanyAccount } from '../services/personalOnlyMode';
 import { isLegacyArchivedTx } from '../services/legacyCutoffMigration';
 import { isLoanMovement, isNeutralCashFlowMovement } from '../services/aiReportService';
 import { computeChainedMonthProjection } from '../services/monthCashPanel';
@@ -178,9 +178,14 @@ export const ExtratoScreen: React.FC = () => {
           }
         } else if (!hasSearch) {
           const acc = accounts.find(a => a.id === t.accountId);
-          const scopeMatches =
-            matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
-          if (!scopeMatches) return false;
+          if (PERSONAL_ONLY_MODE) {
+            // Histórico completo nas contas pessoais (inclui antigos lançamentos de shows)
+            if (acc && isCompanyAccount(acc)) return false;
+          } else {
+            const scopeMatches =
+              matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
+            if (!scopeMatches) return false;
+          }
         }
 
         const isHighlighted = Boolean(highlightId && t.id === highlightId);

@@ -787,14 +787,16 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): Gene
 
   const baseMonthlyBalance = totalMonthlyRecurringIncome - totalMandatoryMonthlyCost;
 
-  let necessityOfShowsExplanation = 'Renda fixa recorrente cobre as despesas obrigatórias.';
+  let necessityOfShowsExplanation = 'Renda fixa recorrente cobre as despesas obrigat�rias.';
   if (baseMonthlyBalance < 0) {
     const deficit = Math.abs(baseMonthlyBalance);
-    if (avgProfitPerShow > 0) {
+    if (allShows.length > 0 && avgProfitPerShow > 0) {
       const showsCount = (deficit / avgProfitPerShow).toFixed(1);
-      necessityOfShowsExplanation = `Déficit mensal recorrente de ${formatBRL(deficit)}. Necessários ${showsCount} shows/mês (lucro médio de ${formatBRL(avgProfitPerShow)}) para custear as obrigações sem contar receitas extraordinárias.`;
+      necessityOfShowsExplanation = `D�ficit mensal recorrente de ${formatBRL(deficit)}. Necess�rios ${showsCount} shows/m�s (lucro m�dio de ${formatBRL(avgProfitPerShow)}) para custear as obriga��es sem contar receitas extraordin�rias.`;
+    } else if (allShows.length > 0) {
+      necessityOfShowsExplanation = `D�ficit mensal recorrente de ${formatBRL(deficit)}. Necessita de renda vari�vel para fechamento das contas.`;
     } else {
-      necessityOfShowsExplanation = `Déficit mensal recorrente de ${formatBRL(deficit)}. Necessita de shows e renda variável para fechamento das contas.`;
+      necessityOfShowsExplanation = `D�ficit mensal recorrente de ${formatBRL(deficit)}. Ajuste despesas, aumente receitas ou use reserva com crit�rio.`;
     }
   }
 
@@ -1031,7 +1033,7 @@ const lines: string[] = [];
   lines.push('  - Cachês de shows a receber: ' + formatBRL(totalFutureShowsToReceive));
   lines.push('  - Receitas extraordinárias programadas: ' + formatBRL(totalFutureExtraordinaryIncome));
   lines.push('');
-  lines.push('RESUMO DA RENDA VARIÁVEL DE SHOWS:');
+  lines.push('RESUMO DA RENDA VARIÝVEL DE SHOWS:');
   lines.push('Shows contratados | Valor a receber | Custos previstos | Lucro esperado | Lucro médio/show');
   lines.push('------------------|-----------------|------------------|----------------|----------------');
   {
@@ -1053,7 +1055,7 @@ const lines: string[] = [];
   lines.push('');
   lines.push('- Receitas futuras estimadas (incertas): ' + formatBRL(totalFutureEstimated));
   lines.push('');
-  lines.push('RECEITAS EXTRAORDINÁRIAS NO PERÍODO:');
+  lines.push('RECEITAS EXTRAORDINÝRIAS NO PERÝODO:');
   lines.push('NOTA: Seguro-desemprego, multa FGTS, rescisões e bônus entram no fluxo do mês previsto, não na renda recorrente contínua.');
   if (futureExtraordinaryIncomes.length === 0) {
     lines.push('Nenhuma receita extraordinária futura programada.');
@@ -1065,7 +1067,7 @@ const lines: string[] = [];
 
   lines.push('');
   lines.push('============================================================');
-  lines.push('3. SAÍDAS FUTURAS');
+  lines.push('3. SAÝDAS FUTURAS');
   lines.push('============================================================');
   lines.push('- Total de despesas futuras conhecidas: ' + formatBRL(totalKnownFutureExpenses));
   lines.push('- Despesas já pagas no mês atual: ' + formatBRL(thisMonthPaidExpenses));
@@ -1092,7 +1094,7 @@ const lines: string[] = [];
 
   lines.push('');
   lines.push('============================================================');
-  lines.push('5. DÍVIDAS');
+  lines.push('5. DÝVIDAS');
   lines.push('============================================================');
   if (debtDetails.length === 0) {
     lines.push('Nenhuma dívida ou parcelamento ativo cadastrado.');
@@ -1151,7 +1153,7 @@ const lines: string[] = [];
     lines.push('ALERTAS DE FLUXO:');
     deficitMonths.forEach(dm => {
       if (dm.projectedEndBalance < 0) {
-        lines.push('- CRÍTICO EM ' + sanitizeReportText(dm.monthLabel).toUpperCase() + ': saldo projetado negativo em ' + formatBRL(dm.projectedEndBalance) + '.');
+        lines.push('- CRÝTICO EM ' + sanitizeReportText(dm.monthLabel).toUpperCase() + ': saldo projetado negativo em ' + formatBRL(dm.projectedEndBalance) + '.');
       } else {
         lines.push('- ATENÇÃO EM ' + sanitizeReportText(dm.monthLabel).toUpperCase() + ': déficit de ' + formatBRL(Math.abs(dm.netResult)) + ' no mês, coberto pelo saldo acumulado.');
       }

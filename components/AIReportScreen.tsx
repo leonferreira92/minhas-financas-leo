@@ -19,6 +19,7 @@ import {
   ChevronLeft, Info, HelpCircle, Sliders, Home, Lightbulb
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 
 export const AIReportScreen = () => {
   const { 
@@ -31,6 +32,9 @@ export const AIReportScreen = () => {
     getAccountBalance,
     isBlurred
   } = useFinance();
+
+  // Relatório 100% pessoal: não injeta agenda de shows (txs históricas já no extrato/saldo)
+  const reportShows = PERSONAL_ONLY_MODE ? [] : shows;
 
   const currentMonth = useMemo(() => getCurrentMonthPrefix(), []);
 
@@ -95,7 +99,7 @@ export const AIReportScreen = () => {
       accounts,
       categories,
       debts,
-      shows,
+      shows: reportShows,
       financialSettings: settings.financialSettings,
       getAccountBalance,
       decisionScenario
@@ -106,7 +110,7 @@ export const AIReportScreen = () => {
 
   useEffect(() => {
     handleGenerate();
-  }, [periodType, customStart, customEnd, transactions, accounts, categories, debts, shows, settings.financialSettings, decisionScenario]);
+  }, [periodType, customStart, customEnd, transactions, accounts, categories, debts, reportShows, settings.financialSettings, decisionScenario]);
 
   const handleCopy = async () => {
     try {

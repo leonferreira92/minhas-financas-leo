@@ -8,6 +8,7 @@ import {
   Info, AlertCircle, Banknote
 } from 'lucide-react';
 import { DEFAULT_FINANCIAL_SETTINGS } from '../constants';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { 
   isEssentialExpense, 
   isDebtExpense, 
@@ -31,6 +32,9 @@ export const HowMuchCanISpendCard: React.FC = () => {
     getAccountBalance,
     getDebtProgress
   } = useFinance();
+
+  // Modo pessoal: ignora agenda de shows; txs históricas já estão no saldo via extrato
+  const effectiveShows = PERSONAL_ONLY_MODE ? [] : shows;
 
   const [showDetail, setShowDetail] = useState(false);
 
@@ -157,7 +161,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
     }[] = [];
 
     // Shows contratados futuros confirmados a receber
-    const confirmedFutureShows = shows.filter(s => 
+    const confirmedFutureShows = effectiveShows.filter(s => 
       (s.status === 'Confirmado' || s.status === 'Realizado') &&
       s.date >= todayStr
     );
@@ -172,7 +176,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
         (isCurrent ? t.status === 'pending' && t.date >= todayStr : true) &&
         !isNeutralCashFlowMovement(t) &&
         !isGoalMovement(t) &&
-        isIncomeGuaranteed(t, shows, categories) // Filtro rigoroso: descarta previsões incertas
+        isIncomeGuaranteed(t, effectiveShows, categories) // Filtro rigoroso: descarta previsões incertas
       );
 
       let guaranteedInflow = monthIncomes.reduce((s, t) => s + Number(t.amount), 0);
@@ -237,7 +241,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
     cashAvailableToday, 
     futureCommitments.totalThisMonth, 
     transactions, 
-    shows, 
+    effectiveShows, 
     categories, 
     todayStr, 
     monthlyEssentialCost, 

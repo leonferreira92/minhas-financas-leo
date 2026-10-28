@@ -405,7 +405,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">
-                  Conciliação Inteligente & Vínculo com Shows
+                  Conciliação Inteligente
                 </span>
                 {step === 'staging' && (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
