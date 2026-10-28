@@ -198,3 +198,81 @@ export const applyPersonalCutoffMigration = (params: {
 
   return { accounts, transactions, settings, summary, applied: true };
 };
+
+/** Reparo idempotente: despesas pendentes do módulo carreira voltam ao caixa pessoal. */
+export const CAREER_EXPENSE_PENDING_REPAIR = 'v1';
+
+/**
+ * Problema: no modo 100% pessoal, lançamentos BUSINESS (músico) ou cancelados pelo
+ * corte legado somem do Painel do Mês / Extrato — mas ainda são contas a pagar reais.
+ *
+ * Solução: reabrir despesas pendentes (ou canceladas pelo arquivo) a partir do corte
+ * e mover para scope PERSONAL, para aparecerem no extrato futuro e no saldo previsto.
+ * Receitas de carreira (cachês) NÃO são restauradas.
+ */
+export const repairHiddenCareerExpensePendings = (params: {
+  transactions: Transaction[];
+  settings: AppSettings;
+  fromDate?: string;
+}): {
+  transactions: Transaction[];
+  settings: AppSettings;
+  changed: boolean;
+  restoredIds: string[];
+} => {
+  if (params.settings.careerExpensePendingRepairApplied === CAREER_EXPENSE_PENDING_REPAIR) {
+    return {
+      transactions: params.transactions,
+      settings: params.settings,
+      changed: false,
+      restoredIds: []
+    };
+  }
+
+  const fromDate = params.fromDate || PERSONAL_CUTOFF_DATE;
+  const restoredIds: string[] = [];
+
+  const transactions = params.transactions.map(t => {
+    if (!t || t.type !== 'expense') return t;
+
+    const isCareer =
+      isShowOrCareerTransaction(t) || t.scope === 'BUSINESS';
+    if (!isCareer) return t;
+
+    const dateOk = Boolean(t.date && t.date >= fromDate);
+    if (!dateOk) return t;
+
+    // A) Cancelada + arquivada pelo corte → volta como pendente pessoal
+    if (t.status === 'cancelled' && isLegacyArchivedTx(t)) {
+      restoredIds.push(t.id);
+      return {
+        ...t,
+        status: 'pending' as const,
+        legacyArchived: false,
+        scope: 'PERSONAL' as const
+      };
+    }
+
+    // B) Ainda pendente mas escondida no escopo BUSINESS → traz para o pessoal
+    if (t.status === 'pending' && (t.scope === 'BUSINESS' || isLegacyArchivedTx(t))) {
+      restoredIds.push(t.id);
+      return {
+        ...t,
+        legacyArchived: false,
+        scope: 'PERSONAL' as const
+      };
+    }
+
+    return t;
+  });
+
+  return {
+    transactions,
+    settings: {
+      ...params.settings,
+      careerExpensePendingRepairApplied: CAREER_EXPENSE_PENDING_REPAIR
+    },
+    changed: restoredIds.length > 0,
+    restoredIds
+  };
+};

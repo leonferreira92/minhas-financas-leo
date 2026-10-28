@@ -75,6 +75,7 @@ import {
   applyPersonalCutoffMigration,
   dryRunPersonalCutoff,
   isLegacyArchivedTx,
+  repairHiddenCareerExpensePendings,
   CutoffDryRunSummary,
   LEGACY_MIGRATION_FLAG
 } from '../services/legacyCutoffMigration';
@@ -276,12 +277,32 @@ const normalizeTransactionRecord = (t: Transaction, accountsList: Account[]): Tr
     cleanScope = isBiz ? 'BUSINESS' : 'PERSONAL';
   }
 
+  // Modo só pessoal: despesa pendente de carreira (a partir do corte) não some do previsto/extrato
+  let cleanStatus = t.status || 'paid';
+  let legacyArchived = (t as Transaction & { legacyArchived?: boolean }).legacyArchived;
+  const fromCutoff = Boolean(t.date && t.date >= LEGACY_MIGRATION_FLAG);
+  if (
+    PERSONAL_ONLY_MODE &&
+    cleanType === 'expense' &&
+    cleanScope === 'BUSINESS' &&
+    fromCutoff
+  ) {
+    if (cleanStatus === 'pending') {
+      cleanScope = 'PERSONAL';
+    } else if (cleanStatus === 'cancelled' && legacyArchived) {
+      cleanScope = 'PERSONAL';
+      cleanStatus = 'pending';
+      legacyArchived = false;
+    }
+  }
+
   return {
     ...t,
     amount: cleanAmount,
     type: cleanType,
-    status: t.status || 'paid',
-    scope: cleanScope
+    status: cleanStatus,
+    scope: cleanScope,
+    ...(legacyArchived === false ? { legacyArchived: false } : {})
   };
 };
 
@@ -812,7 +833,31 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
     const storedAccounts = allAccounts.filter(isAccountActive);
     const storedBudgets = StorageService.getBudgets();
-    const storedSettings = StorageService.getSettings();
+    let storedSettings = StorageService.getSettings();
+
+    // Reabre despesas pendentes do módulo carreira no caixa pessoal (idempotente)
+    if (PERSONAL_ONLY_MODE) {
+      const repair = repairHiddenCareerExpensePendings({
+        transactions: storedTransactions,
+        settings: storedSettings
+      });
+      if (repair.settings.careerExpensePendingRepairApplied !== storedSettings.careerExpensePendingRepairApplied) {
+        storedTransactions = repair.transactions;
+        storedSettings = repair.settings;
+        StorageService.saveTransactions(storedTransactions);
+        StorageService.saveSettings(storedSettings);
+        if (currentUser?.uid) {
+          repair.restoredIds.forEach(id => {
+            const tx = storedTransactions.find(t => t.id === id);
+            if (tx) saveTransactionToFirestore(currentUser.uid, tx);
+          });
+          saveSettingsToFirestore(currentUser.uid, storedSettings);
+        }
+        if (repair.restoredIds.length > 0) {
+          console.info('[personalOnly] Despesas carreira reabertas no pessoal:', repair.restoredIds.length, repair.restoredIds);
+        }
+      }
+    }
 
     // =========================================================================
     // DIRETRIZ: UNIFICAÇÃO AUTOMÁTICA DE CATEGORIAS DUPLICADAS (MIGRATION)
@@ -3037,7 +3082,22 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     let monthlyIncome = 0, monthlyExpense = 0, pendingIncome = 0, pendingExpense = 0;
 
-    const filteredTransactions = transactions.filter(t => matchesScope(t.scope, currentScope));
+    const filteredTransactions = transactions.filter(t => {
+      if (matchesScope(t.scope, currentScope)) return true;
+      // Despesas pendentes de carreira no modo pessoal entram no previsto
+      if (
+        PERSONAL_ONLY_MODE &&
+        currentScope === 'PERSONAL' &&
+        t.type === 'expense' &&
+        t.status === 'pending' &&
+        t.scope === 'BUSINESS' &&
+        t.date &&
+        t.date >= LEGACY_MIGRATION_FLAG
+      ) {
+        return true;
+      }
+      return false;
+    });
     const cancelledShowIds = new Set(
       shows.filter(s => s.status === 'Cancelado').map(s => s.id)
     );

@@ -176,6 +176,8 @@ export interface AppSettings {
   businessDefaultAccountId?: string;
   /** Flag da migração de corte pessoal (ex.: '2026-10-01') */
   legacyPersonalCutoffApplied?: string;
+  /** Reabre despesas pendentes do módulo carreira no caixa pessoal (para limpeza) */
+  careerExpensePendingRepairApplied?: string;
 }
 
 export interface ShowExpenses {

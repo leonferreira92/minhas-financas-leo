@@ -145,10 +145,29 @@ export const ExtratoScreen: React.FC = () => {
       }
 
       // 2. Filtro de Mês ou Futuros
-      if (isFutureOnly) {
-        if (!t.date || t.date < todayStr) return false;
-      } else {
-        if (!t.date || !t.date.startsWith(selectedMonth)) return false;
+      // Destaque direto (ex.: veio do Painel) ignora mês para localizar o item
+      const isHighlighted = Boolean(highlightId && t.id === highlightId);
+      if (!isHighlighted) {
+        if (isFutureOnly) {
+          // Futuros + atrasadas ainda abertas (contas a pagar reais)
+          if (!t.date) return false;
+          if (t.status === 'pending' && t.type === 'expense' && t.date < todayStr) {
+            // inclui atrasada
+          } else if (t.date < todayStr) {
+            return false;
+          }
+        } else if (statusFilter === 'pending' && selectedMonth === currentYearMonth) {
+          // Pendentes do mês atual + despesas atrasadas
+          const monthStart = `${selectedMonth}-01`;
+          if (!t.date) return false;
+          if (t.type === 'expense') {
+            if (!(t.date.startsWith(selectedMonth) || t.date < monthStart)) return false;
+          } else if (!t.date.startsWith(selectedMonth)) {
+            return false;
+          }
+        } else {
+          if (!t.date || !t.date.startsWith(selectedMonth)) return false;
+        }
       }
 
       // 3. Status e Tipo (Pílulas)
@@ -179,7 +198,7 @@ export const ExtratoScreen: React.FC = () => {
       // Ordenação decrescente de data, pendentes com destaque
       return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
     });
-  }, [transactions, activeScope, isFutureOnly, selectedMonth, statusFilter, selectedAccountId, searchTerm, todayStr, categories, accounts]);
+  }, [transactions, activeScope, isFutureOnly, selectedMonth, statusFilter, selectedAccountId, searchTerm, todayStr, categories, accounts, highlightId, currentYearMonth]);
 
   // Totais do Período Selecionado (baseados nas transações filtradas e contas selecionadas)
   const metrics = useMemo(() => {

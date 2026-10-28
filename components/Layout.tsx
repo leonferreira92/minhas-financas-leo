@@ -42,7 +42,6 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
     '/mais', '/settings', '/financial-settings', '/categories', '/alerts', '/gastos', '/analise-gastos', '/contas', '/relatorios'
   ].some(path => location.pathname === path || location.pathname.startsWith('/mais') || location.pathname.startsWith('/relatorios'));
 
-  // 4 Abas Pessoais - Estilo Banco do Brasil
   const navItems = [
     { to: '/', label: 'Início', icon: Home, isActive: isHomeActive },
     { to: '/lancamentos', label: 'Lançamentos', icon: Receipt, isActive: isLancamentosActive },
@@ -52,20 +51,14 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800 selection:bg-blue-900/20 selection:text-blue-900 flex flex-col">
-      
-      {/* ========================================================================= */}
-      {/* CABEÇALHO SUPERIOR - AZUL BANCÁRIO BANCO DO BRASIL COM DETALHES AMARELOS   */}
-      {/* ========================================================================= */}
       <header className="sticky top-0 z-30 bg-blue-900 border-b border-blue-950 shadow-md text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          
-          {/* Logo & Identidade do Banco */}
           <div 
             className="flex items-center space-x-3 cursor-pointer group select-none" 
             onClick={() => navigate('/')}
           >
-            <div className="w-10 h-10 rounded-xl bg-yellow-400 text-blue-950 font-black text-xl flex items-center justify-center shadow-md transition group-hover:scale-105">
-              BB
+            <div className="w-10 h-10 rounded-xl bg-yellow-400 text-blue-950 font-black text-sm flex items-center justify-center shadow-md transition group-hover:scale-105">
+              MF
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -77,7 +70,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 </span>
               </div>
               <span className="text-[11px] text-blue-200 font-medium">
-                Controle Financeiro Bancário
+                Seu controle financeiro
               </span>
             </div>
           </div>
@@ -189,9 +182,6 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
         {children}
       </main>
 
-      {/* ========================================================================= */}
-      {/* BARRA INFERIOR MOBILE - 4 ABAS PESSOAIS (ESTILO APP BANCO DO BRASIL)     */}
-      {/* ========================================================================= */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-2 py-1.5 md:hidden">
         <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
           {navItems.map((item) => {

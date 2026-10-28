@@ -23,7 +23,8 @@ export const isPersonalCashAccount = (acc: Account): boolean => {
 /**
  * Painel do mês — mesma regra mental do Extrato (pessoal + mês atual).
  * Transferências não entram em a receber / a pagar.
- * Pendentes só do mês selecionado (não arrasta lixo de meses anteriores).
+ * A receber: pendentes do mês.
+ * A pagar: pendentes do mês + atrasadas (ainda abertas) — afetam o previsto.
  */
 export const computeMonthCashPanel = (params: {
   accounts: Account[];
@@ -32,6 +33,7 @@ export const computeMonthCashPanel = (params: {
   monthPrefix?: string;
 }): MonthCashPanelData => {
   const monthPrefix = params.monthPrefix || getCurrentMonthPrefix();
+  const monthStart = `${monthPrefix}-01`;
 
   const personalAccounts = params.accounts.filter(isPersonalCashAccount);
   const currentBalance = Number(
@@ -40,20 +42,26 @@ export const computeMonthCashPanel = (params: {
       .toFixed(2)
   );
 
-  const monthPending = params.transactions.filter(t => {
+  const relevantPending = params.transactions.filter(t => {
     if (!t || t.status !== 'pending') return false;
     if (isLegacyArchivedTx(t)) return false;
-    if (!t.date || !t.date.startsWith(monthPrefix)) return false;
+    if (!t.date) return false;
     if (isNeutralCashFlowMovement(t)) return false;
     if (!matchesScope(t.scope, 'PERSONAL')) return false;
-    return t.type === 'income' || t.type === 'expense';
+    if (t.type !== 'income' && t.type !== 'expense') return false;
+
+    // Receitas: só do mês (não puxa cachê antigo)
+    if (t.type === 'income') return t.date.startsWith(monthPrefix);
+
+    // Despesas: mês atual OU atrasadas (ainda abertas) — contam no previsto
+    return t.date.startsWith(monthPrefix) || t.date < monthStart;
   });
 
-  const receiveItems = monthPending
+  const receiveItems = relevantPending
     .filter(t => t.type === 'income')
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
-  const payItems = monthPending
+  const payItems = relevantPending
     .filter(t => t.type === 'expense')
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 

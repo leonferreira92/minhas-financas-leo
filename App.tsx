@@ -23,12 +23,11 @@ const AppContent = () => {
     setIsAddModalOpen(true);
   };
 
-  // Loading Screen no Padrão Banco do Brasil (Fundo Claro Suave + Azul Corporativo + Amarelo Ouro)
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center text-slate-800 select-none">
-        <div className="w-14 h-14 rounded-2xl bg-blue-900 border-2 border-yellow-400 p-1 shadow-lg flex items-center justify-center text-yellow-400 font-black text-2xl mb-4 animate-pulse">
-          BB
+        <div className="w-14 h-14 rounded-2xl bg-blue-900 border-2 border-yellow-400 p-1 shadow-lg flex items-center justify-center text-yellow-400 font-black text-xl mb-4 animate-pulse">
+          MF
         </div>
         <div className="w-6 h-6 border-2 border-blue-900 border-t-yellow-400 rounded-full animate-spin mb-3" />
         <p className="text-xs text-blue-950 font-bold tracking-wider uppercase">Carregando Minhas Finanças...</p>
@@ -45,38 +44,19 @@ const AppContent = () => {
     <div className="min-h-screen bg-slate-100 text-slate-800">
       <Layout onOpenAdd={handleOpenAddWithType}>
         <Routes>
-          {/* ========================================================================= */}
-          {/* AS 4 ABAS PESSOAIS PRINCIPAIS - ESTILO BANCO DO BRASIL                    */}
-          {/* ========================================================================= */}
-          
-          {/* 1. Início */}
           <Route path="/" element={<Dashboard />} />
-          
-          {/* 2. Lançamentos / Extrato Completo Preservado */}
           <Route path="/lancamentos" element={<ExtratoScreen />} />
           <Route path="/extrato" element={<ExtratoScreen />} />
           <Route path="/financeiro" element={<ExtratoScreen />} />
           <Route path="/transactions" element={<ExtratoScreen />} />
-          
-          {/* 3. Dívidas */}
           <Route path="/dividas" element={<DebtsScreen />} />
           <Route path="/debts" element={<DebtsScreen />} />
-          
-          {/* 4. Mais / Ajustes */}
           <Route path="/mais" element={<MoreHubScreen />} />
-
-          {/* ========================================================================= */}
-          {/* TELAS SECUNDÁRIAS DE SUPORTE E ANÁLISE PESSOAL                            */}
-          {/* ========================================================================= */}
           <Route path="/gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/analise-gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/contas" element={<AccountsScreen />} />
           <Route path="/relatorios" element={<ReportsHubScreen />} />
-
-          {/* ========================================================================= */}
-          {/* PRESERVAÇÃO: Histórico e Rotas do Banco Mantidos Intactos                 */}
-          {/* ========================================================================= */}
-          {/* Fase 1: shows/carreira desativados na UI — dados preservados no storage */}
+          {/* Shows/carreira desativados na UI — dados preservados no storage */}
           <Route path="/shows" element={<Navigate to="/" replace />} />
           <Route path="/shows/*" element={<Navigate to="/" replace />} />
           <Route path="/flow" element={<ReportsHubScreen initialTab="flow" />} />
@@ -87,7 +67,6 @@ const AppContent = () => {
           <Route path="/settings" element={<MoreHubScreen />} />
           <Route path="/categories" element={<MoreHubScreen />} />
           <Route path="/alerts" element={<MoreHubScreen />} />
-          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         
