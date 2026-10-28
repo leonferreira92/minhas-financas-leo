@@ -6,7 +6,23 @@ const formatBRL = (val: number): string =>
     currency: 'BRL',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(Number(val) || 0);
+  })
+    .format(Number(val) || 0)
+    .replace(/\u00a0|\u202f/g, ' ');
+
+/** Mantém acentos; só limpa lixo que quebra ao colar. */
+const sanitize = (text: string): string =>
+  String(text || '')
+    .normalize('NFC')
+    .replace(/\u00a0|\u202f|\u2007|\u2060|\uFEFF/g, ' ')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+    .replace(/\uFFFD/g, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2013\u2014\u2212]/g, '-')
+    .replace(/\u00D7/g, 'x')
+    .replace(/\u2265/g, '>=');
 
 const formatMonthYearBR = (yearMonthStr: string): string => {
   try {
@@ -14,30 +30,26 @@ const formatMonthYearBR = (yearMonthStr: string): string => {
     if (!y || !m) return yearMonthStr;
     const date = new Date(Number(y), Number(m) - 1, 15);
     const monthName = date.toLocaleDateString('pt-BR', { month: 'long' });
-    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}/${y}`;
+    return sanitize(`${monthName.charAt(0).toUpperCase() + monthName.slice(1)}/${y}`);
   } catch {
     return yearMonthStr;
   }
 };
 
 /**
- * Cenários de decisão para o relatório de IA.
- * Extensível: adicione novos tipos na união sem quebrar os existentes.
+ * Cenarios de decisao para o relatorio de IA.
+ * Extensivel: adicione novos tipos na uniao sem quebrar os existentes.
  */
 export type DecisionScenarioType = 'rent_replace' | 'new_fixed_cost' | 'one_time_purchase' | 'new_installment';
 
 export interface RentReplaceScenario {
   type: 'rent_replace';
-  /** Novo aluguel mensal desejado */
   newRentAmount: number;
-  /** Aluguel atual que será substituído (0 = não tem / não informar) */
   currentRentAmount: number;
-  /** Primeiro mês em que o novo aluguel passa a valer (YYYY-MM) */
   startMonth: string;
   label?: string;
 }
 
-/** União — novos cenários entram aqui depois */
 export type DecisionScenario = RentReplaceScenario;
 
 export const DECISION_SCENARIO_OPTIONS: Array<{
@@ -88,7 +100,6 @@ export interface MonthlyFlowLike {
 }
 
 export interface ScenarioMonthRow extends MonthlyFlowLike {
-  /** Impacto líquido do cenário neste mês (ex.: +200 se aluguel sobe 200) */
   scenarioDelta: number;
 }
 
@@ -112,7 +123,6 @@ const normalize = (s: string) =>
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-/** Detecta se o lançamento parece aluguel / moradia. */
 export const looksLikeRentExpense = (t: Transaction, categories: Category[]): boolean => {
   if (t.type !== 'expense' || t.status === 'cancelled') return false;
   if (t.categoryId === 'cat_2') return true;
@@ -127,10 +137,6 @@ export const looksLikeRentExpense = (t: Transaction, categories: Category[]): bo
   );
 };
 
-/**
- * Estima o aluguel mensal atual a partir dos lançamentos
- * (mês atual + até 3 meses anteriores; prioriza fixos / mediana).
- */
 export const detectCurrentMonthlyRent = (
   transactions: Transaction[],
   categories: Category[],
@@ -167,7 +173,6 @@ export const detectCurrentMonthlyRent = (
   const median =
     values.length % 2 === 0 ? (values[mid - 1] + values[mid]) / 2 : values[mid];
 
-  // Prefere valor do mês de referência se existir
   const refVal = byMonth.get(ref);
   const amount = Number(((refVal && refVal > 0 ? refVal : median)).toFixed(2));
 
@@ -188,10 +193,6 @@ export const getScenarioNetMonthlyImpact = (scenario: DecisionScenario): number 
   return 0;
 };
 
-/**
- * Recalcula o fluxo mensal aplicando o cenário a partir de startMonth.
- * Parte do mesmo caixa inicial da projeção base.
- */
 export const simulateDecisionScenario = (
   baselineRows: MonthlyFlowLike[],
   startingCash: number,
@@ -228,16 +229,16 @@ export const simulateDecisionScenario = (
 
   let verdict: ScenarioSimulationResult['verdict'] = 'comfortable';
   let verdictLabel = 'Cabe no bolso';
-  let verdictTip = 'No horizonte simulado, o caixa fecha positivo com este cenário.';
+  let verdictTip = 'No horizonte simulado, o caixa fecha positivo com este cenario.';
 
   if (firstNeg) {
     verdict = 'unsafe';
     verdictLabel = 'Aperta / risco';
-    verdictTip = `Com o cenário, o saldo projetado fica negativo a partir de ${firstNeg.monthLabel}.`;
-  } else if (minBalance < 200 || netMonthlyImpact > 0 && minBalance < startingCash * 0.15) {
+    verdictTip = `Com o cenário, o saldo projetado fica negativo a partir de ${sanitize(firstNeg.monthLabel)}.`;
+  } else if (minBalance < 200 || (netMonthlyImpact > 0 && minBalance < startingCash * 0.15)) {
     verdict = 'tight';
     verdictLabel = 'No limite';
-    verdictTip = 'Não zera o caixa, mas a folga fica pequena — evite novos gastos extras.';
+    verdictTip = 'Não zera o caixa, mas a folga fica pequena - evite novos gastos extras.';
   }
 
   return {
@@ -246,7 +247,7 @@ export const simulateDecisionScenario = (
     rows,
     finalBalance: Number(finalBalance.toFixed(2)),
     minBalance: Number(minBalance.toFixed(2)),
-    firstNegativeMonth: firstNeg?.monthLabel || null,
+    firstNegativeMonth: firstNeg ? sanitize(firstNeg.monthLabel) : null,
     monthsStillPositive,
     monthsInHorizon: rows.length,
     verdict,
@@ -255,7 +256,6 @@ export const simulateDecisionScenario = (
   };
 };
 
-/** Texto do bloco de cenário para colar no relatório da IA. */
 export const formatScenarioReportSection = (
   baselineRows: MonthlyFlowLike[],
   sim: ScenarioSimulationResult
@@ -269,28 +269,26 @@ export const formatScenarioReportSection = (
 
   if (s.type === 'rent_replace') {
     lines.push('Tipo: NOVO ALUGUEL SUBSTITUINDO O ATUAL');
-    lines.push(`• Aluguel atual: ${formatBRL(s.currentRentAmount)}`);
-    lines.push(`• Novo aluguel: ${formatBRL(s.newRentAmount)}`);
-    lines.push(`• Impacto líquido mensal: ${sim.netMonthlyImpact >= 0 ? '+' : ''}${formatBRL(sim.netMonthlyImpact)}`);
-    lines.push(`• Início do novo aluguel: ${formatMonthYearBR(s.startMonth)}`);
+    lines.push(`- Aluguel atual: ${formatBRL(s.currentRentAmount)}`);
+    lines.push(`- Novo aluguel: ${formatBRL(s.newRentAmount)}`);
     lines.push(
-      '• Regra: a partir do mês de início, o fluxo remove o efeito do aluguel atual e aplica o novo valor (delta = novo − atual).'
+      `- Impacto líquido mensal: ${sim.netMonthlyImpact >= 0 ? '+' : ''}${formatBRL(sim.netMonthlyImpact)}`
+    );
+    lines.push(`- Início do novo aluguel: ${formatMonthYearBR(s.startMonth)}`);
+    lines.push(
+      '- Regra: a partir do mês de início, o fluxo aplica o delta (novo - atual) sobre as essenciais.'
     );
   }
 
   lines.push('');
-  lines.push('COMPARAÇÃO DO FLUXO (SEM CENÁRIO × COM CENÁRIO):');
-  lines.push(
-    'Mês             | Saldo SEM cenário | Saldo COM cenário | Delta do mês | Essenciais COM'
-  );
-  lines.push(
-    '----------------|-------------------|-------------------|--------------|---------------'
-  );
+  lines.push('COMPARAÇÃO DO FLUXO (SEM CENÁRIO x COM CENÁRIO):');
+  lines.push('Mês             | Saldo SEM cenário | Saldo COM cenário | Delta do mês | Essenciais COM');
+  lines.push('----------------|-------------------|-------------------|--------------|---------------');
 
   baselineRows.forEach((base, idx) => {
     const withSc = sim.rows[idx];
     if (!withSc) return;
-    const m = base.monthLabel.slice(0, 15).padEnd(15);
+    const m = sanitize(base.monthLabel).slice(0, 15).padEnd(15);
     const sem = formatBRL(base.projectedEndBalance).padStart(17);
     const com = formatBRL(withSc.projectedEndBalance).padStart(17);
     const delta = `${withSc.scenarioDelta >= 0 ? '+' : ''}${formatBRL(withSc.scenarioDelta)}`.padStart(12);
@@ -300,18 +298,20 @@ export const formatScenarioReportSection = (
 
   lines.push('');
   lines.push('RESULTADO DA SIMULAÇÃO:');
-  lines.push(`• Saldo final SEM cenário: ${formatBRL(baselineRows[baselineRows.length - 1]?.projectedEndBalance ?? 0)}`);
-  lines.push(`• Saldo final COM cenário: ${formatBRL(sim.finalBalance)}`);
-  lines.push(`• Menor saldo COM cenário: ${formatBRL(sim.minBalance)}`);
   lines.push(
-    `• Meses no azul COM cenário: ${sim.monthsStillPositive} de ${sim.monthsInHorizon}`
+    `- Saldo final SEM cenário: ${formatBRL(baselineRows[baselineRows.length - 1]?.projectedEndBalance ?? 0)}`
+  );
+  lines.push(`- Saldo final COM cenário: ${formatBRL(sim.finalBalance)}`);
+  lines.push(`- Menor saldo COM cenário: ${formatBRL(sim.minBalance)}`);
+  lines.push(
+    `- Meses no azul COM cenário: ${sim.monthsStillPositive} de ${sim.monthsInHorizon}`
   );
   if (sim.firstNegativeMonth) {
-    lines.push(`• Primeiro mês negativo COM cenário: ${sim.firstNegativeMonth}`);
+    lines.push(`- Primeiro mês negativo COM cenário: ${sim.firstNegativeMonth}`);
   } else {
-    lines.push('• Primeiro mês negativo COM cenário: nenhum no horizonte');
+    lines.push('- Primeiro mês negativo COM cenário: nenhum no horizonte');
   }
-  lines.push(`• Veredito do app: ${sim.verdictLabel.toUpperCase()} — ${sim.verdictTip}`);
+  lines.push(`- Veredito do app: ${sanitize(sim.verdictLabel).toUpperCase()} - ${sanitize(sim.verdictTip)}`);
 
   lines.push('');
   lines.push('ORIENTAÇÃO DIRETA PARA A IA (CENÁRIO):');
@@ -319,31 +319,32 @@ export const formatScenarioReportSection = (
     'Use SOMENTE os números deste relatório. Compare o fluxo SEM e COM o cenário. Responda em português simples:'
   );
   lines.push('1) O novo aluguel me aperta financeiramente? (sim/não/parcial, com motivo)');
-  lines.push('2) Até qual mês consigo pagar sem problemas (saldo projetado ≥ 0)?');
-  lines.push('3) Qual o impacto mensal real (novo − atual) e o que isso muda no custo de vida?');
-  lines.push('4) Se apertar: 2–3 cortes concretos ou adiamentos, sem inventar receitas.');
-  lines.push('5) Dê um plano curto: “pode mudar / espere X meses / só se cortar Y”.');
+  lines.push('2) Até qual mês consigo pagar sem problemas (saldo projetado >= 0)?');
+  lines.push('3) Qual o impacto mensal real (novo - atual) e o que isso muda no custo de vida?');
+  lines.push('4) Se apertar: 2-3 cortes concretos ou adiamentos, sem inventar receitas.');
+  lines.push('5) Dê um plano curto: pode mudar / espere X meses / só se cortar Y.');
 
-  return lines.join('\n');
+  return sanitize(lines.join('\n'));
 };
 
-/** Pergunta pronta anexada ao relatório. */
 export const buildScenarioAiPrompt = (sim: ScenarioSimulationResult): string => {
   if (sim.scenario.type === 'rent_replace') {
     const s = sim.scenario;
-    return [
-      'Analise o relatório financeiro abaixo, com ênfase na seção 8 (CENÁRIO DE DECISÃO).',
-      '',
-      `Estou avaliando me mudar. Meu aluguel atual é ${formatBRL(s.currentRentAmount)} e o novo seria ${formatBRL(s.newRentAmount)} a partir de ${formatMonthYearBR(s.startMonth)} (impacto líquido ${sim.netMonthlyImpact >= 0 ? '+' : ''}${formatBRL(sim.netMonthlyImpact)}/mês).`,
-      '',
-      'Responda de forma direta e prática:',
-      '1) Esse novo aluguel me aperta?',
-      '2) Até que mês consigo pagar sem problemas?',
-      '3) O que eu deveria cortar ou adiar se quiser aguentar o horizonte do relatório?',
-      '4) Conclusão em uma frase: posso mudar agora, esperar, ou só com ajustes.',
-      '',
-      'Não invente valores que não estejam no relatório.'
-    ].join('\n');
+    return sanitize(
+      [
+        'Analise o relatório financeiro abaixo, com ênfase na seção 8 (CENÁRIO DE DECISÃO).',
+        '',
+        `Estou avaliando me mudar. Meu aluguel atual é ${formatBRL(s.currentRentAmount)} e o novo seria ${formatBRL(s.newRentAmount)} a partir de ${formatMonthYearBR(s.startMonth)} (impacto líquido ${sim.netMonthlyImpact >= 0 ? '+' : ''}${formatBRL(sim.netMonthlyImpact)}/mes).`,
+        '',
+        'Responda de forma direta e prática:',
+        '1) Esse novo aluguel me aperta?',
+        '2) Até que mês consigo pagar sem problemas?',
+        '3) O que eu deveria cortar ou adiar se quiser aguentar o horizonte do relatório?',
+        '4) Conclusão em uma frase: posso mudar agora, esperar, ou só com ajustes.',
+        '',
+        'Não invente valores que não estejam no relatório.'
+      ].join('\n')
+    );
   }
   return 'Analise o relatório e o cenário de decisão da seção 8.';
 };

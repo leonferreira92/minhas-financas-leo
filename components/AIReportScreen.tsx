@@ -119,7 +119,8 @@ export const AIReportScreen = () => {
   };
 
   const handleExportTxt = () => {
-    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+    // BOM UTF-8 evita caracteres quebrados no Bloco de Notas / Windows
+    const blob = new Blob(['\uFEFF' + reportText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     const today = new Date().toISOString().slice(0, 10);
