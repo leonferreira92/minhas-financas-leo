@@ -8,7 +8,9 @@ import {
   detectCurrentMonthlyRent,
   buildScenarioAiPrompt,
   DECISION_SCENARIO_OPTIONS,
+  getScenarioNetMonthlyImpact,
   type DecisionScenario,
+  type DecisionScenarioType,
   type ScenarioSimulationResult
 } from '../services/aiReportService';
 import { getCurrentMonthPrefix } from '../services/dateUtils';
@@ -16,7 +18,7 @@ import {
   Bot, Copy, Check, Download, ExternalLink, Calendar, 
   Sparkles, ShieldCheck, AlertTriangle, 
   RefreshCw, Wallet, PiggyBank, ArrowDownRight, FileText,
-  ChevronLeft, Info, HelpCircle, Sliders, Home, Lightbulb
+  ChevronLeft, Info, HelpCircle, Sliders, Home, Lightbulb, ShoppingBag, CreditCard, Repeat
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
@@ -57,9 +59,13 @@ export const AIReportScreen = () => {
   );
 
   const [scenarioEnabled, setScenarioEnabled] = useState(false);
+  const [scenarioType, setScenarioType] = useState<DecisionScenarioType>('rent_replace');
   const [newRentInput, setNewRentInput] = useState('1000');
   const [currentRentInput, setCurrentRentInput] = useState('');
-  const [rentStartMonth, setRentStartMonth] = useState(currentMonth);
+  const [scenarioStartMonth, setScenarioStartMonth] = useState(currentMonth);
+  const [scenarioAmountInput, setScenarioAmountInput] = useState('500');
+  const [installmentAmountInput, setInstallmentAmountInput] = useState('200');
+  const [installmentCountInput, setInstallmentCountInput] = useState('10');
   const [rentPrefillDone, setRentPrefillDone] = useState(false);
 
   useEffect(() => {
@@ -72,17 +78,67 @@ export const AIReportScreen = () => {
 
   const decisionScenario: DecisionScenario | null = useMemo(() => {
     if (!scenarioEnabled) return null;
-    const newRent = Number(String(newRentInput).replace(',', '.')) || 0;
-    const currentRent = Number(String(currentRentInput).replace(',', '.')) || 0;
-    if (newRent <= 0 || !/^\d{4}-\d{2}$/.test(rentStartMonth)) return null;
-    return {
-      type: 'rent_replace',
-      newRentAmount: newRent,
-      currentRentAmount: currentRent,
-      startMonth: rentStartMonth,
-      label: 'Novo aluguel substituindo o atual'
-    };
-  }, [scenarioEnabled, newRentInput, currentRentInput, rentStartMonth]);
+    if (!/^\d{4}-\d{2}$/.test(scenarioStartMonth)) return null;
+
+    if (scenarioType === 'rent_replace') {
+      const newRent = Number(String(newRentInput).replace(',', '.')) || 0;
+      const currentRent = Number(String(currentRentInput).replace(',', '.')) || 0;
+      if (newRent <= 0) return null;
+      return {
+        type: 'rent_replace',
+        newRentAmount: newRent,
+        currentRentAmount: currentRent,
+        startMonth: scenarioStartMonth,
+        label: 'Novo aluguel substituindo o atual'
+      };
+    }
+
+    if (scenarioType === 'new_fixed_cost') {
+      const amount = Number(String(scenarioAmountInput).replace(',', '.')) || 0;
+      if (amount <= 0) return null;
+      return {
+        type: 'new_fixed_cost',
+        amount,
+        startMonth: scenarioStartMonth,
+        label: 'Novo custo fixo mensal'
+      };
+    }
+
+    if (scenarioType === 'one_time_purchase') {
+      const amount = Number(String(scenarioAmountInput).replace(',', '.')) || 0;
+      if (amount <= 0) return null;
+      return {
+        type: 'one_time_purchase',
+        amount,
+        startMonth: scenarioStartMonth,
+        label: 'Compra à vista'
+      };
+    }
+
+    if (scenarioType === 'new_installment') {
+      const installmentAmount = Number(String(installmentAmountInput).replace(',', '.')) || 0;
+      const installmentCount = Math.max(1, Math.floor(Number(installmentCountInput) || 1));
+      if (installmentAmount <= 0) return null;
+      return {
+        type: 'new_installment',
+        installmentAmount,
+        installmentCount,
+        startMonth: scenarioStartMonth,
+        label: 'Nova parcela mensal'
+      };
+    }
+
+    return null;
+  }, [
+    scenarioEnabled,
+    scenarioType,
+    newRentInput,
+    currentRentInput,
+    scenarioStartMonth,
+    scenarioAmountInput,
+    installmentAmountInput,
+    installmentCountInput
+  ]);
 
   const [copied, setCopied] = useState(false);
   const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
@@ -177,10 +233,30 @@ export const AIReportScreen = () => {
     }
   };
 
-  const netImpact =
-    decisionScenario && decisionScenario.type === 'rent_replace'
-      ? decisionScenario.newRentAmount - decisionScenario.currentRentAmount
-      : 0;
+  const netImpact = decisionScenario ? getScenarioNetMonthlyImpact(decisionScenario) : 0;
+
+  const scenarioHelp =
+    scenarioType === 'rent_replace'
+      ? 'Teste um novo aluguel no lugar do atual. O relatório compara o fluxo com e sem o cenário.'
+      : scenarioType === 'new_fixed_cost'
+        ? 'Simule um gasto mensal novo (assinatura, academia, etc.) e veja o efeito no caixa.'
+        : scenarioType === 'one_time_purchase'
+          ? 'Simule uma compra à vista no mês escolhido e o impacto no saldo projetado.'
+          : 'Simule um parcelamento e veja se as parcelas cabem no horizonte do relatório.';
+
+  const impactLabel =
+    scenarioType === 'one_time_purchase'
+      ? 'Valor único'
+      : scenarioType === 'new_installment'
+        ? 'Parcela / mês'
+        : 'Impacto / mês';
+
+  const incompleteHint =
+    scenarioType === 'rent_replace'
+      ? 'Informe um novo aluguel maior que zero para calcular.'
+      : scenarioType === 'new_installment'
+        ? 'Informe valor e quantidade de parcelas para calcular.'
+        : 'Informe um valor maior que zero para calcular.';
 
   const verdictStyles = {
     comfortable: 'bg-emerald-50 border-emerald-200 text-emerald-800',
@@ -346,20 +422,26 @@ export const AIReportScreen = () => {
         </div>
       </div>
 
-      {/* Simulador de decisão — aluguel (extensível) */}
+      {/* Simulador de decisão */}
       <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#003882] text-[#fcca00] flex items-center justify-center shrink-0">
-              <Home size={18} />
+              {scenarioType === 'one_time_purchase' ? (
+                <ShoppingBag size={18} />
+              ) : scenarioType === 'new_installment' ? (
+                <CreditCard size={18} />
+              ) : scenarioType === 'new_fixed_cost' ? (
+                <Repeat size={18} />
+              ) : (
+                <Home size={18} />
+              )}
             </div>
             <div>
               <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
                 Simular decisão
               </h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Teste um novo aluguel no lugar do atual. O relatório compara o fluxo com e sem o cenário.
-              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">{scenarioHelp}</p>
             </div>
           </div>
           <button
@@ -376,81 +458,157 @@ export const AIReportScreen = () => {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {DECISION_SCENARIO_OPTIONS.map(opt => (
-            <span
+          {DECISION_SCENARIO_OPTIONS.filter(o => o.available).map(opt => (
+            <button
               key={opt.id}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border ${
-                opt.id === 'rent_replace' && scenarioEnabled
-                  ? 'bg-blue-50 border-blue-200 text-[#003882]'
-                  : opt.available
-                  ? 'bg-slate-50 border-slate-200 text-slate-600'
-                  : 'bg-slate-50 border-slate-100 text-slate-400'
-              }`}
+              type="button"
               title={opt.description}
+              disabled={!scenarioEnabled}
+              onClick={() => {
+                setScenarioType(opt.id);
+                if (!scenarioEnabled) setScenarioEnabled(true);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border transition active:scale-95 disabled:opacity-50 ${
+                scenarioEnabled && scenarioType === opt.id
+                  ? 'bg-blue-50 border-blue-200 text-[#003882]'
+                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+              }`}
             >
               {opt.label}
-              {!opt.available ? ' · em breve' : ''}
-            </span>
+            </button>
           ))}
         </div>
 
         {scenarioEnabled && (
           <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
-                  Aluguel atual (R$)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step={50}
-                  value={currentRentInput}
-                  onChange={e => setCurrentRentInput(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {detectedRent.amount > 0
-                    ? `Detectado: ${formatBRL(detectedRent.amount)} (${detectedRent.source})`
-                    : 'Não detectei aluguel nos lançamentos — preencha manualmente.'}
-                </p>
+            {scenarioType === 'rent_replace' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    Aluguel atual (R$)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={50}
+                    value={currentRentInput}
+                    onChange={e => setCurrentRentInput(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {detectedRent.amount > 0
+                      ? `Detectado: ${formatBRL(detectedRent.amount)} (${detectedRent.source})`
+                      : 'Não detectei aluguel nos lançamentos — preencha manualmente.'}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    Novo aluguel (R$)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={50}
+                    value={newRentInput}
+                    onChange={e => setNewRentInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    Começa em
+                  </label>
+                  <input
+                    type="month"
+                    value={scenarioStartMonth}
+                    onChange={e => setScenarioStartMonth(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
-                  Novo aluguel (R$)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step={50}
-                  value={newRentInput}
-                  onChange={e => setNewRentInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
-                />
+            )}
+
+            {(scenarioType === 'new_fixed_cost' || scenarioType === 'one_time_purchase') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    {scenarioType === 'one_time_purchase' ? 'Valor da compra (R$)' : 'Valor mensal (R$)'}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={50}
+                    value={scenarioAmountInput}
+                    onChange={e => setScenarioAmountInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    {scenarioType === 'one_time_purchase' ? 'Mês da compra' : 'Começa em'}
+                  </label>
+                  <input
+                    type="month"
+                    value={scenarioStartMonth}
+                    onChange={e => setScenarioStartMonth(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
-                  Começa em
-                </label>
-                <input
-                  type="month"
-                  value={rentStartMonth}
-                  onChange={e => setRentStartMonth(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
-                />
+            )}
+
+            {scenarioType === 'new_installment' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    Valor da parcela (R$)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={10}
+                    value={installmentAmountInput}
+                    onChange={e => setInstallmentAmountInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    Quantidade (x)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={installmentCountInput}
+                    onChange={e => setInstallmentCountInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                    Começa em
+                  </label>
+                  <input
+                    type="month"
+                    value={scenarioStartMonth}
+                    onChange={e => setScenarioStartMonth(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
-                <p className="text-[9px] font-black uppercase text-slate-500">Impacto / mês</p>
+                <p className="text-[9px] font-black uppercase text-slate-500">{impactLabel}</p>
                 <p
                   className={`text-sm font-black tabular-nums mt-0.5 ${
                     netImpact > 0 ? 'text-rose-600' : netImpact < 0 ? 'text-emerald-600' : 'text-slate-800'
                   }`}
                 >
-                  {netImpact > 0 ? '+' : ''}
+                  {scenarioType !== 'one_time_purchase' && netImpact > 0 ? '+' : ''}
                   {!isBlurred ? formatBRL(netImpact) : '••••'}
                 </p>
               </div>
@@ -482,7 +640,7 @@ export const AIReportScreen = () => {
               ) : (
                 <div className="col-span-2 sm:col-span-3 rounded-2xl bg-amber-50 border border-amber-100 p-3 text-[11px] text-amber-800 font-medium flex items-center gap-2">
                   <AlertTriangle size={14} className="shrink-0" />
-                  Informe um novo aluguel maior que zero para calcular.
+                  {incompleteHint}
                 </div>
               )}
             </div>

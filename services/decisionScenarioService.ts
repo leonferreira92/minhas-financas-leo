@@ -50,7 +50,33 @@ export interface RentReplaceScenario {
   label?: string;
 }
 
-export type DecisionScenario = RentReplaceScenario;
+export interface NewFixedCostScenario {
+  type: 'new_fixed_cost';
+  amount: number;
+  startMonth: string;
+  label?: string;
+}
+
+export interface OneTimePurchaseScenario {
+  type: 'one_time_purchase';
+  amount: number;
+  startMonth: string;
+  label?: string;
+}
+
+export interface NewInstallmentScenario {
+  type: 'new_installment';
+  installmentAmount: number;
+  installmentCount: number;
+  startMonth: string;
+  label?: string;
+}
+
+export type DecisionScenario =
+  | RentReplaceScenario
+  | NewFixedCostScenario
+  | OneTimePurchaseScenario
+  | NewInstallmentScenario;
 
 export const DECISION_SCENARIO_OPTIONS: Array<{
   id: DecisionScenarioType;
@@ -67,22 +93,70 @@ export const DECISION_SCENARIO_OPTIONS: Array<{
   {
     id: 'new_fixed_cost',
     label: 'Novo custo fixo mensal',
-    description: 'Em breve',
-    available: false
+    description: 'Assinatura, academia, creche ou qualquer gasto mensal novo.',
+    available: true
   },
   {
     id: 'one_time_purchase',
     label: 'Compra à vista',
-    description: 'Em breve',
-    available: false
+    description: 'Simula um gasto único no mês escolhido e o efeito no caixa.',
+    available: true
   },
   {
     id: 'new_installment',
     label: 'Nova parcela mensal',
-    description: 'Em breve',
-    available: false
+    description: 'Simula parcelamento (ex.: 10x de R$ 200) no horizonte do relatório.',
+    available: true
   }
 ];
+
+const monthIndex = (ym: string): number => {
+  const [y, m] = ym.split('-').map(Number);
+  if (!y || !m) return 0;
+  return y * 12 + (m - 1);
+};
+
+const monthsBetween = (fromYm: string, toYm: string): number =>
+  monthIndex(toYm) - monthIndex(fromYm);
+
+/** Delta do cenário em um mês (valores positivos = mais saída). */
+export const getScenarioMonthDeltas = (
+  scenario: DecisionScenario,
+  monthStr: string
+): { essential: number; debt: number; other: number; total: number } => {
+  const zero = { essential: 0, debt: 0, other: 0, total: 0 };
+
+  if (scenario.type === 'rent_replace') {
+    if (monthStr < scenario.startMonth) return zero;
+    const essential = Number(
+      (scenario.newRentAmount - scenario.currentRentAmount).toFixed(2)
+    );
+    return { essential, debt: 0, other: 0, total: essential };
+  }
+
+  if (scenario.type === 'new_fixed_cost') {
+    if (monthStr < scenario.startMonth) return zero;
+    const other = Number((scenario.amount || 0).toFixed(2));
+    return { essential: 0, debt: 0, other, total: other };
+  }
+
+  if (scenario.type === 'one_time_purchase') {
+    if (monthStr !== scenario.startMonth) return zero;
+    const other = Number((scenario.amount || 0).toFixed(2));
+    return { essential: 0, debt: 0, other, total: other };
+  }
+
+  if (scenario.type === 'new_installment') {
+    if (monthStr < scenario.startMonth) return zero;
+    const idx = monthsBetween(scenario.startMonth, monthStr);
+    const count = Math.max(1, Math.floor(Number(scenario.installmentCount) || 1));
+    if (idx < 0 || idx >= count) return zero;
+    const debt = Number((scenario.installmentAmount || 0).toFixed(2));
+    return { essential: 0, debt, other: 0, total: debt };
+  }
+
+  return zero;
+};
 
 export interface MonthlyFlowLike {
   monthStr: string;
@@ -186,9 +260,19 @@ export const detectCurrentMonthlyRent = (
   };
 };
 
+/** Impacto “típico” mensal para cards da UI (compra à vista = valor único). */
 export const getScenarioNetMonthlyImpact = (scenario: DecisionScenario): number => {
   if (scenario.type === 'rent_replace') {
     return Number((scenario.newRentAmount - scenario.currentRentAmount).toFixed(2));
+  }
+  if (scenario.type === 'new_fixed_cost') {
+    return Number((scenario.amount || 0).toFixed(2));
+  }
+  if (scenario.type === 'one_time_purchase') {
+    return Number((scenario.amount || 0).toFixed(2));
+  }
+  if (scenario.type === 'new_installment') {
+    return Number((scenario.installmentAmount || 0).toFixed(2));
   }
   return 0;
 };
@@ -202,12 +286,12 @@ export const simulateDecisionScenario = (
   let running = startingCash;
 
   const rows: ScenarioMonthRow[] = baselineRows.map(row => {
-    const applies =
-      scenario.type === 'rent_replace' ? row.monthStr >= scenario.startMonth : false;
-    const scenarioDelta = applies ? netMonthlyImpact : 0;
-    const essentialExpenses = Number((row.essentialExpenses + scenarioDelta).toFixed(2));
+    const deltas = getScenarioMonthDeltas(scenario, row.monthStr);
+    const essentialExpenses = Number((row.essentialExpenses + deltas.essential).toFixed(2));
+    const debtInstallments = Number((row.debtInstallments + deltas.debt).toFixed(2));
+    const otherObligations = Number((row.otherObligations + deltas.other).toFixed(2));
     const totalOutflows = Number(
-      (essentialExpenses + row.debtInstallments + row.otherObligations).toFixed(2)
+      (essentialExpenses + debtInstallments + otherObligations).toFixed(2)
     );
     const netResult = Number((row.guaranteedIncomes - totalOutflows).toFixed(2));
     running = Number((running + netResult).toFixed(2));
@@ -215,10 +299,12 @@ export const simulateDecisionScenario = (
     return {
       ...row,
       essentialExpenses,
+      debtInstallments,
+      otherObligations,
       totalOutflows,
       netResult,
       projectedEndBalance: running,
-      scenarioDelta
+      scenarioDelta: deltas.total
     };
   });
 
@@ -229,16 +315,19 @@ export const simulateDecisionScenario = (
 
   let verdict: ScenarioSimulationResult['verdict'] = 'comfortable';
   let verdictLabel = 'Cabe no bolso';
-  let verdictTip = 'No horizonte simulado, o caixa fecha positivo com este cenario.';
+  let verdictTip = 'No horizonte simulado, o caixa fecha positivo com este cenário.';
 
   if (firstNeg) {
     verdict = 'unsafe';
     verdictLabel = 'Aperta / risco';
     verdictTip = `Com o cenário, o saldo projetado fica negativo a partir de ${sanitize(firstNeg.monthLabel)}.`;
-  } else if (minBalance < 200 || (netMonthlyImpact > 0 && minBalance < startingCash * 0.15)) {
+  } else if (
+    minBalance < 200 ||
+    (netMonthlyImpact > 0 && minBalance < Math.max(200, startingCash * 0.15))
+  ) {
     verdict = 'tight';
     verdictLabel = 'No limite';
-    verdictTip = 'Não zera o caixa, mas a folga fica pequena - evite novos gastos extras.';
+    verdictTip = 'Não zera o caixa, mas a folga fica pequena — evite novos gastos extras.';
   }
 
   return {
@@ -278,11 +367,30 @@ export const formatScenarioReportSection = (
     lines.push(
       '- Regra: a partir do mês de início, o fluxo aplica o delta (novo - atual) sobre as essenciais.'
     );
+  } else if (s.type === 'new_fixed_cost') {
+    lines.push('Tipo: NOVO CUSTO FIXO MENSAL');
+    lines.push(`- Valor mensal: ${formatBRL(s.amount)}`);
+    lines.push(`- Início: ${formatMonthYearBR(s.startMonth)}`);
+    lines.push('- Regra: a partir do mês de início, soma o valor em "outras obrigações" todo mês.');
+  } else if (s.type === 'one_time_purchase') {
+    lines.push('Tipo: COMPRA À VISTA (GASTO ÚNICO)');
+    lines.push(`- Valor da compra: ${formatBRL(s.amount)}`);
+    lines.push(`- Mês da compra: ${formatMonthYearBR(s.startMonth)}`);
+    lines.push('- Regra: o valor sai do caixa apenas no mês escolhido.');
+  } else if (s.type === 'new_installment') {
+    lines.push('Tipo: NOVA PARCELA MENSAL');
+    lines.push(`- Parcela: ${formatBRL(s.installmentAmount)}`);
+    lines.push(`- Quantidade: ${s.installmentCount}x`);
+    lines.push(
+      `- Total financiado (aprox.): ${formatBRL(s.installmentAmount * s.installmentCount)}`
+    );
+    lines.push(`- Início: ${formatMonthYearBR(s.startMonth)}`);
+    lines.push('- Regra: soma a parcela em dívidas/parcelas enquanto houver parcelas no horizonte.');
   }
 
   lines.push('');
   lines.push('COMPARAÇÃO DO FLUXO (SEM CENÁRIO x COM CENÁRIO):');
-  lines.push('Mês             | Saldo SEM cenário | Saldo COM cenário | Delta do mês | Essenciais COM');
+  lines.push('Mês             | Saldo SEM cenário | Saldo COM cenário | Delta do mês | Saídas COM');
   lines.push('----------------|-------------------|-------------------|--------------|---------------');
 
   baselineRows.forEach((base, idx) => {
@@ -292,8 +400,8 @@ export const formatScenarioReportSection = (
     const sem = formatBRL(base.projectedEndBalance).padStart(17);
     const com = formatBRL(withSc.projectedEndBalance).padStart(17);
     const delta = `${withSc.scenarioDelta >= 0 ? '+' : ''}${formatBRL(withSc.scenarioDelta)}`.padStart(12);
-    const ess = formatBRL(withSc.essentialExpenses).padStart(13);
-    lines.push(`${m} | ${sem} | ${com} | ${delta} | ${ess}`);
+    const out = formatBRL(withSc.totalOutflows).padStart(13);
+    lines.push(`${m} | ${sem} | ${com} | ${delta} | ${out}`);
   });
 
   lines.push('');
@@ -318,33 +426,71 @@ export const formatScenarioReportSection = (
   lines.push(
     'Use SOMENTE os números deste relatório. Compare o fluxo SEM e COM o cenário. Responda em português simples:'
   );
-  lines.push('1) O novo aluguel me aperta financeiramente? (sim/não/parcial, com motivo)');
+  lines.push('1) Essa decisão me aperta financeiramente? (sim/não/parcial, com motivo)');
   lines.push('2) Até qual mês consigo pagar sem problemas (saldo projetado >= 0)?');
-  lines.push('3) Qual o impacto mensal real (novo - atual) e o que isso muda no custo de vida?');
+  lines.push('3) Qual o impacto real no caixa e o que muda no custo de vida?');
   lines.push('4) Se apertar: 2-3 cortes concretos ou adiamentos, sem inventar receitas.');
-  lines.push('5) Dê um plano curto: pode mudar / espere X meses / só se cortar Y.');
+  lines.push('5) Dê um plano curto: pode fazer agora / espere X meses / só se cortar Y.');
 
   return sanitize(lines.join('\n'));
 };
 
 export const buildScenarioAiPrompt = (sim: ScenarioSimulationResult): string => {
-  if (sim.scenario.type === 'rent_replace') {
-    const s = sim.scenario;
+  const s = sim.scenario;
+  const commonTail = [
+    '',
+    'Responda de forma direta e prática:',
+    '1) Essa decisão me aperta?',
+    '2) Até que mês consigo pagar sem problemas?',
+    '3) O que eu deveria cortar ou adiar se quiser aguentar o horizonte do relatório?',
+    '4) Conclusão em uma frase: posso fazer agora, esperar, ou só com ajustes.',
+    '',
+    'Não invente valores que não estejam no relatório.'
+  ];
+
+  if (s.type === 'rent_replace') {
     return sanitize(
       [
         'Analise o relatório financeiro abaixo, com ênfase na seção 8 (CENÁRIO DE DECISÃO).',
         '',
-        `Estou avaliando me mudar. Meu aluguel atual é ${formatBRL(s.currentRentAmount)} e o novo seria ${formatBRL(s.newRentAmount)} a partir de ${formatMonthYearBR(s.startMonth)} (impacto líquido ${sim.netMonthlyImpact >= 0 ? '+' : ''}${formatBRL(sim.netMonthlyImpact)}/mes).`,
-        '',
-        'Responda de forma direta e prática:',
-        '1) Esse novo aluguel me aperta?',
-        '2) Até que mês consigo pagar sem problemas?',
-        '3) O que eu deveria cortar ou adiar se quiser aguentar o horizonte do relatório?',
-        '4) Conclusão em uma frase: posso mudar agora, esperar, ou só com ajustes.',
-        '',
-        'Não invente valores que não estejam no relatório.'
+        `Estou avaliando me mudar. Meu aluguel atual é ${formatBRL(s.currentRentAmount)} e o novo seria ${formatBRL(s.newRentAmount)} a partir de ${formatMonthYearBR(s.startMonth)} (impacto líquido ${sim.netMonthlyImpact >= 0 ? '+' : ''}${formatBRL(sim.netMonthlyImpact)}/mês).`,
+        ...commonTail
       ].join('\n')
     );
   }
+
+  if (s.type === 'new_fixed_cost') {
+    return sanitize(
+      [
+        'Analise o relatório financeiro abaixo, com ênfase na seção 8 (CENÁRIO DE DECISÃO).',
+        '',
+        `Estou avaliando assumir um novo custo fixo de ${formatBRL(s.amount)}/mês a partir de ${formatMonthYearBR(s.startMonth)}.`,
+        ...commonTail
+      ].join('\n')
+    );
+  }
+
+  if (s.type === 'one_time_purchase') {
+    return sanitize(
+      [
+        'Analise o relatório financeiro abaixo, com ênfase na seção 8 (CENÁRIO DE DECISÃO).',
+        '',
+        `Estou avaliando uma compra à vista de ${formatBRL(s.amount)} em ${formatMonthYearBR(s.startMonth)}.`,
+        ...commonTail
+      ].join('\n')
+    );
+  }
+
+  if (s.type === 'new_installment') {
+    return sanitize(
+      [
+        'Analise o relatório financeiro abaixo, com ênfase na seção 8 (CENÁRIO DE DECISÃO).',
+        '',
+        `Estou avaliando um parcelamento de ${s.installmentCount}x de ${formatBRL(s.installmentAmount)} a partir de ${formatMonthYearBR(s.startMonth)} (total aproximado ${formatBRL(s.installmentAmount * s.installmentCount)}).`,
+        ...commonTail
+      ].join('\n')
+    );
+  }
+
   return 'Analise o relatório e o cenário de decisão da seção 8.';
 };

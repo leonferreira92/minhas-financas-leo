@@ -3,14 +3,16 @@ import {
   simulateDecisionScenario,
   formatScenarioReportSection,
   type DecisionScenario,
+  type DecisionScenarioType,
   type ScenarioSimulationResult
 } from './decisionScenarioService';
 
-export type { DecisionScenario, ScenarioSimulationResult };
+export type { DecisionScenario, DecisionScenarioType, ScenarioSimulationResult };
 export {
   detectCurrentMonthlyRent,
   buildScenarioAiPrompt,
   DECISION_SCENARIO_OPTIONS,
+  getScenarioNetMonthlyImpact,
   simulateDecisionScenario
 } from './decisionScenarioService';
 
