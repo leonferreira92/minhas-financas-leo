@@ -68,7 +68,8 @@ import {
 } from '../services/safeRecovery';
 import {
   PERSONAL_ONLY_MODE,
-  archiveCompanyAccounts
+  archiveCompanyAccounts,
+  isCompanyAccount
 } from '../services/personalOnlyMode';
 import { isNeutralCashFlowMovement } from '../services/aiReportService';
 import {
@@ -3210,19 +3211,134 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const getSystemAlerts = useCallback((): SystemAlert[] => {
     const alerts: SystemAlert[] = [];
-    const today = new Date(); today.setHours(0,0,0,0);
-    const sum = getBalanceSummary(getCurrentMonthPrefix(today), getLocalDateString(today));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = getLocalDateString(today);
+    const monthPrefix = getCurrentMonthPrefix(today);
+    const sum = getBalanceSummary(monthPrefix, todayStr);
+    const covered = sum.projectedBalance >= 0;
+
+    // 1) Vencimentos (despesas pendentes ≤ 7 dias)
     transactions.forEach(t => {
-      if (t.status === 'pending' && t.type === 'expense') {
-        const d = new Date(t.date + 'T12:00:00'); d.setHours(0,0,0,0);
-        const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
-        if (diff <= 7) {
-          alerts.push({ id: t.id, title: t.description, amount: Number(t.amount), date: t.date, type: diff < 0 ? 'overdue' : diff === 0 ? 'today' : 'week', isCovered: sum.projectedBalance >= 0, transactionId: t.id });
-        }
+      if (t.status !== 'pending' || t.type !== 'expense') return;
+      if (!t.date || isLegacyArchivedTx(t)) return;
+      const acc = activeAccounts.find(a => a.id === t.accountId);
+      if (PERSONAL_ONLY_MODE) {
+        if (acc && isCompanyAccount(acc)) return;
+      } else if (!matchesScope(t.scope, activeScope)) {
+        return;
+      }
+
+      const d = new Date(t.date + 'T12:00:00');
+      d.setHours(0, 0, 0, 0);
+      const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
+      if (diff > 7) return;
+
+      const type =
+        diff < 0 ? 'overdue' : diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : 'week';
+      const title =
+        t.isFixed && diff < 0
+          ? `Fixa atrasada: ${t.description}`
+          : t.description;
+
+      alerts.push({
+        id: t.id,
+        title,
+        amount: Number(t.amount) || 0,
+        date: t.date,
+        type,
+        isCovered: covered,
+        transactionId: t.id
+      });
+    });
+
+    // 2) Saldo previsto do mês negativo
+    if (sum.projectedBalance < 0) {
+      alerts.push({
+        id: 'insight_projected_negative',
+        title: 'Saldo previsto do mês no vermelho',
+        amount: Math.abs(Number(sum.projectedBalance) || 0),
+        date: todayStr,
+        type: 'risk',
+        isCovered: false,
+        actionPath: '/lancamentos?status=pending'
+      });
+    }
+
+    // 3) Orçamentos (80% aviso / 100% estouro)
+    budgets.forEach(b => {
+      const limit = Number(b.limit) || 0;
+      if (limit <= 0) return;
+      const spent = transactions
+        .filter(
+          t =>
+            t.type === 'expense' &&
+            t.status !== 'cancelled' &&
+            t.categoryId === b.categoryId &&
+            t.date &&
+            t.date.startsWith(monthPrefix) &&
+            !isNeutralCashFlowMovement(t) &&
+            !isLegacyArchivedTx(t)
+        )
+        .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+      const pct = spent / limit;
+      const catName = categories.find(c => c.id === b.categoryId)?.name || 'Categoria';
+      if (pct >= 1) {
+        alerts.push({
+          id: `budget_over_${b.categoryId}`,
+          title: `Orçamento estourado: ${catName}`,
+          amount: Number((spent - limit).toFixed(2)),
+          date: todayStr,
+          type: 'risk',
+          isCovered: false,
+          actionPath: '/planejamento'
+        });
+      } else if (pct >= 0.8) {
+        alerts.push({
+          id: `budget_warn_${b.categoryId}`,
+          title: `Orçamento em ${Math.round(pct * 100)}%: ${catName}`,
+          amount: Number((limit - spent).toFixed(2)),
+          date: todayStr,
+          type: 'week',
+          isCovered: true,
+          actionPath: '/planejamento'
+        });
       }
     });
-    return alerts;
-  }, [transactions, accounts, activeScope]);
+
+    // 4) Reserva abaixo do mínimo
+    const fs = settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
+    const minReserve = Number(fs.minReserveAmount) || 0;
+    if (minReserve > 0) {
+      const savingsTotal = activeAccounts
+        .filter(a => a.type === 'savings' && !(PERSONAL_ONLY_MODE && isCompanyAccount(a)))
+        .reduce((s, a) => s + getAccountBalance(a.id), 0);
+      if (savingsTotal < minReserve) {
+        alerts.push({
+          id: 'insight_reserve_low',
+          title: 'Reserva abaixo do mínimo desejado',
+          amount: Number((minReserve - savingsTotal).toFixed(2)),
+          date: todayStr,
+          type: 'risk',
+          isCovered: false,
+          actionPath: '/mais?tab=financial'
+        });
+      }
+    }
+
+    const rank = (t: SystemAlert['type']) =>
+      t === 'risk' || t === 'overdue' ? 0 : t === 'today' ? 1 : t === 'tomorrow' ? 2 : 3;
+    return alerts.sort((a, b) => rank(a.type) - rank(b.type) || a.date.localeCompare(b.date));
+  }, [
+    transactions,
+    activeAccounts,
+    activeScope,
+    budgets,
+    categories,
+    settings.financialSettings,
+    getBalanceSummary,
+    getAccountBalance
+  ]);
 
   const normalizedTransactions = useMemo(() => {
     return deduplicateItemsById(transactions).map(t => normalizeTransactionRecord(t, activeAccounts));

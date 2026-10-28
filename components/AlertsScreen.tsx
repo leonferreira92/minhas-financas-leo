@@ -8,17 +8,12 @@ export const AlertsScreen = () => {
   const { getSystemAlerts, updateTransaction, transactions, accounts, getAccountBalance } = useFinance();
   const navigate = useNavigate();
   
-  const alerts = useMemo(() => getSystemAlerts(), [transactions]);
+  const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
 
   // --- Summary Calculations ---
   const summaryData = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const next7Days = new Date();
-    next7Days.setDate(next7Days.getDate() + 7);
-    const next7DaysStr = next7Days.toISOString().slice(0, 10);
-
     const dueIn7Days = alerts
-      .filter(a => a.type !== 'risk')
+      .filter(a => a.transactionId && a.type !== 'risk')
       .reduce((sum, a) => sum + a.amount, 0);
 
     const totalAvailable = accounts.reduce((sum, acc) => {
@@ -110,27 +105,40 @@ export const AlertsScreen = () => {
            <span className={`font-bold text-base ${statusStyle.accent}`}>{formatCurrency(alert.amount)}</span>
         </div>
 
-        {!isRisk && (
-          <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800/50">
-             <div className="flex items-center">
-                {alert.isCovered ? (
-                  <div className="flex items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                    <ShieldCheck size={12} className="mr-1" /> Saldo OK
-                  </div>
-                ) : (
-                  <div className="flex items-center text-[10px] font-bold text-rose-500">
-                    <AlertCircle size={12} className="mr-1" /> Insuficiente
-                  </div>
-                )}
-             </div>
-             <button 
-               onClick={() => handlePay(alert)}
-               className="bg-indigo-600 text-white text-[11px] font-bold py-1.5 px-4 rounded-xl shadow-md shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition flex items-center"
-             >
-               Baixar <ArrowRight size={12} className="ml-1" />
-             </button>
+        <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800/50">
+          <div className="flex items-center">
+            {alert.transactionId ? (
+              alert.isCovered ? (
+                <div className="flex items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck size={12} className="mr-1" /> Saldo OK
+                </div>
+              ) : (
+                <div className="flex items-center text-[10px] font-bold text-rose-500">
+                  <AlertCircle size={12} className="mr-1" /> Insuficiente
+                </div>
+              )
+            ) : (
+              <div className="flex items-center text-[10px] font-bold text-slate-400">
+                Insight financeiro
+              </div>
+            )}
           </div>
-        )}
+          {alert.transactionId ? (
+            <button
+              onClick={() => handlePay(alert)}
+              className="bg-indigo-600 text-white text-[11px] font-bold py-1.5 px-4 rounded-xl shadow-md shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition flex items-center"
+            >
+              Baixar <ArrowRight size={12} className="ml-1" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate(alert.actionPath || '/')}
+              className="bg-slate-800 dark:bg-slate-700 text-white text-[11px] font-bold py-1.5 px-4 rounded-xl hover:bg-slate-700 active:scale-95 transition flex items-center"
+            >
+              Ver <ArrowRight size={12} className="ml-1" />
+            </button>
+          )}
+        </div>
       </div>
     );
   };
@@ -184,7 +192,7 @@ export const AlertsScreen = () => {
                 <CheckCircle2 size={32} />
              </div>
              <h3 className="font-bold text-slate-700 dark:text-white mb-1">Tudo em dia!</h3>
-             <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum pagamento pendente para o período.</p>
+             <p className="text-sm text-slate-500 dark:text-slate-400">Sem vencimentos, orçamentos ou alertas de caixa no momento.</p>
           </div>
         ) : (
           <>

@@ -17,12 +17,15 @@ import {
   Receipt,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  Target,
+  AlertTriangle
 } from 'lucide-react';
 import { Account, matchesScope } from '../types';
 import { AccountBalanceModal } from './AccountBalanceModal';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
+import { HowMuchCanISpendCard } from './HowMuchCanISpendCard';
 import { getAccountVinculo } from '../services/financeAggregator';
 import { getIcon } from '../constants';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
@@ -38,6 +41,7 @@ export const Dashboard: React.FC = () => {
     transactions,
     categories,
     debts,
+    budgets,
     settings,
     isBlurred,
     toggleBlur,
@@ -190,6 +194,40 @@ export const Dashboard: React.FC = () => {
       .slice(0, 5);
   }, [transactions]);
 
+  const topAlerts = useMemo(() => alerts.slice(0, 3), [alerts]);
+
+  const budgetProgress = useMemo(() => {
+    return budgets
+      .map(b => {
+        const limit = Number(b.limit) || 0;
+        if (limit <= 0) return null;
+        const spent = transactions
+          .filter(
+            t =>
+              t.type === 'expense' &&
+              t.status !== 'cancelled' &&
+              t.categoryId === b.categoryId &&
+              t.date &&
+              t.date.startsWith(currentMonthStr) &&
+              !isNeutralCashFlowMovement(t)
+          )
+          .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
+        const pct = Math.min(999, (spent / limit) * 100);
+        const cat = categories.find(c => c.id === b.categoryId);
+        return {
+          categoryId: b.categoryId,
+          name: cat?.name || 'Categoria',
+          color: cat?.color || '#6366f1',
+          spent,
+          limit,
+          pct
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => Boolean(x))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 3);
+  }, [budgets, transactions, categories, currentMonthStr]);
+
   const healthStyles = {
     good: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
     ok: 'bg-amber-500/15 text-amber-200 border-amber-500/30',
@@ -317,6 +355,128 @@ export const Dashboard: React.FC = () => {
       </div>
 
       <div className="px-3.5 sm:px-4 space-y-5 -mt-2">
+        {/* Alertas acionáveis */}
+        {topAlerts.length > 0 && (
+          <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 text-slate-800 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <AlertTriangle size={16} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                    Avisos
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    {alerts.length} item{alerts.length === 1 ? '' : 's'} pedem atenção
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/mais?tab=alerts')}
+                className="text-[11px] font-black text-blue-700 flex items-center gap-0.5 active:scale-95"
+              >
+                Ver todos <ChevronRight size={14} />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {topAlerts.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() =>
+                    navigate(a.actionPath || (a.transactionId ? '/lancamentos' : '/mais?tab=alerts'))
+                  }
+                  className="w-full text-left flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 hover:bg-slate-50 px-3 py-2.5 transition active:scale-[0.99]"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">{a.title}</p>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-0.5">
+                      {a.type === 'risk'
+                        ? 'Risco'
+                        : a.type === 'overdue'
+                          ? 'Atrasado'
+                          : a.type === 'today'
+                            ? 'Hoje'
+                            : a.type === 'tomorrow'
+                              ? 'Amanhã'
+                              : 'Em breve'}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs font-black tabular-nums shrink-0 ${
+                      a.type === 'risk' || a.type === 'overdue' ? 'text-rose-600' : 'text-slate-700'
+                    }`}
+                  >
+                    {formatCurrency(a.amount)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quanto posso gastar */}
+        <div className="text-slate-800">
+          <HowMuchCanISpendCard />
+        </div>
+
+        {/* Orçamentos do mês */}
+        <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 text-slate-800 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Target size={16} />
+              </div>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                  Orçamentos
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium capitalize">{monthLabel}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/planejamento')}
+              className="text-[11px] font-black text-indigo-600 flex items-center gap-0.5 active:scale-95"
+            >
+              {budgetProgress.length > 0 ? 'Gerenciar' : 'Criar tetos'} <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {budgetProgress.length === 0 ? (
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Defina tetos por categoria para o app avisar quando o gasto se aproximar do limite.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {budgetProgress.map(b => {
+                const barPct = Math.min(100, b.pct);
+                const barColor =
+                  b.pct >= 100 ? 'bg-rose-500' : b.pct >= 80 ? 'bg-amber-500' : 'bg-indigo-500';
+                return (
+                  <div key={b.categoryId} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-800 truncate">{b.name}</span>
+                      <span className="text-[11px] font-black tabular-nums text-slate-500 shrink-0">
+                        {Math.round(b.pct)}% · {formatCurrency(b.spent)}
+                        <span className="text-slate-400 font-bold"> / {formatCurrency(b.limit)}</span>
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${barColor}`}
+                        style={{ width: `${barPct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Receitas × Despesas do mês */}
         <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 sm:p-5 text-slate-800">
           <div className="flex items-center justify-between mb-3">

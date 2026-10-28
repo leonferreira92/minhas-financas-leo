@@ -133,6 +133,8 @@ export interface SystemAlert {
   type: AlertType;
   isCovered: boolean;
   transactionId?: string;
+  /** Alerta de insight (orçamento, reserva, previsto) — sem botão "Baixar" */
+  actionPath?: string;
 }
 
 export interface BalanceSummary {
