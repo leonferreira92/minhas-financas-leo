@@ -17,6 +17,7 @@ import {
   VINY_MUSIC_MAX_CEILING,
   reconcileUnifiedVinyDebt
 } from '../services/financeAggregator';
+import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { StorageService } from '../services/storageService';
 import {
   saveDebtToFirestore,
@@ -222,17 +223,16 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
       {/* --------------------------------------------------------------------- */}
       {/* CARD DE RESUMO: PARCELAS ATUAIS POR MÊS E QUEDA PREVISTA              */}
       {/* --------------------------------------------------------------------- */}
-      <div className="bg-slate-900 text-white rounded-[2.2rem] p-6 shadow-xl border border-slate-800 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#002d6c] via-[#003882] to-[#001838] text-white rounded-[2.2rem] p-6 shadow-xl border border-blue-500/20 relative overflow-hidden">
         
-        {/* Glow de fundo */}
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-indigo-600 rounded-full blur-3xl opacity-20"></div>
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-[#fcca00] rounded-full blur-3xl opacity-10"></div>
 
         <div className="relative z-10 space-y-4">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block mb-1">
-                Comprometimento Mensal Ativo
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-200 block mb-1">
+                Comprometimento mensal
               </span>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-white">
                 Parcelas atuais por mês: {formatBRL(parsedDebtsData.totalCommittedPerMonth)}
@@ -260,7 +260,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                     className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col justify-between space-y-1.5"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-indigo-300">
+                      <span className="text-[11px] font-bold text-[#fcca00]">
                         {milestone.monthYear}
                       </span>
                       <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
@@ -330,29 +330,31 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                         <h4 className="text-base font-black text-slate-900 dark:text-white leading-tight">
                           {item.debt.name}
                         </h4>
-                        {isViny ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
-                            <Music size={10} />
-                            <span>
-                              Rateio DRE: Música {formatBRL(vinyMonthlyMusic)}
-                              {vinyMonthlyPersonal > 0 ? ` + Pessoal ${formatBRL(vinyMonthlyPersonal)}` : ' (Som)'}
+                        {!PERSONAL_ONLY_MODE && (
+                          isViny ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                              <Music size={10} />
+                              <span>
+                                Rateio DRE: Música {formatBRL(vinyMonthlyMusic)}
+                                {vinyMonthlyPersonal > 0 ? ` + Pessoal ${formatBRL(vinyMonthlyPersonal)}` : ' (Som)'}
+                              </span>
                             </span>
-                          </span>
-                        ) : (item.debt.costCenterMode === 'TOTAL_BUSINESS' || item.debt.scope === 'BUSINESS') ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
-                            <Music size={10} />
-                            <span>Música • {item.debt.musicSubcategory || 'Equipamentos / Instrumentos'}</span>
-                          </span>
-                        ) : item.debt.costCenterMode === 'INSTALLMENT_RANGE' ? (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                            <Music size={10} />
-                            <span>Parcelas {item.debt.businessStartInstallment || 1}-{item.debt.businessEndInstallment || item.totalCount} na Música ({item.debt.musicSubcategory || 'Equipamentos / Instrumentos'})</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-500">
-                            <User size={10} />
-                            <span>Pessoal</span>
-                          </span>
+                          ) : (item.debt.costCenterMode === 'TOTAL_BUSINESS' || item.debt.scope === 'BUSINESS') ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                              <Music size={10} />
+                              <span>Música • {item.debt.musicSubcategory || 'Equipamentos / Instrumentos'}</span>
+                            </span>
+                          ) : item.debt.costCenterMode === 'INSTALLMENT_RANGE' ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30">
+                              <Music size={10} />
+                              <span>Parcelas {item.debt.businessStartInstallment || 1}-{item.debt.businessEndInstallment || item.totalCount} na Música ({item.debt.musicSubcategory || 'Equipamentos / Instrumentos'})</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              <User size={10} />
+                              <span>Pessoal</span>
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="flex items-center space-x-2 mt-0.5">
@@ -374,18 +376,18 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                         e.stopPropagation();
                         setEditingDebt(item.debt);
                       }}
-                      className="px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 hover:bg-purple-100 text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95"
-                      title="Editar Valor Total, Parcelas e Centro de Custo"
+                      className="px-2.5 py-1.5 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95"
+                      title="Editar dívida"
                     >
                       <SlidersHorizontal size={12} />
-                      <span>Editar / Rateio</span>
+                      <span>Editar</span>
                     </button>
 
                     <div className="sm:text-right">
                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                        Término Previsto
+                        Término previsto
                       </span>
-                      <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 block">
+                      <span className="text-xs font-black text-blue-800 block">
                         {item.endMonthYear}
                       </span>
                     </div>
@@ -437,8 +439,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
 
                 </div>
 
-                {/* DETALHAMENTO ESPECÍFICO DO CONTRATO ÚNICO VINY */}
-                {isViny && (
+                {!PERSONAL_ONLY_MODE && isViny && (
                   <div className="mb-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] text-slate-600 dark:text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <span className="font-black text-purple-600 dark:text-purple-300 uppercase tracking-wider block text-[10px]">
@@ -454,17 +455,16 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                   </div>
                 )}
 
-                {/* BARRA DE PROGRESSO DE QUITAÇÃO */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400">
-                    <span>Progresso da Quitação</span>
-                    <span className="tabular-nums font-bold text-slate-700 dark:text-slate-300">
-                      {pct.toFixed(0)}% concluído
+                    <span>Progresso</span>
+                    <span className="tabular-nums font-bold text-slate-700">
+                      {pct.toFixed(0)}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div 
-                      className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                      className="bg-[#003882] h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, pct)}%` }}
                     ></div>
                   </div>

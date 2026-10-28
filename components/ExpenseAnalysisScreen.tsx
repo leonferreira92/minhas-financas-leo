@@ -44,7 +44,7 @@ export const ExpenseAnalysisScreen: React.FC = () => {
     return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   }, [selectedMonth]);
 
-  // Filtered expense transactions for selected month & active scope (respeitando rateio R$ 650/mês e teto R$ 6.500,00 do Viny)
+  // Despesas do mês no escopo ativo (pessoal por padrão)
   const monthExpenses = useMemo(() => {
     const result: Transaction[] = [];
 
@@ -122,8 +122,8 @@ export const ExpenseAnalysisScreen: React.FC = () => {
       const cat = baseCat || {
         id: catId,
         name: data.customName || (catId === 'cat_other' ? 'Outros / Diversos' : 'Categoria Geral'),
-        color: data.customName ? '#a855f7' : '#64748b',
-        icon: data.customName ? 'Hammer' : 'Tag',
+        color: data.customName ? '#64748b' : '#64748b',
+        icon: data.customName ? 'Tag' : 'Tag',
         type: 'expense' as const
       };
       const percentage = totalExpense > 0 ? (data.amount / totalExpense) * 100 : 0;
@@ -145,47 +145,45 @@ export const ExpenseAnalysisScreen: React.FC = () => {
   }, [categoryStats]);
 
   return (
-    <div className="space-y-6 pb-24 animate-fade-in text-white">
-      {/* HEADER SUPERIOR COM ESTILO INSTITUCIONAL BB */}
+    <div className="space-y-6 pb-24 animate-fade-in text-slate-800">
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition active:scale-95"
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-blue-900 hover:border-blue-200 transition active:scale-95 shadow-sm"
             title="Voltar"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-              <BarChart3 className="text-[#fcca00]" size={22} />
-              <span>Meus Gastos</span>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <BarChart3 className="text-[#003882]" size={22} />
+              <span>Meus gastos</span>
             </h1>
-            <p className="text-[11px] text-zinc-400 font-medium">Análise e distribuição por categoria</p>
+            <p className="text-[11px] text-slate-500 font-medium">Distribuição por categoria no mês</p>
           </div>
         </div>
 
         <ScopeSelector size="sm" />
       </div>
 
-      {/* SELETOR DE MÊS NAVEGÁVEL */}
-      <div className="flex items-center justify-between bg-zinc-900/90 border border-zinc-800 rounded-2xl p-2 px-3 shadow-md">
+      <div className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-2 px-3 shadow-sm">
         <button
           onClick={() => changeMonth(-1)}
-          className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition active:scale-95"
+          className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition active:scale-95"
           title="Mês Anterior"
         >
           <ChevronLeft size={16} />
         </button>
 
         <div className="text-center">
-          <span className="text-[10px] uppercase tracking-widest text-[#fcca00] font-black">Período Selecionado</span>
-          <p className="text-sm font-black text-white capitalize">{monthName}</p>
+          <span className="text-[10px] uppercase tracking-widest text-blue-800 font-black">Período</span>
+          <p className="text-sm font-black text-slate-900 capitalize">{monthName}</p>
         </div>
 
         <button
           onClick={() => changeMonth(1)}
-          className="p-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition active:scale-95"
+          className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition active:scale-95"
           title="Próximo Mês"
         >
           <ChevronRight size={16} />
@@ -226,64 +224,61 @@ export const ExpenseAnalysisScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* GRÁFICO COM BARRAS VERTICAIS */}
-      <div className="p-4 rounded-3xl bg-[#121214] border border-zinc-800 shadow-md">
+      <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-            <BarChart3 size={15} className="text-[#fcca00]" />
-            <span>Distribuição Gráfica (Top Categorias)</span>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <BarChart3 size={15} className="text-[#003882]" />
+            <span>Top categorias</span>
           </h3>
-          <span className="text-[10px] text-zinc-400">Em % do total gasto</span>
+          <span className="text-[10px] text-slate-400">% do total</span>
         </div>
 
         {categoryStats.length === 0 ? (
-          <div className="py-10 text-center text-zinc-400 text-xs">
-            Nenhuma despesa registrada neste período.
+          <div className="py-10 text-center text-slate-400 text-xs">
+            Nenhuma despesa neste período.
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Visualizador de Barras Verticais */}
-            <div className="h-44 flex items-end justify-between gap-2 pt-6 pb-2 px-1 border-b border-zinc-800">
-              {categoryStats.slice(0, 6).map((item, idx) => {
+            <div className="h-44 flex items-end justify-between gap-2 pt-6 pb-2 px-1 border-b border-slate-100">
+              {categoryStats.slice(0, 6).map(item => {
                 const heightPercent = maxCategoryAmount > 0 
                   ? Math.max(12, Math.round((item.amount / maxCategoryAmount) * 100)) 
                   : 12;
 
                 return (
                   <div key={item.cat.id} className="flex-1 flex flex-col items-center h-full justify-end group">
-                    <span className="text-[10px] font-black text-zinc-300 mb-1 opacity-90 group-hover:text-[#fcca00] transition">
+                    <span className="text-[10px] font-black text-slate-500 mb-1 group-hover:text-blue-800 transition">
                       {item.percentage.toFixed(0)}%
                     </span>
-                    <div className="w-full max-w-[38px] bg-zinc-800 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all duration-300 group-hover:scale-y-105" style={{ height: `${heightPercent}%` }}>
+                    <div className="w-full max-w-[38px] bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all duration-300 group-hover:scale-y-105" style={{ height: `${heightPercent}%` }}>
                       <div 
                         className="w-full h-full rounded-t-lg transition"
-                        style={{ backgroundColor: item.cat.color || '#3b82f6' }}
+                        style={{ backgroundColor: item.cat.color || '#003882' }}
                       />
                     </div>
-                    <span className="text-[9px] font-bold text-zinc-400 mt-2 truncate w-full text-center">
+                    <span className="text-[9px] font-bold text-slate-400 mt-2 truncate w-full text-center">
                       {item.cat.name.slice(0, 7)}
                     </span>
                   </div>
                 );
               })}
             </div>
-            <p className="text-[10px] text-center text-zinc-400">Exibindo as principais categorias com maior peso no orçamento</p>
+            <p className="text-[10px] text-center text-slate-400">Principais categorias do mês</p>
           </div>
         )}
       </div>
 
-      {/* LISTAGEM DETALHADA ORDENADA DO MAIOR PARA O MENOR */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300">
-            Categorias Ordenadas por Valor
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
+            Detalhamento
           </h3>
-          <span className="text-[10px] text-zinc-400 font-bold">{categoryStats.length} categorias</span>
+          <span className="text-[10px] text-slate-400 font-bold">{categoryStats.length} categorias</span>
         </div>
 
         {categoryStats.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs">
-            Nenhuma despesa para exibir no filtro atual.
+          <div className="p-8 text-center rounded-2xl bg-white border border-slate-200 text-slate-400 text-xs shadow-sm">
+            Nenhuma despesa para exibir.
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -292,46 +287,45 @@ export const ExpenseAnalysisScreen: React.FC = () => {
               return (
                 <div 
                   key={item.cat.id}
-                  className="p-3.5 rounded-2xl bg-[#18181b] border border-zinc-800 hover:border-zinc-700 transition flex flex-col gap-2.5 shadow-xs"
+                  className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-200 transition flex flex-col gap-2.5 shadow-sm"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 min-w-0">
                       <div 
                         className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-inner"
-                        style={{ backgroundColor: `${item.cat.color || '#6366f1'}20`, color: item.cat.color || '#6366f1' }}
+                        style={{ backgroundColor: `${item.cat.color || '#003882'}20`, color: item.cat.color || '#003882' }}
                       >
                         <Icon size={18} />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs font-black text-white truncate">{item.cat.name}</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 shrink-0">
+                          <span className="text-xs font-black text-slate-900 truncate">{item.cat.name}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">
                             #{idx + 1}
                           </span>
                         </div>
-                        <span className="text-[10px] text-zinc-400 block">
-                          {item.count} {item.count === 1 ? 'transação' : 'transações'}
+                        <span className="text-[10px] text-slate-500 block">
+                          {item.count} {item.count === 1 ? 'lançamento' : 'lançamentos'}
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="text-xs font-black text-rose-400 block">
+                      <span className="text-xs font-black text-rose-600 block">
                         {formatCurrency(item.amount)}
                       </span>
-                      <span className="text-[10px] font-bold text-zinc-400">
-                        {item.percentage.toFixed(1)}% do total
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {item.percentage.toFixed(1)}%
                       </span>
                     </div>
                   </div>
 
-                  {/* Barra de progresso percentual */}
-                  <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-500"
                       style={{ 
                         width: `${item.percentage}%`,
-                        backgroundColor: item.cat.color || '#3b82f6'
+                        backgroundColor: item.cat.color || '#003882'
                       }}
                     />
                   </div>

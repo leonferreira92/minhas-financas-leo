@@ -158,7 +158,7 @@ export const Settings = () => {
           <Link to="/" className="p-2 mr-2 hover:bg-white dark:hover:bg-slate-800 rounded-full transition-all active:scale-90">
              <ChevronLeft size={24} className="text-slate-500" />
           </Link>
-          <h1 className="text-xl font-black tracking-tight text-slate-800 dark:text-white">Ajustes</h1>
+          <h1 className="text-xl font-black tracking-tight text-slate-800 dark:text-slate-900">Ajustes</h1>
         </div>
         <div className="w-8"></div>
       </div>
@@ -166,36 +166,36 @@ export const Settings = () => {
       <div className="space-y-6 px-3 pt-4">
         
         {/* Perfil e preferências */}
-        <section className="bg-[#18181b] rounded-[2.2rem] p-6 shadow-sm border border-zinc-800 relative overflow-hidden">
+        <section className="bg-white rounded-[2.2rem] p-6 shadow-sm border border-slate-200 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
            
            <div className="flex items-center space-x-4 relative z-10 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-[1.2rem] flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-emerald-500/20 shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-tr from-[#003882] to-[#002d6c] rounded-[1.2rem] flex items-center justify-center text-slate-900 font-black shadow-lg shadow-blue-900/10 shrink-0">
                  <User size={32} strokeWidth={2} />
               </div>
               <div className="flex-1">
-                 <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest block mb-1">Nome de Usuário</label>
+                 <label className="text-[10px] font-bold text-blue-800 uppercase tracking-widest block mb-1">Nome de Usuário</label>
                  <input 
                    value={settings.userName || ''} 
                    onChange={(e) => updateSettings({ userName: e.target.value })} 
                    placeholder="Seu Nome"
-                   className="w-full bg-transparent text-xl font-black text-white outline-none placeholder:text-zinc-600 border-b border-zinc-800 focus:border-emerald-400 transition-colors pb-1"
+                   className="w-full bg-transparent text-xl font-black text-slate-900 outline-none placeholder:text-slate-400 border-b border-slate-200 focus:border-emerald-400 transition-colors pb-1"
                  />
                  {currentUser?.email && (
-                   <span className="text-[10px] text-zinc-500 block mt-1.5 truncate">{currentUser.email}</span>
+                   <span className="text-[10px] text-slate-500 block mt-1.5 truncate">{currentUser.email}</span>
                  )}
               </div>
            </div>
 
-           <div className="pt-4 border-t border-zinc-800 space-y-3 mb-6 relative z-10">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-wider block">
+           <div className="pt-4 border-t border-slate-200 space-y-3 mb-6 relative z-10">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
                 Conta padrão nos lançamentos
               </span>
-              <div className="p-3.5 rounded-2xl bg-[#121212] border border-zinc-800 space-y-1.5">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
                 <select
                   value={settings.personalDefaultAccountId || accounts[0]?.id || ''}
                   onChange={e => updateSettings({ personalDefaultAccountId: e.target.value })}
-                  className="w-full p-2.5 bg-[#18181b] border border-zinc-700/80 rounded-xl text-xs font-bold text-white outline-none focus:border-emerald-500"
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
                 >
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>{acc.name}</option>
@@ -210,47 +210,47 @@ export const Settings = () => {
                    const next = settings.notificationInterval === 0 ? 12 : settings.notificationInterval === 12 ? 24 : 0;
                    updateSettings({ notificationInterval: next });
                 }}
-                className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800 transition active:scale-95 text-left"
+                className="bg-slate-50 p-4 rounded-2xl flex flex-col items-start border border-slate-200 transition active:scale-95 text-left"
               >
                  <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Alertas de Vencimento</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Alertas de Vencimento</span>
                     <Bell size={16} className={settings.notificationInterval ? 'text-emerald-400' : 'text-zinc-600'} />
                  </div>
-                 <span className="text-sm font-bold text-white">{settings.notificationInterval ? `A cada ${settings.notificationInterval}h` : 'Desligado'}</span>
+                 <span className="text-sm font-bold text-slate-900">{settings.notificationInterval ? `A cada ${settings.notificationInterval}h` : 'Desligado'}</span>
               </button>
 
-              <div className="bg-[#121212] p-4 rounded-2xl flex flex-col items-start border border-zinc-800">
+              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col items-start border border-slate-200">
                  <div className="flex justify-between w-full mb-2">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Tema</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Tema</span>
                     <Moon size={16} className="text-emerald-400" />
                  </div>
-                 <span className="text-sm font-bold text-white">Escuro</span>
+                 <span className="text-sm font-bold text-slate-900">Escuro</span>
               </div>
 
-              <Link to="/financial-settings" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
+              <Link to="/financial-settings" className="bg-slate-50 hover:bg-slate-50 p-4 rounded-2xl flex items-center justify-between border border-slate-200 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
                     <div className="p-2.5 bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-xl">
                        <Sliders size={18} />
                     </div>
                     <div className="text-left">
-                       <span className="text-sm font-black text-white block">Parâmetros Financeiros</span>
-                       <span className="text-[11px] text-zinc-400 font-medium">Reserva mínima, meses de proteção</span>
+                       <span className="text-sm font-black text-slate-900 block">Parâmetros Financeiros</span>
+                       <span className="text-[11px] text-slate-500 font-medium">Reserva mínima, meses de proteção</span>
                     </div>
                  </div>
-                 <ChevronRight size={18} className="text-zinc-500" />
+                 <ChevronRight size={18} className="text-slate-500" />
               </Link>
 
-              <Link to="/categories" className="bg-[#121212] hover:bg-zinc-800/80 p-4 rounded-2xl flex items-center justify-between border border-zinc-800 transition active:scale-95 col-span-1 sm:col-span-2">
+              <Link to="/categories" className="bg-slate-50 hover:bg-slate-50 p-4 rounded-2xl flex items-center justify-between border border-slate-200 transition active:scale-95 col-span-1 sm:col-span-2">
                  <div className="flex items-center space-x-3">
                     <div className="p-2.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl">
                        <LayoutGrid size={18} />
                     </div>
                     <div className="text-left">
-                       <span className="text-sm font-bold text-white block">Categorias</span>
-                       <span className="text-[10px] text-zinc-400">Etiquetas de receitas e despesas</span>
+                       <span className="text-sm font-bold text-slate-900 block">Categorias</span>
+                       <span className="text-[10px] text-slate-500">Etiquetas de receitas e despesas</span>
                     </div>
                  </div>
-                 <ChevronRight size={18} className="text-zinc-500" />
+                 <ChevronRight size={18} className="text-slate-500" />
               </Link>
            </div>
         </section>
@@ -258,8 +258,8 @@ export const Settings = () => {
         {/* Contas */}
         <section>
            <div className="flex justify-between items-center mb-3 px-2">
-              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest">Minhas Contas</h2>
-              <button onClick={() => openAccountModal()} className="p-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-90 transition-all font-black">
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest">Minhas Contas</h2>
+              <button onClick={() => openAccountModal()} className="p-2 bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] rounded-xl shadow-lg shadow-blue-900/10 active:scale-90 transition-all font-black">
                  <Plus size={16} strokeWidth={3} />
               </button>
            </div>
@@ -269,20 +269,20 @@ export const Settings = () => {
                 const Icon = getAccountIcon(acc.type);
                 const balance = getAccountBalance(acc.id);
                 return (
-                  <div key={acc.id} onClick={() => openAccountModal(acc)} className="bg-[#18181b] p-4 rounded-3xl border border-zinc-800 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
+                  <div key={acc.id} onClick={() => openAccountModal(acc)} className="bg-white p-4 rounded-3xl border border-slate-200 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-zinc-950 font-bold shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: acc.color }}>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-900 font-bold shadow-sm transition-transform group-hover:scale-110" style={{ backgroundColor: acc.color }}>
                            <Icon size={20} strokeWidth={2} />
                         </div>
                         <div>
-                           <h3 className="font-bold text-white text-sm leading-tight">{acc.name}</h3>
-                           <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wide">
+                           <h3 className="font-bold text-slate-900 text-sm leading-tight">{acc.name}</h3>
+                           <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">
                              {acc.type === 'wallet' ? 'Carteira' : acc.type === 'bank' ? 'Conta Bancária' : acc.type === 'savings' ? 'Reserva' : 'Investimento'}
                            </span>
                         </div>
                      </div>
                      <div className="flex flex-col items-end">
-                        <span className={`font-black text-sm ${balance >= 0 ? 'text-white' : 'text-rose-400'}`}>
+                        <span className={`font-black text-sm ${balance >= 0 ? 'text-slate-900' : 'text-rose-400'}`}>
                            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                         <button 
@@ -299,9 +299,9 @@ export const Settings = () => {
         </section>
 
         {/* Backup seguro (só export) + status de sync */}
-        <section className="bg-[#18181b] rounded-[2.2rem] overflow-hidden border border-zinc-800">
+        <section className="bg-white rounded-[2.2rem] overflow-hidden border border-slate-200">
            <div className="p-5">
-              <h2 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center">
+              <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center">
                  <Clock size={14} className="mr-2 text-emerald-400" /> Sync e cópia de segurança
               </h2>
 
@@ -312,11 +312,11 @@ export const Settings = () => {
                       {currentUser ? 'Sincronizado na nuvem' : 'Sem login — só neste aparelho'}
                     </span>
                  </div>
-                 <p className="text-[11px] text-zinc-400 leading-relaxed pl-4">
+                 <p className="text-[11px] text-slate-500 leading-relaxed pl-4">
                    Desktop e celular usam a mesma conta automaticamente. Não é preciso “publicar” nem restaurar banco.
                  </p>
                  {backupInfo && (
-                   <p className="text-[10px] text-zinc-500 pl-4">
+                   <p className="text-[10px] text-slate-500 pl-4">
                      Cópia local: {backupInfo.date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                    </p>
                  )}
@@ -324,12 +324,12 @@ export const Settings = () => {
 
               <button
                 onClick={handleExport}
-                className="w-full flex items-center justify-center gap-2 p-4 bg-[#121212] hover:bg-zinc-800/80 border border-zinc-800 rounded-2xl transition active:scale-95 text-white"
+                className="w-full flex items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-slate-50 border border-slate-200 rounded-2xl transition active:scale-95 text-slate-900"
               >
                 <Download size={18} className="text-emerald-400" />
-                <span className="text-xs font-bold text-zinc-200">Baixar backup JSON</span>
+                <span className="text-xs font-bold text-slate-700">Baixar backup JSON</span>
               </button>
-              <p className="text-[10px] text-zinc-500 mt-2 text-center px-2 leading-relaxed">
+              <p className="text-[10px] text-slate-500 mt-2 text-center px-2 leading-relaxed">
                 Só salva uma cópia no seu computador/celular. Não altera o banco.
               </p>
            </div>
@@ -348,7 +348,7 @@ export const Settings = () => {
         <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
            <div className="bg-white dark:bg-slate-900 rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar">
               <div className="flex justify-between items-center mb-8">
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Organizar Início</h3>
+                 <h3 className="text-2xl font-black text-slate-800 dark:text-slate-900 tracking-tight">Organizar Início</h3>
                  <button onClick={() => setIsLayoutModalOpen(false)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-full transition-all active:scale-90"><X size={24} className="text-slate-400"/></button>
               </div>
               
@@ -394,10 +394,10 @@ export const Settings = () => {
                         <button 
                           key={c.key} 
                           onClick={() => updateSettings({ primaryColor: c.key })} 
-                          className={`w-10 h-10 rounded-full transition-all flex items-center justify-center relative ${isSelected ? 'scale-110 shadow-xl shadow-indigo-200 dark:shadow-none ring-4 ring-white dark:ring-slate-800' : 'hover:scale-105 opacity-60 hover:opacity-100'}`} 
+                          className={`w-10 h-10 rounded-full transition-all flex items-center justify-center relative ${isSelected ? 'scale-110 shadow-xl shadow-blue-900/10 dark:shadow-none ring-4 ring-white dark:ring-slate-800' : 'hover:scale-105 opacity-60 hover:opacity-100'}`} 
                           style={{ backgroundColor: c.hex }}
                         >
-                          {isSelected && <CheckCircle2 size={18} className="text-white drop-shadow-md" />}
+                          {isSelected && <CheckCircle2 size={18} className="text-slate-900 drop-shadow-md" />}
                         </button>
                       );
                     })}
@@ -406,7 +406,7 @@ export const Settings = () => {
 
               <button 
                 onClick={() => setIsLayoutModalOpen(false)}
-                className="w-full mt-8 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 active:scale-[0.98] transition-all"
+                className="w-full mt-8 py-5 bg-[#003882] text-[#fcca00] rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-[#002d6c] active:scale-[0.98] transition-all"
               >
                 Concluir
               </button>
@@ -418,7 +418,7 @@ export const Settings = () => {
          <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-end sm:items-center justify-center backdrop-blur-md animate-fade-in p-0 sm:p-4">
             <div className="bg-white dark:bg-slate-900 rounded-t-[3rem] sm:rounded-[3rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 dark:border-slate-800 animate-slide-up">
                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+                  <h3 className="text-2xl font-black text-slate-800 dark:text-slate-900 tracking-tight">
                      {editingAccount ? 'Editar Conta' : 'Nova Conta'}
                   </h3>
                   <button onClick={() => setIsAccountModalOpen(false)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-full transition-all active:scale-90"><X size={24} className="text-slate-400"/></button>
@@ -430,7 +430,7 @@ export const Settings = () => {
                      <input 
                        value={accName} 
                        onChange={e => setAccName(e.target.value)} 
-                       className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] dark:text-white outline-none font-bold text-lg" 
+                       className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-[1.5rem] dark:text-slate-900 outline-none font-bold text-lg" 
                        placeholder="Ex: Nubank, Bradesco..." 
                      />
                   </div>
@@ -460,7 +460,7 @@ export const Settings = () => {
                              className={`aspect-square rounded-2xl transition-all relative ${accColor === c ? 'scale-110 ring-4 ring-white dark:ring-slate-800 shadow-lg' : 'opacity-60 hover:opacity-100'}`} 
                              style={{ backgroundColor: c }} 
                            >
-                              {accColor === c && <CheckCircle2 size={16} className="text-white mx-auto drop-shadow-md" />}
+                              {accColor === c && <CheckCircle2 size={16} className="text-slate-900 mx-auto drop-shadow-md" />}
                            </button>
                         ))}
                      </div>
@@ -469,7 +469,7 @@ export const Settings = () => {
                   <div className="pt-4 flex flex-col space-y-3">
                     <button 
                       onClick={handleSaveAccount} 
-                      className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 active:scale-[0.98] transition-all"
+                      className="w-full py-5 bg-[#003882] text-[#fcca00] rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-[#002d6c] active:scale-[0.98] transition-all"
                     >
                       Confirmar Conta
                     </button>
@@ -495,7 +495,7 @@ export const Settings = () => {
                  <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400 shadow-inner">
                     <RefreshCw size={36} strokeWidth={1.5} />
                  </div>
-                 <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Ajuste de Saldo</h3>
+                 <h3 className="text-2xl font-black text-slate-800 dark:text-slate-900 tracking-tight">Ajuste de Saldo</h3>
                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 px-4">
                     Informe o saldo real do banco para alinhar o app.
                  </p>
@@ -504,7 +504,7 @@ export const Settings = () => {
                <div className="space-y-6">
                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl flex justify-between items-center border border-slate-100 dark:border-slate-800">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo no App</span>
-                    <span className="text-lg font-black text-slate-800 dark:text-white">R$ {reconcileAccountId ? getAccountBalance(reconcileAccountId).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '0,00'}</span>
+                    <span className="text-lg font-black text-slate-800 dark:text-slate-900">R$ {reconcileAccountId ? getAccountBalance(reconcileAccountId).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '0,00'}</span>
                  </div>
                  
                  <div>
@@ -516,7 +516,7 @@ export const Settings = () => {
                          step="any" 
                          value={actualBalance} 
                          onChange={e => setActualBalance(e.target.value)} 
-                         className="w-full pl-14 pr-5 py-5 bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 focus:border-indigo-500 rounded-[1.5rem] dark:text-white outline-none font-black text-2xl shadow-sm" 
+                         className="w-full pl-14 pr-5 py-5 bg-white dark:bg-slate-800 border-2 border-indigo-100 dark:border-indigo-900/50 focus:border-indigo-500 rounded-[1.5rem] dark:text-slate-900 outline-none font-black text-2xl shadow-sm" 
                          placeholder="0"
                        />
                     </div>
@@ -524,7 +524,7 @@ export const Settings = () => {
 
                  <div className="flex space-x-3 pt-4">
                     <button onClick={() => setIsReconcileModalOpen(false)} className="flex-1 py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition">Cancelar</button>
-                    <button onClick={handleReconcile} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 transition active:scale-[0.98]">Confirmar</button>
+                    <button onClick={handleReconcile} className="flex-1 py-4 bg-[#003882] text-[#fcca00] rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 dark:shadow-none hover:bg-[#002d6c] transition active:scale-[0.98]">Confirmar</button>
                  </div>
                </div>
             </div>
@@ -537,7 +537,7 @@ export const Settings = () => {
               <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmation.isAlert ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'}`}>
                  {confirmation.isAlert ? <CheckCircle2 size={32} /> : <AlertTriangle size={32} />}
               </div>
-              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">{confirmation.title}</h3>
+              <h3 className="text-xl font-black text-slate-800 dark:text-slate-900 mb-2">{confirmation.title}</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed whitespace-pre-line">
                  {confirmation.message}
               </p>
@@ -556,7 +556,7 @@ export const Settings = () => {
                       if (confirmation.onConfirm) confirmation.onConfirm();
                       setConfirmation(null);
                    }}
-                   className={`flex-1 py-4 text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-lg ${confirmation.isAlert ? 'bg-indigo-600 w-full' : 'bg-rose-600 shadow-rose-200 dark:shadow-none'}`}
+                   className={`flex-1 py-4 text-slate-900 font-bold rounded-2xl text-xs uppercase tracking-wider shadow-lg ${confirmation.isAlert ? 'bg-[#003882] w-full' : 'bg-rose-600 shadow-rose-200 dark:shadow-none'}`}
                  >
                     {confirmation.isAlert ? 'OK' : 'Confirmar'}
                  </button>

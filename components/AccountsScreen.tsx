@@ -88,32 +88,32 @@ export const AccountsScreen: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-24 animate-fade-in text-white">
+    <div className="space-y-6 pb-24 animate-fade-in text-slate-800">
       {/* HEADER SUPERIOR */}
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition active:scale-95"
+            className="p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-blue-900 hover:border-blue-200 transition active:scale-95 shadow-sm"
             title="Voltar"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-              <Landmark className="text-[#fcca00]" size={22} />
-              <span>Saldo das Contas</span>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <Landmark className="text-[#003882]" size={22} />
+              <span>Contas e saldos</span>
             </h1>
-            <p className="text-[11px] text-zinc-400 font-medium">Gestão de múltiplas contas e carteiras</p>
+            <p className="text-[11px] text-slate-500 font-medium">Bancos, carteira e conciliação</p>
           </div>
         </div>
 
         <button
           onClick={() => setIsNewAccountModalOpen(true)}
-          className="px-3 py-2 rounded-xl bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md flex items-center space-x-1.5 border border-blue-600/40"
+          className="px-3 py-2 rounded-xl bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md flex items-center space-x-1.5"
         >
           <Plus size={16} />
-          <span>Nova Conta</span>
+          <span>Nova</span>
         </button>
       </div>
 
@@ -139,11 +139,11 @@ export const AccountsScreen: React.FC = () => {
       {/* LISTA DE CONTAS PESSOAIS */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-            <User size={14} className="text-blue-400" />
-            <span>Contas Pessoais & Família</span>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <User size={14} className="text-blue-800" />
+            <span>Suas contas</span>
           </h3>
-          <span className="text-[10px] text-zinc-400 font-bold">{personalAccounts.length} contas</span>
+          <span className="text-[10px] text-slate-400 font-bold">{personalAccounts.length} contas</span>
         </div>
 
         <div className="space-y-2.5">
@@ -154,7 +154,7 @@ export const AccountsScreen: React.FC = () => {
               <div 
                 key={acc.id}
                 onClick={() => setSelectedAccountForEdit(acc)}
-                className="p-4 rounded-2xl bg-[#18181b] border border-zinc-800 hover:border-zinc-700 transition flex items-center justify-between cursor-pointer group shadow-xs active:scale-[0.99]"
+                className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-blue-200 transition flex items-center justify-between cursor-pointer group shadow-sm active:scale-[0.99]"
               >
                 <div className="flex items-center space-x-3.5 min-w-0">
                   <div 
@@ -164,25 +164,25 @@ export const AccountsScreen: React.FC = () => {
                     <Icon size={20} />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-sm font-black text-white group-hover:text-blue-400 transition block truncate">
+                    <span className="text-sm font-black text-slate-900 group-hover:text-blue-800 transition block truncate">
                       {acc.name}
                     </span>
-                    <span className="text-[10px] text-zinc-400 capitalize block">
-                      {acc.type === 'wallet' ? 'Carteira Física / Espécie' : acc.type === 'savings' ? 'Poupança / Reserva' : 'Conta Corrente / Digital'}
+                    <span className="text-[10px] text-slate-500 capitalize block">
+                      {acc.type === 'wallet' ? 'Carteira / espécie' : acc.type === 'savings' ? 'Poupança / reserva' : 'Conta corrente / digital'}
                     </span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0 flex items-center space-x-2">
                   <div>
-                    <span className="text-sm font-black text-white block">
+                    <span className="text-sm font-black text-slate-900 block">
                       {formatCurrency(balance)}
                     </span>
-                    <span className="text-[10px] text-blue-400 flex items-center justify-end gap-1 font-semibold">
-                      <Pencil size={10} /> Ajustar Saldo
+                    <span className="text-[10px] text-blue-800 flex items-center justify-end gap-1 font-semibold">
+                      <Pencil size={10} /> Ajustar
                     </span>
                   </div>
-                  <ChevronRight size={16} className="text-zinc-400 group-hover:text-white transition" />
+                  <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-800 transition" />
                 </div>
               </div>
             );
@@ -258,46 +258,46 @@ export const AccountsScreen: React.FC = () => {
 
       {/* MODAL PARA CADASTRO DE NOVA CONTA */}
       {isNewAccountModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-[#121214] rounded-3xl border border-zinc-800 p-6 shadow-2xl relative">
-            <h3 className="text-lg font-black text-white tracking-tight mb-1">Cadastrar Nova Conta</h3>
-            <p className="text-xs text-zinc-400 mb-5">Adicione um banco, carteira física ou conta digital</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-6 shadow-2xl relative">
+            <h3 className="text-lg font-black text-slate-900 tracking-tight mb-1">Nova conta</h3>
+            <p className="text-xs text-slate-500 mb-5">Banco, carteira ou conta digital</p>
 
             <form onSubmit={handleCreateAccount} className="space-y-4">
               <div>
-                <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Nome da Conta / Banco</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Nome</label>
                 <input
                   type="text"
                   placeholder="Ex: Banco do Brasil, Mercado Pago, Carteira"
                   value={newAccName}
                   onChange={e => setNewAccName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-400 text-sm focus:border-blue-500 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:border-blue-500 outline-none"
                   required
                 />
               </div>
 
               <div className={`grid gap-3 ${PERSONAL_ONLY_MODE ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <div>
-                  <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Tipo</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Tipo</label>
                   <select
                     value={newAccType}
                     onChange={e => setNewAccType(e.target.value as AccountType)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-sm focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:border-blue-500 outline-none"
                   >
-                    <option value="bank">Conta Corrente</option>
-                    <option value="wallet">Carteira / Dinheiro</option>
-                    <option value="savings">Poupança / Reserva</option>
+                    <option value="bank">Conta corrente</option>
+                    <option value="wallet">Carteira / dinheiro</option>
+                    <option value="savings">Poupança / reserva</option>
                     <option value="investment">Investimento</option>
                   </select>
                 </div>
 
                 {!PERSONAL_ONLY_MODE && (
                   <div>
-                    <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Vínculo</label>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Vínculo</label>
                     <select
                       value={newAccVinculo}
                       onChange={e => setNewAccVinculo(e.target.value as 'PESSOAL' | 'MUSICO' | 'NEUTRO')}
-                      className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-sm focus:border-blue-500 outline-none"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-sm focus:border-blue-500 outline-none"
                     >
                       <option value="PESSOAL">Pessoal / Família</option>
                       <option value="MUSICO">Músico / Shows</option>
@@ -308,14 +308,14 @@ export const AccountsScreen: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider block mb-1.5">Saldo Inicial (R$)</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Saldo inicial (R$)</label>
                 <input
                   type="text"
                   inputMode="decimal"
                   placeholder="0,00"
                   value={newAccBalance}
                   onChange={e => setNewAccBalance(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-400 text-sm focus:border-blue-500 outline-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-sm focus:border-blue-500 outline-none"
                 />
               </div>
 
@@ -323,7 +323,7 @@ export const AccountsScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsNewAccountModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold transition"
                 >
                   Cancelar
                 </button>
@@ -331,7 +331,7 @@ export const AccountsScreen: React.FC = () => {
                   type="submit"
                   className="flex-1 py-2.5 rounded-xl bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] text-xs font-black transition shadow-md"
                 >
-                  Salvar Conta
+                  Salvar
                 </button>
               </div>
             </form>

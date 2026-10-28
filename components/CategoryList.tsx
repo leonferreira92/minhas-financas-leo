@@ -135,7 +135,7 @@ export const CategoryList = () => {
               onClick={() => setScopeFilter('PERSONAL')}
               className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
                 scopeFilter === 'PERSONAL'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-[#003882] text-[#fcca00] shadow-xs'
                   : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
               }`}
             >
@@ -194,17 +194,19 @@ export const CategoryList = () => {
                    <div className="min-w-0">
                       <div className="flex items-center space-x-2">
                         <h3 className="font-bold text-slate-800 dark:text-white text-sm truncate">{cat.name}</h3>
-                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center space-x-1 shrink-0 ${
-                          isMusician 
-                            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' 
-                            : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
-                        }`}>
-                          {isMusician ? <Music size={10} className="mr-1 inline" /> : <User size={10} className="mr-1 inline" />}
-                          {isMusician ? 'Músico' : 'Pessoal'}
-                        </span>
+                        {!PERSONAL_ONLY_MODE && (
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center space-x-1 shrink-0 ${
+                            isMusician 
+                              ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' 
+                              : 'bg-blue-50 text-blue-800'
+                          }`}>
+                            {isMusician ? <Music size={10} className="mr-1 inline" /> : <User size={10} className="mr-1 inline" />}
+                            {isMusician ? 'Músico' : 'Pessoal'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center mt-0.5">
-                         <span className={`text-[11px] ${isInUse ? 'text-indigo-600 dark:text-indigo-400 font-semibold' : 'text-slate-400'}`}>
+                         <span className={`text-[11px] ${isInUse ? 'text-blue-800 font-semibold' : 'text-slate-400'}`}>
                             {usageCount} {usageCount === 1 ? 'lançamento' : 'lançamentos'}
                          </span>
                       </div>
@@ -240,7 +242,7 @@ export const CategoryList = () => {
       <div className="fixed bottom-24 left-0 right-0 z-40 flex justify-end px-6 max-w-md mx-auto pointer-events-none">
         <button 
           onClick={openNewCategory}
-          className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 dark:shadow-indigo-900/50 flex items-center justify-center pointer-events-auto transition-transform active:scale-90"
+          className="w-14 h-14 bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] rounded-full shadow-lg shadow-blue-900/20 flex items-center justify-center pointer-events-auto transition-transform active:scale-90"
         >
            <Plus size={28} />
         </button>
@@ -267,7 +269,7 @@ export const CategoryList = () => {
                     <input 
                        value={name} onChange={e => setName(e.target.value)} 
                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 rounded-2xl text-base font-bold outline-none dark:text-white transition placeholder:font-normal"
-                       placeholder="Ex: Equipamentos de Palco"
+                       placeholder="Ex: Mercado, Farmácia, Transporte"
                        autoFocus
                     />
                  </div>
@@ -362,7 +364,7 @@ export const CategoryList = () => {
                              <button
                                key={iconName}
                                onClick={() => setIcon(iconName)}
-                               className={`aspect-square rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                               className={`aspect-square rounded-xl flex items-center justify-center transition-all ${isSelected ? 'bg-[#003882] text-[#fcca00] shadow-lg scale-105' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                              >
                                 <IconComp size={18} />
                              </button>
@@ -392,7 +394,7 @@ export const CategoryList = () => {
                     )}
                     <button 
                       onClick={handleSave}
-                      className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50 transition-transform active:scale-95 flex items-center justify-center"
+                      className="flex-1 h-12 bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-blue-900/10 transition-transform active:scale-95 flex items-center justify-center"
                     >
                        {editingId ? 'Salvar Alterações' : 'Criar Categoria'}
                     </button>
@@ -447,7 +449,7 @@ export const CategoryList = () => {
               
               <button 
                 onClick={() => setDeleteBlockMessage(null)}
-                className="w-full py-3.5 text-white font-bold bg-indigo-600 hover:bg-indigo-700 rounded-2xl text-xs uppercase tracking-wider shadow-md"
+                className="w-full py-3.5 text-[#fcca00] font-bold bg-[#003882] hover:bg-[#002d6c] rounded-2xl text-xs uppercase tracking-wider shadow-md"
               >
                  Entendido
               </button>
