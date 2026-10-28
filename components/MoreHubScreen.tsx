@@ -179,10 +179,10 @@ export const MoreHubScreen: React.FC = () => {
         {
           id: 'contas_fixas',
           title: 'Contas Fixas & Recorrentes',
-          desc: 'Compromissos agendados e despesas do mês',
+          desc: 'Água, luz, internet, streamings e outras mensais',
           icon: RefreshCw,
-          action: () => navigate('/lancamentos?status=pending'),
-          keywords: 'contas fixas pendentes recorrentes agendadas'
+          action: () => navigate('/contas-fixas'),
+          keywords: 'contas fixas pendentes recorrentes agendadas agua luz internet'
         },
         {
           id: 'parcelamentos',

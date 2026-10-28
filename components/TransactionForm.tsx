@@ -23,10 +23,12 @@ interface Props {
   onClose: () => void;
   initialType?: TransactionType;
   initialCategoryId?: string;
+  /** Pré-marca como recorrente (ex.: tela Contas Fixas). */
+  initialIsFixed?: boolean;
   transaction?: Transaction | null;
 }
 
-export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, transaction }) => {
+export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, initialIsFixed = false, transaction }) => {
   const { 
     addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, 
     deleteTransaction, categories, transactions, accounts, shows, addShow, checkTransactionImpact,
@@ -41,10 +43,10 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const [accountId, setAccountId] = useState('');
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [date, setDate] = useState(() => transaction?.date || getLocalDateString());
-  const [status, setStatus] = useState<TransactionStatus>('paid');
+  const [status, setStatus] = useState<TransactionStatus>(initialIsFixed && !transaction ? 'pending' : 'paid');
   const [hasReminder, setHasReminder] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
-  const [isFixed, setIsFixed] = useState(false);
+  const [isFixed, setIsFixed] = useState(Boolean(initialIsFixed && !transaction));
   /** Empréstimo a pessoas: fora do relatório de despesas/receitas */
   const [loanMode, setLoanMode] = useState(false);
   const [loanPerson, setLoanPerson] = useState(transaction?.loanPerson || 'Mãe');

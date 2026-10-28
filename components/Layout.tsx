@@ -39,8 +39,8 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   ].some(path => location.pathname === path || location.pathname.startsWith('/dividas') || location.pathname.startsWith('/debts'));
 
   const isMaisActive = [
-    '/mais', '/settings', '/financial-settings', '/categories', '/alerts', '/gastos', '/analise-gastos', '/contas', '/relatorios'
-  ].some(path => location.pathname === path || location.pathname.startsWith('/mais') || location.pathname.startsWith('/relatorios'));
+    '/mais', '/settings', '/financial-settings', '/categories', '/alerts', '/gastos', '/analise-gastos', '/contas', '/contas-fixas', '/fixas', '/relatorios'
+  ].some(path => location.pathname === path || location.pathname.startsWith('/mais') || location.pathname.startsWith('/relatorios') || location.pathname.startsWith('/contas-fixas'));
 
   const navItems = [
     { to: '/', label: 'Início', icon: Home, isActive: isHomeActive },

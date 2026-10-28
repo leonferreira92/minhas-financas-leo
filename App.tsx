@@ -10,6 +10,7 @@ import { ExpenseAnalysisScreen } from './components/ExpenseAnalysisScreen';
 import { AccountsScreen } from './components/AccountsScreen';
 import { ReportsHubScreen } from './components/ReportsHubScreen';
 import { MoreHubScreen } from './components/MoreHubScreen';
+import { FixedRecurringScreen } from './components/FixedRecurringScreen';
 import { TransactionForm } from './components/TransactionForm';
 import { LoginScreen } from './components/auth/LoginScreen';
 
@@ -52,6 +53,8 @@ const AppContent = () => {
           <Route path="/dividas" element={<DebtsScreen />} />
           <Route path="/debts" element={<DebtsScreen />} />
           <Route path="/mais" element={<MoreHubScreen />} />
+          <Route path="/contas-fixas" element={<FixedRecurringScreen />} />
+          <Route path="/fixas" element={<FixedRecurringScreen />} />
           <Route path="/gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/analise-gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/contas" element={<AccountsScreen />} />

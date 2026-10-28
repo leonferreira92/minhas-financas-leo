@@ -113,6 +113,8 @@ interface FinanceContextType {
   updateDebtTransaction: (t: Transaction, redistribute: boolean) => void;
   recalculateDebtSeries: (transactionId: string, newAmount: number) => void;
   deleteTransaction: (id: string, deleteSeries?: boolean) => void;
+  /** Garante horizonte futuro de uma série recorrente (cria parcelas pending a partir da última data). */
+  extendFixedSeries: (fixedGroupId: string, monthsToAdd?: number) => number;
   checkTransactionImpact: (amount: number, date: string) => { compromisedTransaction: Transaction } | null;
   
   addCategory: (c: Omit<Category, 'id'>) => void;
@@ -1926,6 +1928,56 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
+  const extendFixedSeries = (fixedGroupId: string, monthsToAdd: number = 6): number => {
+    if (!fixedGroupId || monthsToAdd <= 0) return 0;
+
+    const series = transactions
+      .filter(t => t.fixedGroupId === fixedGroupId && t.status !== 'cancelled')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    if (series.length === 0) return 0;
+
+    const last = series[series.length - 1];
+    const template = series.find(t => t.isFixed) || last;
+    const existingDates = new Set(series.map(t => t.date?.slice(0, 10)).filter(Boolean));
+    const newTxs: Transaction[] = [];
+
+    for (let i = 1; i <= monthsToAdd; i++) {
+      const d = new Date(`${last.date.slice(0, 10)}T12:00:00`);
+      d.setMonth(d.getMonth() + i);
+      const dateStr = getLocalDateString(d);
+      if (existingDates.has(dateStr)) continue;
+      newTxs.push({
+        ...template,
+        id: generateUUID(),
+        date: dateStr,
+        status: 'pending',
+        isFixed: true,
+        fixedGroupId,
+        amount: Math.abs(Number(template.amount) || 0),
+        createdAt: Date.now() + i,
+        debtId: undefined,
+        installmentNumber: undefined,
+        installmentTotal: undefined,
+        showId: undefined,
+        showPaymentId: undefined,
+        showExpenseId: undefined,
+        isEventTransaction: false
+      });
+    }
+
+    if (newTxs.length === 0) return 0;
+
+    setTransactions(prev => {
+      const txs = deduplicateItemsById([...prev, ...newTxs]);
+      StorageService.saveTransactions(txs);
+      return txs;
+    });
+    if (currentUser) {
+      newTxs.forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+    }
+    return newTxs.length;
+  };
+
   const deleteTransaction = (id: string, deleteSeries: boolean = false) => {
     const targetTx = transactions.find(t => t.id === id);
 
@@ -3313,7 +3365,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     <FinanceContext.Provider value={{
       transactions: normalizedTransactions, categories, debts, accounts: derivedAccounts, budgets, shows: normalizedShows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
       activeScope, setActiveScope, getDefaultAccountForScope,
-      addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, checkTransactionImpact,
+      addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, extendFixedSeries, checkTransactionImpact,
       addCategory, updateCategory, deleteCategory,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, updateDebtCostCenter, toggleInstallmentCostCenter, deleteDebt, getDebtProgress,
