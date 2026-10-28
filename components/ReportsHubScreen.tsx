@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
-  FileText, Bot, FileSpreadsheet, Activity, 
-  Calendar as CalendarIcon, Download, Sparkles 
+  Bot, FileSpreadsheet, Activity, 
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { AIReportScreen } from './AIReportScreen';
 import { FinancialSummary } from './FinancialSummary';
@@ -32,29 +32,30 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
   };
 
   const tabs = [
-    { id: 'ai', label: 'Relatório para IA', icon: Bot, badge: 'Destaque' },
-    { id: 'summary', label: 'Balanço Mensal', icon: FileSpreadsheet },
-    { id: 'flow', label: 'Fluxo Realizado/Projetado', icon: Activity },
+    { id: 'ai', label: 'Relatório IA', icon: Bot, badge: 'IA' },
+    { id: 'summary', label: 'Balanço', icon: FileSpreadsheet },
+    { id: 'flow', label: 'Fluxo', icon: Activity },
     { id: 'calendar', label: 'Calendário', icon: CalendarIcon }
   ];
 
   return (
     <div className="w-full max-w-full overflow-x-hidden space-y-5 pb-20 animate-fade-in">
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-full border border-purple-100 dark:border-purple-900/50">
-            Relatórios & Exportações
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-800 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
+            Finanças pessoais
           </span>
-          <h1 className="text-xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
+          <h1 className="text-xl font-black text-slate-900 mt-1.5 tracking-tight">
             Relatórios
           </h1>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+            Diagnóstico, balanço, fluxo e calendário do seu caixa
+          </p>
         </div>
       </div>
 
-      {/* SUB-MENU DE ABAS ROLÁVEL */}
       <div className="overflow-x-auto no-scrollbar w-full">
-        <div className="flex space-x-2 border-b border-slate-200/80 dark:border-slate-800 pb-2 min-w-max">
+        <div className="flex space-x-2 border-b border-slate-200 pb-2 min-w-max">
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -64,16 +65,20 @@ export const ReportsHubScreen: React.FC<Props> = ({ initialTab = 'ai' }) => {
                 onClick={() => handleTabChange(tab.id as ReportTab)}
                 className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
                   isActive
-                    ? 'bg-purple-600 text-white shadow-md'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/70 dark:border-slate-800'
+                    ? 'bg-[#003882] text-[#fcca00] shadow-md'
+                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
                 }`}
               >
                 <Icon size={14} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider ${
-                    isActive ? 'bg-purple-800 text-white' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
-                  }`}>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider ${
+                      isActive
+                        ? 'bg-blue-950 text-[#fcca00]'
+                        : 'bg-amber-50 text-amber-800 border border-amber-100'
+                    }`}
+                  >
                     {tab.badge}
                   </span>
                 )}

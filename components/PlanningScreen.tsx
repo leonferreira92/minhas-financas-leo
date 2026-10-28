@@ -266,12 +266,12 @@ export const PlanningScreen = () => {
         <div className="flex justify-between items-center mb-4 px-1">
           <div>
             <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-              Planejamento
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                Adaptativo
+              Orçamentos
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-100">
+                Pessoal
               </span>
             </h1>
-            <p className="text-[11px] font-medium text-slate-400">Orçamento e tetos para o caixa pessoal</p>
+            <p className="text-[11px] font-medium text-slate-400">Tetos e planejamento do seu caixa</p>
           </div>
 
           <button 
@@ -279,8 +279,8 @@ export const PlanningScreen = () => {
               setModalType('budget'); 
               setIsModalOpen(true); 
             }}
-            className="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center"
-            title="Novo Item"
+            className="p-3 bg-[#003882] hover:bg-blue-900 text-[#fcca00] rounded-2xl shadow-lg shadow-blue-900/15 transition-all active:scale-95 flex items-center justify-center"
+            title="Novo orçamento"
           >
             <Plus size={22} strokeWidth={2.5} />
           </button>

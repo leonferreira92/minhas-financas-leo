@@ -1,11 +1,30 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
-import { 
-  Search, Settings as SettingsIcon, ChevronDown, ChevronRight, ChevronLeft,
-  User, CreditCard, Sparkles, Sliders, Receipt, Landmark, 
-  BarChart3, FolderTree, Plus, Target, 
-  ShieldAlert, RefreshCw, UploadCloud, Database, Bell, X, ShieldCheck
+import {
+  Search,
+  Settings as SettingsIcon,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  Wallet,
+  CreditCard,
+  Sparkles,
+  Sliders,
+  Receipt,
+  Landmark,
+  BarChart3,
+  FolderTree,
+  Plus,
+  Target,
+  ShieldAlert,
+  RefreshCw,
+  UploadCloud,
+  Database,
+  Bell,
+  X,
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
 import { AuthHeaderWidget } from './AuthHeaderWidget';
 import { TransactionForm } from './TransactionForm';
@@ -14,6 +33,7 @@ import { Settings } from './Settings';
 import { FinancialSettingsScreen } from './FinancialSettingsScreen';
 import { CategoryList } from './CategoryList';
 import { AlertsScreen } from './AlertsScreen';
+
 interface MenuItem {
   id: string;
   title: string;
@@ -28,7 +48,8 @@ interface MenuCategory {
   id: string;
   title: string;
   icon: any;
-  color: string;
+  accent: string;
+  iconBg: string;
   items: MenuItem[];
 }
 
@@ -37,215 +58,233 @@ export const MoreHubScreen: React.FC = () => {
   const [searchParams] = useSearchParams();
   const directTab = searchParams.get('tab');
 
-  const { currentUser, getSystemAlerts } = useFinance();
+  const { getSystemAlerts } = useFinance();
   const alertsCount = useMemo(() => getSystemAlerts().length, [getSystemAlerts]);
 
-  // Search input state
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Modals
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isBankImportOpen, setIsBankImportOpen] = useState(false);
-  const [activeSubScreen, setActiveSubScreen] = useState<'settings' | 'financial' | 'categories' | 'alerts' | null>(
-    directTab === 'settings' ? 'settings' :
-    directTab === 'financial' ? 'financial' :
-    directTab === 'categories' ? 'categories' :
-    directTab === 'alerts' ? 'alerts' : null
+  const [activeSubScreen, setActiveSubScreen] = useState<
+    'settings' | 'financial' | 'categories' | 'alerts' | null
+  >(
+    directTab === 'settings'
+      ? 'settings'
+      : directTab === 'financial'
+        ? 'financial'
+        : directTab === 'categories'
+          ? 'categories'
+          : directTab === 'alerts'
+            ? 'alerts'
+            : null
   );
 
-  // Accordion open/close state
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
-    personal: true,
-    debts: true,
-    ai: true,
+    day: true,
+    plan: true,
+    debts: false,
+    reports: false,
     system: false
   });
 
   const toggleSection = (id: string) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Definição das Categorias do Menu estilo Banco do Brasil
-  const menuCategories: MenuCategory[] = useMemo(() => [
-    {
-      id: 'personal',
-      title: 'Minhas Finanças (Pessoal)',
-      icon: User,
-      color: 'text-blue-400',
-      items: [
-        {
-          id: 'extrato',
-          title: 'Extrato Completo',
-          desc: 'Lançamentos passados, saldos e extrato diário',
-          icon: Receipt,
-          action: () => navigate('/lancamentos'),
-          keywords: 'extrato transacoes lancamentos movimentacoes receitas despesas'
-        },
-        {
-          id: 'contas',
-          title: 'Saldo por Conta',
-          desc: 'Gerenciar bancos, carteira física e saldos',
-          icon: Landmark,
-          action: () => navigate('/contas'),
-          keywords: 'contas bancos carteiras saldo patrimonio'
-        },
-        {
-          id: 'gastos',
-          title: 'Análise de Gastos',
-          desc: 'Gráficos verticais e distribuição por categoria',
-          icon: BarChart3,
-          action: () => navigate('/gastos'),
-          keywords: 'gastos graficos analise categorias consumo'
-        },
-        {
-          id: 'categorias_pessoais',
-          title: 'Categorias Pessoais',
-          desc: 'Gerenciar grupos, cores e classificação de despesas',
-          icon: FolderTree,
-          action: () => setActiveSubScreen('categories'),
-          keywords: 'categorias grupos classificacao'
-        },
-        {
-          id: 'novo_lancamento',
-          title: 'Lançamento Rápido',
-          desc: 'Cadastrar nova receita, despesa ou transferência',
-          icon: Plus,
-          action: () => setIsTxModalOpen(true),
-          badge: 'Atalho',
-          keywords: 'novo lancamento despesa receita adicionar'
-        },
-        {
-          id: 'planejamento',
-          title: 'Orçamentos & Planejamento',
-          desc: 'Tetos por categoria, grupos e regra 50/30/20',
-          icon: Target,
-          action: () => navigate('/planejamento'),
-          badge: 'Novo',
-          keywords: 'orcamento planejamento tetos metas 50 30 20'
-        },
-        {
-          id: 'inteligencia',
-          title: 'Visão Inteligente',
-          desc: 'Quanto posso gastar, custo de vida e projeções',
-          icon: Sparkles,
-          action: () => navigate('/inteligencia'),
-          keywords: 'inteligencia insights posso gastar custo vida projecao'
-        }
-      ]
-    },
-    {
-      id: 'debts',
-      title: 'Passivos e Contas',
-      icon: CreditCard,
-      color: 'text-rose-400',
-      items: [
-        {
-          id: 'controle_dividas',
-          title: 'Controle de Dívidas',
-          desc: 'Financiamentos, empréstimos e progresso de quitação',
-          icon: ShieldAlert,
-          action: () => navigate('/dividas'),
-          keywords: 'dividas financiamento emprestimo quitacao'
-        },
-        {
-          id: 'contas_fixas',
-          title: 'Contas Fixas & Recorrentes',
-          desc: 'Água, luz, internet, streamings e outras mensais',
-          icon: RefreshCw,
-          action: () => navigate('/contas-fixas'),
-          keywords: 'contas fixas pendentes recorrentes agendadas agua luz internet'
-        },
-        {
-          id: 'parcelamentos',
-          title: 'Parcelamentos Abertos',
-          desc: 'Evolução de parcelas de cartão e bancos',
-          icon: CreditCard,
-          action: () => navigate('/dividas'),
-          keywords: 'parcelas parcelamento cartao credito'
-        }
-      ]
-    },
-    {
-      id: 'ai',
-      title: 'Inteligência & Automações',
-      icon: Sparkles,
-      color: 'text-purple-400',
-      items: [
-        {
-          id: 'relatorio_ia',
-          title: 'Relatório Financeiro para IA',
-          desc: 'Exportar dados para análise com o Gemini',
-          icon: Sparkles,
-          action: () => navigate('/relatorios?tab=ai'),
-          badge: 'Gemini',
-          keywords: 'ia inteligência gemini relatorio diagnostico'
-        },
-        {
-          id: 'importador_extrato',
-          title: 'Importador de Extrato Bancário',
-          desc: 'Subir arquivos .OFX ou .CSV de qualquer banco',
-          icon: UploadCloud,
-          action: () => setIsBankImportOpen(true),
-          keywords: 'importar extrato ofx csv banco'
-        }
-      ]
-    },
-    {
-      id: 'system',
-      title: 'Sistema & Ajustes',
-      icon: Sliders,
-      color: 'text-zinc-400',
-      items: [
-        {
-          id: 'config_gerais',
-          title: 'Banco de Dados (default) & Sincronização',
-          desc: 'Direcionamento de transações para o banco (default) e nuvem',
-          icon: Database,
-          badge: '(default)',
-          action: () => setActiveSubScreen('settings'),
-          keywords: 'firebase nuvem conta google sync sincronizacao banco default'
-        },
-        {
-          id: 'backup_json',
-          title: 'Backup & Restauração JSON',
-          desc: 'Exportar e importar dados locais com segurança',
-          icon: ShieldCheck,
-          action: () => setActiveSubScreen('settings'),
-          keywords: 'backup restauracao json exportar importar'
-        },
-        {
-          id: 'parametros_financeiros',
-          title: 'Parâmetros Financeiros',
-          desc: 'Configurar limites, reserva de emergência e regras',
-          icon: Sliders,
-          action: () => setActiveSubScreen('financial'),
-          keywords: 'parametros reserva metas configuracao'
-        },
-        {
-          id: 'central_alertas',
-          title: 'Central de Alertas',
-          desc: 'Avisos de vencimento e inconsistências',
-          icon: Bell,
-          action: () => setActiveSubScreen('alerts'),
-          badge: alertsCount > 0 ? `${alertsCount}` : undefined,
-          keywords: 'alertas avisos vencimentos notificacoes'
-        }
-      ]
-    }
-  ], [navigate, alertsCount]);
+  const menuCategories: MenuCategory[] = useMemo(
+    () => [
+      {
+        id: 'day',
+        title: 'Dia a dia',
+        icon: Wallet,
+        accent: 'text-blue-800',
+        iconBg: 'bg-blue-50',
+        items: [
+          {
+            id: 'extrato',
+            title: 'Extrato',
+            desc: 'Receitas, despesas e transferências',
+            icon: Receipt,
+            action: () => navigate('/lancamentos'),
+            keywords: 'extrato transacoes lancamentos movimentacoes receitas despesas'
+          },
+          {
+            id: 'contas',
+            title: 'Contas e saldos',
+            desc: 'Bancos, carteira e conciliação',
+            icon: Landmark,
+            action: () => navigate('/contas'),
+            keywords: 'contas bancos carteiras saldo patrimonio'
+          },
+          {
+            id: 'novo_lancamento',
+            title: 'Novo lançamento',
+            desc: 'Receita, despesa ou transferência',
+            icon: Plus,
+            action: () => setIsTxModalOpen(true),
+            badge: 'Rápido',
+            keywords: 'novo lancamento despesa receita adicionar'
+          },
+          {
+            id: 'categorias_pessoais',
+            title: 'Categorias',
+            desc: 'Organizar gastos e receitas',
+            icon: FolderTree,
+            action: () => setActiveSubScreen('categories'),
+            keywords: 'categorias grupos classificacao'
+          }
+        ]
+      },
+      {
+        id: 'plan',
+        title: 'Planejamento',
+        icon: Target,
+        accent: 'text-indigo-700',
+        iconBg: 'bg-indigo-50',
+        items: [
+          {
+            id: 'planejamento',
+            title: 'Orçamentos',
+            desc: 'Tetos por categoria e regra 50/30/20',
+            icon: Target,
+            action: () => navigate('/planejamento'),
+            keywords: 'orcamento planejamento tetos metas 50 30 20'
+          },
+          {
+            id: 'inteligencia',
+            title: 'Visão inteligente',
+            desc: 'Quanto posso gastar e projeções',
+            icon: Sparkles,
+            action: () => navigate('/inteligencia'),
+            keywords: 'inteligencia insights posso gastar custo vida projecao'
+          },
+          {
+            id: 'gastos',
+            title: 'Análise de gastos',
+            desc: 'Distribuição por categoria no mês',
+            icon: BarChart3,
+            action: () => navigate('/gastos'),
+            keywords: 'gastos graficos analise categorias consumo'
+          },
+          {
+            id: 'parametros_financeiros',
+            title: 'Reserva e regras',
+            desc: 'Reserva mínima e categorias essenciais',
+            icon: Sliders,
+            action: () => setActiveSubScreen('financial'),
+            keywords: 'parametros reserva metas configuracao'
+          }
+        ]
+      },
+      {
+        id: 'debts',
+        title: 'Dívidas e fixas',
+        icon: CreditCard,
+        accent: 'text-rose-700',
+        iconBg: 'bg-rose-50',
+        items: [
+          {
+            id: 'controle_dividas',
+            title: 'Dívidas',
+            desc: 'Financiamentos, cartão e quitação',
+            icon: ShieldAlert,
+            action: () => navigate('/dividas'),
+            keywords: 'dividas financiamento emprestimo quitacao'
+          },
+          {
+            id: 'contas_fixas',
+            title: 'Contas fixas',
+            desc: 'Água, luz, internet e recorrentes',
+            icon: RefreshCw,
+            action: () => navigate('/contas-fixas'),
+            keywords: 'contas fixas pendentes recorrentes agendadas agua luz internet'
+          },
+          {
+            id: 'parcelamentos',
+            title: 'Parcelamentos',
+            desc: 'Parcelas abertas de cartão e bancos',
+            icon: CreditCard,
+            action: () => navigate('/dividas'),
+            keywords: 'parcelas parcelamento cartao credito'
+          }
+        ]
+      },
+      {
+        id: 'reports',
+        title: 'Relatórios',
+        icon: FileText,
+        accent: 'text-amber-700',
+        iconBg: 'bg-amber-50',
+        items: [
+          {
+            id: 'relatorio_ia',
+            title: 'Relatório para IA',
+            desc: 'Diagnóstico e simulação de decisões',
+            icon: Sparkles,
+            action: () => navigate('/relatorios?tab=ai'),
+            badge: 'IA',
+            keywords: 'ia inteligência gemini relatorio diagnostico cenario'
+          },
+          {
+            id: 'relatorios',
+            title: 'Balanço e fluxo',
+            desc: 'Resumo mensal, fluxo e calendário',
+            icon: FileText,
+            action: () => navigate('/relatorios?tab=summary'),
+            keywords: 'balanco fluxo calendario relatorios'
+          },
+          {
+            id: 'importador_extrato',
+            title: 'Importar extrato',
+            desc: 'Arquivos OFX ou CSV do banco',
+            icon: UploadCloud,
+            action: () => setIsBankImportOpen(true),
+            keywords: 'importar extrato ofx csv banco'
+          },
+          {
+            id: 'central_alertas',
+            title: 'Central de alertas',
+            desc: 'Vencimentos, orçamentos e caixa',
+            icon: Bell,
+            action: () => setActiveSubScreen('alerts'),
+            badge: alertsCount > 0 ? `${alertsCount}` : undefined,
+            keywords: 'alertas avisos vencimentos notificacoes'
+          }
+        ]
+      },
+      {
+        id: 'system',
+        title: 'Conta e dados',
+        icon: Database,
+        accent: 'text-slate-600',
+        iconBg: 'bg-slate-100',
+        items: [
+          {
+            id: 'config_gerais',
+            title: 'Sincronização e backup',
+            desc: 'Conta Google, nuvem e restauração',
+            icon: Database,
+            action: () => setActiveSubScreen('settings'),
+            keywords: 'firebase nuvem conta google sync sincronizacao banco backup'
+          },
+          {
+            id: 'backup_json',
+            title: 'Exportar / importar JSON',
+            desc: 'Cópia de segurança dos seus dados',
+            icon: ShieldCheck,
+            action: () => setActiveSubScreen('settings'),
+            keywords: 'backup restauracao json exportar importar'
+          }
+        ]
+      }
+    ],
+    [navigate, alertsCount]
+  );
 
-  const visibleMenuCategories = menuCategories;
-
-  // Filtro de Busca em Tempo Real
   const filteredResults = useMemo(() => {
     if (!searchTerm.trim()) return null;
     const term = searchTerm.toLowerCase();
-
     const matches: MenuItem[] = [];
-    visibleMenuCategories.forEach(cat => {
+    menuCategories.forEach(cat => {
       cat.items.forEach(item => {
         if (
           item.title.toLowerCase().includes(term) ||
@@ -257,19 +296,51 @@ export const MoreHubScreen: React.FC = () => {
       });
     });
     return matches;
-  }, [searchTerm, visibleMenuCategories]);
+  }, [searchTerm, menuCategories]);
 
-  // Se uma sub-tela específica estiver ativa (Configurações, Categorias, etc.)
+  const renderMenuRow = (item: MenuItem) => {
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={item.action}
+        className="w-full p-3.5 px-4 hover:bg-slate-50 transition flex items-center justify-between text-left group active:scale-[0.99]"
+      >
+        <div className="flex items-center space-x-3.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 group-hover:text-blue-800 group-hover:bg-blue-50 flex items-center justify-center shrink-0 transition">
+            <Icon size={16} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-bold text-slate-800 group-hover:text-blue-900 transition truncate">
+                {item.title}
+              </span>
+              {item.badge && (
+                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200">
+                  {item.badge}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] text-slate-500 block truncate">{item.desc}</span>
+          </div>
+        </div>
+        <ChevronRight size={15} className="text-slate-300 group-hover:text-blue-800 transition shrink-0" />
+      </button>
+    );
+  };
+
   if (activeSubScreen) {
     return (
-      <div className="space-y-4 pb-28 animate-fade-in text-white">
+      <div className="space-y-4 pb-28 animate-fade-in text-slate-800">
         <div className="flex items-center justify-between pt-1">
           <button
+            type="button"
             onClick={() => setActiveSubScreen(null)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white transition active:scale-95"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-blue-900 hover:border-blue-200 transition active:scale-95 shadow-sm"
           >
             <ChevronLeft size={16} />
-            <span>Voltar ao Menu</span>
+            <span>Voltar ao menu</span>
           </button>
         </div>
 
@@ -282,173 +353,110 @@ export const MoreHubScreen: React.FC = () => {
   }
 
   return (
-    <div className="space-y-5 pb-28 animate-fade-in text-white">
-      {/* ========================================================================= */}
-      {/* 1. TOPO DO MENU: CAMPO DE PESQUISA & ENGRENAGEM DE CONFIGURAÇÕES          */}
-      {/* ========================================================================= */}
-      <div className="flex items-center justify-between pt-1 gap-3">
-        <div>
-          <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-            <span>Menu & Serviços</span>
-          </h1>
-          <p className="text-[11px] text-zinc-400 font-medium">Acesso rápido a todas as funções do app</p>
+    <div className="space-y-5 pb-28 animate-fade-in text-slate-800">
+      <div className="rounded-[1.75rem] bg-gradient-to-br from-[#002d6c] via-[#003882] to-[#0a4a9e] p-5 shadow-lg text-white relative overflow-hidden">
+        <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-[#fcca00]/10 blur-2xl pointer-events-none" />
+        <div className="relative flex items-start justify-between gap-3">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#fcca00]">
+              Finanças pessoais
+            </span>
+            <h1 className="text-xl font-black tracking-tight mt-1">Menu</h1>
+            <p className="text-[11px] text-blue-100/90 font-medium mt-0.5">
+              Tudo o que você precisa para controlar seu dinheiro
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveSubScreen('settings')}
+            className="p-2.5 rounded-2xl bg-blue-950/50 hover:bg-blue-950/70 border border-blue-500/30 text-blue-100 hover:text-[#fcca00] transition active:scale-95 shrink-0"
+            title="Configurações"
+          >
+            <SettingsIcon size={18} />
+          </button>
         </div>
-
-        {/* Botão de Engrenagem Direto para Configurações Gerais */}
-        <button
-          onClick={() => setActiveSubScreen('settings')}
-          className="p-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-[#fcca00] transition active:scale-95 shadow-md shrink-0"
-          title="Configurações Gerais (Firebase, Backup, Exportação)"
-        >
-          <SettingsIcon size={19} />
-        </button>
       </div>
 
-      {/* CAMPO DE PESQUISA EM TEMPO REAL: "O que você procura?" */}
       <div className="relative">
-        <Search className="absolute left-3.5 top-3 text-zinc-400" size={17} />
+        <Search className="absolute left-3.5 top-3.5 text-slate-400" size={17} />
         <input
           type="text"
-          placeholder="O que você procura? (ex: extrato, orçamento, dívidas, backup...)"
+          placeholder="Buscar: extrato, orçamento, dívidas, backup..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-[#141416] border border-zinc-800 text-white placeholder-zinc-400 text-xs focus:border-blue-500 outline-none shadow-inner"
+          className="w-full pl-10 pr-9 py-3 rounded-2xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm"
         />
         {searchTerm && (
           <button
+            type="button"
             onClick={() => setSearchTerm('')}
-            className="absolute right-3 top-3 text-zinc-400 hover:text-white"
+            className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-700"
           >
             <X size={15} />
           </button>
         )}
       </div>
 
-      {/* CARD DE STATUS DA CONTA & SINCRONIZAÇÃO NUVEM */}
       <AuthHeaderWidget />
 
-      {/* ========================================================================= */}
-      {/* 2. RESULTADOS DA PESQUISA EM TEMPO REAL                                   */}
-      {/* ========================================================================= */}
       {filteredResults !== null ? (
         <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-zinc-400">
-              Resultados da Busca ({filteredResults.length})
-            </span>
-          </div>
-
+          <span className="text-xs font-black uppercase tracking-wider text-slate-500 px-1">
+            Resultados ({filteredResults.length})
+          </span>
           {filteredResults.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs">
-              Nenhuma função encontrada para "{searchTerm}".
+            <div className="p-8 text-center rounded-2xl bg-white border border-slate-200 text-slate-500 text-xs shadow-sm">
+              Nenhuma função encontrada para &quot;{searchTerm}&quot;.
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredResults.map(item => {
-                const Icon = item.icon;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={item.action}
-                    className="p-3.5 rounded-2xl bg-[#141416] border border-zinc-800 hover:border-blue-500/50 transition flex items-center justify-between cursor-pointer group active:scale-[0.99]"
-                  >
-                    <div className="flex items-center space-x-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
-                        <Icon size={18} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate">
-                            {item.title}
-                          </span>
-                          {item.badge && (
-                            <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                              {item.badge}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-zinc-400 block truncate">{item.desc}</span>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-zinc-400 group-hover:text-white transition shrink-0" />
-                  </div>
-                );
-              })}
+            <div className="rounded-3xl bg-white border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
+              {filteredResults.map(renderMenuRow)}
             </div>
           )}
         </div>
       ) : (
-        /* ========================================================================= */
-        /* 3. CORPO DO MENU: ACCORDION EXPANSÍVEL POR CATEGORIA (ESTILO BB)          */
-        /* ========================================================================= */
         <div className="space-y-3">
-          {visibleMenuCategories.map(category => {
+          {menuCategories.map(category => {
             const isOpen = openSections[category.id] ?? false;
             const CategoryIcon = category.icon;
 
             return (
-              <div 
+              <div
                 key={category.id}
-                className="rounded-3xl bg-[#141416] border border-zinc-800/90 overflow-hidden shadow-xs transition"
+                className="rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-sm"
               >
-                {/* Cabeçalho do Accordion */}
                 <button
+                  type="button"
                   onClick={() => toggleSection(category.id)}
-                  className="w-full p-4 flex items-center justify-between bg-zinc-900/60 hover:bg-zinc-800/40 transition text-left"
+                  className="w-full p-4 flex items-center justify-between hover:bg-slate-50/80 transition text-left"
                 >
                   <div className="flex items-center space-x-3 min-w-0">
-                    <div className={`p-2 rounded-xl bg-zinc-800 ${category.color} shrink-0`}>
+                    <div
+                      className={`p-2.5 rounded-xl ${category.iconBg} ${category.accent} shrink-0`}
+                    >
                       <CategoryIcon size={18} />
                     </div>
                     <div>
-                      <h3 className="text-xs font-black text-white tracking-wide">
+                      <h3 className="text-sm font-black text-slate-900 tracking-tight">
                         {category.title}
                       </h3>
-                      <span className="text-[10px] text-zinc-400">
-                        {category.items.length} opções disponíveis
+                      <span className="text-[11px] text-slate-500">
+                        {category.items.length} opções
                       </span>
                     </div>
                   </div>
-
-                  <div className={`p-1 rounded-lg text-zinc-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-white' : ''}`}>
+                  <div
+                    className={`p-1 rounded-lg text-slate-400 transition-transform duration-200 ${
+                      isOpen ? 'rotate-180 text-blue-800' : ''
+                    }`}
+                  >
                     <ChevronDown size={17} />
                   </div>
                 </button>
 
-                {/* Itens Internos do Accordion */}
                 {isOpen && (
-                  <div className="divide-y divide-zinc-800/60 border-t border-zinc-800/60 bg-[#121214]">
-                    {category.items.map(item => {
-                      const ItemIcon = item.icon;
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={item.action}
-                          className="p-3.5 px-4 hover:bg-zinc-800/30 transition flex items-center justify-between cursor-pointer group active:scale-[0.99]"
-                        >
-                          <div className="flex items-center space-x-3.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-800/80 text-zinc-300 group-hover:text-blue-400 group-hover:bg-blue-500/10 flex items-center justify-center shrink-0 transition">
-                              <ItemIcon size={16} />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs font-bold text-white group-hover:text-blue-400 transition truncate">
-                                  {item.title}
-                                </span>
-                                {item.badge && (
-                                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-[#fcca00] border border-amber-500/30">
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[10px] text-zinc-400 block truncate">{item.desc}</span>
-                            </div>
-                          </div>
-
-                          <ChevronRight size={15} className="text-zinc-400 group-hover:text-white transition shrink-0" />
-                        </div>
-                      );
-                    })}
+                  <div className="divide-y divide-slate-100 border-t border-slate-100">
+                    {category.items.map(renderMenuRow)}
                   </div>
                 )}
               </div>
@@ -457,19 +465,9 @@ export const MoreHubScreen: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL DE LANÇAMENTO RÁPIDO */}
-      {isTxModalOpen && (
-        <TransactionForm
-          onClose={() => setIsTxModalOpen(false)}
-        />
-      )}
-
-      {/* MODAL DE IMPORTAÇÃO BANCÁRIA */}
+      {isTxModalOpen && <TransactionForm onClose={() => setIsTxModalOpen(false)} />}
       {isBankImportOpen && (
-        <BankImportModal
-          isOpen={isBankImportOpen}
-          onClose={() => setIsBankImportOpen(false)}
-        />
+        <BankImportModal isOpen={isBankImportOpen} onClose={() => setIsBankImportOpen(false)} />
       )}
     </div>
   );

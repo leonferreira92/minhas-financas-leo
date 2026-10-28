@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, Receipt, CreditCard, Menu, 
-  Plus, Sparkles, LogOut, ChevronRight
+  Plus, Sparkles, LogOut
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 
@@ -39,14 +39,36 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   ].some(path => location.pathname === path || location.pathname.startsWith('/dividas') || location.pathname.startsWith('/debts'));
 
   const isMaisActive = [
-    '/mais', '/settings', '/financial-settings', '/categories', '/alerts', '/gastos', '/analise-gastos', '/contas', '/contas-fixas', '/fixas', '/relatorios'
-  ].some(path => location.pathname === path || location.pathname.startsWith('/mais') || location.pathname.startsWith('/relatorios') || location.pathname.startsWith('/contas-fixas'));
+    '/mais',
+    '/settings',
+    '/financial-settings',
+    '/categories',
+    '/alerts',
+    '/gastos',
+    '/analise-gastos',
+    '/contas',
+    '/contas-fixas',
+    '/fixas',
+    '/relatorios',
+    '/planejamento',
+    '/orcamentos',
+    '/inteligencia',
+    '/insights'
+  ].some(
+    path =>
+      location.pathname === path ||
+      location.pathname.startsWith('/mais') ||
+      location.pathname.startsWith('/relatorios') ||
+      location.pathname.startsWith('/contas-fixas') ||
+      location.pathname.startsWith('/planejamento') ||
+      location.pathname.startsWith('/inteligencia')
+  );
 
   const navItems = [
     { to: '/', label: 'Início', icon: Home, isActive: isHomeActive },
     { to: '/lancamentos', label: 'Lançamentos', icon: Receipt, isActive: isLancamentosActive },
     { to: '/dividas', label: 'Dívidas', icon: CreditCard, isActive: isDividasActive },
-    { to: '/mais', label: 'Mais/Ajustes', icon: Menu, isActive: isMaisActive, hasBadge: hasAlerts },
+    { to: '/mais', label: 'Mais', icon: Menu, isActive: isMaisActive, hasBadge: hasAlerts },
   ];
 
   return (

@@ -18,20 +18,20 @@ export const PersonalInsightsScreen: React.FC = () => {
       <div className="flex items-start gap-3 pt-1">
         <Link
           to="/mais"
-          className="mt-1 p-2 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+          className="mt-1 p-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-blue-900 hover:border-blue-200 transition shadow-sm"
           aria-label="Voltar"
         >
           <ChevronLeft size={18} />
         </Link>
         <div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900/50 inline-flex items-center gap-1">
-            <Sparkles size={10} /> Inteligência
+          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-800 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 inline-flex items-center gap-1">
+            <Sparkles size={10} /> Finanças pessoais
           </span>
-          <h1 className="text-xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">
+          <h1 className="text-xl font-black text-slate-900 mt-1.5 tracking-tight">
             Visão inteligente
           </h1>
-          <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium mt-0.5">
-            Quanto posso gastar, custo de vida, médias e projeções — só finanças pessoais.
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+            Quanto posso gastar, custo de vida, médias e projeções do seu caixa.
           </p>
         </div>
       </div>
