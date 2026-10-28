@@ -34,6 +34,7 @@ import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { isLegacyArchivedTx } from '../services/legacyCutoffMigration';
 import { isLoanMovement, isNeutralCashFlowMovement } from '../services/aiReportService';
+import { computeChainedMonthProjection } from '../services/monthCashPanel';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
 type ViewMode = 'month' | 'future';
@@ -63,12 +64,14 @@ export const ExtratoScreen: React.FC = () => {
     transactions,
     categories,
     accounts,
+    debts,
     isBlurred,
     toggleBlur,
     activeScope,
     updateTransaction,
     deleteTransaction,
-    getAccountBalance
+    getAccountBalance,
+    getDebtProgress
   } = useFinance();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -189,10 +192,11 @@ export const ExtratoScreen: React.FC = () => {
             } else if (t.date < todayStr) {
               return false;
             }
-          } else if (statusFilter === 'pending' && selectedMonth === currentYearMonth) {
+          } else if (selectedMonth === currentYearMonth) {
+            // Mês atual: despesas pendentes atrasadas entram na lista (igual ao previsto do Início)
             const monthStart = `${selectedMonth}-01`;
             if (!t.date) return false;
-            if (t.type === 'expense') {
+            if (t.type === 'expense' && t.status === 'pending') {
               if (!(t.date.startsWith(selectedMonth) || t.date < monthStart)) return false;
             } else if (!t.date.startsWith(selectedMonth)) {
               return false;
@@ -251,13 +255,67 @@ export const ExtratoScreen: React.FC = () => {
     isBlurred
   ]);
 
+  const projection = useMemo(() => {
+    // Conta específica: mantém recorte simples (sem encadear dívidas globais)
+    if (selectedAccountId !== 'all') {
+      const accBalance = getAccountBalance(selectedAccountId);
+      let receive = 0;
+      let pay = 0;
+      let overdueCount = 0;
+      let overdueAmount = 0;
+      filteredTransactions.forEach(t => {
+        if (t.status !== 'pending') return;
+        if (isNeutralCashFlowMovement(t)) return;
+        const amount = Math.abs(Number(t.amount) || 0);
+        if (t.type === 'income' || t.type === 'goal_withdraw') receive += amount;
+        else if (t.type === 'expense' || t.type === 'goal_deposit') {
+          pay += amount;
+          if (t.date && t.date < todayStr) {
+            overdueCount += 1;
+            overdueAmount += amount;
+          }
+        }
+      });
+      return {
+        mode: 'current' as const,
+        currentBalance: Number(accBalance.toFixed(2)),
+        monthToReceive: Number(receive.toFixed(2)),
+        monthToPay: Number(pay.toFixed(2)),
+        monthSyntheticDebt: 0,
+        chainToReceive: Number(receive.toFixed(2)),
+        chainToPay: Number(pay.toFixed(2)),
+        projected: Number((accBalance + receive - pay).toFixed(2)),
+        monthsInChain: [selectedMonth],
+        overdueCount,
+        overdueAmount: Number(overdueAmount.toFixed(2))
+      };
+    }
+
+    return computeChainedMonthProjection({
+      accounts,
+      transactions,
+      debts,
+      getAccountBalance,
+      getDebtRemaining: id => getDebtProgress(id).remaining,
+      targetMonth: selectedMonth,
+      mode: viewMode === 'future' ? 'future' : 'month'
+    });
+  }, [
+    selectedAccountId,
+    filteredTransactions,
+    todayStr,
+    selectedMonth,
+    viewMode,
+    accounts,
+    transactions,
+    debts,
+    getAccountBalance,
+    getDebtProgress
+  ]);
+
   const metrics = useMemo(() => {
     let entradasRealizadas = 0;
     let saidasRealizadas = 0;
-    let futurosReceber = 0;
-    let comprometidoPagar = 0;
-    let overdueCount = 0;
-    let overdueAmount = 0;
     let pendingCount = 0;
 
     filteredTransactions.forEach(t => {
@@ -278,51 +336,30 @@ export const ExtratoScreen: React.FC = () => {
         else if (isExp) saidasRealizadas += amount;
       } else if (t.status === 'pending') {
         pendingCount += 1;
-        if (isInc) futurosReceber += amount;
-        else if (isExp) {
-          comprometidoPagar += amount;
-          if (t.date && t.date < todayStr) {
-            overdueCount += 1;
-            overdueAmount += amount;
-          }
-        }
       }
     });
-
-    const contasEscopo = accounts.filter(a => {
-      if (a.enabled === false) return false;
-      if (selectedAccountId !== 'all') return a.id === selectedAccountId;
-      return matchesScope(a.scope, activeScope);
-    });
-    const saldoTotalContas = Number(
-      contasEscopo.reduce((s, a) => s + getAccountBalance(a.id), 0).toFixed(2)
-    );
 
     return {
       entradasRealizadas: Number(entradasRealizadas.toFixed(2)),
       saidasRealizadas: Number(saidasRealizadas.toFixed(2)),
-      futurosReceber: Number(futurosReceber.toFixed(2)),
-      comprometidoPagar: Number(comprometidoPagar.toFixed(2)),
-      saldoTotalContas,
-      saldoProjetadoFinal: Number(
-        (saldoTotalContas + futurosReceber - comprometidoPagar).toFixed(2)
-      ),
-      overdueCount,
-      overdueAmount: Number(overdueAmount.toFixed(2)),
+      futurosReceber: projection.monthToReceive,
+      comprometidoPagar: projection.monthToPay,
+      saldoTotalContas: projection.currentBalance,
+      saldoProjetadoFinal: projection.projected,
+      monthSyntheticDebt: projection.monthSyntheticDebt,
+      chainToReceive: projection.chainToReceive,
+      chainToPay: projection.chainToPay,
+      projectionMode: projection.mode,
+      monthsInChain: projection.monthsInChain,
+      overdueCount: projection.overdueCount,
+      overdueAmount: projection.overdueAmount,
       pendingCount,
       txCount: filteredTransactions.length
     };
-  }, [
-    filteredTransactions,
-    activeScope,
-    selectedAccountId,
-    accounts,
-    getAccountBalance,
-    todayStr
-  ]);
+  }, [filteredTransactions, selectedAccountId, projection]);
 
   const insight = useMemo(() => {
-    if (viewMode === 'future') {
+    if (viewMode === 'future' || metrics.projectionMode === 'agenda') {
       if (metrics.overdueCount > 0) {
         return {
           tone: 'bad' as const,
@@ -340,7 +377,15 @@ export const ExtratoScreen: React.FC = () => {
       return {
         tone: 'ok' as const,
         label: 'Agenda',
-        tip: 'Visão de tudo que ainda está aberto daqui pra frente — inclusive atrasados.'
+        tip: 'Tudo que ainda está aberto daqui pra frente — inclusive atrasados.'
+      };
+    }
+
+    if (metrics.projectionMode === 'past') {
+      return {
+        tone: 'ok' as const,
+        label: 'Histórico',
+        tip: 'Mês já passou. O previsto só aplica pendências ainda abertas desse mês sobre o caixa de hoje — não reescreve o histórico pago.'
       };
     }
 
@@ -352,18 +397,36 @@ export const ExtratoScreen: React.FC = () => {
       };
     }
 
+    if (metrics.projectionMode === 'future') {
+      const chainNote =
+        metrics.monthsInChain.length > 1
+          ? ` Encadeado de ${formatMonthShort(metrics.monthsInChain[0])} até ${formatMonthShort(metrics.monthsInChain[metrics.monthsInChain.length - 1])} (caixa hoje + pendências desses meses${metrics.monthSyntheticDebt > 0 ? ' + parcelas de dívidas projetadas' : ''}).`
+          : '';
+      if (metrics.saldoProjetadoFinal > 200) {
+        return { tone: 'good' as const, label: 'No azul', tip: `Projeção até este mês com folga.${chainNote}` };
+      }
+      if (metrics.saldoProjetadoFinal >= 0) {
+        return { tone: 'ok' as const, label: 'No limite', tip: `Projeção até este mês perto de zero.${chainNote}` };
+      }
+      return {
+        tone: 'bad' as const,
+        label: 'No vermelho',
+        tip: `Projeção até este mês negativa — faltam receitas ou sobram contas no caminho.${chainNote}`
+      };
+    }
+
     if (metrics.saldoProjetadoFinal > 200) {
       return {
         tone: 'good' as const,
         label: 'No azul',
-        tip: 'Se as pendências se confirmarem, o período fecha com folga.'
+        tip: 'Se as pendências do mês se confirmarem, fecha com folga.'
       };
     }
     if (metrics.saldoProjetadoFinal >= 0) {
       return {
         tone: 'ok' as const,
         label: 'No limite',
-        tip: 'Fecha perto de zero — evite gastos extras neste período.'
+        tip: 'Fecha perto de zero — evite gastos extras neste mês.'
       };
     }
     return {
@@ -613,7 +676,13 @@ export const ExtratoScreen: React.FC = () => {
                 {formatCurrency(metrics.saldoProjetadoFinal)}
               </p>
               <p className="text-[11px] text-blue-200 mt-1 font-medium">
-                Saldo agora + a receber − a pagar neste filtro
+                {metrics.projectionMode === 'future'
+                  ? 'Caixa de hoje ± pendências desde o mês atual até este'
+                  : metrics.projectionMode === 'agenda'
+                  ? 'Caixa de hoje + tudo aberto na agenda'
+                  : metrics.projectionMode === 'past'
+                  ? 'Caixa de hoje ± pendências remanescentes deste mês'
+                  : 'Como o mês tende a fechar (agora + a receber − a pagar)'}
               </p>
             </div>
             <span
@@ -627,6 +696,16 @@ export const ExtratoScreen: React.FC = () => {
             <Lightbulb size={14} className="text-[#fcca00] shrink-0 mt-0.5" />
             <span>{insight.tip}</span>
           </p>
+
+          {metrics.projectionMode === 'future' && metrics.monthsInChain.length > 1 && (
+            <p className="text-[10px] text-blue-200/90 font-medium">
+              Acumulado na trilha: +{formatCurrency(metrics.chainToReceive)} a receber · −
+              {formatCurrency(metrics.chainToPay)} a pagar
+              {metrics.monthSyntheticDebt > 0
+                ? ` (neste mês: ${formatCurrency(metrics.monthSyntheticDebt)} de parcelas de dívida sem lançamento)`
+                : ''}
+            </p>
+          )}
 
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-blue-950/50 border border-blue-700/40 p-2.5">
@@ -651,6 +730,9 @@ export const ExtratoScreen: React.FC = () => {
               <p className="text-sm font-black text-emerald-300 tabular-nums mt-0.5">
                 {formatCurrency(metrics.futurosReceber)}
               </p>
+              {metrics.projectionMode === 'future' && (
+                <p className="text-[8px] text-emerald-400/80 font-bold mt-0.5">só este mês</p>
+              )}
             </button>
             <button
               type="button"
@@ -663,6 +745,9 @@ export const ExtratoScreen: React.FC = () => {
               <p className="text-sm font-black text-rose-300 tabular-nums mt-0.5">
                 {formatCurrency(metrics.comprometidoPagar)}
               </p>
+              {metrics.projectionMode === 'future' && (
+                <p className="text-[8px] text-rose-400/80 font-bold mt-0.5">só este mês</p>
+              )}
             </button>
           </div>
 
