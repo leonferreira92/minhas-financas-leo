@@ -1,54 +1,84 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFinance } from '../context/FinanceContext';
-import { 
-  Receipt, Plus, Filter, UploadCloud, Sparkles, 
-  ChevronLeft, ChevronRight, Clock, CheckCircle2, 
-  ArrowUpRight, ArrowDownRight, Search, X, Calendar, 
-  Landmark, Music, Tag, ArrowRightLeft, AlertCircle,
-  Eye, EyeOff, Check, Trash2, Edit3, Handshake
+import {
+  Receipt,
+  Plus,
+  Filter,
+  UploadCloud,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  Search,
+  X,
+  Calendar,
+  Landmark,
+  Eye,
+  EyeOff,
+  Check,
+  Trash2,
+  Handshake,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Lightbulb
 } from 'lucide-react';
-import { Transaction, matchesScope, Account } from '../types';
+import { Transaction, matchesScope } from '../types';
 import { getIcon } from '../constants';
 import { TransactionForm } from './TransactionForm';
 import { BankImportModal } from './BankImportModal';
-import { ScopeSelector } from './ScopeSelector';
 import { getLocalDateString, getCurrentMonthPrefix } from '../services/dateUtils';
-import { useDraggableScroll } from '../hooks/useDraggableScroll';
 import { PERSONAL_ONLY_MODE } from '../services/personalOnlyMode';
 import { isLegacyArchivedTx } from '../services/legacyCutoffMigration';
-import { isLoanMovement } from '../services/aiReportService';
+import { isLoanMovement, isNeutralCashFlowMovement } from '../services/aiReportService';
 
 type TypeStatusFilter = 'all' | 'paid' | 'pending' | 'shows' | 'accounts';
+type ViewMode = 'month' | 'future';
+
+const shiftMonth = (ym: string, delta: number): string => {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const formatMonthLabel = (ym: string) => {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+};
+
+const formatMonthShort = (ym: string) => {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1)
+    .toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
+    .replace('.', '');
+};
 
 export const ExtratoScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { 
-    transactions, 
-    categories, 
-    accounts, 
-    isBlurred, 
-    toggleBlur, 
+  const {
+    transactions,
+    categories,
+    accounts,
+    isBlurred,
+    toggleBlur,
     activeScope,
     updateTransaction,
     deleteTransaction,
     getAccountBalance
   } = useFinance();
 
-  // Drag-to-scroll refs for all carousels
-  const summaryCarouselRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.4 });
-  const quickActionsRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
-  const monthsRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
-  const statusPillsRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
-
-  // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [txInitialType, setTxInitialType] = useState<'income' | 'expense' | 'transfer'>('expense');
   const [isBankImportOpen, setIsBankImportOpen] = useState(false);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const monthPickerRef = useRef<HTMLInputElement>(null);
 
-  // Month selector
   const todayStr = useMemo(() => getLocalDateString(), []);
   const currentYearMonth = useMemo(() => getCurrentMonthPrefix(), []);
   const monthFromUrl = searchParams.get('month');
@@ -58,9 +88,8 @@ export const ExtratoScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
     monthFromUrl && /^\d{4}-\d{2}$/.test(monthFromUrl) ? monthFromUrl : currentYearMonth
   );
-  const [isFutureOnly, setIsFutureOnly] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('month');
 
-  // Filter pills
   const [statusFilter, setStatusFilter] = useState<TypeStatusFilter>(() => {
     if (statusFromUrl === 'paid' || statusFromUrl === 'pending' || statusFromUrl === 'all') {
       return statusFromUrl;
@@ -73,7 +102,7 @@ export const ExtratoScreen: React.FC = () => {
   useEffect(() => {
     if (monthFromUrl && /^\d{4}-\d{2}$/.test(monthFromUrl)) {
       setSelectedMonth(monthFromUrl);
-      setIsFutureOnly(false);
+      setViewMode('month');
     }
     if (statusFromUrl === 'paid' || statusFromUrl === 'pending' || statusFromUrl === 'all') {
       setStatusFilter(statusFromUrl);
@@ -83,38 +112,20 @@ export const ExtratoScreen: React.FC = () => {
   useEffect(() => {
     if (!highlightId) return;
     const el = document.getElementById(`tx-${highlightId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [highlightId, selectedMonth, statusFilter, transactions]);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightId, selectedMonth, statusFilter, viewMode, transactions]);
 
-  // Carousel Active Card (0: Saldo Atual, 1: Futuros/Cachês, 2: Comprometido)
-  const [carouselIndex, setCarouselIndex] = useState(0);
+  useEffect(() => {
+    if (showMonthPicker && monthPickerRef.current) {
+      monthPickerRef.current.showPicker?.();
+      monthPickerRef.current.focus();
+    }
+  }, [showMonthPicker]);
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return 'R$ •••••';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
-
-  // Generate Months List for horizontal month slider
-  const monthList = useMemo(() => {
-    const list: { label: string; value: string; isCurrent: boolean }[] = [];
-    const [currentY, currentM] = currentYearMonth.split('-').map(Number);
-
-    for (let i = -3; i <= 3; i++) {
-      const d = new Date(currentY, currentM - 1 + i, 1);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const val = `${y}-${m}`;
-      const label = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
-      list.push({
-        label,
-        value: val,
-        isCurrent: val === currentYearMonth
-      });
-    }
-    return list;
-  }, [currentYearMonth]);
 
   const normalizeSearchText = (val?: string | null) =>
     (val || '')
@@ -123,141 +134,260 @@ export const ExtratoScreen: React.FC = () => {
       .replace(/[\u0300-\u036f]/g, '')
       .trim();
 
-  // All filtered transactions for the view
+  /** Meses com lançamento real — atalhos inteligentes, sem limite ±3 */
+  const monthsWithActivity = useMemo(() => {
+    const set = new Set<string>();
+    transactions.forEach(t => {
+      if (!t?.date || t.status === 'cancelled' || isLegacyArchivedTx(t)) return;
+      set.add(t.date.slice(0, 7));
+    });
+    set.add(currentYearMonth);
+    set.add(selectedMonth);
+    return Array.from(set).sort().reverse();
+  }, [transactions, currentYearMonth, selectedMonth]);
+
+  const nearbyMonths = useMemo(() => {
+    // Faixa visual curta ao redor do mês escolhido (navegação rápida)
+    return [-2, -1, 0, 1, 2].map(delta => {
+      const value = shiftMonth(selectedMonth, delta);
+      return {
+        value,
+        label: formatMonthShort(value),
+        isCurrent: value === currentYearMonth,
+        isSelected: value === selectedMonth && viewMode === 'month'
+      };
+    });
+  }, [selectedMonth, currentYearMonth, viewMode]);
+
   const filteredTransactions = useMemo(() => {
     const hasSearch = searchTerm.trim().length > 0;
     const normTerm = normalizeSearchText(searchTerm);
+    const isFutureOnly = viewMode === 'future';
 
-    return transactions.filter(t => {
-      if (!t || t.status === 'cancelled') return false;
-      if (isLegacyArchivedTx(t)) return false; // fora do extrato ativo (corte 01/10)
+    return transactions
+      .filter(t => {
+        if (!t || t.status === 'cancelled') return false;
+        if (isLegacyArchivedTx(t)) return false;
 
-      // 1. Filtro por Conta (independente da pílula ativa, respeita a conta selecionada)
-      if (selectedAccountId !== 'all') {
-        if (t.accountId !== selectedAccountId && t.destinationAccountId !== selectedAccountId) {
+        if (selectedAccountId !== 'all') {
+          if (t.accountId !== selectedAccountId && t.destinationAccountId !== selectedAccountId) {
+            return false;
+          }
+        } else if (!hasSearch) {
+          const acc = accounts.find(a => a.id === t.accountId);
+          const scopeMatches =
+            matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
+          if (!scopeMatches) return false;
+        }
+
+        const isHighlighted = Boolean(highlightId && t.id === highlightId);
+        if (!isHighlighted) {
+          if (isFutureOnly) {
+            if (!t.date) return false;
+            if (t.status === 'pending' && t.type === 'expense' && t.date < todayStr) {
+              // inclui atrasada
+            } else if (t.date < todayStr) {
+              return false;
+            }
+          } else if (statusFilter === 'pending' && selectedMonth === currentYearMonth) {
+            const monthStart = `${selectedMonth}-01`;
+            if (!t.date) return false;
+            if (t.type === 'expense') {
+              if (!(t.date.startsWith(selectedMonth) || t.date < monthStart)) return false;
+            } else if (!t.date.startsWith(selectedMonth)) {
+              return false;
+            }
+          } else {
+            if (!t.date || !t.date.startsWith(selectedMonth)) return false;
+          }
+        }
+
+        if (statusFilter === 'paid' && t.status !== 'paid') return false;
+        if (statusFilter === 'pending' && t.status !== 'pending') return false;
+        if (
+          statusFilter === 'shows' &&
+          !(t.showId || t.categoryId === 'cat_33' || t.scope === 'BUSINESS')
+        ) {
           return false;
         }
-      } else if (!hasSearch) {
-        // Quando em "Todas as Contas" e sem busca textual ativa, filtra pelo escopo ativo (considerando também o escopo da conta)
-        const acc = accounts.find(a => a.id === t.accountId);
-        const scopeMatches = matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
-        if (!scopeMatches) return false;
-      }
 
-      // 2. Filtro de Mês ou Futuros
-      // Destaque direto (ex.: veio do Painel) ignora mês para localizar o item
-      const isHighlighted = Boolean(highlightId && t.id === highlightId);
-      if (!isHighlighted) {
-        if (isFutureOnly) {
-          // Futuros + atrasadas ainda abertas (contas a pagar reais)
-          if (!t.date) return false;
-          if (t.status === 'pending' && t.type === 'expense' && t.date < todayStr) {
-            // inclui atrasada
-          } else if (t.date < todayStr) {
-            return false;
-          }
-        } else if (statusFilter === 'pending' && selectedMonth === currentYearMonth) {
-          // Pendentes do mês atual + despesas atrasadas
-          const monthStart = `${selectedMonth}-01`;
-          if (!t.date) return false;
-          if (t.type === 'expense') {
-            if (!(t.date.startsWith(selectedMonth) || t.date < monthStart)) return false;
-          } else if (!t.date.startsWith(selectedMonth)) {
-            return false;
-          }
-        } else {
-          if (!t.date || !t.date.startsWith(selectedMonth)) return false;
+        if (hasSearch) {
+          const descMatch = normalizeSearchText(t.description).includes(normTerm);
+          const showMatch = normalizeSearchText(t.showName).includes(normTerm);
+          const cat = categories.find(c => c.id === t.categoryId);
+          const catMatch = normalizeSearchText(cat?.name).includes(normTerm);
+          const acc = accounts.find(a => a.id === t.accountId);
+          const destAcc = t.destinationAccountId
+            ? accounts.find(a => a.id === t.destinationAccountId)
+            : undefined;
+          const accMatch =
+            normalizeSearchText(acc?.name).includes(normTerm) ||
+            normalizeSearchText(destAcc?.name).includes(normTerm);
+          const amtStr = String(Math.abs(Number(t.amount) || 0));
+          const amtFormatted = formatCurrency(Math.abs(Number(t.amount) || 0)).toLowerCase();
+          const amtMatch = amtStr.includes(normTerm) || amtFormatted.includes(normTerm);
+          if (!descMatch && !showMatch && !catMatch && !accMatch && !amtMatch) return false;
         }
-      }
 
-      // 3. Status e Tipo (Pílulas)
-      if (statusFilter === 'paid' && t.status !== 'paid') return false;
-      if (statusFilter === 'pending' && t.status !== 'pending') return false;
-      if (statusFilter === 'shows' && !(t.showId || t.categoryId === 'cat_33' || t.scope === 'BUSINESS')) return false;
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0)
+      );
+  }, [
+    transactions,
+    activeScope,
+    viewMode,
+    selectedMonth,
+    statusFilter,
+    selectedAccountId,
+    searchTerm,
+    todayStr,
+    categories,
+    accounts,
+    highlightId,
+    currentYearMonth,
+    isBlurred
+  ]);
 
-      // 4. Termo de busca (considera de forma transparente todas as contas selecionadas ou a conta ativa)
-      if (hasSearch) {
-        const descMatch = normalizeSearchText(t.description).includes(normTerm);
-        const showMatch = normalizeSearchText(t.showName).includes(normTerm);
-        const cat = categories.find(c => c.id === t.categoryId);
-        const catMatch = normalizeSearchText(cat?.name).includes(normTerm);
-        const acc = accounts.find(a => a.id === t.accountId);
-        const destAcc = t.destinationAccountId ? accounts.find(a => a.id === t.destinationAccountId) : undefined;
-        const accMatch =
-          normalizeSearchText(acc?.name).includes(normTerm) ||
-          normalizeSearchText(destAcc?.name).includes(normTerm);
-        const amtStr = String(Math.abs(Number(t.amount) || 0));
-        const amtFormatted = formatCurrency(Math.abs(Number(t.amount) || 0)).toLowerCase();
-        const amtMatch = amtStr.includes(normTerm) || amtFormatted.includes(normTerm);
-
-        if (!descMatch && !showMatch && !catMatch && !accMatch && !amtMatch) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      // Ordenação decrescente de data, pendentes com destaque
-      return (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
-    });
-  }, [transactions, activeScope, isFutureOnly, selectedMonth, statusFilter, selectedAccountId, searchTerm, todayStr, categories, accounts, highlightId, currentYearMonth]);
-
-  // Totais do Período Selecionado (baseados nas transações filtradas e contas selecionadas)
   const metrics = useMemo(() => {
-    let saldoRealizado = 0;
     let entradasRealizadas = 0;
     let saidasRealizadas = 0;
     let futurosReceber = 0;
     let comprometidoPagar = 0;
+    let overdueCount = 0;
+    let overdueAmount = 0;
+    let pendingCount = 0;
 
     filteredTransactions.forEach(t => {
       const amount = Math.abs(Number(t.amount) || 0);
       const isInc =
         t.type === 'income' ||
         t.type === 'goal_withdraw' ||
-        (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
+        (t.type === 'transfer' &&
+          selectedAccountId !== 'all' &&
+          t.destinationAccountId === selectedAccountId);
       const isExp =
         t.type === 'expense' ||
         t.type === 'goal_deposit' ||
         (t.type === 'transfer' && (selectedAccountId === 'all' || t.accountId === selectedAccountId));
 
       if (t.status === 'paid') {
-        if (isInc) {
-          entradasRealizadas += amount;
-          saldoRealizado += amount;
-        } else if (isExp) {
-          saidasRealizadas += amount;
-          saldoRealizado -= amount;
-        }
+        if (isInc) entradasRealizadas += amount;
+        else if (isExp) saidasRealizadas += amount;
       } else if (t.status === 'pending') {
-        if (isInc) {
-          futurosReceber += amount;
-        } else if (isExp) {
+        pendingCount += 1;
+        if (isInc) futurosReceber += amount;
+        else if (isExp) {
           comprometidoPagar += amount;
+          if (t.date && t.date < todayStr) {
+            overdueCount += 1;
+            overdueAmount += amount;
+          }
         }
       }
     });
 
-    // Saldo Total das contas ativas correspondentes ao filtro de conta ou escopo
     const contasEscopo = accounts.filter(a => {
       if (a.enabled === false) return false;
       if (selectedAccountId !== 'all') return a.id === selectedAccountId;
       return matchesScope(a.scope, activeScope);
     });
-    const saldoTotalContas = parseFloat(
+    const saldoTotalContas = Number(
       contasEscopo.reduce((s, a) => s + getAccountBalance(a.id), 0).toFixed(2)
     );
 
     return {
-      saldoRealizado: parseFloat(saldoRealizado.toFixed(2)),
-      entradasRealizadas: parseFloat(entradasRealizadas.toFixed(2)),
-      saidasRealizadas: parseFloat(saidasRealizadas.toFixed(2)),
-      futurosReceber: parseFloat(futurosReceber.toFixed(2)),
-      comprometidoPagar: parseFloat(comprometidoPagar.toFixed(2)),
+      entradasRealizadas: Number(entradasRealizadas.toFixed(2)),
+      saidasRealizadas: Number(saidasRealizadas.toFixed(2)),
+      futurosReceber: Number(futurosReceber.toFixed(2)),
+      comprometidoPagar: Number(comprometidoPagar.toFixed(2)),
       saldoTotalContas,
-      saldoProjetadoFinal: parseFloat((saldoTotalContas + futurosReceber - comprometidoPagar).toFixed(2))
+      saldoProjetadoFinal: Number(
+        (saldoTotalContas + futurosReceber - comprometidoPagar).toFixed(2)
+      ),
+      overdueCount,
+      overdueAmount: Number(overdueAmount.toFixed(2)),
+      pendingCount,
+      txCount: filteredTransactions.length
     };
-  }, [filteredTransactions, activeScope, selectedAccountId, accounts, getAccountBalance]);
+  }, [
+    filteredTransactions,
+    activeScope,
+    selectedAccountId,
+    accounts,
+    getAccountBalance,
+    todayStr
+  ]);
 
-  // Agrupamento dos Lançamentos por Data (Timeline) - Calculando "Saldo do dia" estritamente sobre filteredTransactions
+  const insight = useMemo(() => {
+    if (viewMode === 'future') {
+      if (metrics.overdueCount > 0) {
+        return {
+          tone: 'bad' as const,
+          label: 'Atenção',
+          tip: `Você tem ${metrics.overdueCount} conta${metrics.overdueCount > 1 ? 's' : ''} atrasada${metrics.overdueCount > 1 ? 's' : ''} (${formatCurrency(metrics.overdueAmount)}). Priorize essas baixas.`
+        };
+      }
+      if (metrics.comprometidoPagar > metrics.futurosReceber + metrics.saldoTotalContas) {
+        return {
+          tone: 'bad' as const,
+          label: 'Apertado',
+          tip: 'O que falta pagar supera saldo + a receber. Revise datas ou adiamentos.'
+        };
+      }
+      return {
+        tone: 'ok' as const,
+        label: 'Agenda',
+        tip: 'Visão de tudo que ainda está aberto daqui pra frente — inclusive atrasados.'
+      };
+    }
+
+    if (metrics.overdueCount > 0) {
+      return {
+        tone: 'bad' as const,
+        label: 'Atrasos',
+        tip: `${metrics.overdueCount} despesa${metrics.overdueCount > 1 ? 's' : ''} vencida${metrics.overdueCount > 1 ? 's' : ''} ainda aberta${metrics.overdueCount > 1 ? 's' : ''}. Elas entram no previsto.`
+      };
+    }
+
+    if (metrics.saldoProjetadoFinal > 200) {
+      return {
+        tone: 'good' as const,
+        label: 'No azul',
+        tip: 'Se as pendências se confirmarem, o período fecha com folga.'
+      };
+    }
+    if (metrics.saldoProjetadoFinal >= 0) {
+      return {
+        tone: 'ok' as const,
+        label: 'No limite',
+        tip: 'Fecha perto de zero — evite gastos extras neste período.'
+      };
+    }
+    return {
+      tone: 'bad' as const,
+      label: 'No vermelho',
+      tip: 'Previsto negativo — revise o que ainda falta pagar ou receber.'
+    };
+  }, [viewMode, metrics, isBlurred]);
+
+  const topSpendHint = useMemo(() => {
+    const map = new Map<string, number>();
+    filteredTransactions.forEach(t => {
+      if (t.type !== 'expense' || t.status === 'cancelled') return;
+      if (isNeutralCashFlowMovement(t)) return;
+      const amt = Math.abs(Number(t.amount) || 0);
+      const id = t.categoryId || 'other';
+      map.set(id, (map.get(id) || 0) + amt);
+    });
+    const top = Array.from(map.entries()).sort((a, b) => b[1] - a[1])[0];
+    if (!top || top[1] <= 0) return null;
+    const cat = categories.find(c => c.id === top[0]);
+    return { name: cat?.name || 'Geral', amount: top[1] };
+  }, [filteredTransactions, categories]);
+
   const groupedByDate = useMemo(() => {
     const groups: { [date: string]: Transaction[] } = {};
     filteredTransactions.forEach(t => {
@@ -266,9 +396,9 @@ export const ExtratoScreen: React.FC = () => {
       groups[d].push(t);
     });
 
+    const isFutureOnly = viewMode === 'future';
     return Object.entries(groups).map(([date, txs]) => {
       const hasPaidInGroup = txs.some(t => t.status === 'paid');
-      // Soma do "Saldo do dia" calculada exclusivamente sobre o array de transações filtradas (txs de filteredTransactions)
       const dayNet = txs.reduce((sum, t) => {
         if (t.status === 'cancelled') return sum;
         if (hasPaidInGroup && statusFilter !== 'pending' && !isFutureOnly && t.status !== 'paid') {
@@ -278,17 +408,19 @@ export const ExtratoScreen: React.FC = () => {
         const isInc =
           t.type === 'income' ||
           t.type === 'goal_withdraw' ||
-          (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
+          (t.type === 'transfer' &&
+            selectedAccountId !== 'all' &&
+            t.destinationAccountId === selectedAccountId);
         return isInc ? sum + amt : sum - amt;
       }, 0);
 
       return {
         date,
         transactions: txs,
-        dayNet: parseFloat(dayNet.toFixed(2))
+        dayNet: Number(dayNet.toFixed(2))
       };
     });
-  }, [filteredTransactions, statusFilter, isFutureOnly, selectedAccountId]);
+  }, [filteredTransactions, statusFilter, viewMode, selectedAccountId]);
 
   const formatDateHeader = (dateStr: string) => {
     if (dateStr === 'Sem Data') return 'SEM DATA';
@@ -301,457 +433,589 @@ export const ExtratoScreen: React.FC = () => {
 
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const yesterdayStr = getLocalDateString(yesterday);
     if (dateStr === yesterdayStr) {
       return `ONTEM · ${d} DE ${dateObj.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()} DE ${y}`;
     }
 
-    const dayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+    const dayName = dateObj
+      .toLocaleDateString('pt-BR', { weekday: 'short' })
+      .replace('.', '')
+      .toUpperCase();
     return `${dayName}, ${d} DE ${dateObj.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()} DE ${y}`;
   };
 
   const handleTogglePaid = (t: Transaction, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStatus = t.status === 'paid' ? 'pending' : 'paid';
     updateTransaction({
       ...t,
-      status: newStatus
+      status: t.status === 'paid' ? 'pending' : 'paid'
     });
   };
 
-  const handleExportAIReport = () => {
-    navigate('/relatorios?tab=ai');
+  const healthStyles = {
+    good: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    ok: 'bg-amber-500/15 text-amber-200 border-amber-500/30',
+    bad: 'bg-rose-500/15 text-rose-300 border-rose-500/30'
   };
 
+  const periodTitle =
+    viewMode === 'future' ? 'Agenda futura' : formatMonthLabel(selectedMonth);
+
   return (
-    <div className="space-y-4 pb-28 animate-fade-in text-white">
-      {/* HEADER DA TELA */}
-      <div className="flex items-center justify-between pt-1">
-        <div>
-          <h1 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-            <Receipt className="text-[#fcca00]" size={22} />
-            <span>Extrato da Conta</span>
-          </h1>
-          <p className="text-[11px] text-zinc-400 font-medium">Movimentações passadas e lançamentos futuros</p>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <ScopeSelector size="sm" />
-          <button
-            onClick={() => toggleBlur()}
-            className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition active:scale-95"
-            title={isBlurred ? "Exibir Valores" : "Ocultar Valores"}
-          >
-            {isBlurred ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 1. CARROSSEL DESLIZÁVEL NO TOPO DO EXTRATO (3 CARDS)                      */}
-      {/* ========================================================================= */}
-      <div className="relative">
-        <div 
-          ref={summaryCarouselRef}
-          className="overflow-x-auto no-scrollbar flex snap-x snap-mandatory gap-3 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 cursor-grab active:cursor-grabbing select-none"
-        >
-          
-          {/* CARD 1: SALDO ATUAL / REALIZADO */}
-          <div 
-            onClick={() => setCarouselIndex(0)}
-            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-[#002d6c] via-[#003882] to-[#001d4a] border border-blue-500/40 shadow-xl cursor-pointer transition hover:border-blue-400"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase tracking-wider font-black text-blue-200 flex items-center gap-1.5">
-                <Landmark size={14} className="text-[#fcca00]" />
-                Saldo em Conta (Realizado)
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-900/60 text-[#fcca00] border border-blue-400/20">
-                Disponível
-              </span>
-            </div>
-
-            <div className="mt-2.5">
-              <h2 className="text-3xl font-black text-white tracking-tight">
-                {formatCurrency(metrics.saldoTotalContas)}
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 mt-4 pt-3.5 border-t border-blue-700/40 text-xs">
-              <div>
-                <span className="text-blue-300 text-[10px] font-bold uppercase block">Entradas Efetivadas</span>
-                <span className="text-sm font-black text-emerald-400">+{formatCurrency(metrics.entradasRealizadas)}</span>
-              </div>
-              <div>
-                <span className="text-blue-300 text-[10px] font-bold uppercase block">Saídas Pagas</span>
-                <span className="text-sm font-black text-rose-400">-{formatCurrency(metrics.saidasRealizadas)}</span>
-              </div>
-            </div>
+    <div className="space-y-5 pb-28 animate-fade-in text-white -mx-3.5 sm:mx-0">
+      {/* HERO — mesmo DNA da Home */}
+      <div className="relative bg-gradient-to-b from-[#002d6c] via-[#003882] to-slate-100 px-4 pt-3 pb-8 rounded-b-[2.5rem] shadow-xl overflow-hidden">
+        <div className="flex items-center justify-between pt-1 mb-4">
+          <div>
+            <p className="text-[11px] font-bold text-blue-200">Lançamentos</p>
+            <h1 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
+              <Receipt size={18} className="text-[#fcca00]" />
+              Extrato inteligente
+            </h1>
           </div>
-
-          {/* CARD 2: LANÇAMENTOS FUTUROS / CACHÊS ABERTOS */}
-          <div 
-            onClick={() => setCarouselIndex(1)}
-            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-[#121c2e] via-[#10243d] to-[#0d1726] border border-emerald-500/30 shadow-xl cursor-pointer transition hover:border-emerald-400/50"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase tracking-wider font-black text-emerald-300 flex items-center gap-1.5">
-                <ArrowUpRight size={14} className="text-emerald-400" />
-                Futuros & Cachês a Receber
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
-                A Entrar
-              </span>
-            </div>
-
-            <div className="mt-2.5">
-              <h2 className="text-3xl font-black text-emerald-400 tracking-tight">
-                +{formatCurrency(metrics.futurosReceber)}
-              </h2>
-            </div>
-
-            <div className="mt-4 pt-3.5 border-t border-emerald-800/30 text-xs flex items-center justify-between">
-              <span className="text-zinc-400 text-[10px]">Cachês agendados e receitas pendentes</span>
-              <span className="text-xs font-bold text-emerald-300">Entrada prevista</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => toggleBlur()}
+              className="p-2.5 rounded-2xl bg-blue-950/60 border border-blue-500/30 text-blue-200 hover:text-white transition active:scale-95"
+              title={isBlurred ? 'Exibir valores' : 'Ocultar valores'}
+            >
+              {isBlurred ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/relatorios?tab=ai')}
+              className="p-2.5 rounded-2xl bg-blue-950/60 border border-blue-500/30 text-blue-200 hover:text-[#fcca00] transition active:scale-95"
+              title="Relatório IA"
+            >
+              <Sparkles size={16} />
+            </button>
           </div>
-
-          {/* CARD 3: TOTAL COMPROMETIDO DO MÊS */}
-          <div 
-            onClick={() => setCarouselIndex(2)}
-            className="snap-center shrink-0 w-[88%] sm:w-[92%] p-5 rounded-3xl bg-gradient-to-br from-[#26151b] via-[#201015] to-[#140b0e] border border-rose-500/30 shadow-xl cursor-pointer transition hover:border-rose-400/50"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] uppercase tracking-wider font-black text-rose-300 flex items-center gap-1.5">
-                <ArrowDownRight size={14} className="text-rose-400" />
-                Total Comprometido do Mês
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950/80 text-rose-300 border border-rose-500/30">
-                A Pagar
-              </span>
-            </div>
-
-            <div className="mt-2.5">
-              <h2 className="text-3xl font-black text-rose-400 tracking-tight">
-                -{formatCurrency(metrics.comprometidoPagar)}
-              </h2>
-            </div>
-
-            <div className="mt-4 pt-3.5 border-t border-rose-800/30 text-xs flex items-center justify-between">
-              <span className="text-zinc-400 text-[10px]">Contas e parcelas a quitar</span>
-              <span className="text-xs font-bold text-amber-300">Saída prevista</span>
-            </div>
-          </div>
-
         </div>
 
-        {/* Indicadores de bolinha (dots) do carrossel */}
-        <div className="flex items-center justify-center space-x-1.5 mt-2">
-          {[0, 1, 2].map(idx => (
-            <span 
-              key={idx}
-              className={`w-1.5 h-1.5 rounded-full transition-all ${
-                carouselIndex === idx ? 'w-5 bg-[#fcca00]' : 'bg-zinc-700'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
+        {/* Seletor de período livre */}
+        <div className="mb-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={viewMode === 'future'}
+              onClick={() => {
+                setViewMode('month');
+                setSelectedMonth(shiftMonth(selectedMonth, -1));
+              }}
+              className="p-2 rounded-xl bg-blue-950/50 border border-blue-500/30 text-blue-100 disabled:opacity-40 active:scale-95"
+              title="Mês anterior"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-      {/* ========================================================================= */}
-      {/* 2. AÇÕES RÁPIDAS DO EXTRATO (BOTÕES EM PÍLULA)                            */}
-      {/* ========================================================================= */}
-      <div 
-        ref={quickActionsRef}
-        className="flex items-center space-x-2 overflow-x-auto no-scrollbar py-1 cursor-grab active:cursor-grabbing select-none"
-      >
-        <button
-          onClick={() => { setEditingTransaction(null); setIsFormOpen(true); }}
-          className="px-3.5 py-2 rounded-2xl bg-[#003882] hover:bg-[#002d6c] text-[#fcca00] font-black text-xs transition active:scale-95 shadow-md flex items-center space-x-1.5 shrink-0 border border-blue-500/40"
-        >
-          <Plus size={15} />
-          <span>+ Lançamento</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('month');
+                setShowMonthPicker(true);
+              }}
+              className="flex-1 py-2.5 px-3 rounded-2xl bg-[#003882] border border-[#fcca00]/40 text-white font-black text-sm capitalize flex items-center justify-center gap-2 active:scale-[0.99] transition"
+            >
+              <Calendar size={15} className="text-[#fcca00]" />
+              {periodTitle}
+            </button>
 
-        <button
-          onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-          className={`px-3.5 py-2 rounded-2xl border font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0 ${
-            showFiltersPanel || searchTerm || selectedAccountId !== 'all'
-              ? 'bg-amber-500/20 text-[#fcca00] border-amber-500/40'
-              : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white'
-          }`}
-        >
-          <Filter size={14} />
-          <span>Filtros</span>
-          {(searchTerm || selectedAccountId !== 'all') && (
-            <span className="w-2 h-2 rounded-full bg-[#fcca00]" />
-          )}
-        </button>
+            <button
+              type="button"
+              disabled={viewMode === 'future'}
+              onClick={() => {
+                setViewMode('month');
+                setSelectedMonth(shiftMonth(selectedMonth, 1));
+              }}
+              className="p-2 rounded-xl bg-blue-950/50 border border-blue-500/30 text-blue-100 disabled:opacity-40 active:scale-95"
+              title="Próximo mês"
+            >
+              <ChevronRight size={16} />
+            </button>
 
-        <button
-          onClick={() => setIsBankImportOpen(true)}
-          className="px-3.5 py-2 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0"
-        >
-          <UploadCloud size={14} className="text-blue-400" />
-          <span>Importar OFX/CSV</span>
-        </button>
-
-        <button
-          onClick={handleExportAIReport}
-          className="px-3.5 py-2 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-bold text-xs transition active:scale-95 flex items-center space-x-1.5 shrink-0"
-        >
-          <Sparkles size={14} className="text-purple-400" />
-          <span>Relatório IA</span>
-        </button>
-      </div>
-
-      {/* PAINEL EXPANSÍVEL DE BUSCA & FILTRO POR CONTA */}
-      {showFiltersPanel && (
-        <div className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-3 animate-fade-in">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 text-zinc-400" size={15} />
             <input
-              type="text"
-              placeholder="Buscar descrição, categoria ou conta..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-zinc-800/80 border border-zinc-700 text-white placeholder-zinc-400 text-xs focus:border-blue-500 outline-none"
+              ref={monthPickerRef}
+              type="month"
+              value={selectedMonth}
+              onChange={e => {
+                if (e.target.value) {
+                  setSelectedMonth(e.target.value);
+                  setViewMode('month');
+                  setShowMonthPicker(false);
+                }
+              }}
+              onBlur={() => setShowMonthPicker(false)}
+              className="sr-only"
+              aria-label="Escolher mês"
             />
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white"
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+            {nearbyMonths.map(m => (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => {
+                  setViewMode('month');
+                  setSelectedMonth(m.value);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase shrink-0 transition active:scale-95 ${
+                  m.isSelected
+                    ? 'bg-[#fcca00] text-[#002d6c]'
+                    : m.isCurrent
+                    ? 'bg-blue-950/70 text-white border border-blue-400/40'
+                    : 'bg-blue-950/40 text-blue-200 border border-transparent'
+                }`}
               >
-                <X size={14} />
+                {m.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setViewMode('future')}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase shrink-0 transition active:scale-95 flex items-center gap-1 ${
+                viewMode === 'future'
+                  ? 'bg-[#fcca00] text-[#002d6c]'
+                  : 'bg-blue-950/40 text-blue-200'
+              }`}
+            >
+              <Clock size={10} />
+              Futuros
+            </button>
+            {selectedMonth !== currentYearMonth && viewMode === 'month' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMonth(currentYearMonth);
+                  setViewMode('month');
+                }}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase shrink-0 bg-white/10 text-[#fcca00] border border-[#fcca00]/30"
+              >
+                Ir ao mês atual
               </button>
             )}
           </div>
+        </div>
 
-          <div className="flex items-center space-x-2">
-            <label className="text-[11px] font-bold text-zinc-400 shrink-0">Filtrar Conta:</label>
-            <select
-              value={selectedAccountId}
-              onChange={e => setSelectedAccountId(e.target.value)}
-              className="flex-1 px-2.5 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white focus:border-blue-500 outline-none"
+        <div className="rounded-3xl bg-[#003882] border border-[#fcca00]/40 ring-1 ring-[#fcca00]/20 p-5 shadow-xl space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-wider text-blue-200">
+                Saldo previsto · {periodTitle}
+              </p>
+              <p
+                className={`mt-1.5 text-3xl sm:text-4xl font-black tracking-tight tabular-nums ${
+                  metrics.saldoProjetadoFinal >= 0 ? 'text-white' : 'text-rose-300'
+                }`}
+              >
+                {formatCurrency(metrics.saldoProjetadoFinal)}
+              </p>
+              <p className="text-[11px] text-blue-200 mt-1 font-medium">
+                Saldo agora + a receber − a pagar neste filtro
+              </p>
+            </div>
+            <span
+              className={`shrink-0 text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full border ${healthStyles[insight.tone]}`}
             >
-              <option value="all">Todas as Contas</option>
-              {accounts.map(a => (
-                <option key={a.id} value={a.id}>{a.name}</option>
-              ))}
-            </select>
+              {insight.label}
+            </span>
+          </div>
+
+          <p className="text-xs text-blue-100/90 leading-relaxed border-t border-blue-700/40 pt-3 flex gap-2">
+            <Lightbulb size={14} className="text-[#fcca00] shrink-0 mt-0.5" />
+            <span>{insight.tip}</span>
+          </p>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-2xl bg-blue-950/50 border border-blue-700/40 p-2.5">
+              <p className="text-[9px] font-black uppercase tracking-wider text-blue-300 flex items-center gap-1">
+                <Landmark size={10} /> Agora
+              </p>
+              <p className="text-sm font-black text-white tabular-nums mt-0.5">
+                {formatCurrency(metrics.saldoTotalContas)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('pending');
+                setViewMode(viewMode === 'future' ? 'future' : 'month');
+              }}
+              className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-2.5 text-left active:scale-[0.98] transition"
+            >
+              <p className="text-[9px] font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1">
+                <ArrowUpRight size={10} /> A receber
+              </p>
+              <p className="text-sm font-black text-emerald-300 tabular-nums mt-0.5">
+                {formatCurrency(metrics.futurosReceber)}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('pending')}
+              className="rounded-2xl bg-rose-500/10 border border-rose-500/25 p-2.5 text-left active:scale-[0.98] transition"
+            >
+              <p className="text-[9px] font-black uppercase tracking-wider text-rose-300 flex items-center gap-1">
+                <ArrowDownRight size={10} /> A pagar
+              </p>
+              <p className="text-sm font-black text-rose-300 tabular-nums mt-0.5">
+                {formatCurrency(metrics.comprometidoPagar)}
+              </p>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setTxInitialType('expense');
+                setEditingTransaction(null);
+                setIsFormOpen(true);
+              }}
+              className="py-2.5 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 font-black text-xs transition active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <Plus size={14} />
+              Nova despesa
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTxInitialType('income');
+                setEditingTransaction(null);
+                setIsFormOpen(true);
+              }}
+              className="py-2.5 px-3 rounded-xl bg-[#fcca00] hover:bg-amber-400 text-[#002d6c] font-black text-xs transition active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+            >
+              <Plus size={14} />
+              Nova receita
+            </button>
           </div>
         </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 3. FILTROS POR PERÍODO (MESES) & PÍLULAS DE STATUS                        */}
-      {/* ========================================================================= */}
-      
-      {/* Seletor Horizontal de Meses */}
-      <div 
-        ref={monthsRef}
-        className="overflow-x-auto no-scrollbar flex items-center space-x-1.5 py-1 border-b border-zinc-800/80 pb-2.5 cursor-grab active:cursor-grabbing select-none"
-      >
-        {monthList.map(item => {
-          const isSelected = !isFutureOnly && selectedMonth === item.value;
-          return (
-            <button
-              key={item.value}
-              onClick={() => { setIsFutureOnly(false); setSelectedMonth(item.value); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition active:scale-95 shrink-0 ${
-                isSelected
-                  ? 'bg-[#003882] text-[#fcca00] shadow-md border border-blue-500/50'
-                  : item.isCurrent
-                  ? 'bg-zinc-800 text-white border border-zinc-700'
-                  : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 border border-transparent'
-              }`}
-            >
-              {item.label}
-              {item.isCurrent && !isSelected && (
-                <span className="ml-1 w-1.5 h-1.5 rounded-full bg-[#fcca00] inline-block" />
-              )}
-            </button>
-          );
-        })}
-
-        {/* Botão de Futuros / Agendados */}
-        <button
-          onClick={() => setIsFutureOnly(true)}
-          className={`px-3 py-1.5 rounded-xl text-xs font-black transition active:scale-95 shrink-0 flex items-center space-x-1 ${
-            isFutureOnly
-              ? 'bg-[#003882] text-[#fcca00] shadow-md border border-blue-500/50'
-              : 'bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          <Clock size={12} />
-          <span>FUTUROS</span>
-        </button>
       </div>
 
-      {/* Pílulas de Seleção de Tipo / Status */}
-      <div 
-        ref={statusPillsRef}
-        className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing select-none"
-      >
-        {[
-          { id: 'all', label: 'Tudo' },
-          { id: 'paid', label: 'Realizado / Efetivado' },
-          { id: 'pending', label: 'Pendente / Futuro' },
-          ...(!PERSONAL_ONLY_MODE ? [{ id: 'shows', label: 'Shows' }] : []),
-          { id: 'accounts', label: 'Por Conta' }
-        ].map(pill => {
-          const isActive = statusFilter === pill.id;
-          return (
-            <button
-              key={pill.id}
-              onClick={() => {
-                setStatusFilter(pill.id as TypeStatusFilter);
-                if (pill.id === 'accounts') setShowFiltersPanel(true);
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0 ${
-                isActive
-                  ? 'bg-white text-zinc-950 font-black shadow-sm'
-                  : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-              }`}
-            >
-              {pill.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. LISTAGEM TIMELINE AGRUPADA POR DATA (ESTILO BANCO DO BRASIL)           */}
-      {/* ========================================================================= */}
-      <div className="space-y-5 pt-2">
-        {groupedByDate.length === 0 ? (
-          <div className="p-10 text-center rounded-3xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs">
-            <Receipt size={32} className="mx-auto mb-2 text-zinc-400" />
-            <p className="font-bold text-white mb-1">Nenhum lançamento encontrado</p>
-            <p className="text-[11px]">Tente mudar os filtros ou clique em "+ Lançamento" para cadastrar.</p>
+      <div className="px-3.5 sm:px-4 space-y-4 -mt-2">
+        {/* Fluxo do período */}
+        <div className="rounded-3xl bg-white border border-slate-200 shadow-sm p-4 text-slate-800">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
+              Movimento do período
+            </h3>
+            <span className="text-[10px] font-bold text-slate-400">
+              {metrics.txCount} lançamento{metrics.txCount === 1 ? '' : 's'}
+            </span>
           </div>
-        ) : (
-          groupedByDate.map(group => {
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-3">
+              <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                <TrendingUp size={12} />
+                Entradas pagas
+              </div>
+              <p className="text-base font-black text-emerald-700 tabular-nums mt-1">
+                {formatCurrency(metrics.entradasRealizadas)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-rose-50 border border-rose-100 p-3">
+              <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-rose-700">
+                <TrendingDown size={12} />
+                Saídas pagas
+              </div>
+              <p className="text-base font-black text-rose-700 tabular-nums mt-1">
+                {formatCurrency(metrics.saidasRealizadas)}
+              </p>
+            </div>
+          </div>
+
+          {(metrics.overdueCount > 0 || topSpendHint) && (
+            <div className="mt-3 space-y-2">
+              {metrics.overdueCount > 0 && (
+                <div className="flex items-start gap-2 rounded-2xl bg-rose-50 border border-rose-100 px-3 py-2.5">
+                  <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-rose-800 font-medium leading-relaxed">
+                    <span className="font-black">{metrics.overdueCount} atrasada{metrics.overdueCount > 1 ? 's' : ''}</span>
+                    {' · '}
+                    {formatCurrency(metrics.overdueAmount)} ainda em aberto
+                  </p>
+                </div>
+              )}
+              {topSpendHint && (
+                <div className="flex items-start gap-2 rounded-2xl bg-blue-50 border border-blue-100 px-3 py-2.5">
+                  <Lightbulb size={14} className="text-[#003882] shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-slate-700 font-medium leading-relaxed">
+                    Maior gasto neste filtro:{' '}
+                    <span className="font-black text-[#003882]">{topSpendHint.name}</span>
+                    {' · '}
+                    {formatCurrency(topSpendHint.amount)}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Ações + filtros */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+            className={`px-3.5 py-2 rounded-2xl border font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shrink-0 ${
+              showFiltersPanel || searchTerm || selectedAccountId !== 'all'
+                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                : 'bg-white text-slate-600 border-slate-200'
+            }`}
+          >
+            <Filter size={14} />
+            Filtros
+            {(searchTerm || selectedAccountId !== 'all') && (
+              <span className="w-2 h-2 rounded-full bg-[#fcca00]" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsBankImportOpen(true)}
+            className="px-3.5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shrink-0"
+          >
+            <UploadCloud size={14} className="text-blue-700" />
+            Importar
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/relatorios?tab=ai')}
+            className="px-3.5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-600 font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shrink-0"
+          >
+            <Sparkles size={14} className="text-amber-600" />
+            Relatório IA
+          </button>
+        </div>
+
+        {showFiltersPanel && (
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-sm text-slate-800">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
+              <input
+                type="text"
+                placeholder="Buscar descrição, categoria ou conta..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs focus:border-blue-500 outline-none"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] font-bold text-slate-500 shrink-0">Conta:</label>
+              <select
+                value={selectedAccountId}
+                onChange={e => setSelectedAccountId(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:border-blue-500 outline-none"
+              >
+                <option value="all">Todas as contas</option>
+                {accounts.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {monthsWithActivity.length > 1 && (
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 mb-1.5">Meses com movimento</p>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                  {monthsWithActivity.map(ym => (
+                    <button
+                      key={ym}
+                      type="button"
+                      onClick={() => {
+                        setSelectedMonth(ym);
+                        setViewMode('month');
+                      }}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-bold capitalize ${
+                        ym === selectedMonth && viewMode === 'month'
+                          ? 'bg-[#003882] text-[#fcca00]'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {formatMonthShort(ym)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Status pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'all', label: 'Tudo' },
+            { id: 'paid', label: 'Realizado' },
+            { id: 'pending', label: 'Pendente' },
+            ...(!PERSONAL_ONLY_MODE ? [{ id: 'shows', label: 'Shows' }] : []),
+            { id: 'accounts', label: 'Por conta' }
+          ].map(pill => {
+            const isActive = statusFilter === pill.id;
             return (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(pill.id as TypeStatusFilter);
+                  if (pill.id === 'accounts') setShowFiltersPanel(true);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 shrink-0 ${
+                  isActive
+                    ? 'bg-[#003882] text-[#fcca00] shadow-sm'
+                    : 'bg-white text-slate-500 border border-slate-200 hover:text-slate-800'
+                }`}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Timeline */}
+        <div className="space-y-5 pt-1">
+          {groupedByDate.length === 0 ? (
+            <div className="p-10 text-center rounded-3xl bg-white border border-slate-200 text-slate-400 text-xs">
+              <Receipt size={32} className="mx-auto mb-2 text-slate-300" />
+              <p className="font-bold text-slate-700 mb-1">Nenhum lançamento neste filtro</p>
+              <p className="text-[11px]">
+                Troque o mês, abra Futuros ou cadastre um novo lançamento.
+              </p>
+            </div>
+          ) : (
+            groupedByDate.map(group => (
               <div key={group.date} className="space-y-2">
-                {/* CABEÇALHO DA DATA */}
-                <div className="flex items-center justify-between px-1 pt-1">
-                  <h3 className="text-[11px] font-black tracking-wider text-zinc-300">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-[11px] font-black tracking-wider text-slate-500">
                     {formatDateHeader(group.date)}
                   </h3>
+                  <span
+                    className={`text-[10px] font-black ${
+                      group.dayNet >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                    }`}
+                  >
+                    {group.dayNet >= 0 ? '+' : ''}
+                    {formatCurrency(group.dayNet)}
+                  </span>
                 </div>
 
-                {/* ITENS DE LANÇAMENTO DAQUELA DATA */}
-                <div className="rounded-2xl bg-[#141416] border border-zinc-800/80 overflow-hidden divide-y divide-zinc-800/60 shadow-xs">
+                <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden divide-y divide-slate-100 shadow-sm">
                   {group.transactions.map(t => {
                     const cat = categories.find(c => c.id === t.categoryId);
                     const acc = accounts.find(a => a.id === t.accountId);
                     const isIncome =
                       t.type === 'income' ||
                       t.type === 'goal_withdraw' ||
-                      (t.type === 'transfer' && selectedAccountId !== 'all' && t.destinationAccountId === selectedAccountId);
+                      (t.type === 'transfer' &&
+                        selectedAccountId !== 'all' &&
+                        t.destinationAccountId === selectedAccountId);
                     const isPending = t.status === 'pending';
+                    const isOverdue = isPending && t.type === 'expense' && t.date && t.date < todayStr;
                     const Icon = getIcon(cat?.icon || 'Tag');
 
                     return (
                       <div
                         key={t.id}
                         id={`tx-${t.id}`}
-                        onClick={() => { setEditingTransaction(t); setIsFormOpen(true); }}
-                        className={`p-3.5 hover:bg-zinc-800/40 transition flex items-center justify-between cursor-pointer group ${
+                        onClick={() => {
+                          setEditingTransaction(t);
+                          setIsFormOpen(true);
+                        }}
+                        className={`p-3.5 hover:bg-slate-50 transition flex items-center justify-between cursor-pointer group ${
                           highlightId === t.id
-                            ? 'bg-blue-950/40 ring-1 ring-blue-500/40'
+                            ? 'bg-blue-50 ring-1 ring-inset ring-blue-300'
+                            : isOverdue
+                            ? 'bg-rose-50/60'
                             : isPending
-                              ? 'bg-amber-950/10'
-                              : ''
+                            ? 'bg-amber-50/40'
+                            : ''
                         }`}
                       >
-                        {/* Lado Esquerdo: Ícone da Categoria e Detalhes */}
                         <div className="flex items-start space-x-3.5 min-w-0 pr-3 flex-1">
-                          <div 
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner mt-0.5"
-                            style={{ 
-                              backgroundColor: `${cat?.color || '#3b82f6'}20`, 
-                              color: cat?.color || '#3b82f6' 
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                            style={{
+                              backgroundColor: `${cat?.color || '#3b82f6'}20`,
+                              color: cat?.color || '#3b82f6'
                             }}
                           >
                             <Icon size={18} />
                           </div>
 
-                          <div className="min-w-0 flex-1 flex flex-col gap-2">
-                            <span className="transaction-item-title text-xs sm:text-sm font-bold text-white block leading-relaxed break-words group-hover:text-blue-400 transition">
+                          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
+                            <span className="text-xs sm:text-sm font-bold text-slate-800 block leading-relaxed break-words group-hover:text-[#003882] transition">
                               {t.description || 'Sem descrição'}
                             </span>
-
-                            <div className="transaction-badges-row flex flex-wrap items-center gap-2">
-                              {isPending && (
-                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-amber-500 text-black border border-amber-400 uppercase shrink-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {isOverdue && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase">
+                                  Atrasada
+                                </span>
+                              )}
+                              {isPending && !isOverdue && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-amber-400 text-black uppercase">
                                   Pendente
                                 </span>
                               )}
                               {isLoanMovement(t) && (
-                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-sky-600 text-white border border-sky-400/40 uppercase shrink-0 inline-flex items-center gap-1">
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-sky-600 text-white uppercase inline-flex items-center gap-1">
                                   <Handshake size={10} strokeWidth={2.5} />
                                   {t.loanPerson ? `Emprést. · ${t.loanPerson}` : 'Empréstimo'}
                                 </span>
                               )}
-                              {t.showId && (
-                                <span className="text-[9px] font-black px-2.5 py-0.5 rounded-md bg-purple-600 text-white border border-purple-400/40 uppercase shrink-0">
-                                  Show
-                                </span>
-                              )}
-                              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-md border uppercase shrink-0 ${
-                                t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId)
-                                  ? 'bg-purple-500/20 text-purple-200 border-purple-500/40'
-                                  : 'bg-zinc-800 text-zinc-200 border-zinc-700'
-                              }`}>
-                                {t.scope === 'BUSINESS' || t.categoryId === 'cat_33' || t.categoryId === 'cat_equipamentos' || Boolean(t.showId) ? 'Música' : 'Pessoal'}
-                              </span>
-                              <span className="text-[10px] text-zinc-400 truncate">
-                                {cat?.name || 'Geral'}
-                              </span>
-                              <span aria-hidden="true" className="text-zinc-600">·</span>
-                              <span className="text-[10px] text-zinc-300 font-medium truncate">
-                                {acc?.name || 'Conta Padrão'}
+                              <span className="text-[10px] text-slate-500 truncate">
+                                {cat?.name || 'Geral'} · {acc?.name || 'Conta'}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Lado Direito: Valor e Ação de Baixa */}
-                        <div className="text-right shrink-0 flex items-center space-x-2.5">
+                        <div className="text-right shrink-0 flex items-center space-x-2">
                           <div>
-                            <span className={`text-xs font-black block tracking-tight ${
-                              isIncome ? 'text-emerald-400' : 'text-rose-400'
-                            }`}>
-                              {isIncome ? '+' : '-'}{formatCurrency(Math.abs(Number(t.amount) || 0))}
+                            <span
+                              className={`text-xs font-black block tabular-nums ${
+                                isIncome ? 'text-emerald-600' : 'text-rose-600'
+                              }`}
+                            >
+                              {isIncome ? '+' : '-'}
+                              {formatCurrency(Math.abs(Number(t.amount) || 0))}
                             </span>
-                            <span className="text-[9px] text-zinc-400 block font-medium">
+                            <span className="text-[9px] text-slate-400 block font-medium">
                               {isPending ? 'Previsto' : 'Realizado'}
                             </span>
                           </div>
 
-                          {/* Botão de Marcar como Pago / Recebido com 1 Toque */}
                           <button
-                            onClick={(e) => handleTogglePaid(t, e)}
+                            type="button"
+                            onClick={e => handleTogglePaid(t, e)}
                             className={`p-1.5 rounded-lg border transition active:scale-95 ${
                               isPending
-                                ? 'bg-zinc-800/80 hover:bg-emerald-950/60 border-zinc-700 text-zinc-400 hover:text-emerald-400'
-                                : 'bg-emerald-950/40 border-emerald-600/30 text-emerald-400'
+                                ? 'bg-slate-50 hover:bg-emerald-50 border-slate-200 text-slate-400 hover:text-emerald-600'
+                                : 'bg-emerald-50 border-emerald-200 text-emerald-600'
                             }`}
-                            title={isPending ? "Confirmar baixa / pagamento" : "Marcar como pendente"}
+                            title={isPending ? 'Confirmar pagamento' : 'Marcar como pendente'}
                           >
                             <Check size={13} strokeWidth={2.5} />
                           </button>
 
-                          {/* Botão de Excluir Lançamento Direto */}
                           <button
-                            onClick={(e) => {
+                            type="button"
+                            onClick={e => {
                               e.stopPropagation();
                               deleteTransaction(t.id);
                             }}
-                            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-950/30 transition active:scale-95"
-                            title="Excluir lançamento"
+                            className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-400 hover:text-rose-600 hover:border-rose-200 transition active:scale-95"
+                            title="Excluir"
                           >
                             <Trash2 size={13} strokeWidth={2} />
                           </button>
@@ -760,34 +1024,25 @@ export const ExtratoScreen: React.FC = () => {
                     );
                   })}
                 </div>
-
-                {/* SALDO DO DIA (Ao final de cada bloco concluído) */}
-                <div className="flex items-center justify-end px-2 pt-0.5 pb-1 text-[10px] text-zinc-400 font-bold space-x-1.5">
-                  <span>Saldo do dia:</span>
-                  <span className={`font-black ${group.dayNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {group.dayNet >= 0 ? '+' : ''}{formatCurrency(group.dayNet)}
-                  </span>
-                </div>
               </div>
-            );
-          })
-        )}
+            ))
+          )}
+        </div>
       </div>
 
-      {/* MODAL DE NOVO LANÇAMENTO / EDIÇÃO */}
       {isFormOpen && (
         <TransactionForm
           transaction={editingTransaction || undefined}
-          onClose={() => { setIsFormOpen(false); setEditingTransaction(null); }}
+          initialType={txInitialType}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingTransaction(null);
+          }}
         />
       )}
 
-      {/* MODAL DE IMPORTAÇÃO BANCÁRIA OFX/CSV */}
       {isBankImportOpen && (
-        <BankImportModal
-          isOpen={isBankImportOpen}
-          onClose={() => setIsBankImportOpen(false)}
-        />
+        <BankImportModal isOpen={isBankImportOpen} onClose={() => setIsBankImportOpen(false)} />
       )}
     </div>
   );
