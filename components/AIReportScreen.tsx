@@ -5,14 +5,18 @@ import {
   ReportPeriodType, 
   getPeriodDateRange, 
   formatBRL,
-  formatMonthYearBR
+  detectCurrentMonthlyRent,
+  buildScenarioAiPrompt,
+  DECISION_SCENARIO_OPTIONS,
+  type DecisionScenario,
+  type ScenarioSimulationResult
 } from '../services/aiReportService';
+import { getCurrentMonthPrefix } from '../services/dateUtils';
 import { 
   Bot, Copy, Check, Download, ExternalLink, Calendar, 
-  Sparkles, ShieldCheck, AlertTriangle, ArrowRight, 
+  Sparkles, ShieldCheck, AlertTriangle, 
   RefreshCw, Wallet, PiggyBank, ArrowDownRight, FileText,
-  ChevronLeft, Info, HelpCircle, TrendingUp, CalendarClock,
-  CheckCircle2, AlertOctagon, Scale, Sliders
+  ChevronLeft, Info, HelpCircle, Sliders, Home, Lightbulb
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -28,6 +32,8 @@ export const AIReportScreen = () => {
     isBlurred
   } = useFinance();
 
+  const currentMonth = useMemo(() => getCurrentMonthPrefix(), []);
+
   // PADRÃO SOLICITADO: 'current_plus_6m' (Situação Atual + Próximos 6 Meses)
   const [periodType, setPeriodType] = useState<ReportPeriodType>('current_plus_6m');
   const [customStart, setCustomStart] = useState(() => {
@@ -41,13 +47,47 @@ export const AIReportScreen = () => {
     return d.toISOString().slice(0, 10);
   });
 
+  const detectedRent = useMemo(
+    () => detectCurrentMonthlyRent(transactions, categories, currentMonth),
+    [transactions, categories, currentMonth]
+  );
+
+  const [scenarioEnabled, setScenarioEnabled] = useState(false);
+  const [newRentInput, setNewRentInput] = useState('1000');
+  const [currentRentInput, setCurrentRentInput] = useState('');
+  const [rentStartMonth, setRentStartMonth] = useState(currentMonth);
+  const [rentPrefillDone, setRentPrefillDone] = useState(false);
+
+  useEffect(() => {
+    if (rentPrefillDone) return;
+    if (detectedRent.amount > 0) {
+      setCurrentRentInput(String(detectedRent.amount));
+      setRentPrefillDone(true);
+    }
+  }, [detectedRent, rentPrefillDone]);
+
+  const decisionScenario: DecisionScenario | null = useMemo(() => {
+    if (!scenarioEnabled) return null;
+    const newRent = Number(String(newRentInput).replace(',', '.')) || 0;
+    const currentRent = Number(String(currentRentInput).replace(',', '.')) || 0;
+    if (newRent <= 0 || !/^\d{4}-\d{2}$/.test(rentStartMonth)) return null;
+    return {
+      type: 'rent_replace',
+      newRentAmount: newRent,
+      currentRentAmount: currentRent,
+      startMonth: rentStartMonth,
+      label: 'Novo aluguel substituindo o atual'
+    };
+  }, [scenarioEnabled, newRentInput, currentRentInput, rentStartMonth]);
+
   const [copied, setCopied] = useState(false);
   const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
+  const [copiedScenario, setCopiedScenario] = useState(false);
   const [reportText, setReportText] = useState<string>('');
+  const [scenarioSim, setScenarioSim] = useState<ScenarioSimulationResult | null>(null);
 
-  // Regenerar relatório
   const handleGenerate = () => {
-    const text = generateFinancialReportForAI({
+    const result = generateFinancialReportForAI({
       periodType,
       customStartDate: customStart,
       customEndDate: customEnd,
@@ -57,17 +97,17 @@ export const AIReportScreen = () => {
       debts,
       shows,
       financialSettings: settings.financialSettings,
-      getAccountBalance
+      getAccountBalance,
+      decisionScenario
     });
-    setReportText(text);
+    setReportText(result.text);
+    setScenarioSim(result.scenarioSim);
   };
 
-  // Geração inicial e ao mudar dados
   useEffect(() => {
     handleGenerate();
-  }, [periodType, customStart, customEnd, transactions, accounts, categories, debts, shows, settings.financialSettings]);
+  }, [periodType, customStart, customEnd, transactions, accounts, categories, debts, shows, settings.financialSettings, decisionScenario]);
 
-  // Copiar para área de transferência
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(reportText);
@@ -78,7 +118,6 @@ export const AIReportScreen = () => {
     }
   };
 
-  // Exportar como arquivo .TXT
   const handleExportTxt = () => {
     const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -92,29 +131,56 @@ export const AIReportScreen = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Ação rápida: Copiar e abrir IA externa
   const handleOpenAI = async (url: string) => {
-    await handleCopy();
+    if (scenarioSim) {
+      const prompt = buildScenarioAiPrompt(scenarioSim);
+      await navigator.clipboard.writeText(`${prompt}\n\n[RELATÓRIO]:\n\n${reportText}`);
+    } else {
+      await handleCopy();
+    }
     window.open(url, '_blank');
   };
 
-  // Perguntas sugeridas otimizadas para decisão financeira
-  const promptSuggestions = [
-    'Com base neste relatório, posso comprar [R$ valor do item] à vista agora sem me apertar nos próximos meses?',
-    'Qual é o valor exato que realmente posso gastar livremente hoje sem comprometer nenhuma conta futura?',
-    'Quantos shows por mês preciso fazer e qual a margem mínima para manter minhas contas pagas e sem dívidas?',
-    'Quais meses apresentam maior risco de caixa e onde devo concentrar cortes de despesas?',
-    'Faça uma análise crítica da minha capacidade de sobrevivência financeira e me mostre o melhor plano de ação.'
-  ];
+  const promptSuggestions = scenarioSim
+    ? [buildScenarioAiPrompt(scenarioSim)]
+    : [
+        'Com base neste relatório, posso comprar [R$ valor do item] à vista agora sem me apertar nos próximos meses?',
+        'Qual é o valor exato que realmente posso gastar livremente hoje sem comprometer nenhuma conta futura?',
+        'Quais meses apresentam maior risco de caixa e onde devo concentrar cortes de despesas?',
+        'Faça uma análise crítica da minha capacidade de sobrevivência financeira e me mostre o melhor plano de ação.'
+      ];
 
   const handleCopyPrompt = async (prompt: string, idx: number) => {
     try {
-      await navigator.clipboard.writeText(`${prompt}\n\n[COLE O RELATÓRIO ABAIXO]:\n\n${reportText}`);
+      await navigator.clipboard.writeText(`${prompt}\n\n[RELATÓRIO]:\n\n${reportText}`);
       setCopiedPromptIdx(idx);
       setTimeout(() => setCopiedPromptIdx(null), 2500);
     } catch (err) {
       console.error('Falha ao copiar prompt:', err);
     }
+  };
+
+  const handleCopyScenarioPack = async () => {
+    if (!scenarioSim) return;
+    try {
+      const prompt = buildScenarioAiPrompt(scenarioSim);
+      await navigator.clipboard.writeText(`${prompt}\n\n[RELATÓRIO]:\n\n${reportText}`);
+      setCopiedScenario(true);
+      setTimeout(() => setCopiedScenario(false), 2500);
+    } catch (err) {
+      console.error('Falha ao copiar pacote do cenário:', err);
+    }
+  };
+
+  const netImpact =
+    decisionScenario && decisionScenario.type === 'rent_replace'
+      ? decisionScenario.newRentAmount - decisionScenario.currentRentAmount
+      : 0;
+
+  const verdictStyles = {
+    comfortable: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    tight: 'bg-amber-50 border-amber-200 text-amber-900',
+    unsafe: 'bg-rose-50 border-rose-200 text-rose-800'
   };
 
   // Resumo Executivo para os Cards Superiores
@@ -275,6 +341,176 @@ export const AIReportScreen = () => {
         </div>
       </div>
 
+      {/* Simulador de decisão — aluguel (extensível) */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#003882] text-[#fcca00] flex items-center justify-center shrink-0">
+              <Home size={18} />
+            </div>
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                Simular decisão
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Teste um novo aluguel no lugar do atual. O relatório compara o fluxo com e sem o cenário.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setScenarioEnabled(v => !v)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition active:scale-95 shrink-0 ${
+              scenarioEnabled
+                ? 'bg-[#003882] text-[#fcca00]'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+            }`}
+          >
+            {scenarioEnabled ? 'Cenário ativo' : 'Ativar cenário'}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {DECISION_SCENARIO_OPTIONS.map(opt => (
+            <span
+              key={opt.id}
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold border ${
+                opt.id === 'rent_replace' && scenarioEnabled
+                  ? 'bg-blue-50 border-blue-200 text-[#003882]'
+                  : opt.available
+                  ? 'bg-slate-50 border-slate-200 text-slate-600'
+                  : 'bg-slate-50 border-slate-100 text-slate-400'
+              }`}
+              title={opt.description}
+            >
+              {opt.label}
+              {!opt.available ? ' · em breve' : ''}
+            </span>
+          ))}
+        </div>
+
+        {scenarioEnabled && (
+          <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                  Aluguel atual (R$)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={currentRentInput}
+                  onChange={e => setCurrentRentInput(e.target.value)}
+                  placeholder="0"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {detectedRent.amount > 0
+                    ? `Detectado: ${formatBRL(detectedRent.amount)} (${detectedRent.source})`
+                    : 'Não detectei aluguel nos lançamentos — preencha manualmente.'}
+                </p>
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                  Novo aluguel (R$)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={newRentInput}
+                  onChange={e => setNewRentInput(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1">
+                  Começa em
+                </label>
+                <input
+                  type="month"
+                  value={rentStartMonth}
+                  onChange={e => setRentStartMonth(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+                <p className="text-[9px] font-black uppercase text-slate-500">Impacto / mês</p>
+                <p
+                  className={`text-sm font-black tabular-nums mt-0.5 ${
+                    netImpact > 0 ? 'text-rose-600' : netImpact < 0 ? 'text-emerald-600' : 'text-slate-800'
+                  }`}
+                >
+                  {netImpact > 0 ? '+' : ''}
+                  {!isBlurred ? formatBRL(netImpact) : '••••'}
+                </p>
+              </div>
+              {scenarioSim ? (
+                <>
+                  <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-[9px] font-black uppercase text-slate-500">Menor saldo</p>
+                    <p
+                      className={`text-sm font-black tabular-nums mt-0.5 ${
+                        scenarioSim.minBalance >= 0 ? 'text-slate-800' : 'text-rose-600'
+                      }`}
+                    >
+                      {!isBlurred ? formatBRL(scenarioSim.minBalance) : '••••'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-[9px] font-black uppercase text-slate-500">Meses no azul</p>
+                    <p className="text-sm font-black text-slate-800 tabular-nums mt-0.5">
+                      {scenarioSim.monthsStillPositive}/{scenarioSim.monthsInHorizon}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3">
+                    <p className="text-[9px] font-black uppercase text-slate-500">1º mês negativo</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5 truncate">
+                      {scenarioSim.firstNegativeMonth || 'Nenhum'}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="col-span-2 sm:col-span-3 rounded-2xl bg-amber-50 border border-amber-100 p-3 text-[11px] text-amber-800 font-medium flex items-center gap-2">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  Informe um novo aluguel maior que zero para calcular.
+                </div>
+              )}
+            </div>
+
+            {scenarioSim && (
+              <div
+                className={`rounded-2xl border p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${verdictStyles[scenarioSim.verdict]}`}
+              >
+                <div className="flex items-start gap-2">
+                  <Lightbulb size={16} className="shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide">{scenarioSim.verdictLabel}</p>
+                    <p className="text-[11px] font-medium mt-0.5 leading-relaxed">{scenarioSim.verdictTip}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyScenarioPack}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition active:scale-95 shrink-0 flex items-center gap-1.5 ${
+                    copiedScenario
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-[#003882] text-[#fcca00]'
+                  }`}
+                >
+                  {copiedScenario ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedScenario ? 'Copiado!' : 'Copiar pergunta + relatório'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Period Selector Panel */}
       <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 mb-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -354,7 +590,9 @@ export const AIReportScreen = () => {
               </span>
             </div>
             <p className="text-xs text-slate-300">
-              Copia todo o relatório estruturado e abre diretamente o chat da inteligência artificial
+              {scenarioSim
+                ? 'Copia a pergunta do cenário de aluguel + relatório completo e abre a IA'
+                : 'Copia o relatório estruturado e abre diretamente o chat da IA'}
             </p>
           </div>
 
@@ -390,7 +628,9 @@ export const AIReportScreen = () => {
           <div className="flex items-center space-x-2">
             <HelpCircle size={16} className="text-purple-600 dark:text-purple-400" />
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Perguntas Prontas para Decisão da IA (Copiar com 1 Clique)
+              {scenarioSim
+                ? 'Pergunta pronta do cenário (aluguel)'
+                : 'Perguntas prontas para a IA'}
             </h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400">

@@ -1,4 +1,18 @@
 import { Transaction, Account, Category, Debt, Show, FinancialSettings } from '../types';
+import {
+  simulateDecisionScenario,
+  formatScenarioReportSection,
+  type DecisionScenario,
+  type ScenarioSimulationResult
+} from './decisionScenarioService';
+
+export type { DecisionScenario, ScenarioSimulationResult };
+export {
+  detectCurrentMonthlyRent,
+  buildScenarioAiPrompt,
+  DECISION_SCENARIO_OPTIONS,
+  simulateDecisionScenario
+} from './decisionScenarioService';
 
 export type ReportPeriodType = 
   | 'current_plus_6m'  // PADRÃO: Situação Atual + Próximos 6 Meses (Recomendado para Decisão)
@@ -28,6 +42,8 @@ export interface GenerateReportParams {
   shows: Show[];
   financialSettings?: FinancialSettings;
   getAccountBalance: (accountId: string) => number;
+  /** Cenário opcional (ex.: novo aluguel substituindo o atual) */
+  decisionScenario?: DecisionScenario | null;
 }
 
 // Utilitário para formatar moeda em padrão BRL
@@ -441,7 +457,12 @@ export const isDiscretionaryExpense = (
 // MOTOR PRINCIPAL DE GERAÇÃO DO RELATÓRIO
 // =========================================================================
 
-export const generateFinancialReportForAI = (params: GenerateReportParams): string => {
+export interface GeneratedAiReport {
+  text: string;
+  scenarioSim: ScenarioSimulationResult | null;
+}
+
+export const generateFinancialReportForAI = (params: GenerateReportParams): GeneratedAiReport => {
   const {
     periodType,
     customStartDate,
@@ -452,7 +473,8 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
     debts,
     shows,
     financialSettings,
-    getAccountBalance
+    getAccountBalance,
+    decisionScenario
   } = params;
 
   const now = new Date();
@@ -1159,9 +1181,25 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): stri
   } else {
     lines.push(`O usuário NÃO DEVE fazer compras supérfluas no momento. O caixa disponível está comprometido com contas imediatas, a reserva mínima configurada (${formatBRL(targetSafetyReserveTotal)}) ainda não está plenamente guarnecida ou há meses com fluxo deficitário.`);
   }
+
+  // SEÇÃO 8: CENÁRIO DE DECISÃO (opcional)
+  let scenarioSim: ScenarioSimulationResult | null = null;
+  if (decisionScenario) {
+    scenarioSim = simulateDecisionScenario(
+      monthlyFlowRows,
+      totalAvailableOperationalToday,
+      decisionScenario
+    );
+    lines.push('');
+    lines.push(formatScenarioReportSection(monthlyFlowRows, scenarioSim));
+  }
+
   lines.push('============================================================');
   lines.push('FIM DO RELATÓRIO');
   lines.push('============================================================');
 
-  return lines.join('\n');
+  return {
+    text: lines.join('\n'),
+    scenarioSim
+  };
 };
