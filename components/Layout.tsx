@@ -72,14 +72,14 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-slate-800 selection:bg-blue-900/20 selection:text-blue-900 flex flex-col">
-      <header className="sticky top-0 z-30 bg-blue-900 border-b border-blue-950 shadow-md text-white">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-brand/20 selection:text-brand flex flex-col">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F388A] border-b border-[#0A255D] shadow-md text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div 
             className="flex items-center space-x-3 cursor-pointer group select-none" 
             onClick={() => navigate('/')}
           >
-            <div className="w-10 h-10 rounded-xl bg-yellow-400 text-blue-950 font-black text-sm flex items-center justify-center shadow-md transition group-hover:scale-105">
+            <div className="w-10 h-10 rounded-xl bg-yellow-400 text-[#0F388A] font-black text-sm flex items-center justify-center shadow-md transition group-hover:scale-105">
               MF
             </div>
             <div>
@@ -87,18 +87,18 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 <span className="font-extrabold text-white text-base tracking-tight leading-none">
                   Minhas Finanças
                 </span>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-yellow-400 text-blue-950 font-sans shadow-sm">
-                  Pessoal
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-yellow-400 text-[#0F388A] font-sans shadow-sm">
+                  Pro
                 </span>
               </div>
-              <span className="text-[11px] text-blue-200 font-medium">
+              <span className="text-[11px] text-blue-100/90 font-medium">
                 Seu controle financeiro
               </span>
             </div>
           </div>
 
           {/* Navegação Desktop (4 Abas) */}
-          <nav className="hidden md:flex items-center space-x-1 bg-blue-950/60 p-1.5 rounded-2xl border border-blue-800/50">
+          <nav className="hidden md:flex items-center space-x-1 bg-black/20 p-1.5 rounded-2xl border border-white/10">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -108,8 +108,8 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                   className={`
                     flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all
                     ${item.isActive
-                      ? 'bg-yellow-400 text-blue-950 shadow-sm'
-                      : 'text-blue-100 hover:text-white hover:bg-blue-900/60'
+                      ? 'bg-yellow-400 text-[#0F388A] shadow-sm'
+                      : 'text-blue-100 hover:text-white hover:bg-white/10'
                     }
                   `}
                 >
@@ -127,7 +127,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
           <div className="flex items-center space-x-2.5">
             <button
               onClick={() => onOpenAdd('expense')}
-              className="py-2 px-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-extrabold text-xs uppercase tracking-wide transition active:scale-95 shadow-sm flex items-center space-x-1.5"
+              className="py-2 px-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-[#0F388A] font-extrabold text-xs uppercase tracking-wide transition active:scale-95 shadow-sm flex items-center space-x-1.5"
             >
               <Plus size={15} strokeWidth={3} />
               <span className="hidden sm:inline">Novo Lançamento</span>
@@ -136,19 +136,19 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
 
             {/* Perfil / Sessão */}
             {isDemoMode ? (
-              <div className="flex items-center space-x-1.5 bg-blue-950/70 border border-blue-800/60 px-2 py-1 rounded-xl">
+              <div className="flex items-center space-x-1.5 bg-black/25 border border-white/15 px-2 py-1 rounded-xl">
                 <span className="text-[11px] text-yellow-300 font-bold hidden sm:inline">Demo</span>
                 <button
                   onClick={() => exitDemoMode()}
-                  className="p-1 rounded-lg text-blue-200 hover:text-white transition"
+                  className="p-1 rounded-lg text-blue-100 hover:text-white transition"
                   title="Sair do Modo Demo"
                 >
                   <LogOut size={14} />
                 </button>
               </div>
             ) : currentUser ? (
-              <div className="flex items-center space-x-1.5 bg-blue-950/70 border border-blue-800/60 px-2.5 py-1 rounded-xl">
-                <div className="w-6 h-6 rounded-full bg-yellow-400 text-blue-950 font-black text-xs flex items-center justify-center">
+              <div className="flex items-center space-x-1.5 bg-black/25 border border-white/15 px-2.5 py-1 rounded-xl">
+                <div className="w-6 h-6 rounded-full bg-yellow-400 text-[#0F388A] font-black text-xs flex items-center justify-center">
                   {(settings.userName || 'U').charAt(0).toUpperCase()}
                 </div>
                 <span className="text-xs font-bold text-white max-w-[90px] truncate hidden sm:inline">
@@ -156,7 +156,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 </span>
                 <button
                   onClick={() => logoutUser()}
-                  className="p-1 text-blue-200 hover:text-rose-300 transition"
+                  className="p-1 text-blue-100 hover:text-rose-300 transition"
                   title="Sair"
                 >
                   <LogOut size={14} />
@@ -165,7 +165,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
             ) : (
               <button
                 onClick={() => signInWithGoogle()}
-                className="py-1.5 px-3 rounded-xl bg-blue-800 hover:bg-blue-700 text-white font-bold text-xs transition border border-blue-700"
+                className="py-1.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition border border-white/20"
               >
                 Entrar
               </button>
@@ -176,9 +176,9 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
       </header>
 
       {/* ========================================================================= */}
-      {/* ÁREA PRINCIPAL DE CONTEÚDO (FUNDO SUAVE SLATE-100)                        */}
+      {/* ÁREA PRINCIPAL — pt-20 compensa header fixed (h-16)                      */}
       {/* ========================================================================= */}
-      <main className="w-full flex-1 max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-10">
+      <main className="w-full flex-1 max-w-7xl mx-auto pt-20 px-3.5 sm:px-6 lg:px-8 pb-24 md:pb-10">
         
         {/* Banner de Demonstração (se ativo) */}
         {isDemoMode && (
@@ -204,7 +204,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-2 py-1.5 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-2 py-1.5 md:hidden">
         <div className="max-w-md mx-auto grid grid-cols-4 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -215,14 +215,14 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 className={`
                   relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-150 active:scale-95
                   ${item.isActive 
-                    ? 'text-blue-900 font-extrabold' 
-                    : 'text-slate-500 hover:text-slate-700 font-medium'
+                    ? 'text-[#0F388A] font-extrabold' 
+                    : 'text-slate-600 hover:text-slate-800 font-medium'
                   }
                 `}
               >
                 <div className={`
                   relative p-1 rounded-xl transition-colors
-                  ${item.isActive ? 'bg-blue-50 text-blue-900' : ''}
+                  ${item.isActive ? 'bg-blue-50 text-[#0F388A]' : ''}
                 `}>
                   <Icon size={20} strokeWidth={item.isActive ? 2.5 : 2} />
                   

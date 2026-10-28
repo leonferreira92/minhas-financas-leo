@@ -1,10 +1,11 @@
 
 <!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Finanças Pro</title>
+    <title>Minhas Finanças Pro</title>
     <meta name="description" content="Aplicativo mobile-first de controle financeiro pessoal com dashboard, gestão de fluxo de caixa e insights via IA." />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,47 +14,27 @@
         theme: {
           extend: {
             colors: {
-              spotify: {
-                green: '#1ed760',
-                greenHover: '#1fdf64',
-                darkGreen: '#1db954',
-                bg: '#121212',
-                bgDeep: '#09090b',
-                card: '#181818',
-                cardHover: '#222222',
-                elevated: '#282828',
-                border: '#2a2a2a',
-                subtleBorder: '#3f3f46',
-                subtext: '#a1a1aa',
-                muted: '#71717a'
+              brand: {
+                DEFAULT: '#0F388A',
+                50: '#E8EEF8',
+                100: '#D1DDF1',
+                200: '#A3BBE3',
+                300: '#7599D5',
+                400: '#4777C7',
+                500: '#0F388A',
+                600: '#0D2F74',
+                700: '#0A255D',
+                800: '#081C47',
+                900: '#051230',
+                950: '#030B1F',
               },
-              slate: {
-                50: '#f8fafc',
-                100: '#f1f5f9',
-                200: '#e2e8f0',
-                300: '#cbd5e1',
-                400: '#a1a1aa',
-                500: '#71717a',
-                600: '#52525b',
-                700: '#3f3f46',
-                800: '#27272a',
-                850: '#181818',
-                900: '#121212',
-                950: '#09090b',
+              cta: {
+                DEFAULT: '#FACC15',
+                soft: '#FEF9C3',
+                ink: '#0F388A',
               },
-              indigo: {
-                50: 'rgb(var(--color-primary-50-rgb) / <alpha-value>)',
-                100: 'rgb(var(--color-primary-100-rgb) / <alpha-value>)',
-                200: 'rgb(var(--color-primary-200-rgb) / <alpha-value>)',
-                300: 'rgb(var(--color-primary-300-rgb) / <alpha-value>)',
-                400: 'rgb(var(--color-primary-400-rgb) / <alpha-value>)',
-                500: 'rgb(var(--color-primary-500-rgb) / <alpha-value>)',
-                600: 'rgb(var(--color-primary-600-rgb) / <alpha-value>)',
-                700: 'rgb(var(--color-primary-700-rgb) / <alpha-value>)',
-                800: 'rgb(var(--color-primary-800-rgb) / <alpha-value>)',
-                900: 'rgb(var(--color-primary-900-rgb) / <alpha-value>)',
-                950: 'rgb(var(--color-primary-950-rgb) / <alpha-value>)',
-              }
+              income: '#10B981',
+              expense: '#EF4444',
             },
             animation: {
               'pulse-soft': 'pulseSoft 3s infinite',
@@ -82,37 +63,49 @@
       @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
       
       :root {
-        /* Spotify Green Accent System */
-        --color-primary-50: #f0fdf4;
-        --color-primary-100: #dcfce7;
-        --color-primary-200: #bbf7d0;
-        --color-primary-300: #86efac;
-        --color-primary-400: #4ade80;
-        --color-primary-500: #22c55e;
-        --color-primary-600: #1ed760;
-        --color-primary-700: #15803d;
-        --color-primary-800: #166534;
-        --color-primary-900: #14532d;
-        --color-primary-950: #052e16;
+        /* Premium Fintech — Brand Blue #0F388A */
+        --color-brand: #0F388A;
+        --color-cta: #FACC15;
+        --color-surface: #FFFFFF;
+        --color-app-bg: #F8FAFC;
+        --color-text: #0F172A;
+        --color-text-secondary: #475569;
+        --color-income: #10B981;
+        --color-expense: #EF4444;
+        --color-border: #E2E8F0;
 
-        --color-primary-50-rgb: 240 253 244;
-        --color-primary-100-rgb: 220 252 231;
-        --color-primary-200-rgb: 187 247 208;
-        --color-primary-300-rgb: 134 239 172;
-        --color-primary-400-rgb: 74 222 128;
-        --color-primary-500-rgb: 34 197 94;
-        --color-primary-600-rgb: 30 215 96;
-        --color-primary-700-rgb: 21 128 61;
-        --color-primary-800-rgb: 22 101 52;
-        --color-primary-900-rgb: 20 83 45;
-        --color-primary-950-rgb: 5 46 22;
-        --color-primary-contrast: #000000;
+        --color-primary-50: #E8EEF8;
+        --color-primary-100: #D1DDF1;
+        --color-primary-200: #A3BBE3;
+        --color-primary-300: #7599D5;
+        --color-primary-400: #4777C7;
+        --color-primary-500: #0F388A;
+        --color-primary-600: #0D2F74;
+        --color-primary-700: #0A255D;
+        --color-primary-800: #081C47;
+        --color-primary-900: #051230;
+        --color-primary-950: #030B1F;
+
+        --color-primary-50-rgb: 232 238 248;
+        --color-primary-100-rgb: 209 221 241;
+        --color-primary-200-rgb: 163 187 227;
+        --color-primary-300-rgb: 117 153 213;
+        --color-primary-400-rgb: 71 119 199;
+        --color-primary-500-rgb: 15 56 138;
+        --color-primary-600-rgb: 13 47 116;
+        --color-primary-700-rgb: 10 37 93;
+        --color-primary-800-rgb: 8 28 71;
+        --color-primary-900-rgb: 5 18 48;
+        --color-primary-950-rgb: 3 11 31;
+        --color-primary-contrast: #FFFFFF;
       }
 
       body {
         font-family: 'Plus Jakarta Sans', sans-serif;
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: contain;
+        color: #0F172A;
+        background-color: #F8FAFC;
       }
 
       .no-scrollbar::-webkit-scrollbar {
@@ -128,16 +121,34 @@
         -webkit-appearance: none;
       }
 
-      /* Custom scroll design for dark mode */
-      .dark ::-webkit-scrollbar {
+      ::-webkit-scrollbar {
         width: 4px;
       }
-      .dark ::-webkit-scrollbar-track {
-        background: #020617;
+      ::-webkit-scrollbar-track {
+        background: #F1F5F9;
       }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #1e293b;
+      ::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
         border-radius: 10px;
+      }
+
+      /* Design System utility classes */
+      .ds-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 1.25rem;
+        box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+      }
+      .ds-label {
+        color: #475569;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .ds-title {
+        color: #0F172A;
+        font-weight: 900;
       }
     </style>
   <script type="importmap">
@@ -157,7 +168,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-slate-50 dark:bg-black transition-colors duration-300">
+  <body class="bg-slate-50 text-slate-900 transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

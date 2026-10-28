@@ -32,17 +32,17 @@ export const CostOfLivingSection: React.FC = () => {
   }, [settings.financialSettings]);
 
   // ---------------------------------------------------------------------------
-  // APURAÇÃO HISTÓRICA REAL DAS MOVIMENTAÇÕES (EXCLUINDO TRANSFERÊNCIAS E RESERVAS)
+  // APURAÃ‡ÃƒO HISTÃ“RICA REAL DAS MOVIMENTAÃ‡Ã•ES (EXCLUINDO TRANSFERÃŠNCIAS E RESERVAS)
   // ---------------------------------------------------------------------------
   const metrics = useMemo(() => {
-    // 1. Filtrar todas as despesas operacionais reais (não transferências, não reservas)
+    // 1. Filtrar todas as despesas operacionais reais (nÃ£o transferÃªncias, nÃ£o reservas)
     const validExpenseTxs = transactions.filter(t => 
       t.type === 'expense' && 
       !isNeutralCashFlowMovement(t) && 
       !isGoalMovement(t)
     );
 
-    // Mapear meses distintos com movimentação de despesas
+    // Mapear meses distintos com movimentaÃ§Ã£o de despesas
     const monthSet = new Set<string>();
     validExpenseTxs.forEach(t => {
       const ym = t.date.slice(0, 7);
@@ -57,7 +57,7 @@ export const CostOfLivingSection: React.FC = () => {
     let totalLifestyleAllTime = 0;
     let totalAllExpensesAllTime = 0;
 
-    // Também calcular gastos do mês atual para comparação ou caso seja o único mês
+    // TambÃ©m calcular gastos do mÃªs atual para comparaÃ§Ã£o ou caso seja o Ãºnico mÃªs
     let currentMonthEssential = 0;
     let currentMonthLifestyle = 0;
     let currentMonthTotal = 0;
@@ -83,13 +83,13 @@ export const CostOfLivingSection: React.FC = () => {
       }
     });
 
-    // Médias mensais históricas
+    // MÃ©dias mensais histÃ³ricas
     const avgMonthlyEssential = totalEssentialAllTime / monthsCount;
     const avgMonthlyLifestyle = totalLifestyleAllTime / monthsCount;
     const avgMonthlyTotal = totalAllExpensesAllTime / monthsCount;
 
-    // Se tivermos dados consolidados do mês atual e forem mais representativos que a média,
-    // usamos uma ponderação prudente da média histórica
+    // Se tivermos dados consolidados do mÃªs atual e forem mais representativos que a mÃ©dia,
+    // usamos uma ponderaÃ§Ã£o prudente da mÃ©dia histÃ³rica
     const survivalCost = avgMonthlyEssential > 0 
       ? avgMonthlyEssential 
       : (currentMonthEssential > 0 ? currentMonthEssential : 0);
@@ -118,14 +118,14 @@ export const CostOfLivingSection: React.FC = () => {
   }, [transactions, categories, debts, financialSettings, currentMonthPrefix]);
 
   const formatBRL = (val: number) => {
-    if (isBlurred) return 'R$ •••••••';
+    if (isBlurred) return 'R$ â€¢â€¢â€¢â€¢â€¢';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
   return (
     <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
       
-      {/* HEADER DA SEÇÃO */}
+      {/* HEADER DA SEÃ‡ÃƒO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
@@ -137,11 +137,11 @@ export const CostOfLivingSection: React.FC = () => {
                 Quanto custa minha vida?
               </h2>
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                {metrics.monthsAnalyzed} {metrics.monthsAnalyzed === 1 ? 'mês base' : 'meses de base'}
+                {metrics.monthsAnalyzed} {metrics.monthsAnalyzed === 1 ? 'mÃªs base' : 'meses de base'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Degraus financeiros mensais baseados no seu histórico real de gastos
+              Degraus financeiros mensais baseados no seu histÃ³rico real de gastos
             </p>
           </div>
         </div>
@@ -158,7 +158,7 @@ export const CostOfLivingSection: React.FC = () => {
       {/* OS 3 INDICADORES SOLICITADOS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        {/* 1. CUSTO DE SOBREVIVÊNCIA */}
+        {/* 1. CUSTO DE SOBREVIVÃŠNCIA */}
         <div className="p-5 rounded-[2rem] bg-slate-50/70 dark:bg-slate-950/60 border border-slate-200/70 dark:border-slate-800/80 flex flex-col justify-between relative overflow-hidden transition hover:border-slate-300 dark:hover:border-slate-700">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -172,24 +172,24 @@ export const CostOfLivingSection: React.FC = () => {
 
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
-                1. Custo de Sobrevivência
+                1. Custo de SobrevivÃªncia
               </h3>
               <div className="flex items-baseline space-x-1.5 mt-1">
                 <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
                   {formatBRL(metrics.survivalCost)}
                 </span>
-                <span className="text-xs font-bold text-slate-400">/mês</span>
+                <span className="text-xs font-bold text-slate-400">/mÃªs</span>
               </div>
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Valor mensal necessário apenas para <strong>despesas essenciais</strong>: moradia, alimentação básica, contas de consumo, saúde e transporte indispensável.
+              Valor mensal necessÃ¡rio apenas para <strong>despesas essenciais</strong>: moradia, alimentaÃ§Ã£o bÃ¡sica, contas de consumo, saÃºde e transporte indispensÃ¡vel.
             </p>
           </div>
 
           <div className="pt-4 mt-4 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Seu mínimo inegociável</span>
-            <span className="font-bold text-amber-600 dark:text-amber-400">Linha d'água</span>
+            <span>Seu mÃ­nimo inegociÃ¡vel</span>
+            <span className="font-bold text-amber-600 dark:text-amber-400">Linha d'Ã¡gua</span>
           </div>
         </div>
 
@@ -201,7 +201,7 @@ export const CostOfLivingSection: React.FC = () => {
                 <Coffee size={16} strokeWidth={2.5} />
               </div>
               <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800/50">
-                Padrão Real
+                PadrÃ£o Real
               </span>
             </div>
 
@@ -213,18 +213,18 @@ export const CostOfLivingSection: React.FC = () => {
                 <span className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums tracking-tight">
                   {formatBRL(metrics.currentLivingCost)}
                 </span>
-                <span className="text-xs font-bold text-slate-400">/mês</span>
+                <span className="text-xs font-bold text-slate-400">/mÃªs</span>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Média mensal considerando <strong>despesas essenciais + estilo de vida</strong> (lazer, refeições fora, assinaturas, compras e compromissos rotineiros).
+              MÃ©dia mensal considerando <strong>despesas essenciais + estilo de vida</strong> (lazer, refeiÃ§Ãµes fora, assinaturas, compras e compromissos rotineiros).
             </p>
           </div>
 
           <div className="pt-4 mt-4 border-t border-indigo-200/60 dark:border-indigo-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
             <span>Estilo de vida</span>
-            <span className="font-bold text-indigo-600 dark:text-indigo-400">+{formatBRL(metrics.lifestylePortion)}/mês</span>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">+{formatBRL(metrics.lifestylePortion)}/mÃªs</span>
           </div>
         </div>
 
@@ -248,31 +248,31 @@ export const CostOfLivingSection: React.FC = () => {
                 <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
                   {formatBRL(metrics.livingAndGoalsCost)}
                 </span>
-                <span className="text-xs font-bold text-slate-400">/mês</span>
+                <span className="text-xs font-bold text-slate-400">/mÃªs</span>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              <strong>Custo de vida atual + valor mensal necessário</strong> para cumprir as {metrics.activeGoalsCount} metas financeiras cadastradas nos prazos planejados.
+              <strong>Custo de vida atual + valor mensal necessÃ¡rio</strong> para cumprir as {metrics.activeGoalsCount} metas financeiras cadastradas nos prazos planejados.
             </p>
           </div>
 
           <div className="pt-4 mt-4 border-t border-emerald-200/60 dark:border-emerald-800/80 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
             <span>Aporte p/ Metas</span>
             <span className="font-bold text-emerald-600 dark:text-emerald-400">
-              {metrics.monthlyGoalsPace > 0 ? `+${formatBRL(metrics.monthlyGoalsPace)}/mês` : 'Metas 100% atingidas'}
+              {metrics.monthlyGoalsPace > 0 ? `+${formatBRL(metrics.monthlyGoalsPace)}/mÃªs` : 'Metas 100% atingidas'}
             </span>
           </div>
         </div>
 
       </div>
 
-      {/* RODA-PÉ METODOLÓGICO */}
+      {/* RODA-PÃ‰ METODOLÃ“GICO */}
       <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
         <div className="flex items-center space-x-2">
           <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
           <span>
-            Transferências entre contas e aportes em reservas foram <strong>rigorosamente desconsiderados</strong> como despesas.
+            TransferÃªncias entre contas e aportes em reservas foram <strong>rigorosamente desconsiderados</strong> como despesas.
           </span>
         </div>
       </div>

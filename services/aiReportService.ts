@@ -789,16 +789,16 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): Gene
 
   const baseMonthlyBalance = totalMonthlyRecurringIncome - totalMandatoryMonthlyCost;
 
-  let necessityOfShowsExplanation = 'Renda fixa recorrente cobre as despesas obrigatÛrias.';
+  let necessityOfShowsExplanation = 'Renda fixa recorrente cobre as despesas obrigat√≥rias.';
   if (baseMonthlyBalance < 0) {
     const deficit = Math.abs(baseMonthlyBalance);
     if (allShows.length > 0 && avgProfitPerShow > 0) {
       const showsCount = (deficit / avgProfitPerShow).toFixed(1);
-      necessityOfShowsExplanation = `DÈficit mensal recorrente de ${formatBRL(deficit)}. Necess·rios ${showsCount} shows/mÍs (lucro mÈdio de ${formatBRL(avgProfitPerShow)}) para custear as obrigaÁıes sem contar receitas extraordin·rias.`;
+      necessityOfShowsExplanation = `D√©ficit mensal recorrente de ${formatBRL(deficit)}. Necess√°rios ${showsCount} shows/m√™s (lucro m√©dio de ${formatBRL(avgProfitPerShow)}) para custear as obriga√ß√µes sem contar receitas extraordin√°rias.`;
     } else if (allShows.length > 0) {
-      necessityOfShowsExplanation = `DÈficit mensal recorrente de ${formatBRL(deficit)}. Necessita de renda vari·vel para fechamento das contas.`;
+      necessityOfShowsExplanation = `D√©ficit mensal recorrente de ${formatBRL(deficit)}. Necessita de renda vari√°vel para fechamento das contas.`;
     } else {
-      necessityOfShowsExplanation = `DÈficit mensal recorrente de ${formatBRL(deficit)}. Ajuste despesas, aumente receitas ou use reserva com critÈrio.`;
+      necessityOfShowsExplanation = `D√©ficit mensal recorrente de ${formatBRL(deficit)}. Ajuste despesas, aumente receitas ou use reserva com crit√©rio.`;
     }
   }
 

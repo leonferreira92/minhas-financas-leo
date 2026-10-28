@@ -205,12 +205,12 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
 
   if (parsedDebtsData.items.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-6 border border-slate-200 dark:border-slate-800 text-center py-10">
-        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3">
+      <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm text-center py-10">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-[#10B981] flex items-center justify-center mx-auto mb-3">
           <ShieldCheck size={28} />
         </div>
-        <h3 className="text-base font-black text-slate-900 dark:text-white">Nenhuma Dívida Ativa</h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+        <h3 className="text-base font-black text-slate-900">Nenhuma Dívida Ativa</h3>
+        <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
           Todas as dívidas cadastradas estão quitadas com saldo R$ 0,00 ou não há obrigações ativas registradas.
         </p>
       </div>
@@ -223,59 +223,56 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
       {/* --------------------------------------------------------------------- */}
       {/* CARD DE RESUMO: PARCELAS ATUAIS POR MÊS E QUEDA PREVISTA              */}
       {/* --------------------------------------------------------------------- */}
-      <div className="bg-gradient-to-br from-[#002d6c] via-[#003882] to-[#001838] text-white rounded-[2.2rem] p-6 shadow-xl border border-blue-500/20 relative overflow-hidden">
-        
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-[#fcca00] rounded-full blur-3xl opacity-10"></div>
-
+      <div className="bg-white text-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-200 relative overflow-hidden">
         <div className="relative z-10 space-y-4">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-200 block mb-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 block mb-1">
                 Comprometimento mensal
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-white">
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-slate-900">
                 Parcelas atuais por mês: {formatBRL(parsedDebtsData.totalCommittedPerMonth)}
               </h2>
             </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-slate-300 border border-white/10 w-fit">
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-[#0F388A] border border-blue-100 w-fit">
               {parsedDebtsData.items.length} {parsedDebtsData.items.length === 1 ? 'dívida ativa' : 'dívidas ativas'}
             </span>
           </div>
 
-          <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+          <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
             Soma exata das parcelas mensais de todos os passivos com saldo devedor pendente. Dívidas com saldo R$ 0,00 são desconsideradas.
           </p>
 
           {/* CRONOGRAMA DE ALÍVIO: QUANTO O VALOR CAIRÁ QUANDO CADA DÍVIDA TERMINAR */}
           {parsedDebtsData.reliefSchedule.length > 0 && (
-            <div className="pt-4 border-t border-white/10 space-y-2.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+            <div className="pt-4 border-t border-slate-100 space-y-2.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
                 Cronograma de Alívio do Fluxo de Caixa:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {parsedDebtsData.reliefSchedule.map((milestone, idx) => (
                   <div 
                     key={idx}
-                    className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col justify-between space-y-1.5"
+                    className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between space-y-1.5"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-[#fcca00]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-[#0F388A]">
                         {milestone.monthYear}
                       </span>
-                      <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      <span className="text-[10px] font-black text-[#10B981] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 shrink-0">
                         -{formatBRL(milestone.reliefAmount)}/mês
                       </span>
                     </div>
 
-                    <p className="text-[11px] text-slate-300 truncate">
-                      Fim de: <strong>{milestone.debtsNames}</strong>
+                    <p className="text-[11px] text-slate-600 truncate">
+                      Fim de: <strong className="text-slate-900">{milestone.debtsNames}</strong>
                     </p>
 
-                    <div className="pt-1 text-[10px] text-slate-400 border-t border-white/5 flex items-center justify-between">
+                    <div className="pt-1 text-[10px] text-slate-600 border-t border-slate-200 flex items-center justify-between gap-2">
                       <span>Parcelas caem para:</span>
                       <strong className={`tabular-nums font-black ${
-                        milestone.newCommittedPerMonth === 0 ? 'text-emerald-400' : 'text-white'
+                        milestone.newCommittedPerMonth === 0 ? 'text-[#10B981]' : 'text-slate-900'
                       }`}>
                         {milestone.newCommittedPerMonth === 0 ? 'R$ 0,00 (Quitado!)' : formatBRL(milestone.newCommittedPerMonth)}
                       </strong>
@@ -293,12 +290,12 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
       {/* PAINEL DETALHADO DE CADA DÍVIDA ATIVA                                 */}
       {/* --------------------------------------------------------------------- */}
       <div className="space-y-3.5">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
+          <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
             Detalhamento Individual das Dívidas
           </h3>
-          <span className="text-[11px] text-slate-400">
-            Total Comprometido: <strong>{formatBRL(parsedDebtsData.totalCommittedPerMonth)}/mês</strong>
+          <span className="text-[11px] text-slate-600">
+            Total Comprometido: <strong className="text-slate-900">{formatBRL(parsedDebtsData.totalCommittedPerMonth)}/mês</strong>
           </span>
         </div>
 
@@ -316,18 +313,18 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
               <div 
                 key={item.debt.id}
                 onClick={() => onSelectDebt && onSelectDebt(item.debt.id)}
-                className={`bg-white dark:bg-slate-900 rounded-[2rem] p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition hover:shadow-md ${onSelectDebt ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+                className={`bg-white rounded-[2rem] p-5 border border-slate-200 shadow-sm transition hover:shadow-md ${onSelectDebt ? 'cursor-pointer active:scale-[0.99]' : ''}`}
               >
                 
                 {/* TOPO: NOME, TIPO E PREVISÃO DE TÉRMINO */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#EF4444] flex items-center justify-center shrink-0">
                       <CreditCard size={20} strokeWidth={2.2} />
                     </div>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="text-base font-black text-slate-900 dark:text-white leading-tight">
+                        <h4 className="text-base font-black text-slate-900 leading-tight">
                           {item.debt.name}
                         </h4>
                         {!PERSONAL_ONLY_MODE && (
@@ -376,7 +373,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                         e.stopPropagation();
                         setEditingDebt(item.debt);
                       }}
-                      className="px-2.5 py-1.5 rounded-xl bg-blue-50 text-blue-800 hover:bg-blue-100 text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95"
+                      className="px-2.5 py-1.5 rounded-xl bg-blue-50 text-[#0F388A] hover:bg-blue-100 text-[10px] font-black uppercase tracking-wider flex items-center space-x-1 transition active:scale-95"
                       title="Editar dívida"
                     >
                       <SlidersHorizontal size={12} />
@@ -384,55 +381,55 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                     </button>
 
                     <div className="sm:text-right">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
                         Término previsto
                       </span>
-                      <span className="text-xs font-black text-blue-800 block">
+                      <span className="text-xs font-black text-[#0F388A] block">
                         {item.endMonthYear}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* GRID DE VALORES REQUISITADOS: SALDO RESTANTE, VALOR DA PARCELA, PARCELAS RESTANTES, TOTAL COMPROMETIDO */}
+                {/* GRID DE VALORES: SALDO RESTANTE, PARCELA, PARCELAS RESTANTES, PAGAS */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3.5">
                   
                   {/* Saldo Restante */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">
                       Saldo Restante
                     </span>
-                    <span className="text-sm font-black text-rose-600 dark:text-rose-400 tabular-nums block mt-0.5">
+                    <span className="text-sm font-black text-[#EF4444] tabular-nums block mt-1">
                       {formatBRL(item.remainingAmount)}
                     </span>
                   </div>
 
                   {/* Valor da Parcela */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">
                       Valor da Parcela
                     </span>
-                    <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums block mt-0.5">
+                    <span className="text-sm font-black text-slate-900 tabular-nums block mt-1">
                       {formatBRL(item.installmentAmount)}
                     </span>
                   </div>
 
                   {/* Parcelas Restantes */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">
                       Parcelas Restantes
                     </span>
-                    <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums block mt-0.5">
+                    <span className="text-sm font-black text-slate-900 tabular-nums block mt-1">
                       {item.remainingCount} {item.remainingCount === 1 ? 'restante' : 'restantes'}
                     </span>
                   </div>
 
                   {/* Parcelas Já Pagas */}
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800/80">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 block">
                       Parcelas Já Pagas
                     </span>
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums block mt-0.5">
+                    <span className="text-sm font-black text-[#10B981] tabular-nums block mt-1">
                       {item.paidCount} {item.paidCount === 1 ? 'paga' : 'pagas'}
                     </span>
                   </div>
@@ -456,15 +453,15 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
                 )}
 
                 <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400">
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-600">
                     <span>Progresso</span>
-                    <span className="tabular-nums font-bold text-slate-700">
+                    <span className="tabular-nums font-bold text-slate-900">
                       {pct.toFixed(0)}%
                     </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div 
-                      className="bg-[#003882] h-full rounded-full transition-all duration-500"
+                      className="bg-[#0F388A] h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, pct)}%` }}
                     ></div>
                   </div>

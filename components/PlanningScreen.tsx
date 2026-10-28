@@ -257,21 +257,21 @@ export const PlanningScreen = () => {
   };
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-md mx-auto">
+    <div className="pb-32 animate-fade-in text-slate-900 max-w-md mx-auto">
       
-      {/* HEADER & MONTH SELECTOR */}
-      <div className="sticky top-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md z-30 pt-4 pb-3 border-b border-slate-200/50 dark:border-slate-800/50 mb-6">
+      {/* HEADER & MONTH SELECTOR — sticky abaixo do header fixo (h-16 / top-16) */}
+      <div className="sticky top-16 bg-slate-50/95 backdrop-blur-md z-40 pt-3 pb-3 border-b border-slate-200 mb-6 -mx-1 px-1">
         
         {/* Title + Action */}
         <div className="flex justify-between items-center mb-4 px-1">
           <div>
-            <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               Orçamentos
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-100">
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 text-[#0F388A] border border-blue-100">
                 Pessoal
               </span>
             </h1>
-            <p className="text-[11px] font-medium text-slate-400">Tetos e planejamento do seu caixa</p>
+            <p className="text-[11px] font-medium text-slate-600">Tetos e planejamento do seu caixa</p>
           </div>
 
           <button 
@@ -279,7 +279,7 @@ export const PlanningScreen = () => {
               setModalType('budget'); 
               setIsModalOpen(true); 
             }}
-            className="p-3 bg-[#003882] hover:bg-blue-900 text-[#fcca00] rounded-2xl shadow-lg shadow-blue-900/15 transition-all active:scale-95 flex items-center justify-center"
+            className="p-3 bg-[#0F388A] hover:bg-[#0D2F74] text-yellow-400 rounded-2xl shadow-lg shadow-blue-900/15 transition-all active:scale-95 flex items-center justify-center"
             title="Novo orçamento"
           >
             <Plus size={22} strokeWidth={2.5} />
@@ -287,27 +287,27 @@ export const PlanningScreen = () => {
         </div>
 
         {/* Month Selector Bar */}
-        <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm mb-3">
+        <div className="flex items-center justify-between bg-white p-2 rounded-2xl border border-slate-200 shadow-sm mb-3">
           <button 
             onClick={handlePrevMonth} 
-            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition active:scale-90"
+            className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition active:scale-90"
             aria-label="Mês Anterior"
           >
             <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
           
           <div className="text-center">
-            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 block">
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#0F388A] block">
               Mês Selecionado
             </span>
-            <span className="text-sm font-black text-slate-800 dark:text-white tracking-tight">
+            <span className="text-sm font-black text-slate-900 tracking-tight">
               {formattedMonthLabel}
             </span>
           </div>
 
           <button 
             onClick={handleNextMonth} 
-            className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition active:scale-90"
+            className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition active:scale-90"
             aria-label="Próximo Mês"
           >
             <ChevronRight size={20} strokeWidth={2.5} />
@@ -315,7 +315,7 @@ export const PlanningScreen = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex bg-slate-200/60 dark:bg-slate-900/90 p-1 rounded-2xl border border-slate-200/50 dark:border-slate-800/80">
+        <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 overflow-x-auto no-scrollbar">
           {[
             { id: 'overview', label: 'Decisão' },
             { id: 'groups', label: 'Grupos' },
@@ -326,10 +326,10 @@ export const PlanningScreen = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`
-                flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all
+                flex-1 min-w-[4.5rem] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap
                 ${activeTab === tab.id 
-                  ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-md scale-[1.02]' 
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  ? 'bg-white text-[#0F388A] shadow-sm border border-slate-200' 
+                  : 'text-slate-600 hover:text-slate-800'
                 }
               `}
             >
@@ -341,10 +341,10 @@ export const PlanningScreen = () => {
 
       {/* BANNER EXPLICATIVO DO MODO ADAPTATIVO */}
       <div className="mb-6 px-1">
-        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-start space-x-3 text-indigo-900 dark:text-indigo-200">
-          <Info size={20} className="text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs font-medium leading-relaxed">
-            <strong className="font-black text-indigo-700 dark:text-indigo-300">Regra do caixa pessoal:</strong> O planejamento prioriza o <u className="decoration-indigo-400 underline-offset-2">dinheiro disponível hoje</u>. Entradas futuras entram na projeção, mas nunca liberam saldo para gastos antes de serem recebidas.
+        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start space-x-3 text-slate-800">
+          <Info size={20} className="text-[#0F388A] flex-shrink-0 mt-0.5" />
+          <p className="text-xs font-medium leading-relaxed text-slate-600">
+            <strong className="font-black text-[#0F388A]">Regra do caixa pessoal:</strong> O planejamento prioriza o <u className="decoration-[#0F388A] underline-offset-2">dinheiro disponível hoje</u>. Entradas futuras entram na projeção, mas nunca liberam saldo para gastos antes de serem recebidas.
           </p>
         </div>
       </div>
@@ -651,33 +651,31 @@ export const PlanningScreen = () => {
           {/* ========================================== */}
           {/* SEÇÃO: SALDO PROJETADO DO MÊS             */}
           {/* ========================================== */}
-          <div className="bg-slate-900 text-white rounded-[2rem] p-6 shadow-xl space-y-4 border border-slate-800 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-2xl" />
-
+          <div className="bg-white text-slate-900 rounded-[2rem] p-6 shadow-sm space-y-4 border border-slate-200 relative overflow-hidden">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 block mb-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#0F388A] block mb-1">
                 Visão de Futuro
               </span>
-              <h3 className="text-lg font-black tracking-tight">Projeção do Mês (Saldo Projetado)</h3>
+              <h3 className="text-lg font-black tracking-tight text-slate-900">Projeção do Mês (Saldo Projetado)</h3>
             </div>
 
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Disponível Agora</span>
-                <span className="text-base font-black text-emerald-400 mt-1 block">
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100">
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Disponível Agora</span>
+                <span className="text-base font-black text-[#10B981] mt-1 block">
                   {formatCurrency(availableCash)}
                 </span>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
-                <span className="text-[10px] font-bold text-slate-400 block uppercase">Projeção Final</span>
-                <span className="text-base font-black text-indigo-300 mt-1 block">
+              <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-100">
+                <span className="text-[10px] font-bold text-slate-600 block uppercase">Projeção Final</span>
+                <span className="text-base font-black text-[#0F388A] mt-1 block">
                   {formatCurrency(projectedBalanceMonth)}
                 </span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-[11px] font-medium leading-relaxed">
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-900 text-[11px] font-medium leading-relaxed">
               <strong>SALDO PROJETADO ≠ DINHEIRO DISPONÍVEL.</strong> A projeção soma receitas previstas que ainda podem mudar. Tome decisões do dia a dia usando apenas o 'Disponível Agora'.
             </div>
           </div>
@@ -690,9 +688,9 @@ export const PlanningScreen = () => {
       {/* ======================================================== */}
       {activeTab === 'groups' && (
         <div className="space-y-6 animate-fade-in px-1">
-          <div className="bg-indigo-600 rounded-[2.2rem] p-6 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-[#0F388A] rounded-[2rem] p-6 text-white shadow-sm relative overflow-hidden border border-[#0A255D]">
             <h2 className="text-2xl font-black mb-1">Grupos de Planejamento</h2>
-            <p className="text-xs text-indigo-100 opacity-90">
+            <p className="text-xs text-blue-100">
               Classificação em 4 grandes eixos para controle estratégico de gastos.
             </p>
           </div>

@@ -774,8 +774,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   useEffect(() => {
-    // Pure Dark Spotify / Fintech theme permanent enforcement
-    document.documentElement.classList.add('dark');
+    // Premium Fintech light theme (Nubank/Revolut/Wise style) — consistent contrast
+    document.documentElement.classList.remove('dark');
+    document.documentElement.lang = 'pt-BR';
   }, []);
 
   useEffect(() => {

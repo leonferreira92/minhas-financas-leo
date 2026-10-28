@@ -33,7 +33,7 @@ export const SpendingAveragesSection: React.FC = () => {
   const currentMonthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
   // ---------------------------------------------------------------------------
-  // APURAÇÃO DE HISTÓRICO E MESES DISPONÍVEIS
+  // APURAÃ‡ÃƒO DE HISTÃ“RICO E MESES DISPONÃVEIS
   // ---------------------------------------------------------------------------
   const { 
     validExpenseTxs, 
@@ -41,7 +41,7 @@ export const SpendingAveragesSection: React.FC = () => {
     pastMonths, 
     hasOverallInsufficientHistory 
   } = useMemo(() => {
-    // 1. Filtrar despesas operacionais reais (exclui transferências e reservas)
+    // 1. Filtrar despesas operacionais reais (exclui transferÃªncias e reservas)
     const filtered = transactions.filter(t => 
       t.type === 'expense' && 
       !isNeutralCashFlowMovement(t) && 
@@ -57,8 +57,8 @@ export const SpendingAveragesSection: React.FC = () => {
     const monthsArr = Array.from(monthSet).sort();
     const pastArr = monthsArr.filter(m => m < currentMonthPrefix);
 
-    // Consideramos histórico insuficiente geral se não houver pelo menos 1 mês passado completo
-    // ou se o histórico tiver apenas o mês corrente.
+    // Consideramos histÃ³rico insuficiente geral se nÃ£o houver pelo menos 1 mÃªs passado completo
+    // ou se o histÃ³rico tiver apenas o mÃªs corrente.
     const insufficient = pastArr.length === 0;
 
     return {
@@ -70,13 +70,13 @@ export const SpendingAveragesSection: React.FC = () => {
   }, [transactions, currentMonthPrefix]);
 
   // ---------------------------------------------------------------------------
-  // DEFINIÇÃO DOS GRUPOS PRINCIPAIS SOLICITADOS PELO USUÁRIO:
+  // DEFINIÃ‡ÃƒO DOS GRUPOS PRINCIPAIS SOLICITADOS PELO USUÃRIO:
   // - Moradia
-  // - Alimentação/mercado
+  // - AlimentaÃ§Ã£o/mercado
   // - Carro/transporte
   // - Lazer
   // - Streaming/assinaturas
-  // - Saúde/academia
+  // - SaÃºde/academia
   // - Compras
   // - Outras categorias relevantes
   // ---------------------------------------------------------------------------
@@ -88,15 +88,15 @@ export const SpendingAveragesSection: React.FC = () => {
         icon: Home,
         color: '#f97316',
         categoryIds: ['cat_2', 'cat_13'],
-        keywords: ['moradia', 'aluguel', 'condomínio', 'condominio', 'luz', 'água', 'agua', 'gás', 'gas', 'iptu', 'casa', 'energia', 'reforma', 'limpeza']
+        keywords: ['moradia', 'aluguel', 'condomÃ­nio', 'condominio', 'luz', 'Ã¡gua', 'agua', 'gÃ¡s', 'gas', 'iptu', 'casa', 'energia', 'reforma', 'limpeza']
       },
       {
         id: 'group_alimentacao',
-        name: 'Alimentação / Mercado',
+        name: 'AlimentaÃ§Ã£o / Mercado',
         icon: ShoppingCart,
         color: '#ef4444',
         categoryIds: ['cat_1', 'cat_5', 'cat_22'],
-        keywords: ['alimenta', 'mercado', 'supermercado', 'restaurante', 'delivery', 'comida', 'ifood', 'lanche', 'padaria', 'refeição', 'refeicao', 'hortifruti', 'açougue', 'acougue']
+        keywords: ['alimenta', 'mercado', 'supermercado', 'restaurante', 'delivery', 'comida', 'ifood', 'lanche', 'padaria', 'refeiÃ§Ã£o', 'refeicao', 'hortifruti', 'aÃ§ougue', 'acougue']
       },
       {
         id: 'group_transporte',
@@ -104,7 +104,7 @@ export const SpendingAveragesSection: React.FC = () => {
         icon: Car,
         color: '#eab308',
         categoryIds: ['cat_3', 'cat_21'],
-        keywords: ['carro', 'transporte', 'combustível', 'combustivel', 'gasolina', 'etanol', 'uber', '99', 'estacionamento', 'pedágio', 'pedagio', 'oficina', 'mecânico', 'mecanico', 'ipva', 'seguro auto', 'ônibus', 'onibus', 'metrô', 'metro']
+        keywords: ['carro', 'transporte', 'combustÃ­vel', 'combustivel', 'gasolina', 'etanol', 'uber', '99', 'estacionamento', 'pedÃ¡gio', 'pedagio', 'oficina', 'mecÃºnico', 'mecanico', 'ipva', 'seguro auto', 'Ã´nibus', 'onibus', 'metrÃ´', 'metro']
       },
       {
         id: 'group_lazer',
@@ -112,7 +112,7 @@ export const SpendingAveragesSection: React.FC = () => {
         icon: Gamepad2,
         color: '#8b5cf6',
         categoryIds: ['cat_16', 'cat_19', 'cat_28', 'cat_29'],
-        keywords: ['lazer', 'cinema', 'teatro', 'diversão', 'diversao', 'jogo', 'game', 'viagem', 'férias', 'ferias', 'passeio', 'bar', 'praia', 'clube', 'hotel', 'balada']
+        keywords: ['lazer', 'cinema', 'teatro', 'diversÃ£o', 'diversao', 'jogo', 'game', 'viagem', 'fÃ©rias', 'ferias', 'passeio', 'bar', 'praia', 'clube', 'hotel', 'balada']
       },
       {
         id: 'group_streaming',
@@ -124,11 +124,11 @@ export const SpendingAveragesSection: React.FC = () => {
       },
       {
         id: 'group_saude',
-        name: 'Saúde / Academia',
+        name: 'SaÃºde / Academia',
         icon: HeartPulse,
         color: '#10b981',
         categoryIds: ['cat_4', 'cat_11', 'cat_23'],
-        keywords: ['saúde', 'saude', 'academia', 'médico', 'medico', 'remédio', 'remedio', 'farmácia', 'farmacia', 'esporte', 'dentista', 'consulta', 'exame', 'terapia', 'psicolog', 'crossfit', 'suplemento']
+        keywords: ['saÃºde', 'saude', 'academia', 'mÃ©dico', 'medico', 'remÃ©dio', 'remedio', 'farmÃ¡cia', 'farmacia', 'esporte', 'dentista', 'consulta', 'exame', 'terapia', 'psicolog', 'crossfit', 'suplemento']
       },
       {
         id: 'group_compras',
@@ -136,7 +136,7 @@ export const SpendingAveragesSection: React.FC = () => {
         icon: ShoppingBag,
         color: '#ec4899',
         categoryIds: ['cat_9', 'cat_18', 'cat_20'],
-        keywords: ['compra', 'roupa', 'calçado', 'calcado', 'sapato', 'vestuário', 'vestuario', 'presente', 'eletrônico', 'eletronico', 'shopee', 'mercado livre', 'amazon compras', 'beleza', 'salão', 'salao', 'barbeiro', 'perfume', 'cosmético', 'cosmetico']
+        keywords: ['compra', 'roupa', 'calÃ§ado', 'calcado', 'sapato', 'vestuÃ¡rio', 'vestuario', 'presente', 'eletrÃºnico', 'eletronico', 'shopee', 'mercado livre', 'amazon compras', 'beleza', 'salÃ£o', 'salao', 'barbeiro', 'perfume', 'cosmÃ©tico', 'cosmetico']
       },
       {
         id: 'group_outras',
@@ -144,16 +144,16 @@ export const SpendingAveragesSection: React.FC = () => {
         icon: Layers,
         color: '#64748b',
         categoryIds: ['cat_12', 'cat_17', 'cat_26', 'cat_27'],
-        keywords: ['curso', 'escola', 'faculdade', 'pet', 'veterinário', 'veterinario', 'seguro', 'imposto', 'taxa', 'multa', 'doação', 'doacao', 'dívida', 'divida', 'empréstimo', 'emprestimo', 'financiamento']
+        keywords: ['curso', 'escola', 'faculdade', 'pet', 'veterinÃ¡rio', 'veterinario', 'seguro', 'imposto', 'taxa', 'multa', 'doaÃ§Ã£o', 'doacao', 'dÃ­vida', 'divida', 'emprÃ©stimo', 'emprestimo', 'financiamento']
       }
     ];
   }, []);
 
-  // Helper para testar se uma transação pertence a um grupo
+  // Helper para testar se uma transaÃ§Ã£o pertence a um grupo
   const matchesGroup = (t: any, group: typeof groupDefinitions[0]) => {
     if (group.id === 'group_outras') {
-      // O grupo Outras pega o que não entrou nos 7 anteriores
-      return false; // Será processado via fallback
+      // O grupo Outras pega o que nÃ£o entrou nos 7 anteriores
+      return false; // SerÃ¡ processado via fallback
     }
 
     if (group.categoryIds.includes(t.categoryId)) return true;
@@ -166,16 +166,16 @@ export const SpendingAveragesSection: React.FC = () => {
   };
 
   // ---------------------------------------------------------------------------
-  // CÁLCULO DAS MÉDIAS E COMPARAÇÕES POR GRUPO
+  // CÃLCULO DAS MÃ‰DIAS E COMPARAÃ‡Ã•ES POR GRUPO
   // ---------------------------------------------------------------------------
   const groupAnalyses: CategoryGroupAnalysis[] = useMemo(() => {
     const pastMonthsCount = pastMonths.length;
 
     return groupDefinitions.map(group => {
-      // 1. Filtrar transações pertencentes a este grupo
+      // 1. Filtrar transaÃ§Ãµes pertencentes a este grupo
       let groupTxs = validExpenseTxs.filter(t => {
         if (group.id === 'group_outras') {
-          // Checa se NÃO bate com nenhum dos outros 7 grupos
+          // Checa se NÃƒO bate com nenhum dos outros 7 grupos
           const matchesAnyOther = groupDefinitions
             .filter(g => g.id !== 'group_outras')
             .some(g => matchesGroup(t, g));
@@ -184,20 +184,20 @@ export const SpendingAveragesSection: React.FC = () => {
         return matchesGroup(t, group);
       });
 
-      // 2. Transações dos meses passados
+      // 2. TransaÃ§Ãµes dos meses passados
       const pastTxs = groupTxs.filter(t => t.date < currentMonthPrefix);
       const totalPast = pastTxs.reduce((s, t) => s + Number(t.amount), 0);
 
-      // 3. Meses passados em que houve movimentação
+      // 3. Meses passados em que houve movimentaÃ§Ã£o
       const distinctPastMonths = new Set(pastTxs.map(t => t.date.slice(0, 7)));
 
-      // 4. Transações do mês atual
+      // 4. TransaÃ§Ãµes do mÃªs atual
       const currentMonthTxs = groupTxs.filter(t => t.date.startsWith(currentMonthPrefix));
       const gastoMesAtual = currentMonthTxs.reduce((s, t) => s + Number(t.amount), 0);
 
-      // Critério de histórico suficiente:
-      // Se não há meses passados no histórico geral, OU este grupo nunca teve gastos em meses passados
-      // e também não há base para média confiável, declaramos histórico insuficiente.
+      // CritÃ©rio de histÃ³rico suficiente:
+      // Se nÃ£o hÃ¡ meses passados no histÃ³rico geral, OU este grupo nunca teve gastos em meses passados
+      // e tambÃ©m nÃ£o hÃ¡ base para mÃ©dia confiÃ¡vel, declaramos histÃ³rico insuficiente.
       const hasInsufficient = pastMonthsCount === 0 || (distinctPastMonths.size === 0 && totalPast === 0);
 
       let mediaMensal: number | null = null;
@@ -240,12 +240,12 @@ export const SpendingAveragesSection: React.FC = () => {
   }, [validExpenseTxs, groupDefinitions, pastMonths, currentMonthPrefix, categories]);
 
   // ---------------------------------------------------------------------------
-  // CÁLCULO POR CATEGORIA INDIVIDUAL (VISÃO DETALHADA)
+  // CÃLCULO POR CATEGORIA INDIVIDUAL (VISÃƒO DETALHADA)
   // ---------------------------------------------------------------------------
   const detailedCategoryAnalyses = useMemo(() => {
     const pastMonthsCount = pastMonths.length;
 
-    // Apenas categorias com tipo expense e que tenham transações registradas
+    // Apenas categorias com tipo expense e que tenham transaÃ§Ãµes registradas
     const activeExpenseCategories = categories.filter(c => 
       c.type === 'expense' && 
       validExpenseTxs.some(t => t.categoryId === c.id)
@@ -293,15 +293,15 @@ export const SpendingAveragesSection: React.FC = () => {
   }, [categories, validExpenseTxs, pastMonths, currentMonthPrefix]);
 
   const formatBRL = (val: number | null | undefined) => {
-    if (val === null || val === undefined) return '—';
-    if (isBlurred) return 'R$ •••••';
+    if (val === null || val === undefined) return 'â€”';
+    if (isBlurred) return 'R$ â€¢â€¢â€¢â€¢â€¢';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
   return (
     <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
       
-      {/* CABEÇALHO DA SEÇÃO */}
+      {/* CABEÃ‡ALHO DA SEÃ‡ÃƒO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
@@ -311,20 +311,20 @@ export const SpendingAveragesSection: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-                  Médias de Gastos
+                  MÃ©dias de Gastos
                 </h2>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  {pastMonths.length} {pastMonths.length === 1 ? 'mês base' : 'meses anteriores'}
+                  {pastMonths.length} {pastMonths.length === 1 ? 'mÃªs base' : 'meses anteriores'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Comparativo automático entre seu padrão histórico e o consumo do mês atual
+                Comparativo automÃ¡tico entre seu padrÃ£o histÃ³rico e o consumo do mÃªs atual
               </p>
             </div>
           </div>
         </div>
 
-        {/* TOGGLE VISÃO PRINCIPAL / VISÃO DETALHADA */}
+        {/* TOGGLE VISÃƒO PRINCIPAL / VISÃƒO DETALHADA */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl self-start sm:self-auto border border-slate-200 dark:border-slate-700/60">
           <button
             onClick={() => setViewMode('groups')}
@@ -349,21 +349,21 @@ export const SpendingAveragesSection: React.FC = () => {
         </div>
       </div>
 
-      {/* AVISO DE HISTÓRICO GERAL (CASO INSUFICIENTE) */}
+      {/* AVISO DE HISTÃ“RICO GERAL (CASO INSUFICIENTE) */}
       {hasOverallInsufficientHistory && (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-900/60 flex items-start space-x-3 text-xs text-amber-800 dark:text-amber-300">
           <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <span className="font-bold block">Histórico Insuficiente para Cálculo de Médias</span>
+            <span className="font-bold block">HistÃ³rico Insuficiente para CÃ¡lculo de MÃ©dias</span>
             <p className="text-[11px] leading-relaxed text-amber-700/90 dark:text-amber-400/90">
-              O aplicativo registrou apenas movimentações do mês atual ({currentMonthPrefix}). Para não inventar médias artificiais, o sistema exige pelo menos 1 mês anterior fechado no histórico. Os valores abaixo mostram estritamente o gasto realizado no mês atual.
+              O aplicativo registrou apenas movimentaÃ§Ãµes do mÃªs atual ({currentMonthPrefix}). Para nÃ£o inventar mÃ©dias artificiais, o sistema exige pelo menos 1 mÃªs anterior fechado no histÃ³rico. Os valores abaixo mostram estritamente o gasto realizado no mÃªs atual.
             </p>
           </div>
         </div>
       )}
 
       {/* --------------------------------------------------------------------- */}
-      {/* 1. VISÃO DOS GRUPOS PRINCIPAIS SOLICITADOS                            */}
+      {/* 1. VISÃƒO DOS GRUPOS PRINCIPAIS SOLICITADOS                            */}
       {/* --------------------------------------------------------------------- */}
       {viewMode === 'groups' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -399,10 +399,10 @@ export const SpendingAveragesSection: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Tag de comparação com a média */}
+                  {/* Tag de comparaÃ§Ã£o com a mÃ©dia */}
                   {group.hasInsufficientHistory ? (
                     <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                      Histórico Insuficiente
+                      HistÃ³rico Insuficiente
                     </span>
                   ) : isAbove ? (
                     <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-900/50 flex items-center space-x-0.5">
@@ -416,18 +416,18 @@ export const SpendingAveragesSection: React.FC = () => {
                     </span>
                   ) : (
                     <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                      Na Média
+                      Na MÃ©dia
                     </span>
                   )}
                 </div>
 
-                {/* 3 Valores: Média Mensal | Gasto no Mês Atual | Diferença */}
+                {/* 3 Valores: MÃ©dia Mensal | Gasto no MÃªs Atual | DiferenÃ§a */}
                 <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/60 text-xs">
                   
-                  {/* 1. MÉDIA MENSAL */}
+                  {/* 1. MÃ‰DIA MENSAL */}
                   <div>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Média Mensal
+                      MÃ©dia Mensal
                     </span>
                     <span className="font-bold text-slate-700 dark:text-slate-300 tabular-nums text-xs sm:text-sm mt-0.5 block">
                       {group.hasInsufficientHistory 
@@ -436,20 +436,20 @@ export const SpendingAveragesSection: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* 2. GASTO NO MÊS ATUAL */}
+                  {/* 2. GASTO NO MÃŠS ATUAL */}
                   <div>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Mês Atual
+                      MÃªs Atual
                     </span>
                     <span className="font-black text-slate-900 dark:text-white tabular-nums text-xs sm:text-sm mt-0.5 block">
                       {formatBRL(group.gastoMesAtual)}
                     </span>
                   </div>
 
-                  {/* 3. DIFERENÇA EM RELAÇÃO À MÉDIA */}
+                  {/* 3. DIFERENÃ‡A EM RELAÃ‡ÃƒO Ã€ MÃ‰DIA */}
                   <div>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
-                      Diferença
+                      DiferenÃ§a
                     </span>
                     <span className={`font-bold tabular-nums text-xs sm:text-sm mt-0.5 block ${
                       group.hasInsufficientHistory 
@@ -459,7 +459,7 @@ export const SpendingAveragesSection: React.FC = () => {
                         : 'text-slate-500'
                     }`}>
                       {group.hasInsufficientHistory 
-                        ? '—' 
+                        ? 'â€”' 
                         : (group.diferenca && group.diferenca > 0 ? `+${formatBRL(group.diferenca)}` : formatBRL(group.diferenca))}
                     </span>
                   </div>
@@ -473,13 +473,13 @@ export const SpendingAveragesSection: React.FC = () => {
       )}
 
       {/* --------------------------------------------------------------------- */}
-      {/* 2. VISÃO POR CATEGORIA DETALHADA                                      */}
+      {/* 2. VISÃƒO POR CATEGORIA DETALHADA                                      */}
       {/* --------------------------------------------------------------------- */}
       {viewMode === 'detailed' && (
         <div className="space-y-2">
           {detailedCategoryAnalyses.length === 0 ? (
             <div className="p-6 text-center text-xs text-slate-400">
-              Nenhuma movimentação de despesa cadastrada nas categorias até o momento.
+              Nenhuma movimentaÃ§Ã£o de despesa cadastrada nas categorias atÃ© o momento.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -504,21 +504,21 @@ export const SpendingAveragesSection: React.FC = () => {
 
                     <div className="flex items-center space-x-4 text-xs ml-5 sm:ml-0">
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Média</span>
+                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">MÃ©dia</span>
                         <span className="font-bold text-slate-600 dark:text-slate-300 tabular-nums">
-                          {cat.hasInsufficientHistory ? '—' : formatBRL(cat.mediaMensal)}
+                          {cat.hasInsufficientHistory ? 'â€”' : formatBRL(cat.mediaMensal)}
                         </span>
                       </div>
 
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Mês Atual</span>
+                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">MÃªs Atual</span>
                         <span className="font-black text-slate-900 dark:text-white tabular-nums">
                           {formatBRL(cat.gastoMesAtual)}
                         </span>
                       </div>
 
                       <div className="min-w-[80px] text-right">
-                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Diferença</span>
+                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">DiferenÃ§a</span>
                         <span className={`font-bold tabular-nums ${
                           cat.hasInsufficientHistory 
                             ? 'text-slate-400 italic text-[10px]'
@@ -540,16 +540,16 @@ export const SpendingAveragesSection: React.FC = () => {
         </div>
       )}
 
-      {/* RODA-PÉ DA SEÇÃO COM NOTA METODOLÓGICA */}
+      {/* RODA-PÃ‰ DA SEÃ‡ÃƒO COM NOTA METODOLÃ“GICA */}
       <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
         <div className="flex items-center space-x-1.5">
           <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
           <span>
-            Transferências entre contas e aportes em reservas são excluídos das médias.
+            TransferÃªncias entre contas e aportes em reservas sÃ£o excluÃ­dos das mÃ©dias.
           </span>
         </div>
         <span className="text-[10px] text-slate-400">
-          Base: despesas líquidas realizadas
+          Base: despesas lÃ­quidas realizadas
         </span>
       </div>
 

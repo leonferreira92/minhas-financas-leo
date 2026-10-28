@@ -33,7 +33,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
     getDebtProgress
   } = useFinance();
 
-  // Modo pessoal: ignora agenda de shows; txs histÛricas j· est„o no saldo via extrato
+  // Modo pessoal: ignora agenda de shows; txs hist√≥ricas j√° est√£o no saldo via extrato
   const effectiveShows = PERSONAL_ONLY_MODE ? [] : shows;
 
   const [showDetail, setShowDetail] = useState(false);
@@ -41,25 +41,25 @@ export const HowMuchCanISpendCard: React.FC = () => {
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const currentMonthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
 
-  // ConfiguraÁıes financeiras do usu·rio (sem inventar dados)
+  // Configura√ß√µes financeiras do usu√°rio (sem inventar dados)
   const financialSettings = useMemo(() => {
     return settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
   }, [settings.financialSettings]);
 
-  // 1. DINHEIRO DISPONÕVEL HOJE EM CONTAS OPERACIONAIS
+  // 1. DINHEIRO DISPON√çVEL HOJE EM CONTAS OPERACIONAIS
   const cashAvailableToday = useMemo(() => {
     const operational = accounts.filter(a => a.type !== 'savings');
     return operational.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // Saldo real guardado em poupanÁa
+  // Saldo real guardado em poupan√ßa
   const actualReservedInGoals = useMemo(() => {
     const savingsAccounts = accounts.filter(a => a.type === 'savings');
     const totalInSavings = savingsAccounts.reduce((s, a) => s + getAccountBalance(a.id), 0);
     return totalInSavings;
   }, [accounts, getAccountBalance]);
 
-  // 2. CUSTO ESSENCIAL MENSAL DE REFER NCIA
+  // 2. CUSTO ESSENCIAL MENSAL DE REFER√äNCIA
   const monthlyEssentialCost = useMemo(() => {
     const thisMonthTxs = transactions.filter(t => 
       t.date.startsWith(currentMonthPrefix) &&
@@ -82,13 +82,13 @@ export const HowMuchCanISpendCard: React.FC = () => {
     return pastMonths.length > 0 && pastSum > 0 ? (pastSum / pastMonths.length) : 0;
   }, [transactions, categories, debts, financialSettings, currentMonthPrefix]);
 
-  // 3. RESERVA MÕNIMA PROTEGIDA (CONFIGURADA PELO USU¡RIO)
+  // 3. RESERVA M√çNIMA PROTEGIDA (CONFIGURADA PELO USU√ÅRIO)
   const minReserveConfigured = financialSettings.minReserveAmount ?? 5000;
   const targetReserveMonths = financialSettings.targetReserveMonths ?? 6;
   const targetFromMonths = monthlyEssentialCost > 0 ? (targetReserveMonths * monthlyEssentialCost) : 0;
   const targetSafetyReserve = Math.max(minReserveConfigured, targetFromMonths);
 
-  // DÈficit da reserva (quanto falta guardar na poupanÁa/reserva para atingir a meta configurada)
+  // D√©ficit da reserva (quanto falta guardar na poupan√ßa/reserva para atingir a meta configurada)
   const reserveDeficit = Math.max(0, targetSafetyReserve - actualReservedInGoals);
 
   // 4. COMPROMISSOS FUTUROS CONSIDERADOS (Despesas pendentes cadastradas a vencer a partir de hoje)
@@ -102,7 +102,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
       !isGoalMovement(t)
     );
 
-    // Despesas pendentes do mÍs atual a vencer
+    // Despesas pendentes do m√™s atual a vencer
     const pendingCurrentMonth = transactions.filter(t => 
       t.type === 'expense' && 
       t.status === 'pending' && 
@@ -123,7 +123,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
     };
   }, [transactions, todayStr, currentMonthPrefix]);
 
-  // DÌvidas ativas e parcelas mensais
+  // D√≠vidas ativas e parcelas mensais
   const activeDebts = useMemo(() => {
     return debts.filter(d => {
       const prog = getDebtProgress(d.id);
@@ -141,8 +141,8 @@ export const HowMuchCanISpendCard: React.FC = () => {
     }, 0);
   }, [activeDebts, transactions, currentMonthPrefix]);
 
-  // 5. PROJE«√O DE FLUXO MENSAL DOS PR”XIMOS 6 MESES
-  // REGRA CRUCIAL: N√O considerar receitas incertas ou n„o confirmadas para aumentar limite de compra!
+  // 5. PROJE√á√ÉO DE FLUXO MENSAL DOS PR√ìXIMOS 6 MESES
+  // REGRA CRUCIAL: N√ÉO considerar receitas incertas ou n√£o confirmadas para aumentar limite de compra!
   const projection = useMemo(() => {
     const monthsList: string[] = [];
     const now = new Date();
@@ -169,19 +169,19 @@ export const HowMuchCanISpendCard: React.FC = () => {
     monthsList.forEach((monthStr, idx) => {
       const isCurrent = idx === 0;
 
-      // ENTRADAS: APENAS RECEITAS GARANTIDAS (exclui incertas / n„o confirmadas)
+      // ENTRADAS: APENAS RECEITAS GARANTIDAS (exclui incertas / n√£o confirmadas)
       const monthIncomes = transactions.filter(t => 
         t.type === 'income' && 
         t.date.startsWith(monthStr) &&
         (isCurrent ? t.status === 'pending' && t.date >= todayStr : true) &&
         !isNeutralCashFlowMovement(t) &&
         !isGoalMovement(t) &&
-        isIncomeGuaranteed(t, effectiveShows, categories) // Filtro rigoroso: descarta previsıes incertas
+        isIncomeGuaranteed(t, effectiveShows, categories) // Filtro rigoroso: descarta previs√µes incertas
       );
 
       let guaranteedInflow = monthIncomes.reduce((s, t) => s + Number(t.amount), 0);
 
-      // Shows confirmados do mÍs caso n„o estejam em transaÁıes pendentes
+      // Shows confirmados do m√™s caso n√£o estejam em transa√ß√µes pendentes
       const monthShows = confirmedFutureShows.filter(s => s.date.startsWith(monthStr));
       monthShows.forEach(s => {
         const showToReceive = Math.max(0, (Number(s.totalCache) || 0) - (Number(s.cacheReceived) || 0));
@@ -194,7 +194,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
         }
       });
 
-      // SAÕDAS DO M S
+      // SA√çDAS DO M√äS
       const monthExpenses = transactions.filter(t => 
         t.type === 'expense' && 
         t.date.startsWith(monthStr) &&
@@ -205,7 +205,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
 
       let outflows = monthExpenses.reduce((s, t) => s + Number(t.amount), 0);
 
-      // Se mÍs futuro ainda n„o tiver contas cadastradas, projeta o custo essencial + parcelas de dÌvidas ativas
+      // Se m√™s futuro ainda n√£o tiver contas cadastradas, projeta o custo essencial + parcelas de d√≠vidas ativas
       if (!isCurrent && outflows === 0) {
         outflows = monthlyEssentialCost + totalMonthlyDebtInstallments;
       }
@@ -229,7 +229,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
     ];
     const lowestProjected = Math.min(...allPoints);
 
-    // Menor saldo lÌquido mensal
+    // Menor saldo l√≠quido mensal
     const minMonthlyNet = Math.min(...monthlyData.map(m => m.net));
 
     return {
@@ -248,50 +248,50 @@ export const HowMuchCanISpendCard: React.FC = () => {
     totalMonthlyDebtInstallments
   ]);
 
-  // 6. VALOR DISPONÕVEL PARA COMPRA ¿ VISTA (C¡LCULO AUTOM¡TICO RIGOROSO)
-  // O valor m·ximo que pode ser gasto ‡ vista sem:
-  // - comprometer contas futuras j· cadastradas (cashAvailableToday - futureCommitments >= compra)
-  // - causar saldo negativo na projeÁ„o (lowestProjected >= compra)
-  // - consumir a reserva mÌnima configurada (lowestProjected - reserveDeficit >= compra)
+  // 6. VALOR DISPON√çVEL PARA COMPRA √Ä VISTA (C√ÅLCULO AUTOM√ÅTICO RIGOROSO)
+  // O valor m√°ximo que pode ser gasto √† vista sem:
+  // - comprometer contas futuras j√° cadastradas (cashAvailableToday - futureCommitments >= compra)
+  // - causar saldo negativo na proje√ß√£o (lowestProjected >= compra)
+  // - consumir a reserva m√≠nima configurada (lowestProjected - reserveDeficit >= compra)
   const spotPurchaseCapacity = useMemo(() => {
-    // Teto 1: Caixa imediato livre de contas do mÍs
+    // Teto 1: Caixa imediato livre de contas do m√™s
     const immediateHeadroom = cashAvailableToday - futureCommitments.totalThisMonth;
     
-    // Teto 2: Menor saldo que a conta atingir· no horizonte projetado
+    // Teto 2: Menor saldo que a conta atingir√° no horizonte projetado
     const projectedHeadroom = projection.lowestProjected;
 
-    // Se qualquer teto for negativo, n„o h· capacidade de compra ‡ vista
+    // Se qualquer teto for negativo, n√£o h√° capacidade de compra √† vista
     if (immediateHeadroom <= 0 || projectedHeadroom <= 0) {
       return 0;
     }
 
-    // Teto base mais restritivo entre liquidez imediata e projeÁ„o
+    // Teto base mais restritivo entre liquidez imediata e proje√ß√£o
     const rawHeadroom = Math.min(immediateHeadroom, projectedHeadroom);
 
-    // Subtrai o dÈficit da reserva mÌnima para que o dinheiro nunca consuma a reserva protegida
+    // Subtrai o d√©ficit da reserva m√≠nima para que o dinheiro nunca consuma a reserva protegida
     const safeAfterReserveProtection = rawHeadroom - reserveDeficit;
 
     return Math.max(0, safeAfterReserveProtection);
   }, [cashAvailableToday, futureCommitments.totalThisMonth, projection.lowestProjected, reserveDeficit]);
 
-  // 7. NOVA PARCELA MENSAL POSSÕVEL (CONSIDERANDO O FLUXO PROJETADO)
+  // 7. NOVA PARCELA MENSAL POSS√çVEL (CONSIDERANDO O FLUXO PROJETADO)
   const maxPossibleInstallment = useMemo(() => {
-    // SÛ È possÌvel assumir nova parcela se:
+    // S√ì √â poss√≠vel assumir nova parcela se:
     // 1) O menor saldo projetado for positivo
-    // 2) O menor resultado lÌquido mensal (entradas certas - saÌdas) for positivo
-    // 3) A reserva mÌnima estiver preservada
+    // 2) O menor resultado l√≠quido mensal (entradas certas - sa√≠das) for positivo
+    // 3) A reserva m√≠nima estiver preservada
     if (projection.lowestProjected <= 0 || projection.minMonthlyNet <= 0 || spotPurchaseCapacity <= 0) {
       return 0;
     }
 
-    // A parcela mensal m·xima deve caber no mÍs mais apertado do fluxo
-    // Aplicamos uma margem de seguranÁa prudente (70% do super·vit mÌnimo)
+    // A parcela mensal m√°xima deve caber no m√™s mais apertado do fluxo
+    // Aplicamos uma margem de seguran√ßa prudente (70% do super√°vit m√≠nimo)
     const safeInstallment = Math.round(projection.minMonthlyNet * 0.7);
     return Math.max(0, safeInstallment);
   }, [projection.lowestProjected, projection.minMonthlyNet, spotPurchaseCapacity]);
 
   const formatBRL = (val: number) => {
-    if (isBlurred) return 'R$ ïïïïïïï';
+    if (isBlurred) return 'R$ ‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
@@ -299,7 +299,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
   const statusConfig = useMemo(() => {
     if (spotPurchaseCapacity > 1000) {
       return {
-        badge: 'Margem DisponÌvel',
+        badge: 'Margem Dispon√≠vel',
         badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800/60',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         bgGradient: 'from-emerald-50/50 to-indigo-50/30 dark:from-emerald-950/20 dark:to-indigo-950/10',
@@ -330,7 +330,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
       {/* Glow discreto no topo */}
       <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* HEADER DO CART√O */}
+      {/* HEADER DO CART√ÉO */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
           <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 dark:shadow-none">
@@ -354,17 +354,17 @@ export const HowMuchCanISpendCard: React.FC = () => {
         <Link
           to="/financial-settings"
           className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-500 dark:text-slate-400 transition active:scale-95 shadow-xs"
-          title="Ajustar Par‚metros da Reserva"
+          title="Ajustar Par√¢metros da Reserva"
         >
           <Sliders size={16} />
         </Link>
       </div>
 
-      {/* BLOCO DE DESTAQUE: VALOR DISPONÕVEL PARA COMPRA ¿ VISTA */}
+      {/* BLOCO DE DESTAQUE: VALOR DISPON√çVEL PARA COMPRA √Ä VISTA */}
       <div className="p-4 sm:p-5 rounded-[2rem] bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-            Valor DisponÌvel para Compra ‡ Vista
+            Valor Dispon√≠vel para Compra √† Vista
           </span>
           <div className="flex items-baseline space-x-2">
             <span className={`text-3xl sm:text-4xl font-black tabular-nums tracking-tight ${statusConfig.textColor}`}>
@@ -373,33 +373,33 @@ export const HowMuchCanISpendCard: React.FC = () => {
           </div>
           <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-1">
             {spotPurchaseCapacity > 0 
-              ? 'Teto m·ximo liberado hoje sem comprometer contas futuras ou a reserva.'
-              : 'Nenhum gasto ‡ vista recomendado no momento para preservar a seguranÁa de caixa.'}
+              ? 'Teto m√°ximo liberado hoje sem comprometer contas futuras ou a reserva.'
+              : 'Nenhum gasto √† vista recomendado no momento para preservar a seguran√ßa de caixa.'}
           </span>
         </div>
 
-        {/* NOVA PARCELA MENSAL POSSÕVEL */}
+        {/* NOVA PARCELA MENSAL POSS√çVEL */}
         <div className="sm:border-l sm:border-slate-100 dark:sm:border-slate-800 sm:pl-5 pt-3 sm:pt-0 border-t border-slate-100 dark:border-slate-800 shrink-0">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1 flex items-center space-x-1">
             <CreditCard size={12} className="text-indigo-500" />
-            <span>Nova Parcela Mensal PossÌvel</span>
+            <span>Nova Parcela Mensal Poss√≠vel</span>
           </span>
           <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums block">
             {formatBRL(maxPossibleInstallment)}
-            <span className="text-xs font-bold text-slate-400">/mÍs</span>
+            <span className="text-xs font-bold text-slate-400">/m√™s</span>
           </span>
           <span className="text-[10px] text-slate-400 block mt-0.5">
             {maxPossibleInstallment > 0 
-              ? 'Cabe no super·vit mensal projetado'
+              ? 'Cabe no super√°vit mensal projetado'
               : 'Sem folga mensal para novos parcelamentos'}
           </span>
         </div>
       </div>
 
-      {/* OS 3 PILARES OBRIGAT”RIOS: RESERVA, COMPROMISSOS E MENOR SALDO */}
+      {/* OS 3 PILARES OBRIGAT√ìRIOS: RESERVA, COMPROMISSOS E MENOR SALDO */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         
-        {/* 1. RESERVA MÕNIMA PROTEGIDA */}
+        {/* 1. RESERVA M√çNIMA PROTEGIDA */}
         <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1.5">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1">
@@ -407,7 +407,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
               <span>Reserva Protegida</span>
             </span>
             <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md">
-              Intoc·vel
+              Intoc√°vel
             </span>
           </div>
           <div>
@@ -436,7 +436,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
               {formatBRL(futureCommitments.totalFromToday)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              PendÍncias a vencer cadastradas
+              Pend√™ncias a vencer cadastradas
             </span>
           </div>
         </div>
@@ -449,7 +449,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
               <span>Menor Saldo Projetado</span>
             </span>
             <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded-md">
-              Ponto MÌnimo
+              Ponto M√≠nimo
             </span>
           </div>
           <div>
@@ -464,22 +464,22 @@ export const HowMuchCanISpendCard: React.FC = () => {
 
       </div>
 
-      {/* EXPLICA«√O RESUMIDA DO C¡LCULO */}
+      {/* EXPLICA√á√ÉO RESUMIDA DO C√ÅLCULO */}
       <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 space-y-1.5">
         <div className="flex items-center space-x-1.5 text-slate-800 dark:text-white font-bold">
           <Info size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-          <span>Como este limite È calculado com seguranÁa:</span>
+          <span>Como este limite √© calculado com seguran√ßa:</span>
         </div>
         <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-          O valor ‡ vista representa o montante que vocÍ pode retirar hoje sem que sua conta fique no vermelho em nenhum mÍs futuro. Ele deduz todos os <strong>{futureCommitments.countFromToday} compromissos cadastrados ({formatBRL(futureCommitments.totalFromToday)})</strong> e blinda integralmente a <strong>reserva mÌnima configurada ({formatBRL(targetSafetyReserve)})</strong>.
+          O valor √† vista representa o montante que voc√™ pode retirar hoje sem que sua conta fique no vermelho em nenhum m√™s futuro. Ele deduz todos os <strong>{futureCommitments.countFromToday} compromissos cadastrados ({formatBRL(futureCommitments.totalFromToday)})</strong> e blinda integralmente a <strong>reserva m√≠nima configurada ({formatBRL(targetSafetyReserve)})</strong>.
         </p>
         <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 flex items-center space-x-1 pt-0.5">
           <ShieldCheck size={12} className="shrink-0" />
-          <span>Receitas incertas ou n„o confirmadas foram totalmente ignoradas para n„o inflar artificialmente seu limite.</span>
+          <span>Receitas incertas ou n√£o confirmadas foram totalmente ignoradas para n√£o inflar artificialmente seu limite.</span>
         </p>
       </div>
 
-      {/* BOT√O TOGGLE DE DETALHAMENTO DA MEM”RIA DE C¡LCULO */}
+      {/* BOT√ÉO TOGGLE DE DETALHAMENTO DA MEM√ìRIA DE C√ÅLCULO */}
       <div>
         <button
           onClick={() => setShowDetail(!showDetail)}
@@ -487,7 +487,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
         >
           <span className="flex items-center space-x-1.5">
             <Sparkles size={14} className="text-indigo-500" />
-            <span>{showDetail ? 'Ocultar memÛria de c·lculo detalhada' : 'Ver memÛria de c·lculo detalhada passo a passo'}</span>
+            <span>{showDetail ? 'Ocultar mem√≥ria de c√°lculo detalhada' : 'Ver mem√≥ria de c√°lculo detalhada passo a passo'}</span>
           </span>
           {showDetail ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
@@ -495,7 +495,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
         {showDetail && (
           <div className="mt-3 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-3 animate-fade-in">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-              Auditoria Matem·tica do Limite
+              Auditoria Matem√°tica do Limite
             </span>
 
             <div className="space-y-2 text-xs divide-y divide-slate-100 dark:divide-slate-800">
@@ -505,29 +505,29 @@ export const HowMuchCanISpendCard: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
-                <span className="text-slate-500 dark:text-slate-400">(-) Contas a Pagar no MÍs Atual</span>
+                <span className="text-slate-500 dark:text-slate-400">(-) Contas a Pagar no M√™s Atual</span>
                 <span className="font-bold text-rose-600 dark:text-rose-400">-{formatBRL(futureCommitments.totalThisMonth)}</span>
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
-                <span className="text-slate-500 dark:text-slate-400">(=) Caixa Imediato DisponÌvel</span>
+                <span className="text-slate-500 dark:text-slate-400">(=) Caixa Imediato Dispon√≠vel</span>
                 <span className="font-bold text-slate-800 dark:text-slate-200">{formatBRL(Math.max(0, cashAvailableToday - futureCommitments.totalThisMonth))}</span>
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
-                <span className="text-slate-500 dark:text-slate-400">(-) DÈficit da Reserva MÌnima (blindado em reserva)</span>
+                <span className="text-slate-500 dark:text-slate-400">(-) D√©ficit da Reserva M√≠nima (blindado em reserva)</span>
                 <span className="font-bold text-amber-600 dark:text-amber-400">
                   {reserveDeficit > 0 ? `-${formatBRL(reserveDeficit)}` : 'R$ 0,00 (100% coberta)'}
                 </span>
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
-                <span className="text-slate-500 dark:text-slate-400">Piso MÌnimo da ProjeÁ„o de 6 Meses</span>
+                <span className="text-slate-500 dark:text-slate-400">Piso M√≠nimo da Proje√ß√£o de 6 Meses</span>
                 <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatBRL(projection.lowestProjected)}</span>
               </div>
 
               <div className="flex justify-between items-center pt-2 font-black text-sm">
-                <span className="text-slate-800 dark:text-white">(=) Limite Seguro para Compra ‡ Vista</span>
+                <span className="text-slate-800 dark:text-white">(=) Limite Seguro para Compra √† Vista</span>
                 <span className={statusConfig.textColor}>{formatBRL(spotPurchaseCapacity)}</span>
               </div>
             </div>
@@ -540,7 +540,7 @@ export const HowMuchCanISpendCard: React.FC = () => {
                 to="/financial-settings"
                 className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
               >
-                <span>Alterar par‚metros</span>
+                <span>Alterar par√¢metros</span>
                 <ArrowRight size={12} />
               </Link>
             </div>

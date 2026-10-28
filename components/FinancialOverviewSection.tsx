@@ -36,19 +36,19 @@ export const FinancialOverviewSection: React.FC = () => {
     return settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
   }, [settings.financialSettings]);
 
-  // 1. DINHEIRO DISPONÕVEL HOJE (Contas operacionais: conta corrente, carteira, investimentos)
+  // 1. DINHEIRO DISPON√çVEL HOJE (Contas operacionais: conta corrente, carteira, investimentos)
   const cashAvailableToday = useMemo(() => {
     const operationalAccounts = accounts.filter(a => a.type !== 'savings');
     return operationalAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // Total guardado em contas de poupanÁa (Reserva Real Existente)
+  // Total guardado em contas de poupan√ßa (Reserva Real Existente)
   const actualReservedMoney = useMemo(() => {
     const savingsAccounts = accounts.filter(a => a.type === 'savings');
     return savingsAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
   }, [accounts, getAccountBalance]);
 
-  // 2. COMPROMISSOS FUTUROS J¡ CONHECIDOS (Despesas pendentes registradas a partir de hoje + mÍs atual)
+  // 2. COMPROMISSOS FUTUROS J√Å CONHECIDOS (Despesas pendentes registradas a partir de hoje + m√™s atual)
   const futureCommitments = useMemo(() => {
     // Despesas pendentes com data >= hoje
     const pendingFromToday = transactions.filter(t => 
@@ -59,7 +59,7 @@ export const FinancialOverviewSection: React.FC = () => {
       !isGoalMovement(t)
     );
 
-    // Despesas pendentes do mÍs corrente
+    // Despesas pendentes do m√™s corrente
     const pendingThisMonth = transactions.filter(t => 
       t.type === 'expense' && 
       t.status === 'pending' && 
@@ -79,9 +79,9 @@ export const FinancialOverviewSection: React.FC = () => {
     };
   }, [transactions, todayStr, currentMonthPrefix]);
 
-  // 3. CUSTO ESSENCIAL MENSAL (Calculado com as categorias essenciais do usu·rio)
+  // 3. CUSTO ESSENCIAL MENSAL (Calculado com as categorias essenciais do usu√°rio)
   const monthlyEssentialCost = useMemo(() => {
-    // Despesas essenciais deste mÍs
+    // Despesas essenciais deste m√™s
     const thisMonthEssential = transactions.filter(t => 
       t.date.startsWith(currentMonthPrefix) &&
       isEssentialExpense(t, categories, debts, financialSettings)
@@ -89,7 +89,7 @@ export const FinancialOverviewSection: React.FC = () => {
     const thisMonthSum = thisMonthEssential.reduce((s, t) => s + Number(t.amount), 0);
     if (thisMonthSum > 0) return thisMonthSum;
 
-    // Se o mÍs estiver no inÌcio, mÈdia dos ˙ltimos 3 meses
+    // Se o m√™s estiver no in√≠cio, m√©dia dos √∫ltimos 3 meses
     const now = new Date();
     const pastMonths: string[] = [];
     for (let i = 1; i <= 3; i++) {
@@ -104,7 +104,7 @@ export const FinancialOverviewSection: React.FC = () => {
     return pastMonths.length > 0 && pastSum > 0 ? (pastSum / pastMonths.length) : 0;
   }, [transactions, categories, debts, financialSettings, currentMonthPrefix]);
 
-  // 4. RESERVA MÕNIMA CONFIGURADA
+  // 4. RESERVA M√çNIMA CONFIGURADA
   const minReserveConfigured = financialSettings.minReserveAmount ?? 5000;
   const targetReserveMonths = financialSettings.targetReserveMonths ?? 6;
   const targetReserveByMonths = monthlyEssentialCost > 0 ? (targetReserveMonths * monthlyEssentialCost) : 0;
@@ -115,7 +115,7 @@ export const FinancialOverviewSection: React.FC = () => {
     : 100;
   const reserveDeficit = Math.max(0, targetTotalReserve - actualReservedMoney);
 
-  // 5. CUSTO MENSAL COM DÕVIDAS ATIVAS
+  // 5. CUSTO MENSAL COM D√çVIDAS ATIVAS
   const activeDebtsSummary = useMemo(() => {
     const active = debts.filter(d => {
       const prog = getDebtProgress(d.id);
@@ -137,9 +137,9 @@ export const FinancialOverviewSection: React.FC = () => {
     };
   }, [debts, transactions, currentMonthPrefix, getDebtProgress]);
 
-  // 6. CUSTO DE VIDA ATUAL (Essencial + DÌvidas + Estilo de Vida Fixo)
+  // 6. CUSTO DE VIDA ATUAL (Essencial + D√≠vidas + Estilo de Vida Fixo)
   const currentCostOfLiving = useMemo(() => {
-    // Despesas fixas/recorrentes do mÍs que n„o sejam essenciais nem dÌvidas
+    // Despesas fixas/recorrentes do m√™s que n√£o sejam essenciais nem d√≠vidas
     const otherFixedMonthly = transactions.filter(t => 
       t.type === 'expense' && 
       t.date.startsWith(currentMonthPrefix) &&
@@ -152,15 +152,15 @@ export const FinancialOverviewSection: React.FC = () => {
   }, [monthlyEssentialCost, activeDebtsSummary, transactions, currentMonthPrefix, categories, debts, financialSettings]);
 
   // 7. SALDO REALMENTE LIVRE
-  // Caixa disponÌvel hoje menos compromissos a pagar do mÍs menos dÈficit da reserva mÌnima
+  // Caixa dispon√≠vel hoje menos compromissos a pagar do m√™s menos d√©ficit da reserva m√≠nima
   const trulyFreeBalance = useMemo(() => {
     const immediateFree = cashAvailableToday - futureCommitments.totalThisMonth;
     if (immediateFree <= 0) return 0;
-    // Se a reserva tem dÈficit, parte do caixa livre protege a reserva
+    // Se a reserva tem d√©ficit, parte do caixa livre protege a reserva
     return Math.max(0, immediateFree - reserveDeficit);
   }, [cashAvailableToday, futureCommitments.totalThisMonth, reserveDeficit]);
 
-  // 8. PR”XIMA REDU«√O RELEVANTE DE DESPESAS/DÕVIDAS
+  // 8. PR√ìXIMA REDU√á√ÉO RELEVANTE DE DESPESAS/D√çVIDAS
   const nextRelevantReduction = useMemo(() => {
     const candidateDebts = activeDebtsSummary.debts.map(d => {
       const debtTxs = transactions.filter(t => t.debtId === d.id);
@@ -185,19 +185,19 @@ export const FinancialOverviewSection: React.FC = () => {
     return candidateDebts[0] || null;
   }, [activeDebtsSummary.debts, transactions]);
 
-  // 9. INDICADOR DE SITUA«√O FINANCEIRA
-  // Considera caixa atual, compromissos futuros, reserva mÌnima e projeÁ„o de caixa
+  // 9. INDICADOR DE SITUA√á√ÉO FINANCEIRA
+  // Considera caixa atual, compromissos futuros, reserva m√≠nima e proje√ß√£o de caixa
   const financialStatusIndicator = useMemo(() => {
-    // ProjeÁ„o do mÍs atual
+    // Proje√ß√£o do m√™s atual
     const summary = getBalanceSummary(currentMonthPrefix, todayStr);
     const projectedBalance = summary.projectedBalance;
     const pendingIncome = summary.pendingIncome;
     const pendingExpense = futureCommitments.totalThisMonth;
 
-    // CritÈrio ?? RISCO:
+    // Crit√©rio ?? RISCO:
     // 1) Caixa operacional descoberto (< 0)
-    // 2) ProjeÁ„o de caixa negativa
-    // 3) Caixa atual + receitas previstas N√O cobrem as contas pendentes do mÍs
+    // 2) Proje√ß√£o de caixa negativa
+    // 3) Caixa atual + receitas previstas N√ÉO cobrem as contas pendentes do m√™s
     if (cashAvailableToday < 0 || projectedBalance < 0 || (cashAvailableToday + pendingIncome < pendingExpense)) {
       return {
         level: 'RISCO' as const,
@@ -208,53 +208,53 @@ export const FinancialOverviewSection: React.FC = () => {
         reason: cashAvailableToday < 0
           ? 'Contas operacionais em saldo negativo.'
           : projectedBalance < 0
-          ? 'ProjeÁ„o de caixa negativa: obrigaÁıes superam os recursos totais.'
-          : 'Compromissos pendentes do mÍs excedem o caixa somado ‡s entradas previstas.'
+          ? 'Proje√ß√£o de caixa negativa: obriga√ß√µes superam os recursos totais.'
+          : 'Compromissos pendentes do m√™s excedem o caixa somado √†s entradas previstas.'
       };
     }
 
-    // CritÈrio ?? ATEN«√O:
-    // 1) Caixa hoje n„o cobre sozinho as contas do mÍs (depende 100% de receitas futuras entrarem a tempo)
-    // 2) OU Reserva de seguranÁa com menos de 50% de cobertura
+    // Crit√©rio ?? ATEN√á√ÉO:
+    // 1) Caixa hoje n√£o cobre sozinho as contas do m√™s (depende 100% de receitas futuras entrarem a tempo)
+    // 2) OU Reserva de seguran√ßa com menos de 50% de cobertura
     // 3) OU Saldo realmente livre zerado
     if (cashAvailableToday < pendingExpense || reserveCoveragePct < 50 || trulyFreeBalance === 0) {
       return {
         level: 'ATENCAO' as const,
         symbol: '??',
-        label: 'AtenÁ„o Necess·ria',
+        label: 'Aten√ß√£o Necess√°ria',
         badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-900/60',
         dotColor: 'bg-amber-500',
         reason: cashAvailableToday < pendingExpense
-          ? 'Caixa atual n„o quita todas as contas do mÍs sozinho; depende do recebimento de receitas previstas.'
+          ? 'Caixa atual n√£o quita todas as contas do m√™s sozinho; depende do recebimento de receitas previstas.'
           : reserveCoveragePct < 50
-          ? `Reserva mÌnima de seguranÁa abaixo de 50% da meta (${reserveCoveragePct}% coberta).`
-          : 'Margem livre de novas compras zerada apÛs salvaguardar obrigaÁıes e reserva.'
+          ? `Reserva m√≠nima de seguran√ßa abaixo de 50% da meta (${reserveCoveragePct}% coberta).`
+          : 'Margem livre de novas compras zerada ap√≥s salvaguardar obriga√ß√µes e reserva.'
       };
     }
 
-    // CritÈrio ?? SAUD¡VEL:
-    // 1) Caixa disponÌvel hoje cobre as contas do mÍs com folga
-    // 2) ProjeÁ„o positiva
+    // Crit√©rio ?? SAUD√ÅVEL:
+    // 1) Caixa dispon√≠vel hoje cobre as contas do m√™s com folga
+    // 2) Proje√ß√£o positiva
     // 3) Reserva com 50% ou mais de cobertura
     return {
       level: 'SAUDAVEL' as const,
       symbol: '??',
-      label: 'SituaÁ„o Saud·vel',
+      label: 'Situa√ß√£o Saud√°vel',
       badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-900/60',
       dotColor: 'bg-emerald-500',
-      reason: 'Caixa cobre compromissos imediatos, projeÁ„o positiva e reserva financeira guarnecida.'
+      reason: 'Caixa cobre compromissos imediatos, proje√ß√£o positiva e reserva financeira guarnecida.'
     };
   }, [cashAvailableToday, futureCommitments.totalThisMonth, reserveCoveragePct, trulyFreeBalance, getBalanceSummary, currentMonthPrefix, todayStr]);
 
   const formatBRL = (val: number) => {
-    if (isBlurred) return 'R$ ïïïïïïï';
+    if (isBlurred) return 'R$ ‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢';
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
   return (
     <section className="bg-white dark:bg-slate-900 rounded-[2.2rem] p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
       
-      {/* HEADER DA SE«√O COM INDICADOR DE SITUA«√O */}
+      {/* HEADER DA SE√á√ÉO COM INDICADOR DE SITUA√á√ÉO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
         <div>
           <div className="flex items-center space-x-2">
@@ -262,15 +262,15 @@ export const FinancialOverviewSection: React.FC = () => {
               <Activity size={18} strokeWidth={2.5} />
             </div>
             <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
-              Vis„o Financeira
+              Vis√£o Financeira
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            DiagnÛstico consolidado de liquidez, obrigaÁıes e blindagem patrimonial
+            Diagn√≥stico consolidado de liquidez, obriga√ß√µes e blindagem patrimonial
           </p>
         </div>
 
-        {/* INDICADOR DE SITUA«√O FINANCEIRA: ?? Saud·vel | ?? AtenÁ„o | ?? Risco */}
+        {/* INDICADOR DE SITUA√á√ÉO FINANCEIRA: ?? Saud√°vel | ?? Aten√ß√£o | ?? Risco */}
         <div className="flex items-center space-x-2">
           <div className={`px-3 py-1.5 rounded-full border text-xs font-black flex items-center space-x-2 shadow-xs ${financialStatusIndicator.badgeClass}`}>
             <span className="text-sm leading-none">{financialStatusIndicator.symbol}</span>
@@ -280,31 +280,31 @@ export const FinancialOverviewSection: React.FC = () => {
           <Link
             to="/financial-settings"
             className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition active:scale-95 shadow-xs"
-            title="ConfiguraÁıes Financeiras"
+            title="Configura√ß√µes Financeiras"
           >
             <Sliders size={16} />
           </Link>
         </div>
       </div>
 
-      {/* EXPLICA«√O DO INDICADOR */}
+      {/* EXPLICA√á√ÉO DO INDICADOR */}
       <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center space-x-2.5 text-xs text-slate-600 dark:text-slate-300">
         <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${financialStatusIndicator.dotColor}`} />
         <span className="leading-snug">
-          <strong className="text-slate-800 dark:text-white">DiagnÛstico de Caixa: </strong>
+          <strong className="text-slate-800 dark:text-white">Diagn√≥stico de Caixa: </strong>
           {financialStatusIndicator.reason}
         </span>
       </div>
 
-      {/* GRID DAS 8 M…TRICAS PRINCIPAIS */}
+      {/* GRID DAS 8 M√âTRICAS PRINCIPAIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         
-        {/* 1. DINHEIRO DISPONÕVEL HOJE */}
+        {/* 1. DINHEIRO DISPON√çVEL HOJE */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
               <Wallet size={14} className="text-indigo-500" />
-              <span>Dinheiro DisponÌvel Hoje</span>
+              <span>Dinheiro Dispon√≠vel Hoje</span>
             </span>
             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
               Caixa Efetivo
@@ -315,12 +315,12 @@ export const FinancialOverviewSection: React.FC = () => {
               {formatBRL(cashAvailableToday)}
             </span>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Contas operacionais livres (exclui poupanÁa/reserva)
+              Contas operacionais livres (exclui poupan√ßa/reserva)
             </span>
           </div>
         </div>
 
-        {/* 2. COMPROMISSOS FUTUROS J¡ CONHECIDOS */}
+        {/* 2. COMPROMISSOS FUTUROS J√Å CONHECIDOS */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
@@ -341,12 +341,12 @@ export const FinancialOverviewSection: React.FC = () => {
           </div>
         </div>
 
-        {/* 3. RESERVA MÕNIMA CONFIGURADA */}
+        {/* 3. RESERVA M√çNIMA CONFIGURADA */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
               <ShieldCheck size={14} className="text-amber-500" />
-              <span>Reserva MÌnima Configurada</span>
+              <span>Reserva M√≠nima Configurada</span>
             </span>
             <Link 
               to="/financial-settings"
@@ -366,7 +366,7 @@ export const FinancialOverviewSection: React.FC = () => {
               </span>
             </div>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Guardado: {formatBRL(actualReservedMoney)} na poupanÁa/reserva
+              Guardado: {formatBRL(actualReservedMoney)} na poupan√ßa/reserva
             </span>
           </div>
         </div>
@@ -379,7 +379,7 @@ export const FinancialOverviewSection: React.FC = () => {
               <span>Custo Essencial Mensal</span>
             </span>
             <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
-              SubsistÍncia
+              Subsist√™ncia
             </span>
           </div>
           <div>
@@ -387,17 +387,17 @@ export const FinancialOverviewSection: React.FC = () => {
               {formatBRL(monthlyEssentialCost)}
             </span>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Moradia, alimentaÁ„o, sa˙de e contas b·sicas
+              Moradia, alimenta√ß√£o, sa√∫de e contas b√°sicas
             </span>
           </div>
         </div>
 
-        {/* 5. CUSTO MENSAL COM DÕVIDAS ATIVAS */}
+        {/* 5. CUSTO MENSAL COM D√çVIDAS ATIVAS */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
               <CreditCard size={14} className="text-rose-500" />
-              <span>Custo Mensal DÌvidas Ativas</span>
+              <span>Custo Mensal D√≠vidas Ativas</span>
             </span>
             <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
               {activeDebtsSummary.activeCount} ativas
@@ -408,7 +408,7 @@ export const FinancialOverviewSection: React.FC = () => {
               {formatBRL(activeDebtsSummary.monthlyTotal)}
             </span>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Soma das parcelas mensais de emprÈstimos/dÌvidas
+              Soma das parcelas mensais de empr√©stimos/d√≠vidas
             </span>
           </div>
         </div>
@@ -421,7 +421,7 @@ export const FinancialOverviewSection: React.FC = () => {
               <span>Custo de Vida Atual</span>
             </span>
             <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full">
-              Por MÍs
+              Por M√™s
             </span>
           </div>
           <div>
@@ -429,7 +429,7 @@ export const FinancialOverviewSection: React.FC = () => {
               {formatBRL(currentCostOfLiving)}
             </span>
             <span className="text-[11px] text-slate-400 block mt-0.5">
-              Essencial ({formatBRL(monthlyEssentialCost)}) + DÌvidas ({formatBRL(activeDebtsSummary.monthlyTotal)}) + Fixas
+              Essencial ({formatBRL(monthlyEssentialCost)}) + D√≠vidas ({formatBRL(activeDebtsSummary.monthlyTotal)}) + Fixas
             </span>
           </div>
         </div>
@@ -451,21 +451,21 @@ export const FinancialOverviewSection: React.FC = () => {
             </span>
             <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
               {reserveDeficit > 0 
-                ? `Livre apÛs contas e retenÁ„o de ${formatBRL(reserveDeficit)} para reserva`
-                : 'Livre de qualquer compromisso ou dÈficit de reserva'}
+                ? `Livre ap√≥s contas e reten√ß√£o de ${formatBRL(reserveDeficit)} para reserva`
+                : 'Livre de qualquer compromisso ou d√©ficit de reserva'}
             </span>
           </div>
         </div>
 
-        {/* 8. PR”XIMA REDU«√O RELEVANTE DE DESPESAS/DÕVIDAS */}
+        {/* 8. PR√ìXIMA REDU√á√ÉO RELEVANTE DE DESPESAS/D√çVIDAS */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5">
               <TrendingDown size={14} className="text-indigo-500" />
-              <span>PrÛxima ReduÁ„o Relevante</span>
+              <span>Pr√≥xima Redu√ß√£o Relevante</span>
             </span>
             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
-              AlÌvio Futuro
+              Al√≠vio Futuro
             </span>
           </div>
           <div>
@@ -476,11 +476,11 @@ export const FinancialOverviewSection: React.FC = () => {
                     {nextRelevantReduction.name}
                   </span>
                   <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 ml-2">
-                    +{formatBRL(nextRelevantReduction.monthlyRelief)}/mÍs
+                    +{formatBRL(nextRelevantReduction.monthlyRelief)}/m√™s
                   </span>
                 </div>
                 <span className="text-[11px] text-slate-400 block mt-0.5">
-                  TÈrmino previsto: {new Date(nextRelevantReduction.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })} ({nextRelevantReduction.remainingCount} parcelas restantes)
+                  T√©rmino previsto: {new Date(nextRelevantReduction.endDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })} ({nextRelevantReduction.remainingCount} parcelas restantes)
                 </span>
               </>
             ) : (
@@ -489,7 +489,7 @@ export const FinancialOverviewSection: React.FC = () => {
                   Sem parcelamentos ativos
                 </span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">
-                  Nenhuma dÌvida com tÈrmino previsto nos prÛximos meses.
+                  Nenhuma d√≠vida com t√©rmino previsto nos pr√≥ximos meses.
                 </span>
               </>
             )}
@@ -498,7 +498,7 @@ export const FinancialOverviewSection: React.FC = () => {
 
       </div>
 
-      {/* FOOTER DA SE«√O COM ATALHO R¡PIDO PARA CONFIGURA«’ES FINANCEIRAS */}
+      {/* FOOTER DA SE√á√ÉO COM ATALHO R√ÅPIDO PARA CONFIGURA√á√ïES FINANCEIRAS */}
       <div className="pt-2 flex items-center justify-between text-xs">
         <Link 
           to="/financial-settings"
@@ -513,7 +513,7 @@ export const FinancialOverviewSection: React.FC = () => {
           to="/ai-report"
           className="inline-flex items-center space-x-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium"
         >
-          <span>Gerar RelatÛrio Completo para IA</span>
+          <span>Gerar Relat√≥rio Completo para IA</span>
           <ChevronRight size={14} />
         </Link>
       </div>

@@ -300,68 +300,68 @@ export const AIReportScreen = () => {
   const activeRange = getPeriodDateRange(periodType, customStart, customEnd);
 
   return (
-    <div className="pb-32 animate-fade-in text-slate-900 dark:text-slate-100 max-w-4xl mx-auto px-2 sm:px-4">
+    <div className="pb-32 animate-fade-in text-slate-900 max-w-4xl mx-auto px-1 sm:px-2 w-full min-w-0 overflow-x-hidden">
       
       {/* Top Bar / Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex items-start space-x-3 min-w-0">
           <Link 
-            to="/" 
-            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition active:scale-95 shadow-xs"
+            to="/mais"
+            className="p-2.5 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 transition active:scale-95 shadow-sm shrink-0"
             title="Voltar"
           >
             <ChevronLeft size={20} />
           </Link>
-          <div>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md">
+          <div className="min-w-0">
+            <div className="flex items-center space-x-2 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-[#0F388A] text-yellow-400 flex items-center justify-center shadow-sm shrink-0">
                 <Bot size={18} />
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+              <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight truncate">
                 Relatório Financeiro para IA
               </h1>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-600 mt-0.5">
               Estrutura rigorosa para análise de decisões no ChatGPT, Claude ou Gemini
             </p>
           </div>
         </div>
 
-        {/* Quick Action Badges */}
-        <div className="flex items-center space-x-2">
+        {/* Quick Action Badges — wrap em mobile, sem ultrapassar a viewport */}
+        <div className="flex flex-wrap items-center gap-2 w-full">
           <Link
             to="/financial-settings"
-            className="px-3 py-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
+            className="px-3 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-sm"
             title="Configurar reserva mínima e classificação de categorias"
           >
             <Sliders size={14} />
-            <span className="hidden sm:inline">Config. Reserva</span>
+            <span>Config. Reserva</span>
           </Link>
 
           <button
             onClick={handleGenerate}
-            className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5"
+            className="px-3.5 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5"
             title="Recalcular relatório"
           >
             <RefreshCw size={14} />
-            <span className="hidden sm:inline">Atualizar</span>
+            <span>Atualizar</span>
           </button>
           
           <button
             onClick={handleExportTxt}
-            className="px-3.5 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-xs"
+            className="px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-sm"
             title="Baixar arquivo TXT"
           >
             <Download size={14} />
-            <span className="hidden sm:inline">Exportar .TXT</span>
+            <span>Exportar .TXT</span>
           </button>
 
           <button
             onClick={handleCopy}
-            className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all active:scale-95 flex items-center space-x-1.5 shadow-md ${
+            className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all active:scale-95 flex items-center space-x-1.5 shadow-sm ${
               copied 
-                ? 'bg-emerald-600 text-white' 
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                ? 'bg-[#10B981] text-white' 
+                : 'bg-[#0F388A] hover:bg-[#0D2F74] text-yellow-400'
             }`}
             title="Copiar relatório completo"
           >
