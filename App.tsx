@@ -12,7 +12,6 @@ import { ReportsHubScreen } from './components/ReportsHubScreen';
 import { MoreHubScreen } from './components/MoreHubScreen';
 import { FixedRecurringScreen } from './components/FixedRecurringScreen';
 import { PlanningScreen } from './components/PlanningScreen';
-import { PersonalInsightsScreen } from './components/PersonalInsightsScreen';
 import { NovoLancamentoModal } from './components/modals/NovoLancamentoModal';
 import { LoginScreen } from './components/auth/LoginScreen';
 
@@ -59,10 +58,11 @@ const AppContent = () => {
           <Route path="/fixas" element={<FixedRecurringScreen />} />
           <Route path="/planejamento" element={<PlanningScreen />} />
           <Route path="/orcamentos" element={<PlanningScreen />} />
-          <Route path="/inteligencia" element={<PersonalInsightsScreen />} />
-          <Route path="/insights" element={<PersonalInsightsScreen />} />
-          <Route path="/gastos" element={<ExpenseAnalysisScreen />} />
           <Route path="/analise-gastos" element={<ExpenseAnalysisScreen />} />
+          <Route path="/visao-inteligente" element={<ExpenseAnalysisScreen />} />
+          <Route path="/gastos" element={<Navigate to="/analise-gastos" replace />} />
+          <Route path="/inteligencia" element={<Navigate to="/analise-gastos" replace />} />
+          <Route path="/insights" element={<Navigate to="/analise-gastos" replace />} />
           <Route path="/contas" element={<AccountsScreen />} />
           <Route path="/relatorios" element={<ReportsHubScreen />} />
           {/* Shows/carreira desativados — txs históricas preservadas no saldo */}
@@ -75,6 +75,7 @@ const AppContent = () => {
           <Route path="/financial-settings" element={<MoreHubScreen />} />
           <Route path="/settings" element={<MoreHubScreen />} />
           <Route path="/categories" element={<MoreHubScreen />} />
+          <Route path="/categorias" element={<MoreHubScreen />} />
           <Route path="/alerts" element={<MoreHubScreen />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

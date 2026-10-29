@@ -397,7 +397,7 @@ export const AIReportScreen = () => {
           <Link
             to="/financial-settings"
             className="px-3 py-2.5 rounded-2xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 text-xs font-bold transition active:scale-95 flex items-center space-x-1.5 shadow-sm"
-            title="Configurar reserva mínima e classificação de categorias"
+            title="Configurar reserva mínima e meses de proteção"
           >
             <Sliders size={14} />
             <span>Config. Reserva</span>

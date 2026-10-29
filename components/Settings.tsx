@@ -319,10 +319,10 @@ export const Settings = () => {
                 </div>
                 <div className="text-left">
                   <span className="text-sm font-black text-slate-900 block">
-                    Parâmetros Financeiros
+                    Reserva e regras
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium">
-                    Reserva mínima, meses de proteção
+                    Reserva mínima e meses de proteção
                   </span>
                 </div>
               </div>
@@ -330,7 +330,7 @@ export const Settings = () => {
             </Link>
 
             <Link
-              to="/categories"
+              to="/categorias"
               className="bg-slate-50 hover:bg-slate-50 p-4 rounded-2xl flex items-center justify-between border border-slate-200 transition active:scale-95 col-span-1 sm:col-span-2"
             >
               <div className="flex items-center space-x-3">
@@ -342,7 +342,7 @@ export const Settings = () => {
                     Categorias
                   </span>
                   <span className="text-[10px] text-slate-500">
-                    Etiquetas de receitas e despesas
+                    Essencialidade, subcategorias e hierarquia
                   </span>
                 </div>
               </div>

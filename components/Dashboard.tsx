@@ -648,22 +648,16 @@ export const Dashboard: React.FC = () => {
                 go: () => setIsBankImportOpen(true),
               },
               {
-                label: "Inteligência",
+                label: "Visão Inteligente",
                 icon: Sparkles,
                 color: "bg-amber-50 text-amber-700",
-                go: () => navigate("/inteligencia"),
+                go: () => navigate("/analise-gastos"),
               },
               {
                 label: "Orçamentos",
                 icon: FolderTree,
                 color: "bg-indigo-50 text-indigo-700",
                 go: () => navigate("/planejamento"),
-              },
-              {
-                label: "Meus gastos",
-                icon: BarChart3,
-                color: "bg-sky-50 text-sky-700",
-                go: () => navigate("/gastos"),
               },
               {
                 label: "Avisos",
@@ -770,10 +764,10 @@ export const Dashboard: React.FC = () => {
               </div>
               <button
                 type="button"
-                onClick={() => navigate("/gastos")}
+                onClick={() => navigate("/analise-gastos")}
                 className="text-[11px] text-[#0F388A] hover:underline font-bold flex items-center gap-0.5"
               >
-                Detalhes
+                Visão Inteligente
                 <ChevronRight size={13} />
               </button>
             </div>

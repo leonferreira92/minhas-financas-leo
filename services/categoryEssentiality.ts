@@ -6,7 +6,7 @@ import {
 } from '../types';
 import { getCurrentMonthPrefix } from './dateUtils';
 
-export type CategoryPeriodKey = '3m' | '6m' | 'year';
+export type CategoryPeriodKey = '1m' | '3m' | '6m' | 'year';
 
 export interface EssentialityOption {
   value: CategoryEssentiality;
@@ -73,8 +73,9 @@ export const PERIOD_OPTIONS: Array<{
   label: string;
   months: number | 'year';
 }> = [
+  { key: '1m', label: 'Este Mês', months: 1 },
   { key: '3m', label: 'Últimos 3 Meses', months: 3 },
-  { key: '6m', label: 'Últimos 6 Meses (Padrão)', months: 6 },
+  { key: '6m', label: 'Últimos 6 Meses', months: 6 },
   { key: 'year', label: 'Este Ano', months: 'year' },
 ];
 
@@ -159,6 +160,10 @@ export function getPeriodMonthPrefixes(
       prefixes.push(`${year}-${String(m).padStart(2, '0')}`);
     }
     return prefixes;
+  }
+
+  if (period === '1m') {
+    return [current];
   }
 
   const count = period === '3m' ? 3 : 6;

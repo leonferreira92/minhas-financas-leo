@@ -83,9 +83,11 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
     "/settings",
     "/financial-settings",
     "/categories",
+    "/categorias",
     "/alerts",
     "/gastos",
     "/analise-gastos",
+    "/visao-inteligente",
     "/contas",
     "/contas-fixas",
     "/fixas",
@@ -101,7 +103,8 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
       location.pathname.startsWith("/relatorios") ||
       location.pathname.startsWith("/contas-fixas") ||
       location.pathname.startsWith("/planejamento") ||
-      location.pathname.startsWith("/inteligencia"),
+      location.pathname.startsWith("/analise-gastos") ||
+      location.pathname.startsWith("/visao-inteligente"),
   );
 
   const navItems = [
@@ -209,7 +212,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                     role="menuitem"
                     onClick={() => {
                       setQuickMenuOpen(false);
-                      navigate("/categories");
+                      navigate("/categorias");
                     }}
                     className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-slate-50 transition"
                   >
@@ -221,7 +224,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                         Categorias
                       </span>
                       <span className="block text-[10px] text-slate-400 font-medium">
-                        Gerenciar grupos e ícones
+                        Essencialidade e hierarquia
                       </span>
                     </span>
                   </button>

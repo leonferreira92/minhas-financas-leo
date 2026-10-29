@@ -6,6 +6,7 @@ import {
   type DecisionScenarioType,
   type ScenarioSimulationResult
 } from './decisionScenarioService';
+import { resolveCategoryEssentiality } from './categoryEssentiality';
 
 export type { DecisionScenario, DecisionScenarioType, ScenarioSimulationResult };
 export {
@@ -404,11 +405,15 @@ export const isProfessionalInvestmentExpense = (
 ): boolean => {
   if (t.type !== 'expense') return false;
   if (isNeutralCashFlowMovement(t)) return false;
-  
+
+  const cat =
+    categories.find((c) => c.id === t.subcategoryId) ||
+    categories.find((c) => c.id === t.categoryId);
+  // Fonte de verdade: essencialidade da categoria (Investimento)
+  if (cat && resolveCategoryEssentiality(cat) === 'investment') return true;
+
   if (financialSettings?.professionalCategoryIds?.includes(t.categoryId)) return true;
   if (t.classification === 'professional') return true;
-
-  const cat = categories.find(c => c.id === t.categoryId);
   if (cat?.classification === 'professional') return true;
 
   const desc = (t.description || '').toLowerCase();
@@ -425,7 +430,7 @@ export const isProfessionalInvestmentExpense = (
 
 /**
  * 9. DESPESAS ESSENCIAIS (Custo básico de vida e subsistência)
- * Aluguel, condomínio, alimentação, água, luz, gás, internet, transporte, saúde, farmácia.
+ * Fonte de verdade: campo essentiality da categoria em /categorias.
  */
 export const isEssentialExpense = (
   t: Transaction, 
@@ -438,12 +443,19 @@ export const isEssentialExpense = (
   if (isDebtExpense(t, debts, categories)) return false;
   if (isProfessionalInvestmentExpense(t, categories, financialSettings)) return false;
 
+  const cat =
+    categories.find((c) => c.id === t.subcategoryId) ||
+    categories.find((c) => c.id === t.categoryId);
+  const ess = resolveCategoryEssentiality(cat);
+
+  if (ess === 'essential') return true;
+  if (ess === 'lifestyle' || ess === 'investment' || ess === 'debt') return false;
+
+  // Fallbacks legados (dados antigos sem essentiality)
   if (financialSettings?.essentialCategoryIds?.includes(t.categoryId)) return true;
   if (t.classification === 'essential') return true;
-  const cat = categories.find(c => c.id === t.categoryId);
   if (cat?.classification === 'essential') return true;
 
-  // Se o usuário explicitamente colocou a categoria em Estilo de Vida ou Investimento Profissional, não é essencial
   if (financialSettings?.lifestyleCategoryIds?.includes(t.categoryId)) return false;
   if (financialSettings?.professionalCategoryIds?.includes(t.categoryId)) return false;
   if (cat?.classification === 'personal' || cat?.classification === 'discretionary') return false;

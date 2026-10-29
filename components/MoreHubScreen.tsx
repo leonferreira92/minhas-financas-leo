@@ -13,7 +13,6 @@ import {
   Sliders,
   Receipt,
   Landmark,
-  BarChart3,
   FolderTree,
   Plus,
   Target,
@@ -57,7 +56,12 @@ const resolveSubScreen = (
   pathname: string,
   tab: string | null,
 ): "settings" | "financial" | "categories" | "alerts" | null => {
-  if (pathname.includes("/categories") || tab === "categories") return "categories";
+  if (
+    pathname.includes("/categories") ||
+    pathname.includes("/categorias") ||
+    tab === "categories"
+  )
+    return "categories";
   if (pathname.includes("/financial-settings") || tab === "financial")
     return "financial";
   if (pathname.includes("/alerts") || tab === "alerts") return "alerts";
@@ -138,10 +142,11 @@ export const MoreHubScreen: React.FC = () => {
           {
             id: "categorias_pessoais",
             title: "Categorias",
-            desc: "Organizar gastos e receitas",
+            desc: "Criar, editar e classificar essencialidade",
             icon: FolderTree,
-            action: () => setActiveSubScreen("categories"),
-            keywords: "categorias grupos classificacao",
+            action: () => navigate("/categorias"),
+            keywords:
+              "categorias grupos classificacao essencial estilo vida investimento divida",
           },
         ],
       },
@@ -161,28 +166,21 @@ export const MoreHubScreen: React.FC = () => {
             keywords: "orcamento planejamento tetos metas 50 30 20",
           },
           {
-            id: "inteligencia",
-            title: "Visão inteligente",
-            desc: "Quanto posso gastar e projeções",
+            id: "visao_inteligente",
+            title: "Visão Inteligente",
+            desc: "Custo essencial, margem de corte e 50/30/20",
             icon: Sparkles,
-            action: () => navigate("/inteligencia"),
-            keywords: "inteligencia insights posso gastar custo vida projecao",
-          },
-          {
-            id: "gastos",
-            title: "Análise de gastos",
-            desc: "Distribuição por categoria no mês",
-            icon: BarChart3,
-            action: () => navigate("/gastos"),
-            keywords: "gastos graficos analise categorias consumo",
+            action: () => navigate("/analise-gastos"),
+            keywords:
+              "inteligencia insights analise gastos custo vida projecao burn rate 50 30 20 margem",
           },
           {
             id: "parametros_financeiros",
             title: "Reserva e regras",
-            desc: "Reserva mínima e categorias essenciais",
+            desc: "Reserva mínima e meses de proteção",
             icon: Sliders,
             action: () => setActiveSubScreen("financial"),
-            keywords: "parametros reserva metas configuracao",
+            keywords: "parametros reserva metas configuracao sobrevivencia",
           },
         ],
       },
