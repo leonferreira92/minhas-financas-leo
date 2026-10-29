@@ -1,23 +1,22 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { Category, ScopeType, TransactionType } from "../../types";
-import {
-  CATEGORY_COLOR_PALETTE,
-  ICON_MAP,
-} from "../../constants";
+import { CATEGORY_COLOR_PALETTE } from "../../constants";
 import { getParentCategories } from "../../services/categoryHierarchy";
 import { PERSONAL_ONLY_MODE } from "../../services/personalOnlyMode";
 import {
   X,
   CheckCircle2,
-  Search,
   Lock,
   Trash2,
   Layers,
   FolderTree,
   User,
   Music,
+  ChevronRight,
 } from "lucide-react";
 import { CategoryAvatar } from "./CategoryAvatar";
+import { CategoryIcon } from "../ui/CategoryIcon";
+import { IconPickerModal } from "../ui/IconPickerModal";
 
 export type CategoryFormMode = "parent" | "child";
 
@@ -64,7 +63,7 @@ export const CategoryFormModal: React.FC<Props> = ({
   const [icon, setIcon] = useState("ShoppingBag");
   const [mode, setMode] = useState<CategoryFormMode>("parent");
   const [parentId, setParentId] = useState<string>("");
-  const [iconSearch, setIconSearch] = useState("");
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   const parentOptions = useMemo(
     () =>
@@ -73,13 +72,6 @@ export const CategoryFormModal: React.FC<Props> = ({
       ),
     [categories, type, editing],
   );
-
-  const iconNames = useMemo(() => {
-    const all = Object.keys(ICON_MAP);
-    const term = iconSearch.trim().toLowerCase();
-    if (!term) return all;
-    return all.filter((n) => n.toLowerCase().includes(term));
-  }, [iconSearch]);
 
   useEffect(() => {
     if (!open) return;
@@ -116,7 +108,7 @@ export const CategoryFormModal: React.FC<Props> = ({
         setParentId("");
       }
     }
-    setIconSearch("");
+    setIconPickerOpen(false);
   }, [open, editing, defaultType, defaultScope, forceParentId, categories]);
 
   if (!open) return null;
@@ -363,44 +355,27 @@ export const CategoryFormModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Ícones */}
+          {/* Ícone — biblioteca expandida estilo Mobills */}
           <div>
             <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
               Ícone
             </label>
-            <div className="relative mb-2">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              <input
-                value={iconSearch}
-                onChange={(e) => setIconSearch(e.target.value)}
-                placeholder="Buscar ícone..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div className="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">
-              {iconNames.map((iconName) => {
-                const IconComp = ICON_MAP[iconName];
-                const isSelected = icon === iconName;
-                return (
-                  <button
-                    key={iconName}
-                    type="button"
-                    title={iconName}
-                    onClick={() => setIcon(iconName)}
-                    className={`aspect-square rounded-xl flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "bg-[#0F388A] text-[#FACC15] shadow-lg scale-105"
-                        : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                    }`}
-                  >
-                    <IconComp size={18} />
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              onClick={() => setIconPickerOpen(true)}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border-2 border-slate-100 hover:border-indigo-300 transition-all active:scale-[0.99]"
+            >
+              <CategoryIcon iconName={icon} color={color} size="md" />
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-black text-slate-800 truncate">
+                  {icon}
+                </p>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Toque para escolher entre centenas de ícones
+                </p>
+              </div>
+              <ChevronRight size={18} className="text-slate-300 shrink-0" />
+            </button>
           </div>
 
           <div className="pt-2 flex space-x-3">
@@ -438,6 +413,14 @@ export const CategoryFormModal: React.FC<Props> = ({
           </div>
         </div>
       </div>
+
+      <IconPickerModal
+        open={iconPickerOpen}
+        selectedIcon={icon}
+        previewColor={color}
+        onSelect={setIcon}
+        onClose={() => setIconPickerOpen(false)}
+      />
     </div>
   );
 };

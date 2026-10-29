@@ -1,19 +1,19 @@
 import { Category, Account, FinancialSettings, MusicCostCategory, TransactionType } from './types';
-import { 
-  ShoppingBag, Utensils, Home, Car, HeartPulse, 
-  Zap, Smartphone, Briefcase, DollarSign, Coffee,
-  Plane, Gift, ShieldAlert, CarFront, Gamepad2,
-  GraduationCap, PawPrint, Receipt, Tv, Activity,
-  Wifi, CreditCard, Coins, PiggyBank, Dumbbell,
-  Stethoscope, ShoppingCart, Bus, Fuel, Music,
-  Theater, Pizza, Wine, Scissors, Hammer, TrendingUp,
-  Landmark, ShieldCheck, Heart, Umbrella, Users,
-  Gem, BookOpen, Brush, Baby, Cross, Trash, 
-  ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
-  BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy,
-  Handshake, CircleHelp, Tag, Wallet, Bike, Shirt, Building2, Film, Bed,
-  Wrench, Phone, Leaf, Dog
-} from 'lucide-react';
+
+/** Reexporta a biblioteca expandida de ícones (Mobills) */
+export {
+  ICON_MAP,
+  getIcon,
+  ICONS_LIBRARY,
+  ICON_CATEGORIES,
+  searchIcons,
+  ICONS_COUNT,
+} from './src/constants/icons';
+export type {
+  IconCategoryId,
+  IconDefinition,
+  AppIconComponent,
+} from './src/constants/icons';
 
 /** Paleta moderna/pastel para o Color Picker de categorias */
 export const CATEGORY_COLOR_PALETTE = [
@@ -143,25 +143,6 @@ export const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'acc_wallet', name: 'Carteira (Dinheiro)', type: 'wallet', color: '#10b981', initialBalance: 250, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
   { id: 'acc_savings', name: 'Reserva de Emergência', type: 'savings', color: '#8b5cf6', initialBalance: 5000, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
 ];
-
-export const ICON_MAP: Record<string, any> = {
-  ShoppingBag, Utensils, Home, Car, HeartPulse, 
-  Zap, Smartphone, Briefcase, DollarSign, Coffee,
-  Plane, Gift, ShieldAlert, CarFront, Gamepad2,
-  GraduationCap, PawPrint, Receipt, Tv, Activity,
-  Wifi, CreditCard, Coins, PiggyBank, Dumbbell,
-  Stethoscope, ShoppingCart, Bus, Fuel, Music,
-  Theater, Pizza, Wine, Scissors, Hammer, TrendingUp,
-  Landmark, ShieldCheck, Heart, Umbrella, Users,
-  Gem, BookOpen, Brush, Baby, Cross, Trash, 
-  ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
-  BarChart3, Fingerprint, LayoutDashboard, Clock,
-  Handshake, CircleHelp, Tag, Wallet, Bike, Shirt,
-  Building2, Film, Bed, Wrench, Phone, Leaf, Dog,
-  Laptop, Target, Sparkles, Trophy,
-};
-
-export const getIcon = (name: string) => ICON_MAP[name] || DollarSign;
 
 export const APP_THEMES: Record<string, Record<string, string>> = {
   lime: { 50: '#f7fee7', 100: '#ecfccb', 200: '#d9f99d', 300: '#bef264', 400: '#a3e635', 500: '#84cc16', 600: '#65a30d', 700: '#4d7c0f', 800: '#3f6212', 900: '#365314', 950: '#1a2e05' },

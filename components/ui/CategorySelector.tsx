@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { Category, ScopeType, TransactionType } from "../../types";
-import { getIcon } from "../../constants";
 import { Check, ChevronRight } from "lucide-react";
 import {
   buildCategoryTree,
@@ -8,7 +7,8 @@ import {
   isParentCategory,
   getActiveCategories,
 } from "../../services/categoryHierarchy";
-import { CategoryAvatar } from "../categories/CategoryAvatar";
+import { CategoryIcon } from "./CategoryIcon";
+import { getIcon } from "../../src/constants/icons";
 
 interface CategorySelectorProps {
   categories: Category[];
@@ -146,8 +146,8 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
             })}
           </div>
         ) : (
-          <CategoryAvatar
-            icon={cat.icon}
+          <CategoryIcon
+            iconName={cat.icon}
             color={cat.color}
             size="sm"
             variant={indented ? "child" : "parent"}
