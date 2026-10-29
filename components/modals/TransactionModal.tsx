@@ -1,4 +1,5 @@
 export {
-  TransactionForm as TransactionModal,
-  TransactionForm,
-} from "../TransactionForm";
+  NovoLancamentoModal as TransactionModal,
+  NovoLancamentoModal as TransactionForm,
+  NovoLancamentoModal,
+} from "./NovoLancamentoModal";

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -8,6 +8,9 @@ import {
   Plus,
   Sparkles,
   LogOut,
+  FolderTree,
+  Wallet,
+  ChevronDown,
 } from "lucide-react";
 import { useFinance } from "../context/FinanceContext";
 
@@ -30,6 +33,23 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
     signInWithGoogle,
     logoutUser,
   } = useFinance();
+
+  const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const quickMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!quickMenuOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (
+        quickMenuRef.current &&
+        !quickMenuRef.current.contains(e.target as Node)
+      ) {
+        setQuickMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointer);
+    return () => document.removeEventListener("mousedown", onPointer);
+  }, [quickMenuOpen]);
 
   const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
   const hasAlerts = alerts.length > 0;
@@ -160,8 +180,76 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
             })}
           </nav>
 
-          {/* Ações da Direita (Novo Lançamento + Usuário) */}
+          {/* Ações da Direita (Atalhos + Novo Lançamento + Usuário) */}
           <div className="flex items-center space-x-2.5">
+            {/* Atalhos rápidos: Categorias / Contas */}
+            <div className="relative" ref={quickMenuRef}>
+              <button
+                type="button"
+                onClick={() => setQuickMenuOpen((v) => !v)}
+                className="py-2 px-2.5 sm:px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition border border-white/15 flex items-center gap-1.5 active:scale-95"
+                aria-expanded={quickMenuOpen}
+                aria-haspopup="menu"
+                title="Atalhos rápidos"
+              >
+                <FolderTree size={15} />
+                <span className="hidden lg:inline">Atalhos</span>
+                <ChevronDown
+                  size={12}
+                  className={`opacity-70 transition ${quickMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {quickMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-52 rounded-2xl bg-white shadow-xl border border-slate-100 py-1.5 z-[60] animate-fade-in"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setQuickMenuOpen(false);
+                      navigate("/categories");
+                    }}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-slate-50 transition"
+                  >
+                    <span className="w-8 h-8 rounded-xl bg-blue-50 text-[#0F388A] flex items-center justify-center">
+                      <FolderTree size={16} />
+                    </span>
+                    <span>
+                      <span className="block text-xs font-black text-slate-800">
+                        Categorias
+                      </span>
+                      <span className="block text-[10px] text-slate-400 font-medium">
+                        Gerenciar grupos e ícones
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setQuickMenuOpen(false);
+                      navigate("/contas");
+                    }}
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-slate-50 transition"
+                  >
+                    <span className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Wallet size={16} />
+                    </span>
+                    <span>
+                      <span className="block text-xs font-black text-slate-800">
+                        Contas
+                      </span>
+                      <span className="block text-[10px] text-slate-400 font-medium">
+                        Bancos e carteiras
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => onOpenAdd("expense")}
               className="py-2 px-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-[#0F388A] font-extrabold text-xs uppercase tracking-wide transition active:scale-95 shadow-sm flex items-center space-x-1.5"

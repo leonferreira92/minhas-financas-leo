@@ -258,25 +258,27 @@ export const CategoryList = () => {
 
   const requestDelete = (cat: Category) => {
     if (cat.isSystem) {
-      setDeleteBlockMessage(
-        "Categorias do sistema não podem ser excluídas. Você pode arquivá-las.",
-      );
+      const msg =
+        "Categorias do sistema não podem ser excluídas. Você pode arquivá-las.";
+      setDeleteBlockMessage(msg);
+      showToast(msg);
       return;
     }
     const children = categories.filter(
       (c) => c.parentId === cat.id && !c.archived,
     );
     if (children.length > 0) {
-      setDeleteBlockMessage(
-        `Exclua, mova ou arquive as ${children.length} subcategoria(s) antes de remover esta categoria mãe.`,
-      );
+      const msg = `Exclua, mova ou arquive as ${children.length} subcategoria(s) antes de remover esta categoria mãe.`;
+      setDeleteBlockMessage(msg);
+      showToast(msg);
       return;
     }
     const count = usageStats[cat.id] || 0;
     if (count > 0) {
-      setDeleteBlockMessage(
-        `Esta categoria possui ${count} lançamento(s). Use “Mover transações” ou “Arquivar” em vez de excluir.`,
-      );
+      const msg =
+        "Não é possível excluir uma categoria com lançamentos vinculados. Use a opção 'Mover Transações' primeiro ou Arquive-a.";
+      setDeleteBlockMessage(msg);
+      showToast(msg);
       return;
     }
     setDeleteConfirmationId(cat.id);
@@ -284,10 +286,19 @@ export const CategoryList = () => {
 
   const confirmDelete = () => {
     if (!deleteConfirmationId) return;
-    deleteCategory(deleteConfirmationId);
+    const result = deleteCategory(deleteConfirmationId);
     setDeleteConfirmationId(null);
     setIsModalOpen(false);
     setEditing(null);
+    if (result.success) {
+      showToast("Categoria excluída com sucesso!");
+    } else {
+      const msg =
+        result.error ||
+        "Não foi possível excluir a categoria.";
+      setDeleteBlockMessage(msg);
+      showToast(msg);
+    }
   };
 
   const openExtrato = (cat: Category, subcategory?: Category) => {
@@ -314,7 +325,7 @@ export const CategoryList = () => {
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center space-x-2 min-w-0">
             <Link
-              to="/settings"
+              to="/mais"
               className="p-2 hover:bg-white rounded-full transition text-slate-500 shrink-0"
             >
               <ChevronLeft size={24} />
@@ -602,7 +613,17 @@ export const CategoryList = () => {
       )}
 
       {toast && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[120] px-4 py-2.5 rounded-2xl bg-[#0F388A] text-[#FACC15] text-xs font-black shadow-xl border border-[#FACC15]/30 max-w-[90vw] animate-fade-in">
+        <div
+          className={`fixed bottom-28 left-1/2 -translate-x-1/2 z-[120] px-4 py-2.5 rounded-2xl text-xs font-black shadow-xl max-w-[90vw] animate-fade-in text-center ${
+            toast.includes("sucesso")
+              ? "bg-emerald-600 text-white border border-emerald-400/40"
+              : toast.includes("Não é possível") ||
+                  toast.includes("não podem") ||
+                  toast.includes("Não foi possível")
+                ? "bg-rose-600 text-white border border-rose-400/40"
+                : "bg-[#0F388A] text-[#FACC15] border border-[#FACC15]/30"
+          }`}
+        >
           {toast}
         </div>
       )}

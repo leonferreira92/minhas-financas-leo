@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useFinance } from "../context/FinanceContext";
 import {
   Search,
@@ -53,8 +53,21 @@ interface MenuCategory {
   items: MenuItem[];
 }
 
+const resolveSubScreen = (
+  pathname: string,
+  tab: string | null,
+): "settings" | "financial" | "categories" | "alerts" | null => {
+  if (pathname.includes("/categories") || tab === "categories") return "categories";
+  if (pathname.includes("/financial-settings") || tab === "financial")
+    return "financial";
+  if (pathname.includes("/alerts") || tab === "alerts") return "alerts";
+  if (pathname.includes("/settings") || tab === "settings") return "settings";
+  return null;
+};
+
 export const MoreHubScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const directTab = searchParams.get("tab");
 
@@ -69,17 +82,11 @@ export const MoreHubScreen: React.FC = () => {
   const [isBankImportOpen, setIsBankImportOpen] = useState(false);
   const [activeSubScreen, setActiveSubScreen] = useState<
     "settings" | "financial" | "categories" | "alerts" | null
-  >(
-    directTab === "settings"
-      ? "settings"
-      : directTab === "financial"
-        ? "financial"
-        : directTab === "categories"
-          ? "categories"
-          : directTab === "alerts"
-            ? "alerts"
-            : null,
-  );
+  >(() => resolveSubScreen(location.pathname, directTab));
+
+  useEffect(() => {
+    setActiveSubScreen(resolveSubScreen(location.pathname, directTab));
+  }, [location.pathname, directTab]);
 
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
     day: true,

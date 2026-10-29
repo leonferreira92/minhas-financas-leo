@@ -13,7 +13,7 @@ import { MoreHubScreen } from './components/MoreHubScreen';
 import { FixedRecurringScreen } from './components/FixedRecurringScreen';
 import { PlanningScreen } from './components/PlanningScreen';
 import { PersonalInsightsScreen } from './components/PersonalInsightsScreen';
-import { TransactionForm } from './components/TransactionForm';
+import { NovoLancamentoModal } from './components/modals/NovoLancamentoModal';
 import { LoginScreen } from './components/auth/LoginScreen';
 
 const AppContent = () => {
@@ -80,7 +80,7 @@ const AppContent = () => {
         </Routes>
         
         {isAddModalOpen && (
-          <TransactionForm initialType={initialFormType} onClose={() => setIsAddModalOpen(false)} />
+          <NovoLancamentoModal initialType={initialFormType} onClose={() => setIsAddModalOpen(false)} />
         )}
       </Layout>
     </div>

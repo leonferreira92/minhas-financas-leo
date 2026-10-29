@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback, useMemo } from 'react';
 import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, ShowPaymentType, ShowCostGroup, ShowExpenseSubcategory, ShowLogisticsSubcategory, ShowEquipmentSubcategory, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
@@ -132,7 +132,8 @@ interface FinanceContextType {
   
   addCategory: (c: Omit<Category, 'id'>) => void;
   updateCategory: (c: Category) => void;
-  deleteCategory: (id: string) => void;
+  /** Exclui categoria. Retorna sucesso ou mensagem de bloqueio. */
+  deleteCategory: (id: string) => { success: boolean; error?: string };
   /** Reatribui em lote lançamentos de uma categoria/sub para outra */
   moveCategoryTransactions: (fromCategoryId: string, toCategoryId: string) => number;
   
@@ -468,6 +469,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
     return StorageService.getCategories();
   });
+  /** IDs excluídos localmente — evita o snapshot do Firestore restaurar antes do delete concluir */
+  const pendingCategoryDeletesRef = useRef<Set<string>>(new Set());
   const [debts, setDebts] = useState<Debt[]>(() => {
     if (sessionStorage.getItem('fin_app_demo_mode') === 'true') {
       return createDemoDataset().debts;
@@ -621,7 +624,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // 5. Escutador em tempo real: Categorias Customizadas
     const unsubCategories = subscribeToUserCategories(uid, (cloudCategories) => {
       if (cloudCategories && cloudCategories.length > 0) {
-        let cleanCategories = deduplicateItemsById(cloudCategories);
+        let cleanCategories = deduplicateItemsById(cloudCategories).filter(
+          c => !pendingCategoryDeletesRef.current.has(c.id),
+        );
+        // Confirma exclusões que já sumiram do cloud
+        pendingCategoryDeletesRef.current.forEach(id => {
+          if (!cloudCategories.some(c => c.id === id)) {
+            pendingCategoryDeletesRef.current.delete(id);
+          }
+        });
         if (!cleanCategories.some(c => c.id === DEFAULT_PERSONAL_DEBT_CATEGORY_ID)) {
           cleanCategories = [
             ...cleanCategories,
@@ -2552,14 +2563,58 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       saveCategoryToFirestore(currentUser.uid, next);
     }
   };
-  const deleteCategory = (id: string) => {
+  const deleteCategory = (id: string): { success: boolean; error?: string } => {
     const target = categories.find(c => c.id === id);
-    if (target?.isSystem || SYSTEM_CATEGORY_IDS.has(id)) return;
-    if (categories.some(c => c.parentId === id)) return;
-    saveCategories(categories.filter(c => c.id !== id));
-    if (currentUser) {
-      deleteCategoryFromFirestore(currentUser.uid, id);
+    if (!target) {
+      return { success: false, error: 'Categoria não encontrada.' };
     }
+    if (target.isSystem || SYSTEM_CATEGORY_IDS.has(id)) {
+      return {
+        success: false,
+        error: 'Categorias do sistema não podem ser excluídas. Você pode arquivá-las.',
+      };
+    }
+    const hasChildren = categories.some(
+      c => c.parentId === id && !c.archived,
+    );
+    if (hasChildren) {
+      return {
+        success: false,
+        error:
+          'Exclua, mova ou arquive as subcategorias antes de remover esta categoria mãe.',
+      };
+    }
+    const hasLinkedTx = transactions.some(
+      t => t.categoryId === id || t.subcategoryId === id,
+    );
+    if (hasLinkedTx) {
+      return {
+        success: false,
+        error:
+          "Não é possível excluir uma categoria com lançamentos vinculados. Use a opção 'Mover Transações' primeiro ou Arquive-a.",
+      };
+    }
+
+    const previous = categories;
+    pendingCategoryDeletesRef.current.add(id);
+    // Optimistic update: remove do estado e do storage local imediatamente
+    saveCategories(categories.filter(c => c.id !== id));
+
+    if (currentUser) {
+      deleteCategoryFromFirestore(currentUser.uid, id)
+        .then(() => {
+          pendingCategoryDeletesRef.current.delete(id);
+        })
+        .catch(() => {
+          pendingCategoryDeletesRef.current.delete(id);
+          // Rollback se o Firestore falhar
+          saveCategories(previous);
+        });
+    } else {
+      pendingCategoryDeletesRef.current.delete(id);
+    }
+
+    return { success: true };
   };
 
   const moveCategoryTransactions = (fromCategoryId: string, toCategoryId: string): number => {
