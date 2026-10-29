@@ -1,59 +1,86 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useFinance } from '../context/FinanceContext';
-import { Show, ShowStatus, Venue, MusicianCrewMember } from '../types';
-import { 
-  Music, Calendar as CalendarIcon, ListOrdered, FileText, 
-  Archive, Plus, Sparkles, AlertTriangle, Bell, CheckCircle2, 
-  ChevronRight, X, Clock, FilePlus, TrendingUp, DollarSign, 
-  ArrowUpRight, ChevronLeft, Calculator, Building2, Users, 
-  Car, Hammer, Layers, BarChart3, Download, Database
-} from 'lucide-react';
-import { PerformanceDashboard } from './career/PerformanceDashboard';
-import { CalendarWithDrawer } from './career/CalendarWithDrawer';
-import { ShowsManagementView } from './career/ShowsManagementView';
-import { VenuesManagementView } from './career/VenuesManagementView';
-import { CrewManagementView } from './career/CrewManagementView';
-import { LocomotionModuleView } from './career/LocomotionModuleView';
-import { GearAndCostsView } from './career/GearAndCostsView';
-import { ShowQuotesView } from './shows/ShowQuotesView';
-import { ShowDetailModal } from './shows/ShowDetailModal';
-import { ShowFormModal } from './shows/ShowFormModal';
-import { CachePricingCalculatorModal } from './shows/CachePricingCalculatorModal';
-import { GoogleCalendarSyncModal } from './shows/GoogleCalendarSyncModal';
-import { ExportShowsERPModal } from './shows/ExportShowsERPModal';
-import { checkScheduleConflict } from './shows/conflictHelper';
-import { generateShowSmartAlerts, ShowSmartAlert } from './shows/showAlertsHelper';
-import { downloadShowsERPMigrationJSON } from '../services/showExportService';
-import { generateUUID } from '../services/uuidHelper';
-import { useDraggableScroll } from '../hooks/useDraggableScroll';
+import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useFinance } from "../context/FinanceContext";
+import { Show, ShowStatus, Venue, MusicianCrewMember } from "../types";
+import {
+  Music,
+  Calendar as CalendarIcon,
+  ListOrdered,
+  FileText,
+  Archive,
+  Plus,
+  Sparkles,
+  AlertTriangle,
+  Bell,
+  CheckCircle2,
+  ChevronRight,
+  X,
+  Clock,
+  FilePlus,
+  TrendingUp,
+  DollarSign,
+  ArrowUpRight,
+  ChevronLeft,
+  Calculator,
+  Building2,
+  Users,
+  Car,
+  Hammer,
+  Layers,
+  BarChart3,
+  Download,
+  Database,
+} from "lucide-react";
+import { PerformanceDashboard } from "./career/PerformanceDashboard";
+import { CalendarWithDrawer } from "./career/CalendarWithDrawer";
+import { ShowsManagementView } from "./career/ShowsManagementView";
+import { VenuesManagementView } from "./career/VenuesManagementView";
+import { CrewManagementView } from "./career/CrewManagementView";
+import { LocomotionModuleView } from "./career/LocomotionModuleView";
+import { GearAndCostsView } from "./career/GearAndCostsView";
+import { ShowQuotesView } from "./shows/ShowQuotesView";
+import { ShowDetailModal } from "./shows/ShowDetailModal";
+import { ShowFormModal } from "./shows/ShowFormModal";
+import { CachePricingCalculatorModal } from "./shows/CachePricingCalculatorModal";
+import { GoogleCalendarSyncModal } from "./shows/GoogleCalendarSyncModal";
+import { ExportShowsERPModal } from "./shows/ExportShowsERPModal";
+import { checkScheduleConflict } from "./shows/conflictHelper";
+import {
+  generateShowSmartAlerts,
+  ShowSmartAlert,
+} from "./shows/showAlertsHelper";
+import { downloadShowsERPMigrationJSON } from "../services/showExportService";
+import { generateUUID } from "../services/uuidHelper";
+import { useDraggableScroll } from "../hooks/useDraggableScroll";
 
-export type CareerTab = 
-  | 'performance' 
-  | 'agenda' 
-  | 'shows' 
-  | 'locomocao' 
-  | 'custos' 
-  | 'equipe' 
-  | 'locais' 
-  | 'orcamentos';
+export type CareerTab =
+  | "performance"
+  | "agenda"
+  | "shows"
+  | "locomocao"
+  | "custos"
+  | "equipe"
+  | "locais"
+  | "orcamentos";
 
 export const MusicianShowScreen: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { 
-    shows, 
-    transactions, 
-    settings, 
-    addShow, 
-    updateShow, 
-    deleteShow, 
-    addTransaction 
+  const {
+    shows,
+    transactions,
+    settings,
+    addShow,
+    updateShow,
+    deleteShow,
+    addTransaction,
   } = useFinance();
 
-  const safeShows = useMemo(() => Array.isArray(shows) ? shows : [], [shows]);
+  const safeShows = useMemo(() => (Array.isArray(shows) ? shows : []), [shows]);
 
-  const initialTabParam = searchParams.get('tab') as CareerTab;
-  const [activeTab, setActiveTab] = useState<CareerTab>(initialTabParam || 'performance');
+  const initialTabParam = searchParams.get("tab") as CareerTab;
+  const [activeTab, setActiveTab] = useState<CareerTab>(
+    initialTabParam || "performance",
+  );
   const tabsScrollRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
 
   // Modals & Drawer state
@@ -64,24 +91,41 @@ export const MusicianShowScreen: React.FC = () => {
   const [isGoogleCalendarOpen, setIsGoogleCalendarOpen] = useState(false);
   const [showToEdit, setShowToEdit] = useState<Show | null>(null);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<string | undefined>();
-  const [initialStatusForNewShow, setInitialStatusForNewShow] = useState<ShowStatus>('Confirmado');
-  const [prefilledVenueData, setPrefilledVenueData] = useState<{ location?: string; city?: string; totalCache?: number } | undefined>();
-  
+  const [prefilledDateForNewShow, setPrefilledDateForNewShow] = useState<
+    string | undefined
+  >();
+  const [initialStatusForNewShow, setInitialStatusForNewShow] =
+    useState<ShowStatus>("Confirmado");
+  const [prefilledVenueData, setPrefilledVenueData] = useState<
+    { location?: string; city?: string; totalCache?: number } | undefined
+  >();
+
   // Smart Alerts toggle
   const [showAlertsExpanded, setShowAlertsExpanded] = useState(false);
 
   // Sync tab with URL search params if needed
   useEffect(() => {
-    const tab = searchParams.get('tab') as CareerTab;
-    if (tab && ['performance', 'agenda', 'shows', 'locomocao', 'custos', 'equipe', 'locais', 'orcamentos'].includes(tab)) {
+    const tab = searchParams.get("tab") as CareerTab;
+    if (
+      tab &&
+      [
+        "performance",
+        "agenda",
+        "shows",
+        "locomocao",
+        "custos",
+        "equipe",
+        "locais",
+        "orcamentos",
+      ].includes(tab)
+    ) {
       setActiveTab(tab);
     }
   }, [searchParams]);
 
   // Deep-link from Financeiro/Extrato via ?showId=...
   useEffect(() => {
-    const showId = searchParams.get('showId');
+    const showId = searchParams.get("showId");
     if (showId) {
       setSelectedShowId(showId);
     }
@@ -90,7 +134,7 @@ export const MusicianShowScreen: React.FC = () => {
   // Selected Show
   const selectedShowForDetail = useMemo(() => {
     if (!selectedShowId) return null;
-    return safeShows.find(s => s.id === selectedShowId) || null;
+    return safeShows.find((s) => s.id === selectedShowId) || null;
   }, [safeShows, selectedShowId]);
 
   // Compute smart alerts
@@ -101,11 +145,18 @@ export const MusicianShowScreen: React.FC = () => {
   // Pending quotes count
   const pendingQuotesCount = useMemo(() => {
     return safeShows.filter(
-      s => s.status === 'Orçamento' || s.status === 'Aguardando confirmação' || s.status === 'Agendado'
+      (s) =>
+        s.status === "Orçamento" ||
+        s.status === "Aguardando confirmação" ||
+        s.status === "Agendado",
     ).length;
   }, [safeShows]);
 
-  const handleOpenCreateModal = (date?: string, status: ShowStatus = 'Confirmado', venueData?: { location?: string; city?: string; totalCache?: number }) => {
+  const handleOpenCreateModal = (
+    date?: string,
+    status: ShowStatus = "Confirmado",
+    venueData?: { location?: string; city?: string; totalCache?: number },
+  ) => {
     setShowToEdit(null);
     setPrefilledDateForNewShow(date);
     setInitialStatusForNewShow(status);
@@ -124,28 +175,28 @@ export const MusicianShowScreen: React.FC = () => {
     if (showToEdit) {
       updateShow({
         ...showToEdit,
-        ...showData
+        ...showData,
       } as Show);
     } else {
       const newShowId = `show_${generateUUID()}`;
       const finalShow: Show = {
-        location: '',
+        location: "",
         ...showData,
         id: newShowId,
-        name: showData.name || showData.contractorName || 'Show',
-        contractorName: showData.contractorName || showData.name || 'Show',
+        name: showData.name || showData.contractorName || "Show",
+        contractorName: showData.contractorName || showData.name || "Show",
         date: showData.date || new Date().toISOString().slice(0, 10),
-        time: showData.time || '20:00',
+        time: showData.time || "20:00",
         totalCache: showData.totalCache || 0,
-        status: showData.status || 'Confirmado',
-        scope: 'BUSINESS',
-        createdAt: Date.now()
+        status: showData.status || "Confirmado",
+        scope: "BUSINESS",
+        createdAt: Date.now(),
       };
 
       if (initialDepositTx) {
-        finalShow.payments = (finalShow.payments || []).map(p => ({
+        finalShow.payments = (finalShow.payments || []).map((p) => ({
           ...p,
-          transactionId: initialDepositTx.id
+          transactionId: initialDepositTx.id,
         }));
       }
 
@@ -154,7 +205,7 @@ export const MusicianShowScreen: React.FC = () => {
       if (initialDepositTx) {
         addTransaction({
           ...initialDepositTx,
-          showId: newShowId
+          showId: newShowId,
         });
       }
     }
@@ -163,18 +214,24 @@ export const MusicianShowScreen: React.FC = () => {
   const handleQuickUpdateStatus = (show: Show, newStatus: ShowStatus) => {
     updateShow({
       ...show,
-      status: newStatus
+      status: newStatus,
     });
   };
 
   const handleConfirmQuote = (show: Show) => {
-    const conflict = checkScheduleConflict(safeShows, show.date, show.time, show.endTime, show.id);
+    const conflict = checkScheduleConflict(
+      safeShows,
+      show.date,
+      show.time,
+      show.endTime,
+      show.id,
+    );
     if (conflict.hasConflict) {
       setSelectedShowId(show.id);
     } else {
       updateShow({
         ...show,
-        status: 'Confirmado'
+        status: "Confirmado",
       });
     }
   };
@@ -186,37 +243,41 @@ export const MusicianShowScreen: React.FC = () => {
   };
 
   const handleExportERP = () => {
-    // Dispara o download automático do arquivo 'shows_migracao_leo_ferreira.json'
+    // Dispara o download automático do arquivo'shows_migracao_leo_ferreira.json'
     downloadShowsERPMigrationJSON(safeShows, transactions, settings);
     setIsExportModalOpen(true);
   };
 
   // 8 ABAS DO MÓDULO EMPRESA / MÚSICO DEDICADO
-  const careerTabs: { id: CareerTab; label: string; icon: any; badge?: number; badgeColor?: string }[] = [
-    { id: 'performance', label: 'Performance', icon: TrendingUp },
-    { id: 'agenda', label: 'Agenda & Drawer', icon: CalendarIcon },
-    { id: 'shows', label: 'Shows & Fichas', icon: Music },
-    { id: 'locomocao', label: 'Locomoção & KM', icon: Car },
-    { id: 'custos', label: 'Custos da Música', icon: Hammer },
-    { id: 'equipe', label: 'Músicos & Equipe', icon: Users },
-    { id: 'locais', label: 'Locais & Bares', icon: Building2 },
-    { 
-      id: 'orcamentos', 
-      label: 'Orçamentos', 
+  const careerTabs: {
+    id: CareerTab;
+    label: string;
+    icon: any;
+    badge?: number;
+    badgeColor?: string;
+  }[] = [
+    { id: "performance", label: "Performance", icon: TrendingUp },
+    { id: "agenda", label: "Agenda & Drawer", icon: CalendarIcon },
+    { id: "shows", label: "Shows & Fichas", icon: Music },
+    { id: "locomocao", label: "Locomoção & KM", icon: Car },
+    { id: "custos", label: "Custos da Música", icon: Hammer },
+    { id: "equipe", label: "Músicos & Equipe", icon: Users },
+    { id: "locais", label: "Locais & Bares", icon: Building2 },
+    {
+      id: "orcamentos",
+      label: "Orçamentos",
       icon: FileText,
       badge: pendingQuotesCount > 0 ? pendingQuotesCount : undefined,
-      badgeColor: 'bg-amber-500 text-white'
-    }
+      badgeColor: "bg-amber-500 text-white",
+    },
   ];
 
   return (
     <div className="space-y-5 animate-fade-in w-full max-w-full">
-      
       {/* ========================================================================= */}
-      {/* 1. HEADER EXCLUSIVO "SOU ARTISTA" / GESTÃO DE CARREIRA                    */}
+      {/* 1. HEADER EXCLUSIVO"SOU ARTISTA" / GESTÃO DE CARREIRA */}
       {/* ========================================================================= */}
       <div className="bg-gradient-to-r from-[#1c122c] via-[#16131f] to-[#121214] p-4 sm:p-6 rounded-3xl border border-purple-500/30 shadow-xl space-y-4">
-        
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
@@ -225,12 +286,15 @@ export const MusicianShowScreen: React.FC = () => {
                 <span>Módulo Sou Artista • Gestão de Carreira</span>
               </span>
             </div>
-            
+
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              {settings.careerProjectName || settings.musicianArtisticName || 'Leo Ferreira • Carreira Musical'}
+              {settings.careerProjectName ||
+                settings.musicianArtisticName ||
+                "Leo Ferreira • Carreira Musical"}
             </h1>
             <p className="text-xs text-zinc-400">
-              Controle completo de cachês, equipe, logística, locomoção e lucratividade real.
+              Controle completo de cachês, equipe, logística, locomoção e
+              lucratividade real.
             </p>
           </div>
 
@@ -241,7 +305,11 @@ export const MusicianShowScreen: React.FC = () => {
               className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-900/50 via-purple-800/40 to-purple-900/50 hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider transition active:scale-95 border border-purple-500/40 flex items-center space-x-1.5 shadow-md shadow-purple-950/30 group"
               title="Exportar Todos os Shows (Migração ERP) - Gera shows_migracao_leo_ferreira.json"
             >
-              <Download size={15} strokeWidth={2.5} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
+              <Download
+                size={15}
+                strokeWidth={2.5}
+                className="text-purple-400 group-hover:translate-y-0.5 transition-transform"
+              />
               <span>Exportar Todos os Shows (Migração ERP)</span>
             </button>
 
@@ -264,7 +332,7 @@ export const MusicianShowScreen: React.FC = () => {
             </button>
 
             <button
-              onClick={() => handleOpenCreateModal(undefined, 'Confirmado')}
+              onClick={() => handleOpenCreateModal(undefined, "Confirmado")}
               className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-md shadow-purple-500/25 flex items-center space-x-1.5"
             >
               <Plus size={16} strokeWidth={3} />
@@ -291,18 +359,17 @@ export const MusicianShowScreen: React.FC = () => {
             </button>
           </div>
         )}
-
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. BARRA DE NAVEGAÇÃO DE ABAS SUPERIORES LIMPAS (RESPONSIVA)              */}
+      {/* 2. BARRA DE NAVEGAÇÃO DE ABAS SUPERIORES LIMPAS (RESPONSIVA) */}
       {/* ========================================================================= */}
-      <div 
+      <div
         ref={tabsScrollRef}
         className="overflow-x-auto no-scrollbar -mx-3.5 px-3.5 sm:mx-0 sm:px-0 cursor-grab active:cursor-grabbing select-none"
       >
         <div className="flex items-center space-x-2 border-b border-zinc-800/80 pb-2 min-w-max">
-          {careerTabs.map(tab => {
+          {careerTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
 
@@ -315,16 +382,20 @@ export const MusicianShowScreen: React.FC = () => {
                 }}
                 className={`flex items-center space-x-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-black tracking-wide transition-all active:scale-95 ${
                   isActive
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
-                    : 'bg-[#121214] text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-700'
+                    ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                    : "bg-[#121214] text-zinc-400 hover:text-white border border-zinc-800 hover:border-zinc-700"
                 }`}
               >
                 <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{tab.label}</span>
                 {tab.badge !== undefined && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                    isActive ? 'bg-purple-900 text-white' : tab.badgeColor || 'bg-amber-500 text-white'
-                  }`}>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                      isActive
+                        ? "bg-purple-900 text-white"
+                        : tab.badgeColor || "bg-amber-500 text-white"
+                    }`}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -335,83 +406,90 @@ export const MusicianShowScreen: React.FC = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. CONTEÚDO DINÂMICO DA ABA ATIVA DO MÓDULO SOU ARTISTA                   */}
+      {/* 3. CONTEÚDO DINÂMICO DA ABA ATIVA DO MÓDULO SOU ARTISTA */}
       {/* ========================================================================= */}
-      
+
       {/* ABA 1: PERFORMANCE DASHBOARD */}
-      {activeTab === 'performance' && (
+      {activeTab === "performance" && (
         <PerformanceDashboard
           shows={safeShows}
           transactions={transactions}
-          onSelectShow={show => setSelectedShowId(show.id)}
-          onOpenCreateShow={() => handleOpenCreateModal(undefined, 'Confirmado')}
+          onSelectShow={(show) => setSelectedShowId(show.id)}
+          onOpenCreateShow={() =>
+            handleOpenCreateModal(undefined, "Confirmado")
+          }
         />
       )}
 
       {/* ABA 2: CALENDÁRIO COM GAVETA LATERAL (DRAWER) */}
-      {activeTab === 'agenda' && (
+      {activeTab === "agenda" && (
         <CalendarWithDrawer
           shows={safeShows}
-          onSelectShow={show => setSelectedShowId(show.id)}
-          onOpenCreateShow={date => handleOpenCreateModal(date, 'Confirmado')}
+          onSelectShow={(show) => setSelectedShowId(show.id)}
+          onOpenCreateShow={(date) => handleOpenCreateModal(date, "Confirmado")}
         />
       )}
 
       {/* ABA 3: GESTÃO DETALHADA DE SHOWS & FICHAS */}
-      {activeTab === 'shows' && (
+      {activeTab === "shows" && (
         <ShowsManagementView
           shows={safeShows}
-          onSelectShow={show => setSelectedShowId(show.id)}
-          onOpenCreateShow={status => handleOpenCreateModal(undefined, status || 'Confirmado')}
+          onSelectShow={(show) => setSelectedShowId(show.id)}
+          onOpenCreateShow={(status) =>
+            handleOpenCreateModal(undefined, status || "Confirmado")
+          }
           onExportERP={handleExportERP}
         />
       )}
 
       {/* ABA 4: LOCOMOÇÃO (UBER, COMBUSTÍVEL & KM RODADO) */}
-      {activeTab === 'locomocao' && (
+      {activeTab === "locomocao" && (
         <LocomotionModuleView
           shows={safeShows}
-          onOpenCreateShow={() => handleOpenCreateModal(undefined, 'Confirmado')}
+          onOpenCreateShow={() =>
+            handleOpenCreateModal(undefined, "Confirmado")
+          }
         />
       )}
 
       {/* ABA 5: CUSTOS DA MÚSICA & EQUIPAMENTOS */}
-      {activeTab === 'custos' && (
-        <GearAndCostsView
-          shows={safeShows}
-        />
-      )}
+      {activeTab === "custos" && <GearAndCostsView shows={safeShows} />}
 
       {/* ABA 6: MÚSICOS & EQUIPE (FREELANCERS) */}
-      {activeTab === 'equipe' && (
-        <CrewManagementView />
-      )}
+      {activeTab === "equipe" && <CrewManagementView />}
 
       {/* ABA 7: LOCAIS & BARES */}
-      {activeTab === 'locais' && (
+      {activeTab === "locais" && (
         <VenuesManagementView
-          onOpenCreateShowWithVenue={(venueName, address, city, defaultCache) => {
-            handleOpenCreateModal(undefined, 'Confirmado', {
+          onOpenCreateShowWithVenue={(
+            venueName,
+            address,
+            city,
+            defaultCache,
+          ) => {
+            handleOpenCreateModal(undefined, "Confirmado", {
               location: address || venueName,
               city,
-              totalCache: defaultCache
+              totalCache: defaultCache,
             });
           }}
         />
       )}
 
       {/* ABA 8: ORÇAMENTOS & COTAÇÕES */}
-      {activeTab === 'orcamentos' && (
+      {activeTab === "orcamentos" && (
         <ShowQuotesView
           shows={safeShows}
-          onSelectShow={show => setSelectedShowId(show.id)}
+          onSelectShow={(show) => setSelectedShowId(show.id)}
           onConfirmQuote={handleConfirmQuote}
-          onOpenCreateModal={() => handleOpenCreateModal(undefined, 'Orçamento')}
+          onOpenCreateModal={() =>
+            handleOpenCreateModal(undefined, "Orçamento")
+          }
         />
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL / DRAWER LATERAL: FICHA COMPLETA & LANÇAMENTOS DO SHOW              */}
+      {/* MODAL / DRAWER LATERAL: FICHA COMPLETA & LANÇAMENTOS DO SHOW */}
       {/* ========================================================================= */}
       {selectedShowForDetail && (
         <ShowDetailModal
@@ -421,8 +499,8 @@ export const MusicianShowScreen: React.FC = () => {
             setSelectedShowId(null);
             setOpenPaymentDirectly(false);
           }}
-          onEdit={show => handleOpenEditModal(show)}
-          onDelete={showId => {
+          onEdit={(show) => handleOpenEditModal(show)}
+          onDelete={(showId) => {
             deleteShow(showId, true);
             setSelectedShowId(null);
             setOpenPaymentDirectly(false);
@@ -451,13 +529,19 @@ export const MusicianShowScreen: React.FC = () => {
       <CachePricingCalculatorModal
         isOpen={isCalculatorOpen}
         onClose={() => setIsCalculatorOpen(false)}
-        onCreateQuote={(calculatedCache, contractorName, notes, date, location) => {
+        onCreateQuote={(
+          calculatedCache,
+          contractorName,
+          notes,
+          date,
+          location,
+        ) => {
           setShowToEdit(null);
           setPrefilledDateForNewShow(date);
-          setInitialStatusForNewShow('Orçamento');
+          setInitialStatusForNewShow("Orçamento");
           setPrefilledVenueData({
             location,
-            totalCache: calculatedCache
+            totalCache: calculatedCache,
           });
           setIsFormModalOpen(true);
         }}
@@ -479,7 +563,6 @@ export const MusicianShowScreen: React.FC = () => {
         transactions={transactions}
         settings={settings}
       />
-
     </div>
   );
 };

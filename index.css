@@ -205,8 +205,8 @@ button.bg-indigo-500:not(.category-selector-card) > svg {
   color: #FFFFFF !important;
 }
 
-html:not(.dark) .category-selector-card:hover:not(.is-selected) .category-card-label {
-  color: #000000 !important;
+.category-selector-card:hover:not(.is-selected) .category-card-label {
+  color: #0F172A !important;
 }
 
 /* ==========================================================================

@@ -1,5 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -14,7 +14,7 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -22,7 +22,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an unhandled error:', error, errorInfo);
+    console.error(
+      "ErrorBoundary caught an unhandled error: ",
+      error,
+      errorInfo,
+    );
   }
 
   private handleReset = () => {
@@ -41,18 +45,25 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="w-14 h-14 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mx-auto">
             <AlertTriangle size={28} />
           </div>
-          
+
           <div className="space-y-1">
-            <h3 className="text-base font-black text-white">Não foi possível carregar os dados deste show</h3>
+            <h3 className="text-base font-black text-white">
+              Não foi possível carregar os dados deste show
+            </h3>
             <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
-              Ocorreu uma inconsistência ao processar as informações do Módulo de Shows ou Custos. Seus dados estão salvos e seguros.
+              Ocorreu uma inconsistência ao processar as informações do Módulo
+              de Shows ou Custos. Seus dados estão salvos e seguros.
             </p>
           </div>
 
           {this.state.error?.message && (
             <div className="p-3 bg-red-950/20 border border-red-900/20 rounded-xl text-left">
-              <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block">Código do Erro:</span>
-              <span className="text-[11px] font-medium text-zinc-300 block font-mono truncate">{this.state.error.message}</span>
+              <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block">
+                Código do Erro:
+              </span>
+              <span className="text-[11px] font-medium text-zinc-300 block font-mono truncate">
+                {this.state.error.message}
+              </span>
             </div>
           )}
 

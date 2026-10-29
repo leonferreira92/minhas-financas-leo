@@ -1,29 +1,47 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useFinance } from '../context/FinanceContext';
-import { 
-  TrendingUp, Wallet, ArrowUpRight, ArrowDownRight, 
-  Layers, Calendar, ChevronRight, ArrowRightLeft, Sparkles, Filter 
-} from 'lucide-react';
-import { getShowFinancialSummary } from '../services/showFinanceSyncService';
-import { consolidateCareerExpenses } from '../services/financeAggregator';
-import { ProLaboreWithdrawModal } from './ProLaboreWithdrawModal';
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useFinance } from "../context/FinanceContext";
+import {
+  TrendingUp,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  Layers,
+  Calendar,
+  ChevronRight,
+  ArrowRightLeft,
+  Sparkles,
+  Filter,
+} from "lucide-react";
+import { getShowFinancialSummary } from "../services/showFinanceSyncService";
+import { consolidateCareerExpenses } from "../services/financeAggregator";
+import { ProLaboreWithdrawModal } from "./ProLaboreWithdrawModal";
 
-export type DREPeriodPreset = 'current_month' | 'prev_month' | 'last_3_months' | 'custom';
+export type DREPeriodPreset =
+  "current_month" | "prev_month" | "last_3_months" | "custom";
 
 interface Props {
   className?: string;
 }
 
-export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
+export const CareerDRECard: React.FC<Props> = ({ className = "" }) => {
   const navigate = useNavigate();
-  const { shows, transactions, debts, accounts, categories, isBlurred, settings } = useFinance();
+  const {
+    shows,
+    transactions,
+    debts,
+    accounts,
+    categories,
+    isBlurred,
+    settings,
+  } = useFinance();
 
-  const careerName = settings.careerProjectName || 'Leo Ferreira';
-  const [periodPreset, setPeriodPreset] = useState<DREPeriodPreset>('current_month');
+  const careerName = settings.careerProjectName || "Leo Ferreira";
+  const [periodPreset, setPeriodPreset] =
+    useState<DREPeriodPreset>("current_month");
   const [isProLaboreModalOpen, setIsProLaboreModalOpen] = useState(false);
 
-  // Custom date range state (when 'custom' is selected)
+  // Custom date range state (when'custom' is selected)
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -41,114 +59,181 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
     const currYear = now.getFullYear();
     const currMonth = now.getMonth(); // 0-indexed
 
-    if (periodPreset === 'current_month') {
+    if (periodPreset === "current_month") {
       const start = new Date(currYear, currMonth, 1).toISOString().slice(0, 10);
-      const end = new Date(currYear, currMonth + 1, 0).toISOString().slice(0, 10);
-      const label = new Date(currYear, currMonth, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      return { periodStart: start, periodEnd: end, periodLabel: label.charAt(0).toUpperCase() + label.slice(1) };
+      const end = new Date(currYear, currMonth + 1, 0)
+        .toISOString()
+        .slice(0, 10);
+      const label = new Date(currYear, currMonth, 1).toLocaleDateString(
+        "pt-BR",
+        { month: "long", year: "numeric" },
+      );
+      return {
+        periodStart: start,
+        periodEnd: end,
+        periodLabel: label.charAt(0).toUpperCase() + label.slice(1),
+      };
     }
 
-    if (periodPreset === 'prev_month') {
-      const start = new Date(currYear, currMonth - 1, 1).toISOString().slice(0, 10);
+    if (periodPreset === "prev_month") {
+      const start = new Date(currYear, currMonth - 1, 1)
+        .toISOString()
+        .slice(0, 10);
       const end = new Date(currYear, currMonth, 0).toISOString().slice(0, 10);
-      const label = new Date(currYear, currMonth - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      return { periodStart: start, periodEnd: end, periodLabel: label.charAt(0).toUpperCase() + label.slice(1) };
+      const label = new Date(currYear, currMonth - 1, 1).toLocaleDateString(
+        "pt-BR",
+        { month: "long", year: "numeric" },
+      );
+      return {
+        periodStart: start,
+        periodEnd: end,
+        periodLabel: label.charAt(0).toUpperCase() + label.slice(1),
+      };
     }
 
-    if (periodPreset === 'last_3_months') {
-      const start = new Date(currYear, currMonth - 2, 1).toISOString().slice(0, 10);
-      const end = new Date(currYear, currMonth + 1, 0).toISOString().slice(0, 10);
-      const labelStart = new Date(currYear, currMonth - 2, 1).toLocaleDateString('pt-BR', { month: 'short' });
-      const labelEnd = new Date(currYear, currMonth, 1).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-      return { periodStart: start, periodEnd: end, periodLabel: `${labelStart} - ${labelEnd}` };
+    if (periodPreset === "last_3_months") {
+      const start = new Date(currYear, currMonth - 2, 1)
+        .toISOString()
+        .slice(0, 10);
+      const end = new Date(currYear, currMonth + 1, 0)
+        .toISOString()
+        .slice(0, 10);
+      const labelStart = new Date(
+        currYear,
+        currMonth - 2,
+        1,
+      ).toLocaleDateString("pt-BR", { month: "short" });
+      const labelEnd = new Date(currYear, currMonth, 1).toLocaleDateString(
+        "pt-BR",
+        { month: "short", year: "numeric" },
+      );
+      return {
+        periodStart: start,
+        periodEnd: end,
+        periodLabel: `${labelStart} - ${labelEnd}`,
+      };
     }
 
     // custom
     return {
       periodStart: customStart,
       periodEnd: customEnd,
-      periodLabel: `Personalizado (${customStart.slice(5)} a ${customEnd.slice(5)})`
+      periodLabel: `Personalizado (${customStart.slice(5)} a ${customEnd.slice(5)})`,
     };
   }, [periodPreset, customStart, customEnd]);
 
   // Compute DRE Metrics for the period:
-  // "A DRE do módulo MÚSICA deve somar exatamente: Entradas do Projeto - Custos/Equipamentos do Projeto = Lucro Real do Projeto"
+  //"A DRE do módulo MÚSICA deve somar exatamente: Entradas do Projeto - Custos/Equipamentos do Projeto = Lucro Real do Projeto"
   const metrics = useMemo(() => {
     // 1. Entradas Efetivas do Projeto no período (Regime de Caixa)
-    const projectIncomeTxs = transactions.filter(t => {
+    const projectIncomeTxs = transactions.filter((t) => {
       if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
-      if (t.type !== 'income' || t.status !== 'paid') return false;
-      
-      const desc = (t.description || '').toLowerCase();
+      if (t.type !== "income" || t.status !== "paid") return false;
+
+      const desc = (t.description || "").toLowerCase();
       // Excluir recebimento de pró-labore na conta pessoal
-      if (desc.includes('recebimento de pró-labore') || desc.includes('recebimento de pro-labore')) return false;
+      if (
+        desc.includes("recebimento de pró-labore") ||
+        desc.includes("recebimento de pro-labore")
+      )
+        return false;
 
       return (
-        t.scope === 'BUSINESS' ||
-        t.categoryId === 'cat_33' ||
+        t.scope === "BUSINESS" ||
+        t.categoryId === "cat_33" ||
         !!t.showId ||
-        desc.includes('cachê') ||
-        desc.includes('cache') ||
-        desc.includes('show')
+        desc.includes("cachê") ||
+        desc.includes("cache") ||
+        desc.includes("show")
       );
     });
 
     // Desconsidera transações duplicadas de base para o mesmo showId
     const seenShowBaseIds = new Set<string>();
-    const deduplicatedProjectIncomeTxs = projectIncomeTxs.filter(t => {
+    const deduplicatedProjectIncomeTxs = projectIncomeTxs.filter((t) => {
       if (!t.showId) return true;
-      const desc = (t.description || '').toLowerCase();
-      const isExtra = t.showPaymentType === 'Extra' || t.showPaymentType === 'Bônus' || desc.includes('hora extra') || desc.includes('gorjeta');
+      const desc = (t.description || "").toLowerCase();
+      const isExtra =
+        t.showPaymentType === "Extra" ||
+        t.showPaymentType === "Bônus" ||
+        desc.includes("hora extra") ||
+        desc.includes("gorjeta");
       if (isExtra) return true;
       if (seenShowBaseIds.has(t.showId)) return false;
       seenShowBaseIds.add(t.showId);
       return true;
     });
 
-    const grossRevenue = deduplicatedProjectIncomeTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const grossRevenue = deduplicatedProjectIncomeTxs.reduce(
+      (sum, t) => sum + (Number(t.amount) || 0),
+      0,
+    );
 
     // 2. Custos / Equipamentos Efetivados do Projeto no período (Regime de Caixa)
-    // Inclui automaticamente as parcelas PAGAS de dívidas associadas a 'MÚSICA / CARREIRA' e exclui parcelas 'PESSOAL'
-    const consolidatedExpenses = consolidateCareerExpenses(transactions, debts, {
-      startDate: periodStart,
-      endDate: periodEnd,
-      onlyPaidForAll: true
-    });
+    // Inclui automaticamente as parcelas PAGAS de dívidas associadas a'MÚSICA / CARREIRA' e exclui parcelas'PESSOAL'
+    const consolidatedExpenses = consolidateCareerExpenses(
+      transactions,
+      debts,
+      {
+        startDate: periodStart,
+        endDate: periodEnd,
+        onlyPaidForAll: true,
+      },
+    );
 
     const totalExpenses = consolidatedExpenses.totalAmount;
     const debtInstallmentsTotal = consolidatedExpenses.debtInstallmentsTotal;
-    const debtInstallmentsCount = consolidatedExpenses.debtCareerExpenses.length;
+    const debtInstallmentsCount =
+      consolidatedExpenses.debtCareerExpenses.length;
 
     // 3. Lucro Real do Projeto
     const netProfit = grossRevenue - totalExpenses;
-    const profitMargin = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
+    const profitMargin =
+      grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
 
     // 4. Pró-Labore Retirado no período
-    const proLaboreTxs = transactions.filter(t => {
+    const proLaboreTxs = transactions.filter((t) => {
       if (!t.date || t.date < periodStart || t.date > periodEnd) return false;
-      if (t.status === 'pending') return false;
+      if (t.status === "pending") return false;
 
-      const desc = (t.description || '').toLowerCase();
-      const cat = categories.find(c => c.id === t.categoryId);
-      const catName = (cat?.name || '').toLowerCase();
-      
-      const isNamedProLabore = desc.includes('pró-labore') || desc.includes('pro-labore') || desc.includes('pro labore') || catName.includes('pró-labore') || catName.includes('pro-labore');
+      const desc = (t.description || "").toLowerCase();
+      const cat = categories.find((c) => c.id === t.categoryId);
+      const catName = (cat?.name || "").toLowerCase();
 
-      if (t.type === 'expense' && isNamedProLabore && (t.scope === 'BUSINESS' || desc.includes('retirada'))) {
+      const isNamedProLabore =
+        desc.includes("pró-labore") ||
+        desc.includes("pro-labore") ||
+        desc.includes("pro labore") ||
+        catName.includes("pró-labore") ||
+        catName.includes("pro-labore");
+
+      if (
+        t.type === "expense" &&
+        isNamedProLabore &&
+        (t.scope === "BUSINESS" || desc.includes("retirada"))
+      ) {
         return true;
       }
 
-      if (t.type === 'transfer' && isNamedProLabore) {
+      if (t.type === "transfer" && isNamedProLabore) {
         return true;
       }
 
       return false;
     });
 
-    const proLaboreTotal = proLaboreTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const proLaboreTotal = proLaboreTxs.reduce(
+      (sum, t) => sum + (Number(t.amount) || 0),
+      0,
+    );
 
     // Contagem de shows no período
-    const periodShows = shows.filter(s => s.status !== 'Cancelado' && s.date >= periodStart && s.date <= periodEnd);
+    const periodShows = shows.filter(
+      (s) =>
+        s.status !== "Cancelado" &&
+        s.date >= periodStart &&
+        s.date <= periodEnd,
+    );
     const showsCount = Math.max(periodShows.length, projectIncomeTxs.length);
 
     return {
@@ -160,30 +245,39 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
       netProfit,
       profitMargin,
       proLaboreTotal,
-      showsCount
+      showsCount,
     };
   }, [shows, transactions, debts, categories, periodStart, periodEnd]);
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   // Navegação clicável para o extrato com o filtro aplicado
-  const handleNavigateExtrato = (params: { type?: string; scope?: string; search?: string }) => {
+  const handleNavigateExtrato = (params: {
+    type?: string;
+    scope?: string;
+    search?: string;
+  }) => {
     const query = new URLSearchParams();
-    query.set('tab', 'movimentacoes');
-    if (params.type) query.set('type', params.type);
-    if (params.scope) query.set('scope', params.scope);
-    if (params.search) query.set('search', params.search);
-    if (periodPreset === 'current_month' || periodPreset === 'prev_month') {
-      query.set('month', periodStart.slice(0, 7));
+    query.set("tab", "movimentacoes");
+    if (params.type) query.set("type", params.type);
+    if (params.scope) query.set("scope", params.scope);
+    if (params.search) query.set("search", params.search);
+    if (periodPreset === "current_month" || periodPreset === "prev_month") {
+      query.set("month", periodStart.slice(0, 7));
     }
     navigate(`/financeiro?${query.toString()}`);
   };
 
   return (
     <>
-      <div className={`w-full max-w-full overflow-x-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-purple-800/30 relative space-y-4 ${className}`}>
+      <div
+        className={`w-full max-w-full overflow-x-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-purple-800/30 relative space-y-4 ${className}`}
+      >
         {/* Glow de fundo */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-44 h-44 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-44 h-44 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -226,44 +320,44 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
         <div className="relative z-10 pt-1 pb-1 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center bg-white/5 border border-white/10 p-1 rounded-2xl max-w-full overflow-x-auto no-scrollbar">
             <button
-              onClick={() => setPeriodPreset('current_month')}
+              onClick={() => setPeriodPreset("current_month")}
               className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
-                periodPreset === 'current_month' 
-                  ? 'bg-purple-600 text-white shadow-sm' 
-                  : 'text-slate-400 hover:text-white'
+                periodPreset === "current_month"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Mês Atual (Padrão)
             </button>
 
             <button
-              onClick={() => setPeriodPreset('prev_month')}
+              onClick={() => setPeriodPreset("prev_month")}
               className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
-                periodPreset === 'prev_month' 
-                  ? 'bg-purple-600 text-white shadow-sm' 
-                  : 'text-slate-400 hover:text-white'
+                periodPreset === "prev_month"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Mês Anterior
             </button>
 
             <button
-              onClick={() => setPeriodPreset('last_3_months')}
+              onClick={() => setPeriodPreset("last_3_months")}
               className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
-                periodPreset === 'last_3_months' 
-                  ? 'bg-purple-600 text-white shadow-sm' 
-                  : 'text-slate-400 hover:text-white'
+                periodPreset === "last_3_months"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Últimos 3 Meses
             </button>
 
             <button
-              onClick={() => setPeriodPreset('custom')}
+              onClick={() => setPeriodPreset("custom")}
               className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
-                periodPreset === 'custom' 
-                  ? 'bg-purple-600 text-white shadow-sm' 
-                  : 'text-slate-400 hover:text-white'
+                periodPreset === "custom"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               Personalizado
@@ -274,30 +368,36 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
               Margem Líquida
             </span>
-            <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg inline-block ${metrics.profitMargin >= 50 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+            <span
+              className={`text-xs font-black px-2.5 py-0.5 rounded-lg inline-block ${metrics.profitMargin >= 50 ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}
+            >
               {metrics.profitMargin.toFixed(1)}%
             </span>
           </div>
         </div>
 
         {/* Inputs de Data quando Personalizado */}
-        {periodPreset === 'custom' && (
+        {periodPreset === "custom" && (
           <div className="relative z-10 flex items-center gap-2 pt-1 pb-2">
             <div className="flex items-center space-x-1.5 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">De:</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase">
+                De:
+              </span>
               <input
                 type="date"
                 value={customStart}
-                onChange={e => setCustomStart(e.target.value)}
+                onChange={(e) => setCustomStart(e.target.value)}
                 className="bg-transparent text-white text-xs font-bold outline-none"
               />
             </div>
             <div className="flex items-center space-x-1.5 bg-white/5 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Até:</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase">
+                Até:
+              </span>
               <input
                 type="date"
                 value={customEnd}
-                onChange={e => setCustomEnd(e.target.value)}
+                onChange={(e) => setCustomEnd(e.target.value)}
                 className="bg-transparent text-white text-xs font-bold outline-none"
               />
             </div>
@@ -307,8 +407,10 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
         {/* 3. Grid com 4 Indicadores DRE CLICÁVEIS */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3">
           {/* Card 1: Faturamento Bruto de Cachês */}
-          <div 
-            onClick={() => handleNavigateExtrato({ type: 'income', scope: 'BUSINESS' })}
+          <div
+            onClick={() =>
+              handleNavigateExtrato({ type: "income", scope: "BUSINESS" })
+            }
             className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-emerald-500/40 transition cursor-pointer active:scale-95"
             title="Clique para ver receitas da música no Extrato"
           >
@@ -322,18 +424,25 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             </div>
             <div>
               <div className="text-base sm:text-lg font-black tracking-tight text-emerald-400 tabular-nums">
-                {!isBlurred ? formatCurrency(metrics.grossRevenue) : 'R$ ••••••'}
+                {!isBlurred
+                  ? formatCurrency(metrics.grossRevenue)
+                  : "R$ ••••••"}
               </div>
               <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
                 <span>{metrics.showsCount} shows no período</span>
-                <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
+                <ChevronRight
+                  size={11}
+                  className="opacity-0 group-hover:opacity-100 transition"
+                />
               </p>
             </div>
           </div>
 
           {/* Card 2: Custos Operacionais & Equipamentos */}
-          <div 
-            onClick={() => handleNavigateExtrato({ type: 'expense', scope: 'BUSINESS' })}
+          <div
+            onClick={() =>
+              handleNavigateExtrato({ type: "expense", scope: "BUSINESS" })
+            }
             className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-rose-500/40 transition cursor-pointer active:scale-95"
             title="Clique para ver custos da música no Extrato"
           >
@@ -347,22 +456,27 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             </div>
             <div>
               <div className="text-base sm:text-lg font-black tracking-tight text-rose-400 tabular-nums">
-                {!isBlurred ? formatCurrency(metrics.totalExpenses) : 'R$ ••••••'}
+                {!isBlurred
+                  ? formatCurrency(metrics.totalExpenses)
+                  : "R$ ••••••"}
               </div>
               <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
                 <span>
                   {metrics.debtInstallmentsTotal > 0
-                    ? `Inclui ${!isBlurred ? formatCurrency(metrics.debtInstallmentsTotal) : '••••'} (${metrics.debtInstallmentsCount}x parcelamento)`
-                    : 'Produção & Equipamentos'}
+                    ? `Inclui ${!isBlurred ? formatCurrency(metrics.debtInstallmentsTotal) : "••••"} (${metrics.debtInstallmentsCount}x parcelamento)`
+                    : "Produção & Equipamentos"}
                 </span>
-                <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
+                <ChevronRight
+                  size={11}
+                  className="opacity-0 group-hover:opacity-100 transition"
+                />
               </p>
             </div>
           </div>
 
           {/* Card 3: Lucro Real do Projeto */}
-          <div 
-            onClick={() => handleNavigateExtrato({ scope: 'BUSINESS' })}
+          <div
+            onClick={() => handleNavigateExtrato({ scope: "BUSINESS" })}
             className="group bg-indigo-950/70 border border-indigo-500/30 rounded-2xl p-3.5 flex flex-col justify-between hover:border-indigo-400/60 hover:bg-indigo-950/90 transition cursor-pointer active:scale-95"
             title="Clique para ver todas as movimentações do projeto no Extrato"
           >
@@ -375,19 +489,24 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
               </div>
             </div>
             <div>
-              <div className={`text-base sm:text-lg font-black tracking-tight tabular-nums ${metrics.netProfit >= 0 ? 'text-indigo-200' : 'text-rose-400'}`}>
-                {!isBlurred ? formatCurrency(metrics.netProfit) : 'R$ ••••••'}
+              <div
+                className={`text-base sm:text-lg font-black tracking-tight tabular-nums ${metrics.netProfit >= 0 ? "text-indigo-200" : "text-rose-400"}`}
+              >
+                {!isBlurred ? formatCurrency(metrics.netProfit) : "R$ ••••••"}
               </div>
               <p className="text-[9px] text-indigo-300/80 mt-0.5 flex items-center justify-between">
                 <span>Entradas - Custos</span>
-                <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
+                <ChevronRight
+                  size={11}
+                  className="opacity-0 group-hover:opacity-100 transition"
+                />
               </p>
             </div>
           </div>
 
           {/* Card 4: Pró-Labore Retirado */}
-          <div 
-            onClick={() => handleNavigateExtrato({ search: 'pró-labore' })}
+          <div
+            onClick={() => handleNavigateExtrato({ search: "pró-labore" })}
             className="group bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between hover:bg-white/10 hover:border-purple-500/40 transition cursor-pointer active:scale-95"
             title="Clique para ver retiradas de pró-labore no Extrato"
           >
@@ -401,11 +520,16 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
             </div>
             <div>
               <div className="text-base sm:text-lg font-black tracking-tight text-purple-300 tabular-nums">
-                {!isBlurred ? formatCurrency(metrics.proLaboreTotal) : 'R$ ••••••'}
+                {!isBlurred
+                  ? formatCurrency(metrics.proLaboreTotal)
+                  : "R$ ••••••"}
               </div>
               <p className="text-[9px] text-slate-400 mt-0.5 group-hover:text-slate-300 transition flex items-center justify-between">
                 <span>Shows → Pessoal</span>
-                <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition" />
+                <ChevronRight
+                  size={11}
+                  className="opacity-0 group-hover:opacity-100 transition"
+                />
               </p>
             </div>
           </div>
@@ -416,7 +540,11 @@ export const CareerDRECard: React.FC<Props> = ({ className = '' }) => {
       <ProLaboreWithdrawModal
         isOpen={isProLaboreModalOpen}
         onClose={() => setIsProLaboreModalOpen(false)}
-        defaultAmount={metrics.netProfit > 0 ? Math.round(metrics.netProfit * 0.7) : undefined}
+        defaultAmount={
+          metrics.netProfit > 0
+            ? Math.round(metrics.netProfit * 0.7)
+            : undefined
+        }
       />
     </>
   );

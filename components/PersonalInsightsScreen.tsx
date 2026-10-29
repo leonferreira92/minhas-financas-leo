@@ -1,12 +1,12 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronLeft, Sparkles } from 'lucide-react';
-import { HowMuchCanISpendCard } from './HowMuchCanISpendCard';
-import { CostOfLivingSection } from './CostOfLivingSection';
-import { SpendingAveragesSection } from './SpendingAveragesSection';
-import { FinancialOverviewSection } from './FinancialOverviewSection';
-import { FinancialProjectionSection } from './FinancialProjectionSection';
-import { TopExpensesCard } from './extrato/TopExpensesCard';
+import React from "react";
+import { Link } from "react-router-dom";
+import { ChevronLeft, Sparkles } from "lucide-react";
+import { HowMuchCanISpendCard } from "./HowMuchCanISpendCard";
+import { CostOfLivingSection } from "./CostOfLivingSection";
+import { SpendingAveragesSection } from "./SpendingAveragesSection";
+import { FinancialOverviewSection } from "./FinancialOverviewSection";
+import { FinancialProjectionSection } from "./FinancialProjectionSection";
+import { TopExpensesCard } from "./extrato/TopExpensesCard";
 
 /**
  * Hub de inteligência pessoal — reaproveita cards já existentes.
@@ -14,7 +14,7 @@ import { TopExpensesCard } from './extrato/TopExpensesCard';
  */
 export const PersonalInsightsScreen: React.FC = () => {
   return (
-    <div className="w-full max-w-full overflow-x-hidden space-y-5 pb-24 animate-fade-in">
+    <div className="w-full max-w-full overflow-x-hidden space-y-5 pb-24 animate-fade-in ">
       <div className="flex items-start gap-3 pt-1">
         <Link
           to="/mais"

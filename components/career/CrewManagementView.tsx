@@ -1,58 +1,80 @@
-import React, { useState, useMemo } from 'react';
-import { MusicianCrewMember } from '../../types';
-import { useFinance } from '../../context/FinanceContext';
-import { 
-  Users, Plus, Phone, MessageSquare, Copy, Check, 
-  Trash2, Edit3, Search, X, DollarSign, Award, Music, 
-  CreditCard, Sparkles, AlertCircle
-} from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import { MusicianCrewMember } from "../../types";
+import { useFinance } from "../../context/FinanceContext";
+import {
+  Users,
+  Plus,
+  Phone,
+  MessageSquare,
+  Copy,
+  Check,
+  Trash2,
+  Edit3,
+  Search,
+  X,
+  DollarSign,
+  Award,
+  Music,
+  CreditCard,
+  Sparkles,
+  AlertCircle,
+} from "lucide-react";
 
 interface Props {
   onSelectMember?: (member: MusicianCrewMember) => void;
 }
 
 export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
-  const { crew, addCrewMember, updateCrewMember, deleteCrewMember, isBlurred } = useFinance();
+  const { crew, addCrewMember, updateCrewMember, deleteCrewMember, isBlurred } =
+    useFinance();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<MusicianCrewMember | null>(null);
+  const [editingMember, setEditingMember] = useState<MusicianCrewMember | null>(
+    null,
+  );
   const [copiedPixId, setCopiedPixId] = useState<string | null>(null);
 
   // Form states
-  const [formName, setFormName] = useState('');
-  const [formRole, setFormRole] = useState('Bateria');
-  const [formDefaultCache, setFormDefaultCache] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formPixKey, setFormPixKey] = useState('');
-  const [formPixKeyType, setFormPixKeyType] = useState<MusicianCrewMember['pixKeyType']>('CPF');
-  const [formNotes, setFormNotes] = useState('');
+  const [formName, setFormName] = useState("");
+  const [formRole, setFormRole] = useState("Bateria");
+  const [formDefaultCache, setFormDefaultCache] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formPixKey, setFormPixKey] = useState("");
+  const [formPixKeyType, setFormPixKeyType] =
+    useState<MusicianCrewMember["pixKeyType"]>("CPF");
+  const [formNotes, setFormNotes] = useState("");
 
   const formatCurrency = (val: number) => {
-    if (isBlurred) return 'R$ •••••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    if (isBlurred) return "R$ •••••";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   const handleOpenModal = (member?: MusicianCrewMember) => {
     if (member) {
       setEditingMember(member);
-      setFormName(member.name || '');
-      setFormRole(member.role || 'Bateria');
-      setFormDefaultCache(member.defaultCache ? String(member.defaultCache) : '');
-      setFormPhone(member.phone || '');
-      setFormPixKey(member.pixKey || '');
-      setFormPixKeyType(member.pixKeyType || 'CPF');
-      setFormNotes(member.notes || '');
+      setFormName(member.name || "");
+      setFormRole(member.role || "Bateria");
+      setFormDefaultCache(
+        member.defaultCache ? String(member.defaultCache) : "",
+      );
+      setFormPhone(member.phone || "");
+      setFormPixKey(member.pixKey || "");
+      setFormPixKeyType(member.pixKeyType || "CPF");
+      setFormNotes(member.notes || "");
     } else {
       setEditingMember(null);
-      setFormName('');
-      setFormRole('Bateria');
-      setFormDefaultCache('');
-      setFormPhone('');
-      setFormPixKey('');
-      setFormPixKeyType('CPF');
-      setFormNotes('');
+      setFormName("");
+      setFormRole("Bateria");
+      setFormDefaultCache("");
+      setFormPhone("");
+      setFormPixKey("");
+      setFormPixKeyType("CPF");
+      setFormNotes("");
     }
     setIsModalOpen(true);
   };
@@ -61,22 +83,24 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
     e.preventDefault();
     if (!formName.trim()) return;
 
-    const cacheNum = parseFloat(formDefaultCache.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    const cacheNum =
+      parseFloat(formDefaultCache.replace(/[^\d.,]/g, "").replace(", ", ".")) ||
+      0;
 
-    const data: Omit<MusicianCrewMember, 'id' | 'createdAt'> = {
+    const data: Omit<MusicianCrewMember, "id" | "createdAt"> = {
       name: formName.trim(),
       role: formRole.trim(),
       defaultCache: cacheNum,
       phone: formPhone.trim() || undefined,
       pixKey: formPixKey.trim() || undefined,
       pixKeyType: formPixKeyType,
-      notes: formNotes.trim() || undefined
+      notes: formNotes.trim() || undefined,
     };
 
     if (editingMember) {
       updateCrewMember({
         ...editingMember,
-        ...data
+        ...data,
       });
     } else {
       addCrewMember(data);
@@ -86,7 +110,11 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
   };
 
   const handleDeleteMember = (id: string, name: string) => {
-    if (window.confirm(`Tem certeza que deseja remover o músico/técnico "${name}" da equipe?`)) {
+    if (
+      window.confirm(
+        `Tem certeza que deseja remover o músico/técnico"${name}" da equipe? `,
+      )
+    ) {
       deleteCrewMember(id);
     }
   };
@@ -100,20 +128,32 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
   };
 
   const rolesList = [
-    'Bateria', 'Contrabaixo', 'Guitarra', 'Violão', 
-    'Teclado / Piano', 'Sanfona / Acordeon', 'Percussão', 
-    'Metais (Sax/Trompete)', 'Backing Vocal', 'Técnico de Som', 
-    'Roadie', 'Iluminador', 'Produtor / Road Manager'
+    "Bateria",
+    "Contrabaixo",
+    "Guitarra",
+    "Violão",
+    "Teclado / Piano",
+    "Sanfona / Acordeon",
+    "Percussão",
+    "Metais (Sax/Trompete)",
+    "Backing Vocal",
+    "Técnico de Som",
+    "Roadie",
+    "Iluminador",
+    "Produtor / Road Manager",
   ];
 
   const filteredCrew = useMemo(() => {
-    return crew.filter(m => {
-      const matchSearch = searchTerm === '' ||
+    return crew.filter((m) => {
+      const matchSearch =
+        searchTerm === "" ||
         m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (m.pixKey && m.pixKey.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      const matchRole = selectedRoleFilter === 'all' || m.role.toLowerCase().includes(selectedRoleFilter.toLowerCase());
+      const matchRole =
+        selectedRoleFilter === "all" ||
+        m.role.toLowerCase().includes(selectedRoleFilter.toLowerCase());
 
       return matchSearch && matchRole;
     });
@@ -121,7 +161,6 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
   return (
     <div className="space-y-5">
-      
       {/* HEADER DA ABA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
         <div>
@@ -130,7 +169,8 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
             <span>Músicos & Equipe (Freelancers)</span>
           </h2>
           <p className="text-[11px] text-zinc-400">
-            Cadastre músicos de apoio, técnicos, roadies, cachês padrão e chaves PIX para pagamento rápido.
+            Cadastre músicos de apoio, técnicos, roadies, cachês padrão e chaves
+            PIX para pagamento rápido.
           </p>
         </div>
 
@@ -146,7 +186,10 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-center gap-2.5">
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+          />
           <input
             type="text"
             value={searchTerm}
@@ -156,7 +199,7 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
           />
           {searchTerm && (
             <button
-              onClick={() => setSearchTerm('')}
+              onClick={() => setSearchTerm("")}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
             >
               <X size={14} />
@@ -167,23 +210,23 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
         {/* Quick Filter Pills */}
         <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
           <button
-            onClick={() => setSelectedRoleFilter('all')}
+            onClick={() => setSelectedRoleFilter("all")}
             className={`px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition active:scale-95 ${
-              selectedRoleFilter === 'all'
-                ? 'bg-zinc-800 text-white border border-zinc-700'
-                : 'text-zinc-400 hover:text-white bg-[#121214]'
+              selectedRoleFilter === "all"
+                ? "bg-zinc-800 text-white border border-zinc-700"
+                : "text-zinc-400 hover:text-white bg-[#121214]"
             }`}
           >
             Todos ({crew.length})
           </button>
-          {['Bateria', 'Baixo', 'Teclado', 'Sanfona', 'Técnico'].map(role => (
+          {["Bateria", "Baixo", "Teclado", "Sanfona", "Técnico"].map((role) => (
             <button
               key={role}
               onClick={() => setSelectedRoleFilter(role)}
               className={`px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition active:scale-95 ${
                 selectedRoleFilter === role
-                  ? 'bg-purple-600 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-white bg-[#121214]'
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white bg-[#121214]"
               }`}
             >
               {role}
@@ -196,8 +239,13 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
       {filteredCrew.length === 0 ? (
         <div className="p-8 rounded-3xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-3">
           <Users size={32} className="mx-auto text-zinc-600" />
-          <p className="text-sm font-bold text-white">Nenhum músico ou integrante cadastrado</p>
-          <p className="text-xs text-zinc-400">Cadastre bateristas, baixistas e equipe para agilizar o cálculo de custos dos shows.</p>
+          <p className="text-sm font-bold text-white">
+            Nenhum músico ou integrante cadastrado
+          </p>
+          <p className="text-xs text-zinc-400">
+            Cadastre bateristas, baixistas e equipe para agilizar o cálculo de
+            custos dos shows.
+          </p>
           <button
             onClick={() => handleOpenModal()}
             className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold inline-flex items-center space-x-1"
@@ -208,9 +256,13 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCrew.map(member => {
-            const cleanPhone = member.phone ? member.phone.replace(/\D/g, '') : '';
-            const whatsappUrl = cleanPhone ? `https://wa.me/55${cleanPhone}` : null;
+          {filteredCrew.map((member) => {
+            const cleanPhone = member.phone
+              ? member.phone.replace(/\D/g, "")
+              : "";
+            const whatsappUrl = cleanPhone
+              ? `https://wa.me/55${cleanPhone}`
+              : null;
             const isCopied = copiedPixId === member.id;
 
             return (
@@ -238,7 +290,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                         <Edit3 size={14} />
                       </button>
                       <button
-                        onClick={() => handleDeleteMember(member.id, member.name)}
+                        onClick={() =>
+                          handleDeleteMember(member.id, member.name)
+                        }
                         className="p-1.5 rounded-xl bg-zinc-800 text-zinc-400 hover:text-rose-400 transition"
                         title="Remover da Equipe"
                       >
@@ -249,7 +303,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
                   {/* Cachê Padrão por Show */}
                   <div className="p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase">Cachê / Diária</span>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase">
+                      Cachê / Diária
+                    </span>
                     <span className="text-sm font-black text-emerald-400 tabular-nums">
                       {formatCurrency(member.defaultCache)}
                     </span>
@@ -259,15 +315,23 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                   {member.pixKey && (
                     <div className="p-2.5 rounded-2xl bg-zinc-900/50 border border-zinc-800/80 space-y-1">
                       <div className="flex items-center justify-between text-[10px] text-zinc-400 font-bold">
-                        <span>Chave PIX ({member.pixKeyType || 'Chave'}):</span>
+                        <span>Chave PIX ({member.pixKeyType || "Chave"}):</span>
                         <button
-                          onClick={() => handleCopyPix(member.pixKey!, member.id)}
+                          onClick={() =>
+                            handleCopyPix(member.pixKey!, member.id)
+                          }
                           className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center space-x-1 ${
-                            isCopied ? 'bg-emerald-500 text-zinc-950' : 'bg-zinc-800 text-purple-300 hover:bg-zinc-700'
+                            isCopied
+                              ? "bg-emerald-500 text-zinc-950"
+                              : "bg-zinc-800 text-purple-300 hover:bg-zinc-700"
                           }`}
                         >
-                          {isCopied ? <Check size={11} strokeWidth={3} /> : <Copy size={11} />}
-                          <span>{isCopied ? 'Copiado!' : 'Copiar PIX'}</span>
+                          {isCopied ? (
+                            <Check size={11} strokeWidth={3} />
+                          ) : (
+                            <Copy size={11} />
+                          )}
+                          <span>{isCopied ? "Copiado!" : "Copiar PIX"}</span>
                         </button>
                       </div>
                       <span className="text-xs font-mono font-bold text-zinc-200 block truncate">
@@ -305,11 +369,14 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <h3 className="text-base font-black text-white flex items-center space-x-2">
                 <Users size={18} className="text-purple-400" />
-                <span>{editingMember ? 'Editar Integrante' : 'Novo Integrante da Equipe'}</span>
+                <span>
+                  {editingMember
+                    ? "Editar Integrante"
+                    : "Novo Integrante da Equipe"}
+                </span>
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -321,7 +388,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
             <form onSubmit={handleSaveMember} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Nome Completo / Artístico *</label>
+                <label className="text-zinc-400 font-bold block mb-1">
+                  Nome Completo / Artístico *
+                </label>
                 <input
                   type="text"
                   required
@@ -334,20 +403,26 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Função / Instrumento</label>
+                  <label className="text-zinc-400 font-bold block mb-1">
+                    Função / Instrumento
+                  </label>
                   <select
                     value={formRole}
                     onChange={(e) => setFormRole(e.target.value)}
                     className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-purple-500"
                   >
-                    {rolesList.map(r => (
-                      <option key={r} value={r}>{r}</option>
+                    {rolesList.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Cachê Padrão (R$) *</label>
+                  <label className="text-zinc-400 font-bold block mb-1">
+                    Cachê Padrão (R$) *
+                  </label>
                   <input
                     type="number"
                     required
@@ -360,7 +435,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">WhatsApp / Telefone</label>
+                <label className="text-zinc-400 font-bold block mb-1">
+                  WhatsApp / Telefone
+                </label>
                 <input
                   type="text"
                   value={formPhone}
@@ -372,7 +449,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
 
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Tipo de Chave</label>
+                  <label className="text-zinc-400 font-bold block mb-1">
+                    Tipo de Chave
+                  </label>
                   <select
                     value={formPixKeyType}
                     onChange={(e) => setFormPixKeyType(e.target.value as any)}
@@ -387,7 +466,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-zinc-400 font-bold block mb-1">Chave PIX</label>
+                  <label className="text-zinc-400 font-bold block mb-1">
+                    Chave PIX
+                  </label>
                   <input
                     type="text"
                     value={formPixKey}
@@ -399,7 +480,9 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Observações / Equipamentos</label>
+                <label className="text-zinc-400 font-bold block mb-1">
+                  Observações / Equipamentos
+                </label>
                 <textarea
                   rows={2}
                   value={formNotes}
@@ -428,7 +511,6 @@ export const CrewManagementView: React.FC<Props> = ({ onSelectMember }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

@@ -1,13 +1,26 @@
-import React, { useRef, useState } from 'react';
-import { 
-  X, Download, Share2, Printer, Check, Info, ShieldCheck, 
-  MapPin, Calendar, Clock, DollarSign, User, Music, Phone, Loader2
-} from 'lucide-react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { Show } from '../../types';
-import { useFinance } from '../../context/FinanceContext';
-import { valorPorExtenso } from '../../services/currencyInWords';
+import React, { useRef, useState } from "react";
+import {
+  X,
+  Download,
+  Share2,
+  Printer,
+  Check,
+  Info,
+  ShieldCheck,
+  MapPin,
+  Calendar,
+  Clock,
+  DollarSign,
+  User,
+  Music,
+  Phone,
+  Loader2,
+} from "lucide-react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { Show } from "../../types";
+import { useFinance } from "../../context/FinanceContext";
+import { valorPorExtenso } from "../../services/currencyInWords";
 
 interface ReciboModalProps {
   isOpen: boolean;
@@ -22,7 +35,7 @@ export const ReciboModal: React.FC<ReciboModalProps> = ({
   onClose,
   show,
   sinalAmount,
-  totalCacheAmount
+  totalCacheAmount,
 }) => {
   const { settings, transactions } = useFinance();
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -33,19 +46,26 @@ export const ReciboModal: React.FC<ReciboModalProps> = ({
 
   // Cálculos de Valores
   // 1. Total Cache: usa totalCacheAmount ou show.totalCache
-  const totalCache = typeof totalCacheAmount === 'number' && totalCacheAmount > 0 
-    ? totalCacheAmount 
-    : (show.totalCache || show.cacheCombined || 0);
+  const totalCache =
+    typeof totalCacheAmount === "number" && totalCacheAmount > 0
+      ? totalCacheAmount
+      : show.totalCache || show.cacheCombined || 0;
 
   // 2. Sinal Pago: usa sinalAmount se fornecido; senão busca no show / transações vinculadas
-  let sinalPago = typeof sinalAmount === 'number' ? sinalAmount : 0;
+  let sinalPago = typeof sinalAmount === "number" ? sinalAmount : 0;
   if (!sinalPago) {
-    const showIncomeTxs = transactions.filter(t => 
-      t.type === 'income' && 
-      t.status === 'paid' && 
-      (t.showId === show.id || (t.description && t.description.toLowerCase().includes(show.name.toLowerCase())))
+    const showIncomeTxs = transactions.filter(
+      (t) =>
+        t.type === "income" &&
+        t.status === "paid" &&
+        (t.showId === show.id ||
+          (t.description &&
+            t.description.toLowerCase().includes(show.name.toLowerCase()))),
     );
-    sinalPago = showIncomeTxs.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    sinalPago = showIncomeTxs.reduce(
+      (acc, t) => acc + (Number(t.amount) || 0),
+      0,
+    );
     if (!sinalPago && show.cacheReceived) {
       sinalPago = show.cacheReceived;
     }
@@ -57,33 +77,44 @@ export const ReciboModal: React.FC<ReciboModalProps> = ({
   }
 
   const saldoRestante = Math.max(0, totalCache - sinalPago);
-  const sinalPercent = totalCache > 0 ? Math.round((sinalPago / totalCache) * 100) : 50;
+  const sinalPercent =
+    totalCache > 0 ? Math.round((sinalPago / totalCache) * 100) : 50;
 
   // Dados do Músico (Settings)
-  const musicianName = settings.userName || 'Leonardo Ferreira';
-  const artisticName = settings.careerProjectName || 'Leo Ferreira';
-  const musicianCpf = settings.musicianCpf || '000.000.000-00';
-  const musicianCity = settings.musicianCity || show.city || 'Baependi - MG';
+  const musicianName = settings.userName || "Leonardo Ferreira";
+  const artisticName = settings.careerProjectName || "Leo Ferreira";
+  const musicianCpf = settings.musicianCpf || "000.000.000-00";
+  const musicianCity = settings.musicianCity || show.city || "Baependi - MG";
 
   // Formatação de Datas
   const formatDateBR = (isoDate: string) => {
-    if (!isoDate) return '';
-    const [y, m, d] = isoDate.split('-');
+    if (!isoDate) return "";
+    const [y, m, d] = isoDate.split("-");
     if (!y || !m || !d) return isoDate;
     return `${d}/${m}/${y}`;
   };
 
   const hoje = new Date();
   const meses = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
   ];
   const dataExtensoHoje = `${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(val || 0);
   };
 
@@ -97,30 +128,30 @@ export const ReciboModal: React.FC<ReciboModalProps> = ({
         scale: 2.5, // 2.5x para alta resolução
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 794 // Largura típica A4 em 96 DPI
+        backgroundColor: "#ffffff",
+        windowWidth: 794, // Largura típica A4 em 96 DPI
       });
 
-      const imgData = canvas.toDataURL('image/png', 1.0);
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
       const cleanDate = show.date || hoje.toISOString().slice(0, 10);
-      const cleanName = (show.contractorName || show.name || 'evento')
+      const cleanName = (show.contractorName || show.name || "evento")
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '_');
+        .replace(/[^a-z0-9]/g, "_");
 
       pdf.save(`recibo_sinal_${cleanName}_${cleanDate}.pdf`);
     } catch (err) {
-      console.error('Falha ao gerar o PDF do recibo:', err);
+      console.error("Falha ao gerar o PDF do recibo: ", err);
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -128,21 +159,23 @@ export const ReciboModal: React.FC<ReciboModalProps> = ({
 
   // Disparar WhatsApp com mensagem pronta
   const handleWhatsAppShare = () => {
-    const rawPhone = (show.contractorPhone || '').replace(/\D/g, '');
-    const cleanPhone = rawPhone.length >= 10 
-      ? (rawPhone.startsWith('55') ? rawPhone : `55${rawPhone}`) 
-      : '';
+    const rawPhone = (show.contractorPhone || "").replace(/\D/g, "");
+    const cleanPhone =
+      rawPhone.length >= 10
+        ? rawPhone.startsWith("55")
+          ? rawPhone
+          : `55${rawPhone}`
+        : "";
 
-    const text = 
-`📄 *RECIBO DE AGENDAMENTO & RESERVA*
+    const text = `📄 *RECIBO DE AGENDAMENTO & RESERVA*
 ────────────────────────
 Olá, *${show.contractorName || show.name}*!
 
 Confirmamos o agendamento da sua apresentação musical com *${artisticName}* (${musicianName}):
 
-🎵 *Evento:* ${show.eventType || 'Apresentação Musical Ao Vivo'}
-📅 *Data:* ${formatDateBR(show.date)} às ${show.time || '20:00'}${show.endTime ? ` às ${show.endTime}` : ''}
-📍 *Local:* ${show.location || 'Local combinado'} ${show.city ? `• ${show.city}` : ''}
+🎵 *Evento:* ${show.eventType || "Apresentação Musical Ao Vivo"}
+📅 *Data:* ${formatDateBR(show.date)} às ${show.time || "20:00"}${show.endTime ? ` às ${show.endTime}` : ""}
+📍 *Local:* ${show.location || "Local combinado"} ${show.city ? `• ${show.city}` : ""}
 
 💰 *Cachê Total Acordado:* ${formatCurrency(totalCache)}
 🟢 *Sinal Recebido:* ${formatCurrency(sinalPago)} (${sinalPercent}%)
@@ -153,20 +186,19 @@ Status: ✅ *DATA RESERVADA E CONFIRMADA*
 ${musicianCity}, ${dataExtensoHoje}
 *${musicianName}* | CPF: ${musicianCpf}`;
 
-    const waUrl = cleanPhone 
+    const waUrl = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
 
-    window.open(waUrl, '_blank');
+    window.open(waUrl, "_blank");
   };
 
   // Copiar texto para área de transferência
   const handleCopySummary = () => {
-    const text = 
-`📄 RECIBO DE AGENDAMENTO - ${artisticName}
+    const text = `📄 RECIBO DE AGENDAMENTO - ${artisticName}
 Contratante: ${show.contractorName || show.name}
-Data do Evento: ${formatDateBR(show.date)} às ${show.time || '20:00'}
-Local: ${show.location || ''} (${show.city || ''})
+Data do Evento: ${formatDateBR(show.date)} às ${show.time || "20:00"}
+Local: ${show.location || ""} (${show.city || ""})
 Cachê Total: ${formatCurrency(totalCache)}
 Sinal Pago: ${formatCurrency(sinalPago)} (${sinalPercent}%)
 Saldo Restante: ${formatCurrency(saldoRestante)}
@@ -178,11 +210,9 @@ Status: CONFIRMADO`;
   };
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in">
-      
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in ">
       {/* Modal Container */}
       <div className="w-full max-w-2xl max-h-[96vh] flex flex-col bg-[#121212] rounded-3xl border border-zinc-800 shadow-2xl overflow-hidden my-auto">
-        
         {/* BARRA DE FERRAMENTAS / AÇÕES SUPERIORES */}
         <div className="px-4 sm:px-6 py-3.5 bg-[#18181b] border-b border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
@@ -228,7 +258,11 @@ Status: CONFIRMADO`;
               className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
               title="Copiar Resumo"
             >
-              {copiedLink ? <Check size={16} className="text-emerald-400" /> : <Printer size={16} />}
+              {copiedLink ? (
+                <Check size={16} className="text-emerald-400" />
+              ) : (
+                <Printer size={16} />
+              )}
             </button>
 
             {/* Fechar */}
@@ -245,16 +279,14 @@ Status: CONFIRMADO`;
 
         {/* ÁREA COM SCROLL DO DOCUMENTO */}
         <div className="overflow-y-auto p-3 sm:p-6 bg-zinc-950 flex justify-center custom-scrollbar flex-1">
-          
           {/* ========================================================================= */}
-          {/* CONTAINER DO RECIBO (DESIGN SYSTEM FINTECH INSTITUCIONAL - BRANCO)        */}
+          {/* CONTAINER DO RECIBO (DESIGN SYSTEM FINTECH INSTITUCIONAL - BRANCO) */}
           {/* ========================================================================= */}
-          <div 
+          <div
             ref={receiptRef}
             className="w-full max-w-xl bg-white text-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden font-sans select-text"
-            style={{ minHeight: '620px' }}
+            style={{ minHeight: "620px" }}
           >
-            
             {/* 1. CABEÇALHO ESCURO (#09090b) */}
             <div className="bg-[#09090b] text-white p-5 sm:p-6 flex items-start justify-between border-b border-zinc-800">
               <div className="space-y-1">
@@ -285,7 +317,6 @@ Status: CONFIRMADO`;
 
             {/* CONTEÚDO DO RECIBO */}
             <div className="p-5 sm:p-6 space-y-5">
-              
               {/* 2. CARD DE DESTAQUE DE VALOR (Borda lateral verde 4px) */}
               <div className="p-4 sm:p-5 rounded-r-2xl bg-emerald-50/70 border-l-4 border-emerald-500 border-y border-r border-emerald-100/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                 <div>
@@ -311,11 +342,12 @@ Status: CONFIRMADO`;
               <div className="p-3 sm:p-3.5 rounded-xl bg-blue-50/90 border border-blue-200/80 flex items-start space-x-2.5 text-blue-900 shadow-xs">
                 <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                  Este documento serve como comprovante de reserva de data e quitação parcial de sinal para prestação de contas.
+                  Este documento serve como comprovante de reserva de data e
+                  quitação parcial de sinal para prestação de contas.
                 </p>
               </div>
 
-              {/* 4. SEÇÃO "INFORMAÇÕES DAS PARTES" */}
+              {/* 4. SEÇÃO"INFORMAÇÕES DAS PARTES" */}
               <div className="pt-2 border-t border-zinc-100">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-3">
                   INFORMAÇÕES DAS PARTES
@@ -360,7 +392,7 @@ Status: CONFIRMADO`;
                 </div>
               </div>
 
-              {/* 5. SEÇÃO "RESUMO DO EVENTO & CONDIÇÕES" */}
+              {/* 5. SEÇÃO"RESUMO DO EVENTO & CONDIÇÕES" */}
               <div className="pt-2 border-t border-zinc-100 space-y-2.5">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
                   RESUMO DO EVENTO & CONDIÇÕES
@@ -388,7 +420,9 @@ Status: CONFIRMADO`;
                           Apresentação Musical Ao Vivo
                         </td>
                         <td className="py-2.5 px-3 text-zinc-600">
-                          {show.eventType || 'Show Ao Vivo'} ({show.time || '20:00'}{show.endTime ? ` às ${show.endTime}` : ''})
+                          {show.eventType || "Show Ao Vivo"} (
+                          {show.time || "20:00"}
+                          {show.endTime ? ` às ${show.endTime}` : ""})
                         </td>
                         <td className="py-2.5 px-3 text-right font-black tabular-nums">
                           {formatCurrency(totalCache)}
@@ -406,19 +440,21 @@ Status: CONFIRMADO`;
                         </td>
                       </tr>
                       <tr>
-                        <td className="py-2.5 px-3 font-bold">
-                          Localização
-                        </td>
+                        <td className="py-2.5 px-3 font-bold">Localização</td>
                         <td className="py-2.5 px-3 text-zinc-600" colSpan={2}>
-                          {show.location || 'Local a definir'} {show.city ? `• ${show.city}` : ''}
+                          {show.location || "Local a definir"}{" "}
+                          {show.city ? `• ${show.city}` : ""}
                         </td>
                       </tr>
                     </tbody>
-                    
+
                     {/* TOTAIS DESTACADOS NO RODAPÉ */}
                     <tfoot>
                       <tr className="bg-zinc-50 border-t border-zinc-200">
-                        <td colSpan={2} className="py-2 px-3 text-right font-bold text-zinc-600 text-[11px]">
+                        <td
+                          colSpan={2}
+                          className="py-2 px-3 text-right font-bold text-zinc-600 text-[11px]"
+                        >
                           Valor Total Acordado:
                         </td>
                         <td className="py-2 px-3 text-right font-black text-zinc-900 tabular-nums">
@@ -426,7 +462,10 @@ Status: CONFIRMADO`;
                         </td>
                       </tr>
                       <tr className="bg-emerald-50/60 border-t border-emerald-100">
-                        <td colSpan={2} className="py-2 px-3 text-right font-black text-emerald-800 text-[11px] uppercase">
+                        <td
+                          colSpan={2}
+                          className="py-2 px-3 text-right font-black text-emerald-800 text-[11px] uppercase"
+                        >
                           Sinal Pago:
                         </td>
                         <td className="py-2 px-3 text-right font-black text-emerald-600 tabular-nums">
@@ -434,7 +473,10 @@ Status: CONFIRMADO`;
                         </td>
                       </tr>
                       <tr className="bg-amber-50/70 border-t border-amber-200/80">
-                        <td colSpan={2} className="py-2 px-3 text-right font-black text-amber-900 text-xs uppercase">
+                        <td
+                          colSpan={2}
+                          className="py-2 px-3 text-right font-black text-amber-900 text-xs uppercase"
+                        >
                           Saldo Restante (A quitar no dia do evento):
                         </td>
                         <td className="py-2 px-3 text-right font-black text-amber-700 text-sm tabular-nums">
@@ -469,15 +511,10 @@ Status: CONFIRMADO`;
                   </p>
                 </div>
               </div>
-
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 };

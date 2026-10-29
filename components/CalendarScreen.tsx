@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useFinance } from '../context/FinanceContext';
+import React, { useState, useMemo } from "react";
+import { useFinance } from "../context/FinanceContext";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,21 +8,33 @@ import {
   Calendar as CalendarIcon,
   XCircle,
   Check,
-  Wallet
-} from 'lucide-react';
-import { getIcon } from '../constants';
-import { Transaction } from '../types';
-import { TransactionForm } from './TransactionForm';
+  Wallet,
+} from "lucide-react";
+import { getIcon } from "../constants";
+import { Transaction } from "../types";
+import { TransactionForm } from "./TransactionForm";
 
 export const CalendarScreen: React.FC = () => {
-  const { transactions, categories, updateTransaction, isBlurred } = useFinance();
+  const { transactions, categories, updateTransaction, isBlurred } =
+    useFinance();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDay, setSelectedDay] = useState<number | null>(new Date().getDate());
+  const [selectedDay, setSelectedDay] = useState<number | null>(
+    new Date().getDate(),
+  );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
 
-  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+  const daysInMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0,
+  ).getDate();
+  const firstDayOfMonth = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth(),
+    1,
+  ).getDay();
   const currentMonthStr = currentDate.toISOString().slice(0, 7);
 
   const daysArray = useMemo(() => {
@@ -33,16 +45,20 @@ export const CalendarScreen: React.FC = () => {
   }, [currentDate, daysInMonth, firstDayOfMonth]);
 
   const dailyData = useMemo(() => {
-    const map: Record<number, { income: number; expense: number; transactions: Transaction[] }> = {};
+    const map: Record<
+      number,
+      { income: number; expense: number; transactions: Transaction[] }
+    > = {};
 
-    transactions.forEach(t => {
-      if (t.status === 'cancelled') return;
+    transactions.forEach((t) => {
+      if (t.status === "cancelled") return;
       if (t.date && t.date.startsWith(currentMonthStr)) {
-        const day = parseInt(t.date.split('-')[2], 10);
+        const day = parseInt(t.date.split("-")[2], 10);
         if (!map[day]) map[day] = { income: 0, expense: 0, transactions: [] };
         map[day].transactions.push(t);
-        if (t.type === 'income') map[day].income += Number(t.amount) || 0;
-        else if (t.type === 'expense') map[day].expense += Number(t.amount) || 0;
+        if (t.type === "income") map[day].income += Number(t.amount) || 0;
+        else if (t.type === "expense")
+          map[day].expense += Number(t.amount) || 0;
       }
     });
 
@@ -52,7 +68,7 @@ export const CalendarScreen: React.FC = () => {
   const monthTotals = useMemo(() => {
     let income = 0;
     let expense = 0;
-    Object.values(dailyData).forEach(day => {
+    Object.values(dailyData).forEach((day) => {
       income += day.income;
       expense += day.expense;
     });
@@ -60,12 +76,16 @@ export const CalendarScreen: React.FC = () => {
   }, [dailyData]);
 
   const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1),
+    );
     setSelectedDay(null);
   };
 
   const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1),
+    );
     setSelectedDay(null);
   };
 
@@ -74,18 +94,26 @@ export const CalendarScreen: React.FC = () => {
   };
 
   const formatCurrency = (val: number) => {
-    if (isBlurred) return 'R$ •••••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    if (isBlurred) return "R$ •••••";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   const selectedData = selectedDay ? dailyData[selectedDay] : null;
   const selectedTransactions = selectedData
-    ? selectedData.transactions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    ? selectedData.transactions.sort(
+        (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+      )
     : [];
 
   const handleQuickPay = (e: React.MouseEvent, t: Transaction) => {
     e.stopPropagation();
-    updateTransaction({ ...t, status: t.status === 'paid' ? 'pending' : 'paid' });
+    updateTransaction({
+      ...t,
+      status: t.status === "paid" ? "pending" : "paid",
+    });
   };
 
   return (
@@ -96,7 +124,9 @@ export const CalendarScreen: React.FC = () => {
             <span className="text-[10px] font-black uppercase tracking-wider text-blue-800">
               Caixa do mês
             </span>
-            <h2 className="text-lg font-black text-slate-900 tracking-tight">Calendário</h2>
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">
+              Calendário
+            </h2>
           </div>
 
           <div className="flex items-center space-x-1 bg-white rounded-2xl p-1 border border-slate-200 shadow-sm">
@@ -108,7 +138,10 @@ export const CalendarScreen: React.FC = () => {
               <ChevronLeft size={18} />
             </button>
             <span className="text-xs font-black w-28 text-center capitalize text-slate-800">
-              {currentDate.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
+              {currentDate.toLocaleDateString("pt-BR", {
+                month: "short",
+                year: "numeric",
+              })}
             </span>
             <button
               type="button"
@@ -126,7 +159,9 @@ export const CalendarScreen: React.FC = () => {
               <div className="p-1 bg-emerald-50 rounded-lg mr-1.5">
                 <TrendingUp size={13} />
               </div>
-              <span className="text-[9px] font-black uppercase truncate">Entradas</span>
+              <span className="text-[9px] font-black uppercase truncate">
+                Entradas
+              </span>
             </div>
             <span className="text-xs font-black text-slate-900 tabular-nums">
               {formatCurrency(monthTotals.income)}
@@ -138,7 +173,9 @@ export const CalendarScreen: React.FC = () => {
               <div className="p-1 bg-rose-50 rounded-lg mr-1.5">
                 <TrendingDown size={13} />
               </div>
-              <span className="text-[9px] font-black uppercase truncate">Saídas</span>
+              <span className="text-[9px] font-black uppercase truncate">
+                Saídas
+              </span>
             </div>
             <span className="text-xs font-black text-slate-900 tabular-nums">
               {formatCurrency(monthTotals.expense)}
@@ -150,11 +187,13 @@ export const CalendarScreen: React.FC = () => {
               <div className="p-1 bg-blue-50 rounded-lg mr-1.5">
                 <Wallet size={13} />
               </div>
-              <span className="text-[9px] font-black uppercase truncate">Saldo</span>
+              <span className="text-[9px] font-black uppercase truncate">
+                Saldo
+              </span>
             </div>
             <span
               className={`text-xs font-black tabular-nums ${
-                monthTotals.balance >= 0 ? 'text-emerald-700' : 'text-rose-600'
+                monthTotals.balance >= 0 ? "text-emerald-700" : "text-rose-600"
               }`}
             >
               {formatCurrency(monthTotals.balance)}
@@ -165,8 +204,11 @@ export const CalendarScreen: React.FC = () => {
 
       <div className="mt-4">
         <div className="grid grid-cols-7 mb-2">
-          {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d, i) => (
-            <div key={i} className="text-center text-[10px] font-black text-slate-400 uppercase">
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d, i) => (
+            <div
+              key={i}
+              className="text-center text-[10px] font-black text-slate-400 uppercase"
+            >
               {d}
             </div>
           ))}
@@ -174,7 +216,8 @@ export const CalendarScreen: React.FC = () => {
 
         <div className="grid grid-cols-7 gap-y-2 gap-x-1.5">
           {daysArray.map((day, i) => {
-            if (day === null) return <div key={`empty-${i}`} className="aspect-[4/5]" />;
+            if (day === null)
+              return <div key={`empty-${i}`} className="aspect-[4/5]" />;
 
             const data = dailyData[day];
             const hasIncome = data && data.income > 0;
@@ -186,9 +229,9 @@ export const CalendarScreen: React.FC = () => {
               new Date().getFullYear() === currentDate.getFullYear();
 
             const dayBalance = data ? data.income - data.expense : 0;
-            let balanceColor = 'text-slate-400';
-            if (dayBalance > 0) balanceColor = 'text-emerald-600';
-            if (dayBalance < 0) balanceColor = 'text-rose-600';
+            let balanceColor = "text-slate-400";
+            if (dayBalance > 0) balanceColor = "text-emerald-600";
+            if (dayBalance < 0) balanceColor = "text-rose-600";
 
             return (
               <button
@@ -196,43 +239,45 @@ export const CalendarScreen: React.FC = () => {
                 type="button"
                 onClick={() => handleDayClick(day)}
                 className={`
-                      relative aspect-[4/5] rounded-2xl flex flex-col items-center justify-between p-1.5 transition-all duration-200 active:scale-95 border
-                      ${
-                        isSelected
-                          ? 'bg-[#003882] text-white border-[#003882] shadow-lg shadow-blue-900/20 scale-105 z-10'
-                          : isToday
-                            ? 'bg-blue-50 text-blue-900 border-blue-200'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-200'
-                      }
-                    `}
+ relative aspect-[4/5] rounded-2xl flex flex-col items-center justify-between p-1.5 transition-all duration-200 active:scale-95 border
+ ${
+   isSelected
+     ? "bg-[#0F388A] text-white border-[#0F388A] shadow-lg shadow-blue-900/20 scale-105 z-10"
+     : isToday
+       ? "bg-blue-50 text-blue-900 border-blue-200"
+       : "bg-white text-slate-700 border-slate-200 hover:border-blue-200"
+ }
+`}
               >
-                <span className={`text-xs ${isSelected || isToday ? 'font-black' : 'font-bold'}`}>
+                <span
+                  className={`text-xs ${isSelected || isToday ? "font-black" : "font-bold"}`}
+                >
                   {day}
                 </span>
 
                 <div className="flex items-center space-x-1">
                   {hasIncome && (
                     <div
-                      className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-200' : 'bg-emerald-500'}`}
+                      className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-emerald-200" : "bg-emerald-500"}`}
                     />
                   )}
                   {hasExpense && (
                     <div
-                      className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-rose-200' : 'bg-rose-500'}`}
+                      className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-rose-200" : "bg-rose-500"}`}
                     />
                   )}
                 </div>
 
                 <span
-                  className={`text-[8px] font-bold tabular-nums ${isSelected ? 'text-blue-100' : balanceColor}`}
+                  className={`text-[8px] font-bold tabular-nums ${isSelected ? "text-blue-100" : balanceColor}`}
                 >
                   {data && (data.income > 0 || data.expense > 0)
-                    ? `${dayBalance > 0 ? '+' : ''}${
+                    ? `${dayBalance > 0 ? "+ " : ""}${
                         Math.abs(dayBalance) >= 1000
                           ? `${(dayBalance / 1000).toFixed(0)}k`
                           : Math.abs(dayBalance).toFixed(0)
                       }`
-                    : ''}
+                    : ""}
                 </span>
               </button>
             );
@@ -242,28 +287,32 @@ export const CalendarScreen: React.FC = () => {
 
       <div
         className={`
-         fixed bottom-[75px] left-0 right-0 bg-white text-slate-800 rounded-t-[2rem] shadow-2xl border-t border-slate-200 transition-transform duration-300 z-30
-         ${selectedDay ? 'translate-y-0' : 'translate-y-[115%]'}
-         max-h-[55vh] flex flex-col
-      `}
+ fixed bottom-[75px] left-0 right-0 bg-white text-slate-800 rounded-t-[2rem] shadow-2xl border-t border-slate-200 transition-transform duration-300 z-30
+ ${selectedDay ? "translate-y-0" : "translate-y-[115%]"}
+ max-h-[55vh] flex flex-col
+`}
       >
-        <div className="w-full flex justify-center pt-3 pb-1" onClick={() => setSelectedDay(null)}>
+        <div
+          className="w-full flex justify-center pt-3 pb-1"
+          onClick={() => setSelectedDay(null)}
+        >
           <div className="w-12 h-1.5 bg-slate-200 rounded-full cursor-pointer" />
         </div>
 
         <div className="px-5 py-3 flex justify-between items-center border-b border-slate-100">
           <div>
             <h3 className="text-base font-black text-slate-900">
-              {selectedDay} de {currentDate.toLocaleDateString('pt-BR', { month: 'long' })}
+              {selectedDay} de{" "}
+              {currentDate.toLocaleDateString("pt-BR", { month: "long" })}
             </h3>
             {selectedData && (
               <p className="text-[11px] text-slate-500 font-medium">
-                Saldo do dia:{' '}
+                Saldo do dia:{""}
                 <span
                   className={
                     selectedData.income - selectedData.expense >= 0
-                      ? 'text-emerald-600 font-bold'
-                      : 'text-rose-600 font-bold'
+                      ? "text-emerald-600 font-bold"
+                      : "text-rose-600 font-bold"
                   }
                 >
                   {formatCurrency(selectedData.income - selectedData.expense)}
@@ -293,10 +342,10 @@ export const CalendarScreen: React.FC = () => {
               </button>
             </div>
           ) : (
-            selectedTransactions.map(t => {
-              const category = categories.find(c => c.id === t.categoryId);
+            selectedTransactions.map((t) => {
+              const category = categories.find((c) => c.id === t.categoryId);
               const Icon = category ? getIcon(category.icon) : CalendarIcon;
-              const isExpense = t.type === 'expense';
+              const isExpense = t.type === "expense";
 
               return (
                 <div
@@ -307,10 +356,13 @@ export const CalendarScreen: React.FC = () => {
                   <div className="flex items-center space-x-3 min-w-0">
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 ${
-                        t.status === 'pending' ? 'bg-slate-300 text-slate-600' : ''
+                        t.status === "pending"
+                          ? "bg-slate-300 text-slate-600"
+                          : ""
                       }`}
                       style={{
-                        backgroundColor: t.status === 'paid' ? category?.color : undefined
+                        backgroundColor:
+                          t.status === "paid" ? category?.color : undefined,
                       }}
                     >
                       <Icon size={16} />
@@ -318,13 +370,15 @@ export const CalendarScreen: React.FC = () => {
                     <div className="min-w-0">
                       <p
                         className={`text-xs font-black truncate ${
-                          t.status === 'pending' ? 'text-slate-500' : 'text-slate-900'
+                          t.status === "pending"
+                            ? "text-slate-500"
+                            : "text-slate-900"
                         }`}
                       >
                         {t.description}
                       </p>
                       <p className="text-[9px] text-slate-400 font-bold uppercase truncate">
-                        {category?.name || 'Geral'}
+                        {category?.name || "Geral"}
                       </p>
                     </div>
                   </div>
@@ -333,21 +387,21 @@ export const CalendarScreen: React.FC = () => {
                     <div>
                       <p
                         className={`text-xs font-black tabular-nums ${
-                          isExpense ? 'text-slate-800' : 'text-emerald-600'
+                          isExpense ? "text-slate-800" : "text-emerald-600"
                         }`}
                       >
-                        {isExpense ? '- ' : '+ '}
+                        {isExpense ? "-" : "+ "}
                         {formatCurrency(t.amount)}
                       </p>
                       <span className="text-[9px] text-slate-400 block">
-                        {t.status === 'pending' ? 'Agendado' : 'Pago'}
+                        {t.status === "pending" ? "Agendado" : "Pago"}
                       </span>
                     </div>
 
-                    {t.status === 'pending' && (
+                    {t.status === "pending" && (
                       <button
                         type="button"
-                        onClick={e => handleQuickPay(e, t)}
+                        onClick={(e) => handleQuickPay(e, t)}
                         className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-emerald-500 hover:text-white transition border border-amber-100"
                         title="Efetivar agora"
                       >
@@ -362,7 +416,9 @@ export const CalendarScreen: React.FC = () => {
         </div>
       </div>
 
-      {isAddModalOpen && <TransactionForm onClose={() => setIsAddModalOpen(false)} />}
+      {isAddModalOpen && (
+        <TransactionForm onClose={() => setIsAddModalOpen(false)} />
+      )}
 
       {editingTransaction && (
         <TransactionForm

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useFinance } from '../../context/FinanceContext';
+import React, { useState, useMemo, useEffect } from "react";
+import { useFinance } from "../../context/FinanceContext";
 import {
   Plus,
   CreditCard,
@@ -7,32 +7,51 @@ import {
   User,
   CheckCircle2,
   TrendingDown,
-  CarFront
-} from 'lucide-react';
-import { DebtModal } from './DebtModal';
-import { DebtDetailModal } from './DebtDetailModal';
-import { ActiveDebtsPanel } from '../ActiveDebtsPanel';
-import { isSomLeoDebtOrTransaction } from '../../services/financeAggregator';
+  CarFront,
+} from "lucide-react";
+import { DebtModal } from "./DebtModal";
+import { DebtDetailModal } from "./DebtDetailModal";
+import { ActiveDebtsPanel } from "../ActiveDebtsPanel";
+import { isSomLeoDebtOrTransaction } from "../../services/financeAggregator";
 
-export { DebtDetailModal, DebtDetailModal as DebtDetail } from './DebtDetailModal';
+export {
+  DebtDetailModal,
+  DebtDetailModal as DebtDetail,
+} from "./DebtDetailModal";
 
 export const DebtList: React.FC = () => {
   const { debts, getDebtProgress } = useFinance();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'paid'>('active');
+  const [activeTab, setActiveTab] = useState<"active" | "paid">("active");
 
   const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val || 0);
 
   const stats = useMemo(() => {
-    const cleanDebts = debts.filter(d => !isSomLeoDebtOrTransaction(d));
-    const active = cleanDebts.filter(d => getDebtProgress(d.id).status === 'active');
-    const paid = cleanDebts.filter(d => getDebtProgress(d.id).status === 'paid');
+    const cleanDebts = debts.filter((d) => !isSomLeoDebtOrTransaction(d));
+    const active = cleanDebts.filter(
+      (d) => getDebtProgress(d.id).status === "active",
+    );
+    const paid = cleanDebts.filter(
+      (d) => getDebtProgress(d.id).status === "paid",
+    );
 
-    const totalDebt = cleanDebts.reduce((sum, d) => sum + (Number(d.totalAmount) || 0), 0);
-    const totalPaid = cleanDebts.reduce((sum, d) => sum + getDebtProgress(d.id).paid, 0);
-    const totalRemaining = active.reduce((sum, d) => sum + getDebtProgress(d.id).remaining, 0);
+    const totalDebt = cleanDebts.reduce(
+      (sum, d) => sum + (Number(d.totalAmount) || 0),
+      0,
+    );
+    const totalPaid = cleanDebts.reduce(
+      (sum, d) => sum + getDebtProgress(d.id).paid,
+      0,
+    );
+    const totalRemaining = active.reduce(
+      (sum, d) => sum + getDebtProgress(d.id).remaining,
+      0,
+    );
 
     return {
       active,
@@ -40,17 +59,18 @@ export const DebtList: React.FC = () => {
       totalDebt,
       totalRemaining,
       totalPaid,
-      progress: totalDebt > 0 ? Math.min(100, (totalPaid / totalDebt) * 100) : 0
+      progress:
+        totalDebt > 0 ? Math.min(100, (totalPaid / totalDebt) * 100) : 0,
     };
   }, [debts, getDebtProgress]);
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'bank':
+      case "bank":
         return Building;
-      case 'person':
+      case "person":
         return User;
-      case 'car_financing':
+      case "car_financing":
         return CarFront;
       default:
         return CreditCard;
@@ -74,7 +94,11 @@ export const DebtList: React.FC = () => {
           className="w-14 h-14 bg-[#0F388A] text-yellow-400 rounded-[1.5rem] shadow-lg shadow-blue-900/15 flex items-center justify-center active:scale-90 transition-all group"
           aria-label="Nova dívida"
         >
-          <Plus size={28} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
+          <Plus
+            size={28}
+            strokeWidth={3}
+            className="group-hover:rotate-90 transition-transform"
+          />
         </button>
       </div>
 
@@ -101,7 +125,9 @@ export const DebtList: React.FC = () => {
           <div className="space-y-2 mb-6">
             <div className="flex justify-between text-[11px] font-black uppercase tracking-wider">
               <span className="text-slate-600">Progresso de Amortização</span>
-              <span className="text-[#10B981] tabular-nums">{stats.progress.toFixed(0)}% Pago</span>
+              <span className="text-[#10B981] tabular-nums">
+                {stats.progress.toFixed(0)}% Pago
+              </span>
             </div>
             <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
               <div
@@ -135,21 +161,21 @@ export const DebtList: React.FC = () => {
       {/* Tabs Ativas vs Quitadas */}
       <div className="flex space-x-2 p-1.5 bg-slate-100 rounded-[1.8rem] mb-6 max-w-sm mx-auto border border-slate-200">
         <button
-          onClick={() => setActiveTab('active')}
+          onClick={() => setActiveTab("active")}
           className={`flex-1 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all ${
-            activeTab === 'active'
-              ? 'bg-white text-[#0F388A] shadow-sm border border-slate-200'
-              : 'text-slate-600 hover:text-slate-800'
+            activeTab === "active"
+              ? "bg-white text-[#0F388A] shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-800"
           }`}
         >
           Em andamento ({stats.active.length})
         </button>
         <button
-          onClick={() => setActiveTab('paid')}
+          onClick={() => setActiveTab("paid")}
           className={`flex-1 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all ${
-            activeTab === 'paid'
-              ? 'bg-white text-[#10B981] shadow-sm border border-slate-200'
-              : 'text-slate-600 hover:text-slate-800'
+            activeTab === "paid"
+              ? "bg-white text-[#10B981] shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-800"
           }`}
         >
           Quitadas ({stats.paid.length})
@@ -158,8 +184,10 @@ export const DebtList: React.FC = () => {
 
       {/* Lista de Contratos / Dívidas */}
       <div className="space-y-4">
-        {(activeTab === 'active' ? stats.active : stats.paid).map(debt => {
-          const { paid, remaining, progress, status } = getDebtProgress(debt.id);
+        {(activeTab === "active" ? stats.active : stats.paid).map((debt) => {
+          const { paid, remaining, progress, status } = getDebtProgress(
+            debt.id,
+          );
           const Icon = getIcon(debt.type);
 
           return (
@@ -172,9 +200,9 @@ export const DebtList: React.FC = () => {
                 <div className="flex items-center space-x-3.5">
                   <div
                     className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${
-                      status === 'paid'
-                        ? 'bg-emerald-50 text-[#10B981]'
-                        : 'bg-blue-50 text-[#0F388A]'
+                      status === "paid"
+                        ? "bg-emerald-50 text-[#10B981]"
+                        : "bg-blue-50 text-[#0F388A]"
                     }`}
                   >
                     <Icon size={24} />
@@ -184,12 +212,20 @@ export const DebtList: React.FC = () => {
                       <h3 className="font-black text-slate-900 uppercase tracking-tight text-base group-hover:text-[#0F388A] transition">
                         {debt.name}
                       </h3>
-                      {status === 'paid' && (
-                        <CheckCircle2 size={16} className="text-[#10B981] shrink-0" />
+                      {status === "paid" && (
+                        <CheckCircle2
+                          size={16}
+                          className="text-[#10B981] shrink-0"
+                        />
                       )}
                     </div>
                     <span className="text-[10px] font-black uppercase text-slate-600 tracking-wider">
-                      {debt.installmentCount} parcelas • {debt.startDate ? new Date(debt.startDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'Início'}
+                      {debt.installmentCount} parcelas •{" "}
+                      {debt.startDate
+                        ? new Date(
+                            debt.startDate + "T12:00:00",
+                          ).toLocaleDateString("pt-BR")
+                        : "Início"}
                     </span>
                   </div>
                 </div>
@@ -199,7 +235,7 @@ export const DebtList: React.FC = () => {
                     {formatCurrency(remaining)}
                   </span>
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-                    {status === 'paid' ? 'Quitado' : 'Saldo restante'}
+                    {status === "paid" ? "Quitado" : "Saldo restante"}
                   </span>
                 </div>
               </div>
@@ -212,7 +248,7 @@ export const DebtList: React.FC = () => {
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${
-                      status === 'paid' ? 'bg-[#10B981]' : 'bg-[#0F388A]'
+                      status === "paid" ? "bg-[#10B981]" : "bg-[#0F388A]"
                     }`}
                     style={{ width: `${progress}%` }}
                   ></div>
@@ -222,16 +258,17 @@ export const DebtList: React.FC = () => {
           );
         })}
 
-        {(activeTab === 'active' ? stats.active : stats.paid).length === 0 && (
+        {(activeTab === "active" ? stats.active : stats.paid).length === 0 && (
           <div className="text-center py-16 bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8">
             <CreditCard size={40} className="mx-auto text-slate-300 mb-3" />
             <h3 className="text-sm font-black uppercase text-slate-900">
-              Nenhuma dívida {activeTab === 'active' ? 'em andamento' : 'quitada'}
+              Nenhuma dívida{" "}
+              {activeTab === "active" ? "em andamento" : "quitada"}
             </h3>
             <p className="text-xs text-slate-600 mt-1">
-              {activeTab === 'active'
-                ? 'Toque no botão + acima para cadastrar seu primeiro acordo ou parcelamento'
-                : 'Suas dívidas finalizadas aparecerão aqui'}
+              {activeTab === "active"
+                ? "Toque no botão + acima para cadastrar seu primeiro acordo ou parcelamento"
+                : "Suas dívidas finalizadas aparecerão aqui"}
             </p>
           </div>
         )}
@@ -242,7 +279,10 @@ export const DebtList: React.FC = () => {
 
       {/* Modal de Detalhes da Dívida */}
       {selectedDebtId && (
-        <DebtDetailModal debtId={selectedDebtId} onClose={() => setSelectedDebtId(null)} />
+        <DebtDetailModal
+          debtId={selectedDebtId}
+          onClose={() => setSelectedDebtId(null)}
+        />
       )}
     </div>
   );

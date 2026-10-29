@@ -1,83 +1,119 @@
-import React, { useMemo } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, Receipt, CreditCard, Menu, 
-  Plus, Sparkles, LogOut
-} from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import React, { useMemo } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import {
+  Home,
+  Receipt,
+  CreditCard,
+  Menu,
+  Plus,
+  Sparkles,
+  LogOut,
+} from "lucide-react";
+import { useFinance } from "../context/FinanceContext";
 
 interface Props {
   children: React.ReactNode;
-  onOpenAdd: (type?: 'income' | 'expense' | 'transfer' | 'goal_deposit' | 'goal_withdraw') => void;
+  onOpenAdd: (
+    type?: "income" | "expense" | "transfer" | "goal_deposit" | "goal_withdraw",
+  ) => void;
 }
 
 export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { 
-    getSystemAlerts, 
-    settings, 
-    currentUser, 
+  const {
+    getSystemAlerts,
+    settings,
+    currentUser,
     isDemoMode,
     exitDemoMode,
-    signInWithGoogle, 
-    logoutUser 
+    signInWithGoogle,
+    logoutUser,
   } = useFinance();
 
   const alerts = useMemo(() => getSystemAlerts(), [getSystemAlerts]);
   const hasAlerts = alerts.length > 0;
 
   // Active state determination for the 4 personal tabs
-  const isHomeActive = location.pathname === '/';
-  
-  const isLancamentosActive = [
-    '/lancamentos', '/extrato', '/financeiro', '/transactions', '/flow'
-  ].some(path => location.pathname === path || location.pathname.startsWith('/lancamentos') || location.pathname.startsWith('/extrato') || location.pathname.startsWith('/financeiro'));
+  const isHomeActive = location.pathname === "/";
 
-  const isDividasActive = [
-    '/dividas', '/debts'
-  ].some(path => location.pathname === path || location.pathname.startsWith('/dividas') || location.pathname.startsWith('/debts'));
+  const isLancamentosActive = [
+    "/lancamentos",
+    "/extrato",
+    "/financeiro",
+    "/transactions",
+    "/flow",
+  ].some(
+    (path) =>
+      location.pathname === path ||
+      location.pathname.startsWith("/lancamentos") ||
+      location.pathname.startsWith("/extrato") ||
+      location.pathname.startsWith("/financeiro"),
+  );
+
+  const isDividasActive = ["/dividas", "/debts"].some(
+    (path) =>
+      location.pathname === path ||
+      location.pathname.startsWith("/dividas") ||
+      location.pathname.startsWith("/debts"),
+  );
 
   const isMaisActive = [
-    '/mais',
-    '/settings',
-    '/financial-settings',
-    '/categories',
-    '/alerts',
-    '/gastos',
-    '/analise-gastos',
-    '/contas',
-    '/contas-fixas',
-    '/fixas',
-    '/relatorios',
-    '/planejamento',
-    '/orcamentos',
-    '/inteligencia',
-    '/insights'
+    "/mais",
+    "/settings",
+    "/financial-settings",
+    "/categories",
+    "/alerts",
+    "/gastos",
+    "/analise-gastos",
+    "/contas",
+    "/contas-fixas",
+    "/fixas",
+    "/relatorios",
+    "/planejamento",
+    "/orcamentos",
+    "/inteligencia",
+    "/insights",
   ].some(
-    path =>
+    (path) =>
       location.pathname === path ||
-      location.pathname.startsWith('/mais') ||
-      location.pathname.startsWith('/relatorios') ||
-      location.pathname.startsWith('/contas-fixas') ||
-      location.pathname.startsWith('/planejamento') ||
-      location.pathname.startsWith('/inteligencia')
+      location.pathname.startsWith("/mais") ||
+      location.pathname.startsWith("/relatorios") ||
+      location.pathname.startsWith("/contas-fixas") ||
+      location.pathname.startsWith("/planejamento") ||
+      location.pathname.startsWith("/inteligencia"),
   );
 
   const navItems = [
-    { to: '/', label: 'Início', icon: Home, isActive: isHomeActive },
-    { to: '/lancamentos', label: 'Lançamentos', icon: Receipt, isActive: isLancamentosActive },
-    { to: '/dividas', label: 'Dívidas', icon: CreditCard, isActive: isDividasActive },
-    { to: '/mais', label: 'Mais', icon: Menu, isActive: isMaisActive, hasBadge: hasAlerts },
+    { to: "/", label: "Início", icon: Home, isActive: isHomeActive },
+    {
+      to: "/lancamentos",
+      label: "Lançamentos",
+      icon: Receipt,
+      isActive: isLancamentosActive,
+    },
+    {
+      to: "/dividas",
+      label: "Dívidas",
+      icon: CreditCard,
+      isActive: isDividasActive,
+    },
+    {
+      to: "/mais",
+      label: "Mais",
+      icon: Menu,
+      isActive: isMaisActive,
+      hasBadge: hasAlerts,
+    },
   ];
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-brand/20 selection:text-brand flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#0F388A] border-b border-[#0A255D] shadow-md text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div 
-            className="flex items-center space-x-3 cursor-pointer group select-none" 
-            onClick={() => navigate('/')}
+          <div
+            className="flex items-center space-x-3 cursor-pointer group select-none"
+            onClick={() => navigate("/")}
           >
             <div className="w-10 h-10 rounded-xl bg-yellow-400 text-[#0F388A] font-black text-sm flex items-center justify-center shadow-md transition group-hover:scale-105">
               MF
@@ -106,12 +142,13 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                   key={item.to}
                   to={item.to}
                   className={`
-                    flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all
-                    ${item.isActive
-                      ? 'bg-yellow-400 text-[#0F388A] shadow-sm'
-                      : 'text-blue-100 hover:text-white hover:bg-white/10'
-                    }
-                  `}
+ flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all
+ ${
+   item.isActive
+     ? "bg-yellow-400 text-[#0F388A] shadow-sm"
+     : "text-blue-100 hover:text-white hover:bg-white/10"
+ }
+`}
                 >
                   <Icon size={16} strokeWidth={item.isActive ? 2.5 : 2} />
                   <span>{item.label}</span>
@@ -126,7 +163,7 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
           {/* Ações da Direita (Novo Lançamento + Usuário) */}
           <div className="flex items-center space-x-2.5">
             <button
-              onClick={() => onOpenAdd('expense')}
+              onClick={() => onOpenAdd("expense")}
               className="py-2 px-3.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-[#0F388A] font-extrabold text-xs uppercase tracking-wide transition active:scale-95 shadow-sm flex items-center space-x-1.5"
             >
               <Plus size={15} strokeWidth={3} />
@@ -137,7 +174,9 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
             {/* Perfil / Sessão */}
             {isDemoMode ? (
               <div className="flex items-center space-x-1.5 bg-black/25 border border-white/15 px-2 py-1 rounded-xl">
-                <span className="text-[11px] text-yellow-300 font-bold hidden sm:inline">Demo</span>
+                <span className="text-[11px] text-yellow-300 font-bold hidden sm:inline">
+                  Demo
+                </span>
                 <button
                   onClick={() => exitDemoMode()}
                   className="p-1 rounded-lg text-blue-100 hover:text-white transition"
@@ -149,10 +188,10 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
             ) : currentUser ? (
               <div className="flex items-center space-x-1.5 bg-black/25 border border-white/15 px-2.5 py-1 rounded-xl">
                 <div className="w-6 h-6 rounded-full bg-yellow-400 text-[#0F388A] font-black text-xs flex items-center justify-center">
-                  {(settings.userName || 'U').charAt(0).toUpperCase()}
+                  {(settings.userName || "U").charAt(0).toUpperCase()}
                 </div>
                 <span className="text-xs font-bold text-white max-w-[90px] truncate hidden sm:inline">
-                  {settings.userName || 'Leo'}
+                  {settings.userName || "Leo"}
                 </span>
                 <button
                   onClick={() => logoutUser()}
@@ -171,15 +210,13 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
               </button>
             )}
           </div>
-
         </div>
       </header>
 
       {/* ========================================================================= */}
-      {/* ÁREA PRINCIPAL — pt-20 compensa header fixed (h-16)                      */}
+      {/* ÁREA PRINCIPAL — pt-20 compensa header fixed (h-16) */}
       {/* ========================================================================= */}
       <main className="w-full flex-1 max-w-7xl mx-auto pt-20 px-3.5 sm:px-6 lg:px-8 pb-24 md:pb-10">
-        
         {/* Banner de Demonstração (se ativo) */}
         {isDemoMode && (
           <div className="mb-5 p-3.5 rounded-2xl bg-white border border-yellow-300 shadow-sm flex items-center justify-between gap-3">
@@ -188,8 +225,13 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 <Sparkles size={18} />
               </div>
               <div>
-                <p className="text-xs font-extrabold text-slate-800">Modo Demonstração Pessoal</p>
-                <p className="text-[11px] text-slate-500">Dados temporários em memória para navegação sem afetar o banco principal.</p>
+                <p className="text-xs font-extrabold text-slate-800">
+                  Modo Demonstração Pessoal
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Dados temporários em memória para navegação sem afetar o banco
+                  principal.
+                </p>
               </div>
             </div>
             <button
@@ -213,19 +255,22 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
                 key={item.to}
                 to={item.to}
                 className={`
-                  relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-150 active:scale-95
-                  ${item.isActive 
-                    ? 'text-[#0F388A] font-extrabold' 
-                    : 'text-slate-600 hover:text-slate-800 font-medium'
-                  }
-                `}
+ relative flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all duration-150 active:scale-95
+ ${
+   item.isActive
+     ? "text-[#0F388A] font-extrabold"
+     : "text-slate-600 hover:text-slate-800 font-medium"
+ }
+`}
               >
-                <div className={`
-                  relative p-1 rounded-xl transition-colors
-                  ${item.isActive ? 'bg-blue-50 text-[#0F388A]' : ''}
-                `}>
+                <div
+                  className={`
+ relative p-1 rounded-xl transition-colors
+ ${item.isActive ? "bg-blue-50 text-[#0F388A]" : ""}
+`}
+                >
                   <Icon size={20} strokeWidth={item.isActive ? 2.5 : 2} />
-                  
+
                   {item.hasBadge && (
                     <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-yellow-400 border-2 border-white shadow-sm animate-pulse" />
                   )}
@@ -243,7 +288,6 @@ export const Layout: React.FC<Props> = ({ children, onOpenAdd }) => {
           })}
         </div>
       </nav>
-
     </div>
   );
 };

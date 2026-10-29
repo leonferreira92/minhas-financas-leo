@@ -1,23 +1,62 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useFinance } from '../context/FinanceContext';
-import { Transaction, TransactionType, TransactionStatus, ScopeType, Show } from '../types';
-import { 
-  X, Check, Trash2, Bell, BellRing, Repeat, Copy, Layers, 
-  Sparkles, Loader2, TrendingUp, ArrowRightLeft, 
-  AlertTriangle, Calendar as CalendarIcon,
-  ChevronDown, Wallet, Target, Plus, Search, CheckCircle2,
-  SlidersHorizontal, History, Zap, ArrowUpRight, ArrowDownRight,
-  Music, ChevronRight, User, MapPin, DollarSign, Calendar, Handshake
-} from 'lucide-react';
-import { getIcon } from '../constants';
-import { parseCurrencyInput } from '../services/financeAggregator';
-import { GeminiService } from '../services/geminiService';
-import { CalendarModal } from './CalendarModal';
-import { CategorySelector } from './ui/CategorySelector';
-import { generateUUID } from '../services/uuidHelper';
-import { getLocalDateString } from '../services/dateUtils';
-import { PERSONAL_ONLY_MODE, isBusinessCategory } from '../services/personalOnlyMode';
-import { LOAN_IN_CATEGORY_ID, LOAN_OUT_CATEGORY_ID, isLoanMovement } from '../services/aiReportService';
+import React, { useState, useEffect, useMemo } from "react";
+import { useFinance } from "../context/FinanceContext";
+import {
+  Transaction,
+  TransactionType,
+  TransactionStatus,
+  ScopeType,
+  Show,
+} from "../types";
+import {
+  X,
+  Check,
+  Trash2,
+  Bell,
+  BellRing,
+  Repeat,
+  Copy,
+  Layers,
+  Sparkles,
+  Loader2,
+  TrendingUp,
+  ArrowRightLeft,
+  AlertTriangle,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  Wallet,
+  Target,
+  Plus,
+  Search,
+  CheckCircle2,
+  SlidersHorizontal,
+  History,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Music,
+  ChevronRight,
+  User,
+  MapPin,
+  DollarSign,
+  Calendar,
+  Handshake,
+} from "lucide-react";
+import { getIcon } from "../constants";
+import { parseCurrencyInput } from "../services/financeAggregator";
+import { GeminiService } from "../services/geminiService";
+import { CalendarModal } from "./CalendarModal";
+import { CategorySelector } from "./ui/CategorySelector";
+import { generateUUID } from "../services/uuidHelper";
+import { getLocalDateString } from "../services/dateUtils";
+import {
+  PERSONAL_ONLY_MODE,
+  isBusinessCategory,
+} from "../services/personalOnlyMode";
+import {
+  LOAN_IN_CATEGORY_ID,
+  LOAN_OUT_CATEGORY_ID,
+  isLoanMovement,
+} from "../services/aiReportService";
 
 interface Props {
   onClose: () => void;
@@ -28,63 +67,102 @@ interface Props {
   transaction?: Transaction | null;
 }
 
-export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expense', initialCategoryId, initialIsFixed = false, transaction }) => {
-  const { 
-    addTransaction, updateTransaction, updateTransactionSeries, updateDebtTransaction, 
-    deleteTransaction, categories, transactions, accounts, shows, addShow, checkTransactionImpact,
-    getDefaultAccountForScope
+export const TransactionForm: React.FC<Props> = ({
+  onClose,
+  initialType = "expense",
+  initialCategoryId,
+  initialIsFixed = false,
+  transaction,
+}) => {
+  const {
+    addTransaction,
+    updateTransaction,
+    updateTransactionSeries,
+    updateDebtTransaction,
+    deleteTransaction,
+    categories,
+    transactions,
+    accounts,
+    shows,
+    addShow,
+    checkTransactionImpact,
+    getDefaultAccountForScope,
   } = useFinance();
 
   // Primary Form State
   const [type, setType] = useState<TransactionType>(initialType);
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState(initialCategoryId || '');
-  const [accountId, setAccountId] = useState('');
-  const [destinationAccountId, setDestinationAccountId] = useState('');
-  const [date, setDate] = useState(() => transaction?.date || getLocalDateString());
-  const [status, setStatus] = useState<TransactionStatus>(initialIsFixed && !transaction ? 'pending' : 'paid');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState(initialCategoryId || "");
+  const [accountId, setAccountId] = useState("");
+  const [destinationAccountId, setDestinationAccountId] = useState("");
+  const [date, setDate] = useState(
+    () => transaction?.date || getLocalDateString(),
+  );
+  const [status, setStatus] = useState<TransactionStatus>(
+    initialIsFixed && !transaction ? "pending" : "paid",
+  );
   const [hasReminder, setHasReminder] = useState(false);
-  const [reminderDate, setReminderDate] = useState('');
-  const [isFixed, setIsFixed] = useState(Boolean(initialIsFixed && !transaction));
+  const [reminderDate, setReminderDate] = useState("");
+  const [isFixed, setIsFixed] = useState(
+    Boolean(initialIsFixed && !transaction),
+  );
   /** Empréstimo a pessoas: fora do relatório de despesas/receitas */
   const [loanMode, setLoanMode] = useState(false);
-  const [loanPerson, setLoanPerson] = useState(transaction?.loanPerson || 'Mãe');
-  
+  const [loanPerson, setLoanPerson] = useState(
+    transaction?.loanPerson || "Mãe",
+  );
+
   // Scope State (Pessoal vs Músico) — Fase 1 trava em Pessoal
   const [scope, setScope] = useState<ScopeType>(() => {
-    if (PERSONAL_ONLY_MODE) return 'PERSONAL';
-    if (transaction?.scope === 'BUSINESS') return 'BUSINESS';
-    if (transaction?.scope === 'PERSONAL') return 'PERSONAL';
-    if (initialCategoryId === 'cat_33' || initialCategoryId === 'cat_equipamentos' || initialCategoryId === 'cat_producao_shows' || transaction?.showId) return 'BUSINESS';
-    return 'PERSONAL';
+    if (PERSONAL_ONLY_MODE) return "PERSONAL";
+    if (transaction?.scope === "BUSINESS") return "BUSINESS";
+    if (transaction?.scope === "PERSONAL") return "PERSONAL";
+    if (
+      initialCategoryId === "cat_33" ||
+      initialCategoryId === "cat_equipamentos" ||
+      initialCategoryId === "cat_producao_shows" ||
+      transaction?.showId
+    )
+      return "BUSINESS";
+    return "PERSONAL";
   });
 
   // Show Link State (Vínculo com Shows no Módulo Músico)
-  const [selectedShowId, setSelectedShowId] = useState<string>(transaction?.showId || '');
+  const [selectedShowId, setSelectedShowId] = useState<string>(
+    transaction?.showId || "",
+  );
 
   // Quick Show Modal State
-  const [showQuickCreateShowModal, setShowQuickCreateShowModal] = useState(false);
-  const [quickShowContractor, setQuickShowContractor] = useState('');
-  const [quickShowDate, setQuickShowDate] = useState('');
-  const [quickShowTotalCache, setQuickShowTotalCache] = useState('');
-  const [quickShowLocation, setQuickShowLocation] = useState('');
-  const [quickShowCity, setQuickShowCity] = useState('');
+  const [showQuickCreateShowModal, setShowQuickCreateShowModal] =
+    useState(false);
+  const [quickShowContractor, setQuickShowContractor] = useState("");
+  const [quickShowDate, setQuickShowDate] = useState("");
+  const [quickShowTotalCache, setQuickShowTotalCache] = useState("");
+  const [quickShowLocation, setQuickShowLocation] = useState("");
+  const [quickShowCity, setQuickShowCity] = useState("");
 
   // Progressive Disclosure UI States
-  const [showMoreOptions, setShowMoreOptions] = useState(!!transaction || !!transaction?.showId);
+  const [showMoreOptions, setShowMoreOptions] = useState(
+    !!transaction || !!transaction?.showId,
+  );
   const [showAllCategoriesModal, setShowAllCategoriesModal] = useState(false);
-  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [categorySearchTerm, setCategorySearchTerm] = useState("");
   const [userManuallySetCategory, setUserManuallySetCategory] = useState(false);
   const [userManuallySetAccount, setUserManuallySetAccount] = useState(false);
-  const [parsedTextInfo, setParsedTextInfo] = useState<{ amount: number; text: string } | null>(null);
+  const [parsedTextInfo, setParsedTextInfo] = useState<{
+    amount: number;
+    text: string;
+  } | null>(null);
 
   // Modal / Confirm States
   const [showRecurringEditModal, setShowRecurringEditModal] = useState(false);
   const [isPredicting, setIsPredicting] = useState(false);
   const [baseAmount, setBaseAmount] = useState<number>(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [impact, setImpact] = useState<{ compromisedTransaction: Transaction } | null>(null);
+  const [impact, setImpact] = useState<{
+    compromisedTransaction: Transaction;
+  } | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [quickShowError, setQuickShowError] = useState<string | null>(null);
@@ -109,12 +187,12 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       setDescription(transaction.description);
       setCategoryId(transaction.categoryId);
       setAccountId(transaction.accountId || accounts[0]?.id);
-      setDestinationAccountId(transaction.destinationAccountId || '');
+      setDestinationAccountId(transaction.destinationAccountId || "");
       setDate(transaction.date);
       setStatus(transaction.status);
       if (isLoanMovement(transaction) || transaction.loanPerson) {
         setLoanMode(true);
-        setLoanPerson(transaction.loanPerson || 'Mãe');
+        setLoanPerson(transaction.loanPerson || "Mãe");
       }
       if (transaction.reminderDate) {
         setHasReminder(true);
@@ -123,7 +201,12 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (transaction.isFixed) {
         setIsFixed(true);
       }
-      const initialScope = (transaction.scope === 'BUSINESS' || transaction.showId || transaction.categoryId === 'cat_33') ? 'BUSINESS' : 'PERSONAL';
+      const initialScope =
+        transaction.scope === "BUSINESS" ||
+        transaction.showId ||
+        transaction.categoryId === "cat_33"
+          ? "BUSINESS"
+          : "PERSONAL";
       setScope(initialScope);
       if (transaction.showId) {
         setSelectedShowId(transaction.showId);
@@ -135,7 +218,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   // Financial impact calculation for expenses
   useEffect(() => {
     const val = parseCurrencyInput(amount);
-    if (type === 'expense' && val > 0) {
+    if (type === "expense" && val > 0) {
       const result = checkTransactionImpact(val, date);
       setImpact(result);
     } else {
@@ -145,25 +228,27 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
   // Available Shows (Scheduled, Confirmed, Completed)
   const availableShows = useMemo(() => {
-    return shows.filter(s => s.status !== 'Cancelado').sort((a, b) => b.date.localeCompare(a.date));
+    return shows
+      .filter((s) => s.status !== "Cancelado")
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [shows]);
 
   const activeLinkedShow = useMemo(() => {
     if (!selectedShowId) return null;
-    return shows.find(s => s.id === selectedShowId) || null;
+    return shows.find((s) => s.id === selectedShowId) || null;
   }, [selectedShowId, shows]);
 
   // Handle Date Selection (Auto-set status for new transactions based on date)
   const handleDateSelect = (newDate: string) => {
     setDate(newDate);
     if (!transaction) {
-      const selected = new Date(newDate + 'T12:00:00');
+      const selected = new Date(newDate + "T12:00:00");
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (selected > today) {
-        setStatus('pending');
+        setStatus("pending");
       } else {
-        setStatus('paid');
+        setStatus("paid");
       }
     }
   };
@@ -179,7 +264,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       const match = val.match(/^(.+?)\s+(?:r\$\s*)?(\d+(?:[.,]\d{1,2})?)$/i);
       if (match) {
         const cleanText = match[1].trim();
-        const extractedNumStr = match[2].replace(',', '.');
+        const extractedNumStr = match[2].replace(", ", ".");
         const numVal = parseFloat(extractedNumStr);
 
         if (!isNaN(numVal) && numVal > 0) {
@@ -201,9 +286,13 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     const cleanDesc = description.trim().toLowerCase();
     if (!cleanDesc || cleanDesc.length < 2) return null;
 
-    const matches = transactions.filter(t => {
+    const matches = transactions.filter((t) => {
       const tDesc = t.description.toLowerCase();
-      return tDesc === cleanDesc || tDesc.includes(cleanDesc) || cleanDesc.includes(tDesc);
+      return (
+        tDesc === cleanDesc ||
+        tDesc.includes(cleanDesc) ||
+        cleanDesc.includes(tDesc)
+      );
     });
 
     if (matches.length === 0) return null;
@@ -212,7 +301,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     const accountCounts: Record<string, number> = {};
     let fixedCount = 0;
 
-    matches.forEach(t => {
+    matches.forEach((t) => {
       if (t.categoryId) {
         categoryCounts[t.categoryId] = (categoryCounts[t.categoryId] || 0) + 1;
       }
@@ -222,7 +311,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       if (t.isFixed) fixedCount++;
     });
 
-    let bestCatId = '';
+    let bestCatId = "";
     let maxCatCount = 0;
     Object.entries(categoryCounts).forEach(([catId, count]) => {
       if (count > maxCatCount) {
@@ -231,7 +320,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       }
     });
 
-    let bestAccId = '';
+    let bestAccId = "";
     let maxAccCount = 0;
     Object.entries(accountCounts).forEach(([accId, count]) => {
       if (count > maxAccCount) {
@@ -242,17 +331,17 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     const isLikelyFixed = fixedCount / matches.length >= 0.5;
 
-    const suggestedCat = categories.find(c => c.id === bestCatId);
-    const suggestedAcc = accounts.find(a => a.id === bestAccId);
+    const suggestedCat = categories.find((c) => c.id === bestCatId);
+    const suggestedAcc = accounts.find((a) => a.id === bestAccId);
 
     return {
       categoryId: bestCatId,
-      categoryName: suggestedCat?.name || '',
-      categoryIcon: suggestedCat?.icon || '',
+      categoryName: suggestedCat?.name || "",
+      categoryIcon: suggestedCat?.icon || "",
       accountId: bestAccId,
-      accountName: suggestedAcc?.name || '',
+      accountName: suggestedAcc?.name || "",
       isLikelyFixed,
-      matchCount: matches.length
+      matchCount: matches.length,
     };
   }, [description, transactions, categories, accounts]);
 
@@ -269,22 +358,41 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
         setIsFixed(true);
       }
     }
-  }, [smartSuggestion, userManuallySetCategory, userManuallySetAccount, transaction]);
+  }, [
+    smartSuggestion,
+    userManuallySetCategory,
+    userManuallySetAccount,
+    transaction,
+  ]);
 
   // ==========================================
   // 3. RANKING DE CATEGORIAS (FILTRADO POR ESCOPO RIGOROSO)
   // ==========================================
   const moduleCategories = useMemo(() => {
-    return categories.filter(c => {
+    return categories.filter((c) => {
       // Filtrar por tipo (expense / income)
       if (c.type !== type) return false;
       if (PERSONAL_ONLY_MODE && isBusinessCategory(c)) return false;
 
       // Filtrar por escopo estrito
-      if (scope === 'PERSONAL' || PERSONAL_ONLY_MODE) {
-        return c.scope === 'PERSONAL' || (!c.scope && c.id !== 'cat_33' && c.id !== 'cat_equipamentos' && c.id !== 'cat_producao_shows' && c.id !== 'cat_midia_marketing');
+      if (scope === "PERSONAL" || PERSONAL_ONLY_MODE) {
+        return (
+          c.scope === "PERSONAL" ||
+          (!c.scope &&
+            c.id !== "cat_33" &&
+            c.id !== "cat_equipamentos" &&
+            c.id !== "cat_producao_shows" &&
+            c.id !== "cat_midia_marketing")
+        );
       } else {
-        return c.scope === 'BUSINESS' || (!c.scope && (c.id === 'cat_33' || c.id === 'cat_equipamentos' || c.id === 'cat_producao_shows' || c.id === 'cat_midia_marketing'));
+        return (
+          c.scope === "BUSINESS" ||
+          (!c.scope &&
+            (c.id === "cat_33" ||
+              c.id === "cat_equipamentos" ||
+              c.id === "cat_producao_shows" ||
+              c.id === "cat_midia_marketing"))
+        );
       }
     });
   }, [categories, type, scope]);
@@ -295,28 +403,34 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
 
     const scores: Record<string, number> = {};
 
-    transactions.forEach(t => {
+    transactions.forEach((t) => {
       if (t.categoryId) {
-        const isRecent = (now - t.createdAt) < thirtyDaysMs;
+        const isRecent = now - t.createdAt < thirtyDaysMs;
         scores[t.categoryId] = (scores[t.categoryId] || 0) + (isRecent ? 3 : 1);
       }
     });
 
     if (smartSuggestion?.categoryId) {
-      scores[smartSuggestion.categoryId] = (scores[smartSuggestion.categoryId] || 0) + 100;
+      scores[smartSuggestion.categoryId] =
+        (scores[smartSuggestion.categoryId] || 0) + 100;
     }
 
-    return [...moduleCategories].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+    return [...moduleCategories].sort(
+      (a, b) => (scores[b.id] || 0) - (scores[a.id] || 0),
+    );
   }, [moduleCategories, transactions, smartSuggestion]);
 
   // Top 4 categorias para a barra rápida inicial
-  const topCategories = useMemo(() => rankedCategories.slice(0, 4), [rankedCategories]);
+  const topCategories = useMemo(
+    () => rankedCategories.slice(0, 4),
+    [rankedCategories],
+  );
 
   // Categorias filtradas para a busca no modal
   const searchedCategories = useMemo(() => {
     if (!categorySearchTerm.trim()) return rankedCategories;
     const term = categorySearchTerm.toLowerCase();
-    return rankedCategories.filter(c => c.name.toLowerCase().includes(term));
+    return rankedCategories.filter((c) => c.name.toLowerCase().includes(term));
   }, [rankedCategories, categorySearchTerm]);
 
   // ==========================================
@@ -342,32 +456,32 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   };
 
   const handleSelectShow = (showId: string) => {
-    if (showId === '__create_new__') {
+    if (showId === "__create_new__") {
       // Abre modal rápido para criar show
-      setQuickShowContractor(description || '');
+      setQuickShowContractor(description || "");
       setQuickShowDate(date || new Date().toISOString().slice(0, 10));
       const val = parseCurrencyInput(amount);
-      setQuickShowTotalCache(val > 0 ? val.toString() : '1500');
-      setQuickShowLocation('');
-      setQuickShowCity('');
+      setQuickShowTotalCache(val > 0 ? val.toString() : "1500");
+      setQuickShowLocation("");
+      setQuickShowCity("");
       setShowQuickCreateShowModal(true);
       return;
     }
 
     setSelectedShowId(showId);
     if (showId) {
-      setScope('BUSINESS');
-      const targetShow = shows.find(s => s.id === showId);
+      setScope("BUSINESS");
+      const targetShow = shows.find((s) => s.id === showId);
       if (targetShow) {
         if (targetShow.date) {
           setDate(targetShow.date);
         }
-        if (targetShow.status !== 'Realizado') {
-          setStatus('pending');
+        if (targetShow.status !== "Realizado") {
+          setStatus("pending");
         }
       }
-      if (!userManuallySetCategory && type === 'income') {
-        const cacheCategory = categories.find(c => c.id === 'cat_33');
+      if (!userManuallySetCategory && type === "income") {
+        const cacheCategory = categories.find((c) => c.id === "cat_33");
         if (cacheCategory) {
           setCategoryId(cacheCategory.id);
         }
@@ -378,7 +492,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleCreateQuickShow = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickShowContractor.trim() || !quickShowDate) {
-      setQuickShowError('Preencha o nome do contratante/evento e a data.');
+      setQuickShowError("Preencha o nome do contratante/evento e a data.");
       return;
     }
 
@@ -390,20 +504,20 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       name: quickShowContractor.trim(),
       contractorName: quickShowContractor.trim(),
       date: quickShowDate,
-      time: '20:00',
+      time: "20:00",
       totalCache: cacheVal,
-      location: quickShowLocation.trim() || 'A definir',
-      city: quickShowCity.trim() || 'São Paulo / SP',
-      status: 'Confirmado',
-      scope: 'BUSINESS',
-      createdAt: Date.now()
+      location: quickShowLocation.trim() || "A definir",
+      city: quickShowCity.trim() || "São Paulo / SP",
+      status: "Confirmado",
+      scope: "BUSINESS",
+      createdAt: Date.now(),
     };
 
     addShow(newShow);
     setSelectedShowId(newShowId);
-    setScope('BUSINESS');
+    setScope("BUSINESS");
     if (!userManuallySetCategory) {
-      setCategoryId('cat_33');
+      setCategoryId("cat_33");
     }
     setQuickShowError(null);
     setShowQuickCreateShowModal(false);
@@ -412,7 +526,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleSmartFillWithAI = async () => {
     if (!description || description.length < 3) return;
     setIsPredicting(true);
-    const prediction = await GeminiService.predictTransaction(description, transactions, categories);
+    const prediction = await GeminiService.predictTransaction(
+      description,
+      transactions,
+      categories,
+    );
     setIsPredicting(false);
     if (prediction) {
       if (prediction.categoryId) {
@@ -420,7 +538,8 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
         setUserManuallySetCategory(true);
       }
       if (prediction.type) setType(prediction.type as TransactionType);
-      if (prediction.amount && prediction.amount > 0) setAmount(prediction.amount.toString());
+      if (prediction.amount && prediction.amount > 0)
+        setAmount(prediction.amount.toString());
     }
   };
 
@@ -436,9 +555,11 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseCurrencyInput(amount);
-    
+
     if (!val || val <= 0 || !description.trim() || !accountId) {
-      setValidationError("Preencha o valor, a descrição e a conta de lançamento.");
+      setValidationError(
+        "Preencha o valor, a descrição e a conta de lançamento.",
+      );
       return;
     }
 
@@ -447,14 +568,16 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       return;
     }
 
-    if (type !== 'transfer' && !loanMode && !categoryId) {
+    if (type !== "transfer" && !loanMode && !categoryId) {
       setValidationError("Por favor, selecione uma categoria.");
       return;
     }
 
-    if (type === 'transfer') {
+    if (type === "transfer") {
       if (!destinationAccountId) {
-        setValidationError("Selecione a conta de destino para a transferência.");
+        setValidationError(
+          "Selecione a conta de destino para a transferência.",
+        );
         return;
       }
       if (accountId === destinationAccountId) {
@@ -471,48 +594,71 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     setValidationError(null);
 
     const finalScope: ScopeType = PERSONAL_ONLY_MODE
-      ? 'PERSONAL'
-      : (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
-    const finalShowId = (finalScope === 'BUSINESS' && selectedShowId) ? selectedShowId : undefined;
+      ? "PERSONAL"
+      : scope === "BUSINESS" ||
+          categoryId === "cat_33" ||
+          categoryId === "cat_equipamentos" ||
+          categoryId === "cat_producao_shows" ||
+          !!selectedShowId
+        ? "BUSINESS"
+        : "PERSONAL";
+    const finalShowId =
+      finalScope === "BUSINESS" && selectedShowId ? selectedShowId : undefined;
 
     const resolvedType: TransactionType = loanMode
-      ? (type === 'income' ? 'income' : 'expense')
+      ? type === "income"
+        ? "income"
+        : "expense"
       : type;
-    const resolvedCategoryId = type === 'transfer'
-      ? 'cat_transfer'
-      : loanMode
-        ? (resolvedType === 'income' ? LOAN_IN_CATEGORY_ID : LOAN_OUT_CATEGORY_ID)
-        : categoryId;
+    const resolvedCategoryId =
+      type === "transfer"
+        ? "cat_transfer"
+        : loanMode
+          ? resolvedType === "income"
+            ? LOAN_IN_CATEGORY_ID
+            : LOAN_OUT_CATEGORY_ID
+          : categoryId;
 
-    // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status 'pending' se o evento não tiver sido realizado
+    // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status'pending' se o evento não tiver sido realizado
     let finalDate = date;
     let finalStatus = status;
     if (finalShowId) {
-      const linkedShow = shows.find(s => s.id === finalShowId);
+      const linkedShow = shows.find((s) => s.id === finalShowId);
       if (linkedShow) {
         if (linkedShow.date) {
           finalDate = linkedShow.date;
         }
-        if (resolvedType === 'expense' && linkedShow.status !== 'Realizado') {
-          finalStatus = 'pending';
+        if (resolvedType === "expense" && linkedShow.status !== "Realizado") {
+          finalStatus = "pending";
         }
       }
     }
 
     const personLabel = loanPerson.trim();
     const data: any = {
-      type: resolvedType, 
-      amount: val, 
-      description: description.trim() || (loanMode
-        ? (resolvedType === 'income' ? `Devolução · ${personLabel}` : `Empréstimo · ${personLabel}`)
-        : description), 
+      type: resolvedType,
+      amount: val,
+      description:
+        description.trim() ||
+        (loanMode
+          ? resolvedType === "income"
+            ? `Devolução · ${personLabel}`
+            : `Empréstimo · ${personLabel}`
+          : description),
       categoryId: resolvedCategoryId,
-      accountId, 
-      destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
-      date: finalDate, 
+      accountId,
+      destinationAccountId:
+        type === "transfer" ? destinationAccountId : undefined,
+      date: finalDate,
       status: finalStatus,
-      reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
-      reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
+      reminderDate:
+        status === "pending" && hasReminder ? reminderDate : undefined,
+      reminderSent:
+        status === "pending" &&
+        hasReminder &&
+        transaction?.reminderDate === reminderDate
+          ? transaction.reminderSent
+          : false,
       isFixed,
       interest: 0,
       scope: finalScope,
@@ -520,7 +666,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       loanPerson: loanMode ? personLabel : undefined,
       importedFromBank: transaction?.importedFromBank,
       originalBankDescription: transaction?.originalBankDescription,
-      bankFitId: transaction?.bankFitId
+      bankFitId: transaction?.bankFitId,
     };
 
     if (transaction) {
@@ -543,156 +689,218 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
     if (!transaction) return;
     const val = parseCurrencyInput(amount);
     const finalScope: ScopeType = PERSONAL_ONLY_MODE
-      ? 'PERSONAL'
-      : (scope === 'BUSINESS' || categoryId === 'cat_33' || categoryId === 'cat_equipamentos' || categoryId === 'cat_producao_shows' || !!selectedShowId) ? 'BUSINESS' : 'PERSONAL';
-    const finalShowId = (finalScope === 'BUSINESS' && type === 'income' && selectedShowId) ? selectedShowId : undefined;
+      ? "PERSONAL"
+      : scope === "BUSINESS" ||
+          categoryId === "cat_33" ||
+          categoryId === "cat_equipamentos" ||
+          categoryId === "cat_producao_shows" ||
+          !!selectedShowId
+        ? "BUSINESS"
+        : "PERSONAL";
+    const finalShowId =
+      finalScope === "BUSINESS" && type === "income" && selectedShowId
+        ? selectedShowId
+        : undefined;
 
     const resolvedType: TransactionType = loanMode
-      ? (type === 'income' ? 'income' : 'expense')
+      ? type === "income"
+        ? "income"
+        : "expense"
       : type;
-    const resolvedCategoryId = type === 'transfer'
-      ? 'cat_transfer'
-      : loanMode
-        ? (resolvedType === 'income' ? LOAN_IN_CATEGORY_ID : LOAN_OUT_CATEGORY_ID)
-        : categoryId;
+    const resolvedCategoryId =
+      type === "transfer"
+        ? "cat_transfer"
+        : loanMode
+          ? resolvedType === "income"
+            ? LOAN_IN_CATEGORY_ID
+            : LOAN_OUT_CATEGORY_ID
+          : categoryId;
     const personLabel = loanPerson.trim();
     const data: any = {
-      type: resolvedType, 
-      amount: val, 
-      description, 
+      type: resolvedType,
+      amount: val,
+      description,
       categoryId: resolvedCategoryId,
-      accountId, 
-      destinationAccountId: type === 'transfer' ? destinationAccountId : undefined,
-      date, 
+      accountId,
+      destinationAccountId:
+        type === "transfer" ? destinationAccountId : undefined,
+      date,
       status,
-      reminderDate: (status === 'pending' && hasReminder) ? reminderDate : undefined,
-      reminderSent: (status === 'pending' && hasReminder && transaction?.reminderDate === reminderDate) ? transaction.reminderSent : false,
+      reminderDate:
+        status === "pending" && hasReminder ? reminderDate : undefined,
+      reminderSent:
+        status === "pending" &&
+        hasReminder &&
+        transaction?.reminderDate === reminderDate
+          ? transaction.reminderSent
+          : false,
       isFixed,
       scope: finalScope,
       showId: finalShowId,
-      loanPerson: loanMode ? personLabel : undefined
+      loanPerson: loanMode ? personLabel : undefined,
     };
     updateTransactionSeries({ ...transaction, ...data }, updateFuture);
     onClose();
   };
 
-  const handleDelete = () => { if (transaction) setShowDeleteConfirm(true); };
-  const confirmDelete = () => { if (transaction) { deleteTransaction(transaction.id); onClose(); } };
+  const handleDelete = () => {
+    if (transaction) setShowDeleteConfirm(true);
+  };
+  const confirmDelete = () => {
+    if (transaction) {
+      deleteTransaction(transaction.id);
+      onClose();
+    }
+  };
 
   // Theme styling based on active transaction type
-  const activeColor = loanMode ? 'sky' : type === 'expense' ? 'rose' : type === 'income' ? 'emerald' : 'blue';
-  const activeBg = loanMode ? 'bg-sky-600' : type === 'expense' ? 'bg-rose-600' : type === 'income' ? 'bg-emerald-500' : 'bg-blue-600';
-  const activeBtnText = !loanMode && type === 'income' ? 'text-black' : 'text-white';
+  const activeColor = loanMode
+    ? "sky"
+    : type === "expense"
+      ? "rose"
+      : type === "income"
+        ? "emerald"
+        : "blue";
+  const activeBg = loanMode
+    ? "bg-sky-600"
+    : type === "expense"
+      ? "bg-rose-600"
+      : type === "income"
+        ? "bg-emerald-500"
+        : "bg-blue-600";
+  const activeBtnText =
+    !loanMode && type === "income" ? "text-black" : "text-white";
   const activeText = loanMode
-    ? 'text-sky-600 dark:text-sky-400'
-    : type === 'expense'
-      ? 'text-rose-600 dark:text-rose-400'
-      : type === 'income'
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-blue-600 dark:text-blue-400';
+    ? "text-sky-600"
+    : type === "expense"
+      ? "text-rose-600"
+      : type === "income"
+        ? "text-emerald-600"
+        : "text-blue-600";
 
   return (
     <>
-      <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
-        <div className="bg-white dark:bg-slate-900 w-full max-w-md h-[95dvh] sm:h-auto sm:max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl animate-slide-up flex flex-col relative overflow-hidden border border-slate-200/50 dark:border-slate-800">
-          
+      <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in ">
+        <div className="bg-white w-full max-w-md h-[95dvh] sm:h-auto sm:max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[3rem] shadow-2xl animate-slide-up flex flex-col relative overflow-hidden border border-slate-200/50">
           {/* ========================================== */}
-          {/* 1. SELETOR DO TIPO DE TRANSAÇÃO (TOP BAR)  */}
+          {/* 1. SELETOR DO TIPO DE TRANSAÇÃO (TOP BAR) */}
           {/* ========================================== */}
-          <div className="px-6 pt-5 pb-3 flex justify-between items-center gap-3 z-20 border-b border-slate-100 dark:border-slate-800/80 shrink-0">
-            <div className="flex bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl flex-1 mr-2">
-              <button 
+          <div className="px-6 pt-5 pb-3 flex justify-between items-center gap-3 z-20 border-b border-slate-100 shrink-0">
+            <div className="flex bg-slate-100 p-1 rounded-2xl flex-1 mr-2">
+              <button
                 type="button"
                 onClick={() => {
                   setLoanMode(false);
-                  setType('expense');
+                  setType("expense");
                   setUserManuallySetCategory(false);
-                }} 
-                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === 'expense' ? 'bg-rose-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                }}
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === "expense" ? "bg-rose-600 text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-900"}`}
               >
-                <ArrowDownRight size={14} strokeWidth={2.5} className={!loanMode && type === 'expense' ? 'text-white' : ''} />
+                <ArrowDownRight
+                  size={14}
+                  strokeWidth={2.5}
+                  className={
+                    !loanMode && type === "expense" ? "text-white" : ""
+                  }
+                />
                 <span>Despesa</span>
               </button>
 
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setLoanMode(false);
-                  setType('income');
+                  setType("income");
                   setUserManuallySetCategory(false);
-                }} 
-                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === 'income' ? 'bg-emerald-500 text-black shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                }}
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === "income" ? "bg-emerald-500 text-black shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-900"}`}
               >
-                <ArrowUpRight size={14} strokeWidth={2.5} className={!loanMode && type === 'income' ? 'text-black' : ''} />
+                <ArrowUpRight
+                  size={14}
+                  strokeWidth={2.5}
+                  className={!loanMode && type === "income" ? "text-black" : ""}
+                />
                 <span>Receita</span>
               </button>
 
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setLoanMode(false);
-                  setType('transfer');
-                  if (!description) setDescription('Transferência');
-                }} 
-                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === 'transfer' ? 'bg-blue-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                  setType("transfer");
+                  if (!description) setDescription("Transferência");
+                }}
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${!loanMode && type === "transfer" ? "bg-blue-600 text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-900"}`}
               >
-                <ArrowRightLeft size={14} strokeWidth={2.5} className={!loanMode && type === 'transfer' ? 'text-white' : ''} />
+                <ArrowRightLeft
+                  size={14}
+                  strokeWidth={2.5}
+                  className={
+                    !loanMode && type === "transfer" ? "text-white" : ""
+                  }
+                />
                 <span>Transf.</span>
               </button>
 
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setLoanMode(true);
-                  setType('expense');
+                  setType("expense");
                   setCategoryId(LOAN_OUT_CATEGORY_ID);
                   setUserManuallySetCategory(true);
-                  if (!loanPerson) setLoanPerson('Mãe');
-                  if (!description || description === 'Transferência') {
-                    setDescription(`Empréstimo · ${loanPerson || 'Mãe'}`);
+                  if (!loanPerson) setLoanPerson("Mãe");
+                  if (!description || description === "Transferência") {
+                    setDescription(`Empréstimo · ${loanPerson || "Mãe"}`);
                   }
-                }} 
-                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${loanMode ? 'bg-sky-600 text-white shadow-md scale-[1.02]' : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
+                }}
+                className={`flex-1 py-2 px-1.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1 ${loanMode ? "bg-sky-600 text-white shadow-md scale-[1.02]" : "text-slate-500 hover:text-slate-900"}`}
                 title="Empréstimo a pessoas — não conta como despesa no relatório"
               >
-                <Handshake size={14} strokeWidth={2.5} className={loanMode ? 'text-white' : ''} />
+                <Handshake
+                  size={14}
+                  strokeWidth={2.5}
+                  className={loanMode ? "text-white" : ""}
+                />
                 <span>Emprést.</span>
               </button>
             </div>
 
-            <button 
+            <button
               type="button"
-              onClick={onClose} 
-              className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition active:scale-95 shrink-0"
+              onClick={onClose}
+              className="p-2.5 bg-slate-100 rounded-2xl hover:bg-slate-200 transition active:scale-95 shrink-0"
               title="Fechar"
             >
-              <X size={20} className="text-slate-500 dark:text-slate-300" />
+              <X size={20} className="text-slate-500" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-36">
-
+          <form
+            onSubmit={handleSubmit}
+            className="flex-1 overflow-y-auto no-scrollbar pt-2 pb-36"
+          >
             {/* Empréstimo a pessoas */}
             {loanMode && (
-              <div className="mx-6 mt-2 p-3.5 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/70 space-y-3 animate-fade-in">
+              <div className="mx-6 mt-2 p-3.5 rounded-2xl bg-sky-50 border border-sky-200 space-y-3 animate-fade-in ">
                 <div className="flex items-center space-x-2">
-                  <Handshake size={14} className="text-sky-600 dark:text-sky-400" />
-                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-800 dark:text-sky-300">
+                  <Handshake size={14} className="text-sky-600" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-sky-800">
                     Empréstimo a pessoas · fora do relatório
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-white/70 dark:bg-slate-900/50 rounded-xl">
+                <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-white/70 rounded-xl">
                   <button
                     type="button"
                     onClick={() => {
-                      setType('expense');
+                      setType("expense");
                       setCategoryId(LOAN_OUT_CATEGORY_ID);
-                      setDescription(`Empréstimo · ${loanPerson || 'Mãe'}`);
+                      setDescription(`Empréstimo · ${loanPerson || "Mãe"}`);
                     }}
                     className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
-                      type === 'expense'
-                        ? 'bg-sky-600 text-white shadow-sm'
-                        : 'text-slate-500 hover:text-sky-700'
+                      type === "expense"
+                        ? "bg-sky-600 text-white shadow-sm"
+                        : "text-slate-500 hover:text-sky-700"
                     }`}
                   >
                     Emprestei / Enviei
@@ -700,71 +908,82 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                   <button
                     type="button"
                     onClick={() => {
-                      setType('income');
+                      setType("income");
                       setCategoryId(LOAN_IN_CATEGORY_ID);
-                      setDescription(`Devolução · ${loanPerson || 'Mãe'}`);
+                      setDescription(`Devolução · ${loanPerson || "Mãe"}`);
                     }}
                     className={`py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${
-                      type === 'income'
-                        ? 'bg-emerald-500 text-black shadow-sm'
-                        : 'text-slate-500 hover:text-emerald-700'
+                      type === "income"
+                        ? "bg-emerald-500 text-black shadow-sm"
+                        : "text-slate-500 hover:text-emerald-700"
                     }`}
                   >
                     Devolveu / Recebi
                   </button>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-wider text-sky-700/80 dark:text-sky-400 block mb-1">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-sky-700/80 block mb-1">
                     Pessoa
                   </label>
                   <input
                     type="text"
                     value={loanPerson}
-                    onChange={e => {
+                    onChange={(e) => {
                       const next = e.target.value;
                       setLoanPerson(next);
-                      setDescription(type === 'income' ? `Devolução · ${next || '…'}` : `Empréstimo · ${next || '…'}`);
+                      setDescription(
+                        type === "income"
+                          ? `Devolução · ${next || "…"}`
+                          : `Empréstimo · ${next || "…"}`,
+                      );
                     }}
                     placeholder="Ex.: Mãe"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-sky-500"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-sky-200 text-sm font-bold text-slate-900 outline-none focus:border-sky-500"
                   />
                 </div>
-                <p className="text-[10px] text-sky-800/70 dark:text-sky-400/80 leading-relaxed">
-                  Sai ou entra no saldo da conta, mas não conta como gasto nem como renda nos relatórios (igual transferência).
+                <p className="text-[10px] text-sky-800/70 leading-relaxed">
+                  Sai ou entra no saldo da conta, mas não conta como gasto nem
+                  como renda nos relatórios (igual transferência).
                 </p>
               </div>
             )}
-            
+
             {/* Seletor Rápido de Módulo: 👤 PESSOAL vs 🎸 MÚSICO — oculto na Fase 1 */}
             {!PERSONAL_ONLY_MODE && (
               <div className="px-6 pt-2">
-                <div className="p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="p-1 bg-slate-100 rounded-2xl flex items-center justify-between gap-1 border border-slate-200/60">
                   <button
                     type="button"
                     onClick={() => {
-                      setScope('PERSONAL');
-                      setSelectedShowId('');
+                      setScope("PERSONAL");
+                      setSelectedShowId("");
                     }}
                     className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
-                      scope === 'PERSONAL'
-                        ? 'bg-emerald-500 text-black shadow-sm'
-                        : 'text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                      scope === "PERSONAL"
+                        ? "bg-emerald-500 text-black shadow-sm"
+                        : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
-                    <User size={13} className={scope === 'PERSONAL' ? 'text-black' : ''} />
+                    <User
+                      size={13}
+                      className={scope === "PERSONAL" ? "text-black" : ""}
+                    />
                     <span>👤 Pessoal</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setScope('BUSINESS')}
+                    onClick={() => setScope("BUSINESS")}
                     className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1.5 ${
-                      scope === 'BUSINESS'
-                        ? 'bg-purple-600 text-white shadow-sm'
-                        : 'text-slate-500 dark:text-slate-300 hover:text-purple-500 dark:hover:text-purple-300'
+                      scope === "BUSINESS"
+                        ? "bg-purple-600 text-white shadow-sm"
+                        : "text-slate-500 hover:text-purple-500"
                     }`}
                   >
-                    <Music size={13} className={scope === 'BUSINESS' ? 'text-white' : ''} />
+                    <Music
+                      size={13}
+                      className={scope === "BUSINESS" ? "text-white" : ""}
+                    />
                     <span>🎸 Músico / Carreira</span>
                   </button>
                 </div>
@@ -772,106 +991,158 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             )}
 
             {/* ========================================== */}
-            {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO)      */}
+            {/* VÍNCULO COM SHOWS (EXCLUSIVO MÚSICO) */}
             {/* ========================================== */}
-            {!PERSONAL_ONLY_MODE && scope === 'BUSINESS' && type !== 'transfer' && (
-              <div className="mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/70 space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center">
-                      <Music size={13} />
+            {!PERSONAL_ONLY_MODE &&
+              scope === "BUSINESS" &&
+              type !== "transfer" && (
+                <div className="mx-6 mt-3 p-3.5 rounded-2xl bg-purple-50 border border-purple-200 space-y-2 animate-fade-in ">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 rounded-lg bg-purple-600 text-white flex items-center justify-center">
+                        <Music size={13} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-purple-900">
+                        Vincular ao Show / Evento
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 dark:text-purple-300">
-                      Vincular ao Show / Evento
-                    </span>
+
+                    {activeLinkedShow && (
+                      <span className="text-[9px] font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                        <CheckCircle2 size={11} />
+                        <span>Vinculado</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <select
+                      value={selectedShowId || ""}
+                      onChange={(e) => handleSelectShow(e.target.value)}
+                      className="w-full bg-white border-2 border-purple-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-purple-500 appearance-none pr-8 cursor-pointer"
+                    >
+                      <option value="">
+                        -- Não vincular a nenhum show (
+                        {type === "expense" ? "Despesa Geral" : "Receita Geral"}
+                        ) --
+                      </option>
+                      <option
+                        value="__create_new__"
+                        className="text-purple-600 font-black"
+                      >
+                        + Criar Novo Show / Evento...
+                      </option>
+                      {availableShows.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.contractorName || s.name} (
+                          {new Date(s.date + "T12:00:00").toLocaleDateString(
+                            "pt-BR",
+                          )}
+                          ) - Cachê: R$ {s.totalCache?.toLocaleString("pt-BR")}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                    />
                   </div>
 
                   {activeLinkedShow && (
-                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
-                      <CheckCircle2 size={11} />
-                      <span>Vinculado</span>
-                    </span>
+                    <div className="p-2.5 rounded-xl bg-white/80 border border-purple-100 flex items-center justify-between text-[11px]">
+                      <div>
+                        <p className="font-extrabold text-slate-800">
+                          {activeLinkedShow.contractorName ||
+                            activeLinkedShow.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {new Date(
+                            activeLinkedShow.date + "T12:00:00",
+                          ).toLocaleDateString("pt-BR")}{" "}
+                          • {activeLinkedShow.city || activeLinkedShow.location}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedShowId("")}
+                        className="text-[10px] font-bold text-rose-500 hover:underline"
+                      >
+                        Desvincular
+                      </button>
+                    </div>
                   )}
                 </div>
-
-                <div className="relative">
-                  <select
-                    value={selectedShowId || ''}
-                    onChange={(e) => handleSelectShow(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-800 border-2 border-purple-200 dark:border-purple-700/80 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500 appearance-none pr-8 cursor-pointer"
-                  >
-                    <option value="">-- Não vincular a nenhum show ({type === 'expense' ? 'Despesa Geral' : 'Receita Geral'}) --</option>
-                    <option value="__create_new__" className="text-purple-600 font-black">+ Criar Novo Show / Evento...</option>
-                    {availableShows.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.contractorName || s.name} ({new Date(s.date + 'T12:00:00').toLocaleDateString('pt-BR')}) - Cachê: R$ {s.totalCache?.toLocaleString('pt-BR')}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-
-                {activeLinkedShow && (
-                  <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-purple-100 dark:border-purple-900/60 flex items-center justify-between text-[11px]">
-                    <div>
-                      <p className="font-extrabold text-slate-800 dark:text-white">{activeLinkedShow.contractorName || activeLinkedShow.name}</p>
-                      <p className="text-[10px] text-slate-500">{new Date(activeLinkedShow.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {activeLinkedShow.city || activeLinkedShow.location}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedShowId('')}
-                      className="text-[10px] font-bold text-rose-500 hover:underline"
-                    >
-                      Desvincular
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
 
             {/* ========================================== */}
-            {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA)   */}
+            {/* 2. CAMPO VALOR (DESTAQUE MÁXIMO DA TELA) */}
             {/* ========================================== */}
-            <div className="modal-amount-container mx-6 mt-4 mb-3 py-5 px-4 rounded-3xl bg-slate-50/90 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-800 flex flex-col items-center justify-center relative scroll-mt-6">
-              <span className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 block ${isAmountInvalid ? 'text-rose-500' : 'text-slate-400'}`}>
+            <div className="modal-amount-container mx-6 mt-4 mb-3 py-5 px-4 rounded-3xl bg-slate-50/90 border border-slate-200/70 flex flex-col items-center justify-center relative scroll-mt-6">
+              <span
+                className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 block ${isAmountInvalid ? "text-rose-500" : "text-slate-400"}`}
+              >
                 {loanMode
-                  ? (type === 'income' ? 'Valor da Devolução' : 'Valor do Empréstimo')
-                  : type === 'expense' ? 'Valor da Despesa' : type === 'income' ? 'Valor da Receita' : 'Valor da Transferência'}
+                  ? type === "income"
+                    ? "Valor da Devolução"
+                    : "Valor do Empréstimo"
+                  : type === "expense"
+                    ? "Valor da Despesa"
+                    : type === "income"
+                      ? "Valor da Receita"
+                      : "Valor da Transferência"}
               </span>
 
               <div className="flex items-center justify-center relative w-full py-1.5 overflow-visible">
-                <span className={`text-2xl sm:text-3xl font-black mr-2 shrink-0 leading-normal ${amount ? activeText : 'text-slate-300 dark:text-slate-700'}`}>
+                <span
+                  className={`text-2xl sm:text-3xl font-black mr-2 shrink-0 leading-normal ${amount ? activeText : "text-slate-300"}`}
+                >
                   R$
                 </span>
-                <input 
-                  type="number" 
-                  step="any" 
-                  min="0" 
-                  value={amount} 
-                  onChange={(e) => setAmount(e.target.value)} 
-                  className={`modal-amount-input w-full bg-transparent text-center text-4xl sm:text-5xl font-black leading-normal py-2 outline-none placeholder:text-slate-200 dark:placeholder:text-slate-800 transition-colors scroll-mt-8 ${activeText}`}
-                  placeholder="0,00" 
-                  required 
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className={`modal-amount-input w-full bg-transparent text-center text-4xl sm:text-5xl font-black leading-normal py-2 outline-none placeholder:text-slate-200 transition-colors scroll-mt-8 ${activeText}`}
+                  placeholder="0,00"
+                  required
                   autoFocus={!transaction}
                 />
               </div>
 
               {/* Tag de interpretação de valor do texto */}
               {parsedTextInfo && (
-                <div className="mt-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800 flex items-center space-x-1 animate-fade-in">
+                <div className="mt-2 text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 flex items-center space-x-1 animate-fade-in ">
                   <Zap size={12} />
-                  <span>Valor extraído do texto: R$ {parsedTextInfo.amount.toFixed(2).replace('.', ',')}</span>
+                  <span>
+                    Valor extraído do texto: R${" "}
+                    {parsedTextInfo.amount.toFixed(2).replace(".", ", ")}
+                  </span>
                 </div>
               )}
 
               {/* Alerta de Impacto Financeiro */}
               {impact && (
-                <div className="mt-3 w-full p-3.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-start space-x-2.5 animate-pulse">
-                  <AlertTriangle className="text-rose-500 shrink-0 mt-0.5" size={18} />
+                <div className="mt-3 w-full p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start space-x-2.5 animate-pulse">
+                  <AlertTriangle
+                    className="text-rose-500 shrink-0 mt-0.5"
+                    size={18}
+                  />
                   <div className="text-left">
-                    <p className="text-[11px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Comprometimento de Saldo</p>
-                    <p className="text-[10px] font-medium text-rose-500 dark:text-rose-300 leading-tight mt-0.5">
-                      Esta compra compromete a conta <span className="font-bold underline">{impact.compromisedTransaction.description}</span> do dia {new Date(impact.compromisedTransaction.date + 'T12:00:00').toLocaleDateString('pt-BR')}.
+                    <p className="text-[11px] font-black text-rose-600 uppercase tracking-tight">
+                      Comprometimento de Saldo
+                    </p>
+                    <p className="text-[10px] font-medium text-rose-500 leading-tight mt-0.5">
+                      Esta compra compromete a conta{" "}
+                      <span className="font-bold underline">
+                        {impact.compromisedTransaction.description}
+                      </span>{" "}
+                      do dia{" "}
+                      {new Date(
+                        impact.compromisedTransaction.date + "T12:00:00",
+                      ).toLocaleDateString("pt-BR")}
+                      .
                     </p>
                   </div>
                 </div>
@@ -879,110 +1150,140 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             </div>
 
             {/* ========================================== */}
-            {/* 3. CAMPO DESCRIÇÃO ("O QUE FOI?")          */}
+            {/* 3. CAMPO DESCRIÇÃO ("O QUE FOI? ") */}
             {/* ========================================== */}
             <div className="px-6 space-y-5">
-              
               <div className="relative">
-                <input 
-                  type="text" 
-                  value={description} 
-                  onChange={handleDescriptionChange} 
-                  className="w-full bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200/80 dark:border-slate-700/80 focus:border-indigo-500 dark:focus:border-indigo-500 px-4 py-4 text-base font-bold text-slate-800 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-2xl transition-all shadow-sm"
+                <input
+                  type="text"
+                  value={description}
+                  onChange={handleDescriptionChange}
+                  className="w-full bg-slate-50 border-2 border-slate-200/80 focus:border-indigo-500 px-4 py-4 text-base font-bold text-slate-800 outline-none placeholder:text-slate-400 rounded-2xl transition-all shadow-sm"
                   placeholder={
                     loanMode
-                      ? (type === 'income' ? 'Devolução (ex: Devolução · Mãe)' : 'Empréstimo (ex: Empréstimo · Mãe)')
-                      : type === 'expense'
+                      ? type === "income"
+                        ? "Devolução (ex: Devolução · Mãe)"
+                        : "Empréstimo (ex: Empréstimo · Mãe)"
+                      : type === "expense"
                         ? "O que foi? (ex: Almoço, Gasolina 100)"
-                        : type === 'income'
-                          ? (scope === 'BUSINESS' ? "Cachê / Contratante (ex: Bar do Zé, Casamento Pedro)" : "De onde veio? (ex: Pró-Labore, Salário)")
+                        : type === "income"
+                          ? scope === "BUSINESS"
+                            ? "Cachê / Contratante (ex: Bar do Zé, Casamento Pedro)"
+                            : "De onde veio? (ex: Pró-Labore, Salário)"
                           : "Descrição da transferência"
                   }
-                  required 
+                  required
                 />
-                
-                {type !== 'transfer' && !loanMode && !transaction && description.length >= 3 && (
-                  <button 
-                    type="button" 
-                    onClick={handleSmartFillWithAI} 
-                    disabled={isPredicting} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition disabled:opacity-30 active:scale-95 flex items-center space-x-1"
-                    title="Análise com IA"
-                  >
-                    {isPredicting ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                  </button>
-                )}
+
+                {type !== "transfer" &&
+                  !loanMode &&
+                  !transaction &&
+                  description.length >= 3 && (
+                    <button
+                      type="button"
+                      onClick={handleSmartFillWithAI}
+                      disabled={isPredicting}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-500 hover:bg-indigo-50 rounded-xl transition disabled:opacity-30 active:scale-95 flex items-center space-x-1"
+                      title="Análise com IA"
+                    >
+                      {isPredicting ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={18} />
+                      )}
+                    </button>
+                  )}
               </div>
 
               {/* ========================================== */}
               {/* 4. CARD DE SUGESTÃO INTELIGENTE & HISTÓRICO*/}
               {/* ========================================== */}
-              {smartSuggestion && smartSuggestion.matchCount > 0 && type !== 'transfer' && !loanMode && (
-                <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 space-y-2.5 animate-fade-in">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <History size={15} className="text-indigo-600 dark:text-indigo-400" />
-                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-                        Sugestão pelo Histórico ({smartSuggestion.matchCount}x)
+              {smartSuggestion &&
+                smartSuggestion.matchCount > 0 &&
+                type !== "transfer" &&
+                !loanMode && (
+                  <div className="p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200/80 space-y-2.5 animate-fade-in ">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <History size={15} className="text-indigo-600" />
+                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700">
+                          Sugestão pelo Histórico ({smartSuggestion.matchCount}
+                          x)
+                        </span>
+                      </div>
+
+                      <span className="text-[9px] font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                        <CheckCircle2 size={11} />
+                        <span>Pré-preenchido</span>
                       </span>
                     </div>
 
-                    <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center space-x-1">
-                      <CheckCircle2 size={11} />
-                      <span>Pré-preenchido</span>
-                    </span>
-                  </div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {smartSuggestion.categoryName && (
+                        <span className="text-[11px] font-bold text-slate-800 bg-white px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 flex items-center space-x-1">
+                          <span className="text-indigo-500 font-extrabold">
+                            Categoria:
+                          </span>
+                          <span>{smartSuggestion.categoryName}</span>
+                        </span>
+                      )}
 
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {smartSuggestion.categoryName && (
-                      <span className="text-[11px] font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700 flex items-center space-x-1">
-                        <span className="text-indigo-500 font-extrabold">Categoria:</span>
-                        <span>{smartSuggestion.categoryName}</span>
+                      {smartSuggestion.accountName && (
+                        <span className="text-[11px] font-bold text-slate-800 bg-white px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 flex items-center space-x-1">
+                          <span className="text-indigo-500 font-extrabold">
+                            Conta:
+                          </span>
+                          <span>{smartSuggestion.accountName}</span>
+                        </span>
+                      )}
+
+                      <span className="text-[11px] font-bold text-slate-800 bg-white px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 flex items-center space-x-1">
+                        <span className="text-indigo-500 font-extrabold">
+                          Status:
+                        </span>
+                        <span>
+                          {status === "paid"
+                            ? type === "expense"
+                              ? "Pago"
+                              : "Recebido"
+                            : "Pendente"}
+                        </span>
                       </span>
-                    )}
-
-                    {smartSuggestion.accountName && (
-                      <span className="text-[11px] font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700 flex items-center space-x-1">
-                        <span className="text-indigo-500 font-extrabold">Conta:</span>
-                        <span>{smartSuggestion.accountName}</span>
-                      </span>
-                    )}
-
-                    <span className="text-[11px] font-bold text-slate-800 dark:text-white bg-white dark:bg-slate-800 px-3 py-1 rounded-xl shadow-sm border border-slate-200/60 dark:border-slate-700 flex items-center space-x-1">
-                      <span className="text-indigo-500 font-extrabold">Status:</span>
-                      <span>{status === 'paid' ? (type === 'expense' ? 'Pago' : 'Recebido') : 'Pendente'}</span>
-                    </span>
-                  </div>
-
-                  {smartSuggestion.isLikelyFixed && (
-                    <div className="pt-1 flex items-center justify-between text-[10px] text-indigo-700 dark:text-indigo-300 font-medium">
-                      <span>Esta despesa é frequentemente fixa/recorrente.</span>
-                      <button
-                        type="button"
-                        onClick={() => setIsFixed(!isFixed)}
-                        className={`px-2.5 py-1 rounded-lg font-black uppercase text-[9px] border transition ${isFixed ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-700'}`}
-                      >
-                        {isFixed ? '✓ Recorrente' : '+ Marcar Recorrente'}
-                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {smartSuggestion.isLikelyFixed && (
+                      <div className="pt-1 flex items-center justify-between text-[10px] text-indigo-700 font-medium">
+                        <span>
+                          Esta despesa é frequentemente fixa/recorrente.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsFixed(!isFixed)}
+                          className={`px-2.5 py-1 rounded-lg font-black uppercase text-[9px] border transition ${isFixed ? "bg-emerald-500 text-black border-emerald-500" : "bg-white text-indigo-600 border-indigo-300"}`}
+                        >
+                          {isFixed ? "✓ Recorrente" : "+ Marcar Recorrente"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
               {/* ========================================== */}
-              {/* 5. CATEGORIAS RECENTES & BOTÃO VER TODAS   */}
+              {/* 5. CATEGORIAS RECENTES & BOTÃO VER TODAS */}
               {/* ========================================== */}
-              {type !== 'transfer' && !loanMode && (
+              {type !== "transfer" && !loanMode && (
                 <div className="space-y-2.5">
                   <div className="flex justify-between items-center px-1">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {scope === 'BUSINESS' ? 'Categorias do Músico / Empresa' : 'Categorias Pessoais'}
+                      {scope === "BUSINESS"
+                        ? "Categorias do Músico / Empresa"
+                        : "Categorias Pessoais"}
                     </span>
 
                     <button
                       type="button"
                       onClick={() => setShowAllCategoriesModal(true)}
-                      className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
+                      className="text-[11px] font-black text-indigo-600 hover:underline flex items-center space-x-1"
                     >
                       <span>Ver todas</span>
                       <ChevronDown size={14} className="-rotate-90" />
@@ -1002,123 +1303,182 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               )}
 
               {/* ========================================== */}
-              {/* 6. CAMPO CONTA ORIGEM & DESTINO            */}
+              {/* 6. CAMPO CONTA ORIGEM & DESTINO */}
               {/* ========================================== */}
               <div className="space-y-2.5">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block">
-                  {type === 'transfer' ? 'Contas da Transferência' : 'Conta Utilizada'}
+                  {type === "transfer"
+                    ? "Contas da Transferência"
+                    : "Conta Utilizada"}
                 </span>
 
                 <div className="grid grid-cols-1 gap-2.5">
                   {/* Conta Origem */}
-                  <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-2xl flex items-center relative border border-slate-200/80 dark:border-slate-700/80">
-                    <select 
-                      value={accountId} 
-                      onChange={(e) => handleSelectAccount(e.target.value)} 
-                      className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 dark:text-white appearance-none pl-10 pr-8 py-3 cursor-pointer"
+                  <div className="bg-slate-50 p-2 rounded-2xl flex items-center relative border border-slate-200/80">
+                    <select
+                      value={accountId}
+                      onChange={(e) => handleSelectAccount(e.target.value)}
+                      className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 appearance-none pl-10 pr-8 py-3 cursor-pointer"
                     >
-                      {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </option>
+                      ))}
                     </select>
                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                       <Wallet size={18} />
                     </div>
-                    <ChevronDown size={16} className="absolute right-3 text-slate-400 pointer-events-none" />
+                    <ChevronDown
+                      size={16}
+                      className="absolute right-3 text-slate-400 pointer-events-none"
+                    />
                     <span className="absolute top-1 left-10 text-[8px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">
-                      {type === 'transfer' ? 'De (Origem)' : 'Carteira / Conta'}
+                      {type === "transfer" ? "De (Origem)" : "Carteira / Conta"}
                     </span>
                   </div>
 
                   {/* Conta Destino (Apenas para Transferência) */}
-                  {type === 'transfer' && (
-                    <div className="bg-slate-50 dark:bg-slate-800/80 p-2 rounded-2xl flex items-center relative border-2 border-indigo-200 dark:border-indigo-900/50">
-                      <select 
-                        value={destinationAccountId} 
-                        onChange={(e) => setDestinationAccountId(e.target.value)} 
-                        className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 dark:text-white appearance-none pl-10 pr-8 py-3 cursor-pointer"
+                  {type === "transfer" && (
+                    <div className="bg-slate-50 p-2 rounded-2xl flex items-center relative border-2 border-indigo-200">
+                      <select
+                        value={destinationAccountId}
+                        onChange={(e) =>
+                          setDestinationAccountId(e.target.value)
+                        }
+                        className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 appearance-none pl-10 pr-8 py-3 cursor-pointer"
                       >
                         <option value="">Selecione o destino...</option>
-                        {accounts.filter(a => a.id !== accountId).map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                        {accounts
+                          .filter((a) => a.id !== accountId)
+                          .map((acc) => (
+                            <option key={acc.id} value={acc.id}>
+                              {acc.name}
+                            </option>
+                          ))}
                       </select>
                       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none">
                         <ArrowRightLeft size={18} />
                       </div>
-                      <ChevronDown size={16} className="absolute right-3 text-slate-400 pointer-events-none" />
-                      <span className="absolute top-1 left-10 text-[8px] font-black text-indigo-500 uppercase tracking-widest pointer-events-none">Para (Destino)</span>
+                      <ChevronDown
+                        size={16}
+                        className="absolute right-3 text-slate-400 pointer-events-none"
+                      />
+                      <span className="absolute top-1 left-10 text-[8px] font-black text-indigo-500 uppercase tracking-widest pointer-events-none">
+                        Para (Destino)
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* ========================================== */}
-              {/* 7. PROGRESSIVE DISCLOSURE: + MAIS OPÇÕES   */}
+              {/* 7. PROGRESSIVE DISCLOSURE: + MAIS OPÇÕES */}
               {/* ========================================== */}
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => setShowMoreOptions(!showMoreOptions)}
-                  className="w-full py-3 rounded-2xl bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 border border-slate-200/50 dark:border-slate-700/50 active:scale-98"
+                  className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-2 border border-slate-200/50 active:scale-98"
                 >
                   <SlidersHorizontal size={14} />
-                  <span>{showMoreOptions ? '- Ocultar Detalhes' : '+ Mais Opções (Data, Status, Recorrência...)'}</span>
+                  <span>
+                    {showMoreOptions
+                      ? "- Ocultar Detalhes"
+                      : "+ Mais Opções (Data, Status, Recorrência...)"}
+                  </span>
                 </button>
 
                 {showMoreOptions && (
-                  <div className="mt-4 space-y-4 animate-fade-in p-4 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-800">
-                    
+                  <div className="mt-4 space-y-4 animate-fade-in p-4 bg-slate-50/80 rounded-2xl border border-slate-200/60">
                     {/* Data e Status Grid */}
                     <div className="grid grid-cols-2 gap-3">
-                      
                       {/* Data */}
-                      <div 
+                      <div
                         onClick={() => setIsCalendarOpen(true)}
-                        className="bg-white dark:bg-slate-800 p-3.5 rounded-2xl flex flex-col justify-center cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition"
+                        className="bg-white p-3.5 rounded-2xl flex flex-col justify-center cursor-pointer border border-slate-200 hover:border-indigo-400 transition"
                       >
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center">
-                          <CalendarIcon size={12} className="mr-1 text-indigo-500"/> Data
+                          <CalendarIcon
+                            size={12}
+                            className="mr-1 text-indigo-500"
+                          />{" "}
+                          Data
                         </span>
-                        <span className="text-xs font-black text-slate-800 dark:text-white truncate">
-                          {new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', {day: '2-digit', month: 'short', year: 'numeric'})}
+                        <span className="text-xs font-black text-slate-800 truncate">
+                          {new Date(date + "T12:00:00").toLocaleDateString(
+                            "pt-BR",
+                            { day: "2-digit", month: "short", year: "numeric" },
+                          )}
                         </span>
                       </div>
 
                       {/* Status */}
-                      <div className="bg-white dark:bg-slate-800 p-2 rounded-2xl flex items-center relative border border-slate-200 dark:border-slate-700">
-                        <select 
-                          value={status} 
-                          onChange={(e) => setStatus(e.target.value as TransactionStatus)} 
-                          className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 dark:text-white appearance-none px-3 pt-3 cursor-pointer"
+                      <div className="bg-white p-2 rounded-2xl flex items-center relative border border-slate-200">
+                        <select
+                          value={status}
+                          onChange={(e) =>
+                            setStatus(e.target.value as TransactionStatus)
+                          }
+                          className="w-full h-full bg-transparent outline-none font-black text-xs text-slate-800 appearance-none px-3 pt-3 cursor-pointer"
                         >
-                          <option value="paid">{type === 'expense' ? 'Pago' : type === 'transfer' ? 'Realizado' : 'Recebido'}</option>
-                          <option value="pending">{type === 'expense' ? 'Pendente' : 'Previsto'}</option>
+                          <option value="paid">
+                            {type === "expense"
+                              ? "Pago"
+                              : type === "transfer"
+                                ? "Realizado"
+                                : "Recebido"}
+                          </option>
+                          <option value="pending">
+                            {type === "expense" ? "Pendente" : "Previsto"}
+                          </option>
                         </select>
-                        <ChevronDown size={14} className="absolute right-3 text-slate-400 pointer-events-none" />
-                        <span className="absolute top-1.5 left-3 text-[8px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">Status</span>
+                        <ChevronDown
+                          size={14}
+                          className="absolute right-3 text-slate-400 pointer-events-none"
+                        />
+                        <span className="absolute top-1.5 left-3 text-[8px] font-black text-slate-400 uppercase tracking-widest pointer-events-none">
+                          Status
+                        </span>
                       </div>
-
                     </div>
 
                     {/* Recorrência / Lembrete */}
-                    {!transaction && !transaction?.debtId && type !== 'transfer' && !loanMode && (
-                      <div className="flex space-x-3 pt-1">
-                        <button 
-                          type="button"
-                          onClick={() => setIsFixed(!isFixed)}
-                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${isFixed ? 'border-emerald-500 bg-emerald-500 text-black font-black shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
-                        >
-                          <Repeat size={16} className={isFixed ? 'text-black' : ''} />
-                          <span className="text-[10px] font-black uppercase">Fixa Mensal</span>
-                        </button>
-                        
-                        <button 
-                          type="button"
-                          onClick={handleReminderToggle}
-                          className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${hasReminder ? 'border-emerald-500 bg-emerald-500 text-black font-black shadow-sm' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}
-                        >
-                          {hasReminder ? <BellRing size={16} className="text-black" /> : <Bell size={16} />}
-                          <span className="text-[10px] font-black uppercase">Lembrete</span>
-                        </button>
-                      </div>
-                    )}
+                    {!transaction &&
+                      !transaction?.debtId &&
+                      type !== "transfer" &&
+                      !loanMode && (
+                        <div className="flex space-x-3 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setIsFixed(!isFixed)}
+                            className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${isFixed ? "border-emerald-500 bg-emerald-500 text-black font-black shadow-sm" : "border-slate-200 bg-white text-slate-500 hover:text-slate-900"}`}
+                          >
+                            <Repeat
+                              size={16}
+                              className={isFixed ? "text-black" : ""}
+                            />
+                            <span className="text-[10px] font-black uppercase">
+                              Fixa Mensal
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleReminderToggle}
+                            className={`flex-1 py-3 px-3 rounded-2xl border-2 flex items-center justify-center space-x-2 transition-all ${hasReminder ? "border-emerald-500 bg-emerald-500 text-black font-black shadow-sm" : "border-slate-200 bg-white text-slate-500 hover:text-slate-900"}`}
+                          >
+                            {hasReminder ? (
+                              <BellRing size={16} className="text-black" />
+                            ) : (
+                              <Bell size={16} />
+                            )}
+                            <span className="text-[10px] font-black uppercase">
+                              Lembrete
+                            </span>
+                          </button>
+                        </div>
+                      )}
 
                     {/* Data/Hora do Lembrete */}
                     {hasReminder && (
@@ -1126,19 +1486,17 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">
                           Data e Hora do Lembrete
                         </label>
-                        <input 
-                          type="datetime-local" 
-                          value={reminderDate} 
-                          onChange={(e) => setReminderDate(e.target.value)} 
-                          className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 outline-none font-bold" 
+                        <input
+                          type="datetime-local"
+                          value={reminderDate}
+                          onChange={(e) => setReminderDate(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none font-bold"
                         />
                       </div>
                     )}
-
                   </div>
                 )}
               </div>
-
             </div>
           </form>
 
@@ -1147,9 +1505,9 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
             <div className="absolute bottom-24 left-4 right-4 z-40 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center space-x-2 animate-fade-in shadow-xl backdrop-blur-md">
               <AlertTriangle size={16} className="shrink-0 text-rose-500" />
               <span className="flex-1">{validationError}</span>
-              <button 
-                type="button" 
-                onClick={() => setValidationError(null)} 
+              <button
+                type="button"
+                onClick={() => setValidationError(null)}
                 className="p-1 rounded-lg hover:bg-rose-500/20 text-rose-300"
               >
                 <X size={14} />
@@ -1158,68 +1516,91 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
           )}
 
           {/* ========================================== */}
-          {/* 8. BOTÃO CONFIRMAR (FIXO NO BOTTOM)        */}
+          {/* 8. BOTÃO CONFIRMAR (FIXO NO BOTTOM) */}
           {/* ========================================== */}
-          <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-900 dark:via-slate-900 z-30 flex items-center space-x-3 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-white via-white to-transparent z-30 flex items-center space-x-3 border-t border-slate-100">
             {transaction && (
-              <button 
-                type="button" 
-                onClick={handleDelete} 
-                className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition active:scale-90 shrink-0 border border-rose-200/60 dark:border-rose-900/40"
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-100 transition active:scale-90 shrink-0 border border-rose-200/60"
                 title="Excluir Lançamento"
               >
                 <Trash2 size={22} />
               </button>
             )}
 
-            <button 
-              onClick={handleSubmit} 
+            <button
+              onClick={handleSubmit}
               disabled={isAmountInvalid}
-              className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-2 ${isAmountInvalid ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed' : `${activeBg} ${activeBtnText} hover:opacity-90 shadow-indigo-500/20`}`}
+              className={`flex-1 h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-2 ${isAmountInvalid ? "bg-slate-300 text-slate-500 cursor-not-allowed" : `${activeBg} ${activeBtnText} hover:opacity-90 shadow-indigo-500/20`}`}
             >
-              <Check size={20} strokeWidth={3} className={isAmountInvalid ? '' : activeBtnText} />
-              <span>{transaction ? 'Salvar Alterações' : 'Confirmar e Salvar'}</span>
+              <Check
+                size={20}
+                strokeWidth={3}
+                className={isAmountInvalid ? "" : activeBtnText}
+              />
+              <span>
+                {transaction ? "Salvar Alterações" : "Confirmar e Salvar"}
+              </span>
             </button>
           </div>
 
           {/* Modal de Confirmação de Exclusão */}
           {showDeleteConfirm && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm animate-fade-in p-6 text-center">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/95 backdrop-blur-sm animate-fade-in p-6 text-center">
               <div>
-                <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Trash2 size={28} />
                 </div>
-                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-1">Excluir Lançamento?</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">Essa ação não pode ser desfeita.</p>
+                <h3 className="text-xl font-black text-slate-800 mb-1">
+                  Excluir Lançamento?
+                </h3>
+                <p className="text-xs text-slate-500 mb-6 font-medium">
+                  Essa ação não pode ser desfeita.
+                </p>
                 <div className="flex space-x-3 justify-center">
-                  <button onClick={() => setShowDeleteConfirm(false)} className="px-5 py-3 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 rounded-xl text-xs uppercase">Cancelar</button>
-                  <button onClick={confirmDelete} className="px-6 py-3 text-white font-bold bg-rose-600 rounded-xl text-xs uppercase shadow-lg">Excluir</button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-5 py-3 text-slate-500 font-bold bg-slate-100 rounded-xl text-xs uppercase"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="px-6 py-3 text-white font-bold bg-rose-600 rounded-xl text-xs uppercase shadow-lg"
+                  >
+                    Excluir
+                  </button>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
 
       {/* ========================================== */}
-      {/* MODAL: VER TODAS AS CATEGORIAS             */}
+      {/* MODAL: VER TODAS AS CATEGORIAS */}
       {/* ========================================== */}
       {showAllCategoriesModal && (
-        <div className="fixed inset-0 bg-slate-950/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md h-[80dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-slide-up border border-slate-200 dark:border-slate-800">
-            
+        <div className="fixed inset-0 bg-slate-950/80 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md animate-fade-in ">
+          <div className="bg-white w-full max-w-md h-[80dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl flex flex-col animate-slide-up border border-slate-200">
             <div className="modal-header-safe flex justify-between items-center gap-3 mb-4">
               <div className="pr-4 min-w-0">
                 <span className="text-[10px] font-black uppercase text-indigo-500 tracking-wider block truncate">
-                  {scope === 'BUSINESS' ? 'Categorias do Músico / Empresa' : 'Categorias Pessoais'} • {type === 'expense' ? 'Despesas' : 'Receitas'}
+                  {scope === "BUSINESS"
+                    ? "Categorias do Músico / Empresa"
+                    : "Categorias Pessoais"}{" "}
+                  • {type === "expense" ? "Despesas" : "Receitas"}
                 </span>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white truncate">Selecione uma Categoria</h3>
+                <h3 className="text-lg font-black text-slate-800 truncate">
+                  Selecione uma Categoria
+                </h3>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowAllCategoriesModal(false)}
-                className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-white shrink-0"
+                className="p-2.5 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 shrink-0"
               >
                 <X size={18} />
               </button>
@@ -1232,9 +1613,12 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                 placeholder="Pesquisar categoria..."
                 value={categorySearchTerm}
                 onChange={(e) => setCategorySearchTerm(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
               />
-              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              />
             </div>
 
             {/* Grid Scrollável de Categorias */}
@@ -1251,38 +1635,41 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                 transactionType={type}
               />
             </div>
-
           </div>
         </div>
       )}
 
       {/* ========================================== */}
-      {/* MODAL: CRIAR NOVO SHOW RÁPIDO              */}
+      {/* MODAL: CRIAR NOVO SHOW RÁPIDO */}
       {/* ========================================== */}
       {showQuickCreateShowModal && (
-        <div className="fixed inset-0 bg-slate-950/85 z-[130] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
+        <div className="fixed inset-0 bg-slate-950/85 z-[130] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in ">
+          <div className="bg-white rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 animate-scale-in ">
             <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center space-x-2.5 pr-4 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
                   <Music size={20} />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white truncate">Novo Show / Evento</h3>
-                  <p className="text-[10px] text-slate-500 font-bold truncate">Cadastre e vincule a esta receita</p>
+                  <h3 className="text-sm font-black text-slate-800 truncate">
+                    Novo Show / Evento
+                  </h3>
+                  <p className="text-[10px] text-slate-500 font-bold truncate">
+                    Cadastre e vincule a esta receita
+                  </p>
                 </div>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowQuickCreateShowModal(false)}
-                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {quickShowError && (
-              <div className="mb-3 p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center space-x-2 animate-fade-in">
+              <div className="mb-3 p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-bold flex items-center space-x-2 animate-fade-in ">
                 <AlertTriangle size={14} className="shrink-0 text-rose-500" />
                 <span className="flex-1">{quickShowError}</span>
               </div>
@@ -1293,12 +1680,12 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                 <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1">
                   Nome do Contratante / Evento *
                 </label>
-                <input 
+                <input
                   type="text"
                   value={quickShowContractor}
                   onChange={(e) => setQuickShowContractor(e.target.value)}
                   placeholder="Ex: Bar do Zé, Casamento Pedro & Ana"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none focus:border-purple-500"
                   required
                 />
               </div>
@@ -1306,42 +1693,45 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1 flex items-center">
-                    <Calendar size={11} className="mr-1 text-purple-500" /> Data *
+                    <Calendar size={11} className="mr-1 text-purple-500" /> Data
+                    *
                   </label>
-                  <input 
+                  <input
                     type="date"
                     value={quickShowDate}
                     onChange={(e) => setQuickShowDate(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 outline-none focus:border-purple-500"
                     required
                   />
                 </div>
 
                 <div>
                   <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1 flex items-center">
-                    <DollarSign size={11} className="mr-1 text-purple-500" /> Cachê Total (R$)
+                    <DollarSign size={11} className="mr-1 text-purple-500" />{" "}
+                    Cachê Total (R$)
                   </label>
-                  <input 
+                  <input
                     type="number"
                     step="any"
                     value={quickShowTotalCache}
                     onChange={(e) => setQuickShowTotalCache(e.target.value)}
                     placeholder="1500"
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 outline-none focus:border-purple-500"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1 flex items-center">
-                  <MapPin size={11} className="mr-1 text-purple-500" /> Local / Casa de Show
+                  <MapPin size={11} className="mr-1 text-purple-500" /> Local /
+                  Casa de Show
                 </label>
-                <input 
+                <input
                   type="text"
                   value={quickShowLocation}
                   onChange={(e) => setQuickShowLocation(e.target.value)}
                   placeholder="Ex: Av. Paulista, 1000"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-white outline-none focus:border-purple-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-purple-500"
                 />
               </div>
 
@@ -1349,7 +1739,7 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
                 <button
                   type="button"
                   onClick={() => setShowQuickCreateShowModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold uppercase"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold uppercase"
                 >
                   Cancelar
                 </button>
@@ -1366,24 +1756,61 @@ export const TransactionForm: React.FC<Props> = ({ onClose, initialType = 'expen
       )}
 
       {/* Calendar Modal */}
-      <CalendarModal 
-        isOpen={isCalendarOpen} 
-        onClose={() => setIsCalendarOpen(false)} 
-        selectedDate={date} 
-        onSelect={handleDateSelect} 
+      <CalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        selectedDate={date}
+        onSelect={handleDateSelect}
       />
 
       {/* Recurring Edit Modal */}
       {showRecurringEditModal && (
-        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in text-center">
-            <div className="flex justify-center mb-4 text-indigo-600"><Layers size={48} /></div>
-            <h3 className="text-lg font-black text-slate-800 dark:text-white mb-1">Editar Recorrência</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 font-medium">Este é um lançamento recorrente. Como deseja aplicar as mudanças?</p>
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in ">
+          <div className="bg-white rounded-[2.5rem] p-6 w-full max-w-sm shadow-2xl border border-slate-200 animate-scale-in text-center">
+            <div className="flex justify-center mb-4 text-indigo-600">
+              <Layers size={48} />
+            </div>
+            <h3 className="text-lg font-black text-slate-800 mb-1">
+              Editar Recorrência
+            </h3>
+            <p className="text-xs text-slate-500 mb-6 font-medium">
+              Este é um lançamento recorrente. Como deseja aplicar as mudanças?
+            </p>
             <div className="space-y-2">
-              <button onClick={() => handleConfirmRecurringUpdate(false)} className="w-full py-3 px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"><Copy size={18} className="text-slate-500" /><div><span className="block text-xs font-bold text-slate-800 dark:text-white">Apenas esta</span><span className="block text-[9px] text-slate-400 font-bold uppercase">Somente a atual</span></div></button>
-              <button onClick={() => handleConfirmRecurringUpdate(true)} className="w-full py-3 px-4 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"><Layers size={18} className="text-indigo-600" /><div><span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100">Esta e futuras</span><span className="block text-[9px] text-indigo-400 font-bold uppercase">Daqui para frente</span></div></button>
-              <button onClick={() => setShowRecurringEditModal(false)} className="w-full py-3 text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest mt-1">Cancelar</button>
+              <button
+                onClick={() => handleConfirmRecurringUpdate(false)}
+                className="w-full py-3 px-4 bg-slate-50 border border-slate-200 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"
+              >
+                <Copy size={18} className="text-slate-500" />
+                <div>
+                  <span className="block text-xs font-bold text-slate-800">
+                    Apenas esta
+                  </span>
+                  <span className="block text-[9px] text-slate-400 font-bold uppercase">
+                    Somente a atual
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={() => handleConfirmRecurringUpdate(true)}
+                className="w-full py-3 px-4 bg-indigo-50 border border-indigo-200 hover:border-indigo-500 rounded-2xl flex items-center space-x-3 text-left"
+              >
+                <Layers size={18} className="text-indigo-600" />
+                <div>
+                  <span className="block text-xs font-bold text-indigo-900">
+                    Esta e futuras
+                  </span>
+                  <span className="block text-[9px] text-indigo-400 font-bold uppercase">
+                    Daqui para frente
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={() => setShowRecurringEditModal(false)}
+                className="w-full py-3 text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest mt-1"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

@@ -1,15 +1,45 @@
-import React, { useState, useMemo } from 'react';
-import { Show, Transaction } from '../../types';
-import { useFinance } from '../../context/FinanceContext';
-import { getShowFinancialSummary, auditShowTransactionsAndExtracts, ShowAuditResult } from '../../services/showFinanceSyncService';
-import { consolidateCareerExpenses } from '../../services/financeAggregator';
-import { generateUUID } from '../../services/uuidHelper';
-import { 
-  Music, TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, 
-  Percent, Award, Calendar, BarChart3, PieChart, Sparkles, 
-  MapPin, Users, Fuel, Briefcase, ChevronRight, CheckCircle2, Clock,
-  ShieldCheck, Link2, AlertCircle, Eye, EyeOff, Check, X, ArrowRight, ExternalLink, HelpCircle, CreditCard, Tag
-} from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import { Show, Transaction } from "../../types";
+import { useFinance } from "../../context/FinanceContext";
+import {
+  getShowFinancialSummary,
+  auditShowTransactionsAndExtracts,
+  ShowAuditResult,
+} from "../../services/showFinanceSyncService";
+import { consolidateCareerExpenses } from "../../services/financeAggregator";
+import { generateUUID } from "../../services/uuidHelper";
+import {
+  Music,
+  TrendingUp,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
+  Percent,
+  Award,
+  Calendar,
+  BarChart3,
+  PieChart,
+  Sparkles,
+  MapPin,
+  Users,
+  Fuel,
+  Briefcase,
+  ChevronRight,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  Link2,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Check,
+  X,
+  ArrowRight,
+  ExternalLink,
+  HelpCircle,
+  CreditCard,
+  Tag,
+} from "lucide-react";
 
 interface Props {
   shows: Show[];
@@ -22,18 +52,25 @@ export const PerformanceDashboard: React.FC<Props> = ({
   shows,
   transactions,
   onSelectShow,
-  onOpenCreateShow
+  onOpenCreateShow,
 }) => {
   const { isBlurred, updateTransaction, updateShow, debts } = useFinance();
-  const [timeRange, setTimeRange] = useState<'all' | '3m' | '6m' | '12m'>('all');
+  const [timeRange, setTimeRange] = useState<"all" | "3m" | "6m" | "12m">(
+    "all",
+  );
   const [activeChartPoint, setActiveChartPoint] = useState<number | null>(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
-  const [auditTab, setAuditTab] = useState<'matches' | 'shows' | 'excluded'>('matches');
+  const [auditTab, setAuditTab] = useState<"matches" | "shows" | "excluded">(
+    "matches",
+  );
   const [dismissedTxIds, setDismissedTxIds] = useState<Set<string>>(new Set());
 
   const formatCurrency = (val: number) => {
-    if (isBlurred) return 'R$ •••••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    if (isBlurred) return "R$ •••••";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   const currentDate = new Date();
@@ -42,15 +79,23 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
   // Generate Month list based on selected time range
   const monthsData = useMemo(() => {
-    const count = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : 12;
-    const list: { monthKey: string; label: string; year: number; month: number }[] = [];
+    const count = timeRange === "3m" ? 3 : timeRange === "6m" ? 6 : 12;
+    const list: {
+      monthKey: string;
+      label: string;
+      year: number;
+      month: number;
+    }[] = [];
 
     for (let i = count - 1; i >= 0; i--) {
       const d = new Date(currentYear, currentMonthIdx - i, 1);
       const y = d.getFullYear();
       const m = d.getMonth() + 1;
-      const key = `${y}-${String(m).padStart(2, '0')}`;
-      const label = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+      const key = `${y}-${String(m).padStart(2, "0")}`;
+      const label = d
+        .toLocaleDateString("pt-BR", { month: "short" })
+        .replace(".", "")
+        .toUpperCase();
       list.push({ monthKey: key, label, year: y, month: m });
     }
     return list;
@@ -59,7 +104,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
   // Deduplicate shows by ID so each show is processed a SINGLE TIME
   const uniqueShows = useMemo(() => {
     const map = new Map<string, Show>();
-    (Array.isArray(shows) ? shows : []).forEach(s => {
+    (Array.isArray(shows) ? shows : []).forEach((s) => {
       if (s && s.id && !map.has(s.id)) {
         map.set(s.id, s);
       }
@@ -69,52 +114,67 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
   // Auditoria Estrita de Cachês e Extratos Bancários
   const auditResult = useMemo(() => {
-    return auditShowTransactionsAndExtracts(uniqueShows, Array.isArray(transactions) ? transactions : []);
+    return auditShowTransactionsAndExtracts(
+      uniqueShows,
+      Array.isArray(transactions) ? transactions : [],
+    );
   }, [uniqueShows, transactions]);
 
   const activeMatches = useMemo(() => {
-    return auditResult.suggestedMatches.filter(m => !dismissedTxIds.has(m.transaction.id));
+    return auditResult.suggestedMatches.filter(
+      (m) => !dismissedTxIds.has(m.transaction.id),
+    );
   }, [auditResult.suggestedMatches, dismissedTxIds]);
 
   const handleLinkAuditMatch = (tx: Transaction, targetShow: Show) => {
     updateTransaction({
       ...tx,
       showId: targetShow.id,
-      scope: 'BUSINESS',
-      categoryId: 'cat_33'
+      scope: "BUSINESS",
+      categoryId: "cat_33",
     });
 
-    const currentPayments = Array.isArray(targetShow.payments) ? [...targetShow.payments] : [];
-    const existingIdx = currentPayments.findIndex(p => p.transactionId === tx.id);
+    const currentPayments = Array.isArray(targetShow.payments)
+      ? [...targetShow.payments]
+      : [];
+    const existingIdx = currentPayments.findIndex(
+      (p) => p.transactionId === tx.id,
+    );
     if (existingIdx < 0) {
       currentPayments.push({
         id: generateUUID(),
-        type: 'Pagamento final',
+        type: "Pagamento final",
         amount: Number(tx.amount) || 0,
         expectedDate: tx.date,
-        effectiveDate: tx.status === 'paid' ? tx.date : undefined,
+        effectiveDate: tx.status === "paid" ? tx.date : undefined,
         accountId: tx.accountId,
-        status: tx.status === 'paid' ? 'Recebido' : 'Agendado',
+        status: tx.status === "paid" ? "Recebido" : "Agendado",
         transactionId: tx.id,
-        notes: tx.description
+        notes: tx.description,
       });
       updateShow({
         ...targetShow,
-        payments: currentPayments
+        payments: currentPayments,
       });
     }
   };
 
   const handleDismissMatch = (txId: string) => {
-    setDismissedTxIds(prev => new Set([...prev, txId]));
+    setDismissedTxIds((prev) => new Set([...prev, txId]));
   };
 
   // Calculate monthly metrics for chart
   const chartSeries = useMemo(() => {
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
-    return monthsData.map(m => {
-      const monthShows = uniqueShows.filter(s => s && s.date && s.date.startsWith(m.monthKey) && s.status !== 'Cancelado');
-      
+    return monthsData.map((m) => {
+      const monthShows = uniqueShows.filter(
+        (s) =>
+          s &&
+          s.date &&
+          s.date.startsWith(m.monthKey) &&
+          s.status !== "Cancelado",
+      );
+
       // REGRA DE OURO: Receita mensal = exclusivamente os valores efetivamente recebidos dos shows cadastrados
       const revenue = monthShows.reduce((sum, s) => {
         const fin = getShowFinancialSummary(s, safeTransactions);
@@ -122,19 +182,27 @@ export const PerformanceDashboard: React.FC<Props> = ({
       }, 0);
 
       // Despesas do Mês: Custos diretos do show e despesas de música vinculadas + parcelas PAGAS de dívidas da Música (excluindo Pessoais)
-      const consolidatedMonth = consolidateCareerExpenses(safeTransactions, debts, {
-        monthPrefix: m.monthKey,
-        onlyPaidForAll: false
-      });
+      const consolidatedMonth = consolidateCareerExpenses(
+        safeTransactions,
+        debts,
+        {
+          monthPrefix: m.monthKey,
+          onlyPaidForAll: false,
+        },
+      );
       const monthBusinessExpenseTxs = consolidatedMonth.allCareerExpenses;
 
-      const txIdsInMonth = new Set(monthBusinessExpenseTxs.map(t => t.id));
+      const txIdsInMonth = new Set(monthBusinessExpenseTxs.map((t) => t.id));
       let unlinkedShowExpenses = 0;
 
-      monthShows.forEach(s => {
+      monthShows.forEach((s) => {
         if (Array.isArray(s.expenseItems)) {
-          s.expenseItems.forEach(e => {
-            if (e && e.amount && (!e.transactionId || !txIdsInMonth.has(e.transactionId))) {
+          s.expenseItems.forEach((e) => {
+            if (
+              e &&
+              e.amount &&
+              (!e.transactionId || !txIdsInMonth.has(e.transactionId))
+            ) {
               unlinkedShowExpenses += Number(e.amount) || 0;
             }
           });
@@ -151,7 +219,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
         revenue,
         expenses,
         profit,
-        showsCount
+        showsCount,
       };
     });
   }, [monthsData, uniqueShows, transactions, debts]);
@@ -159,9 +227,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
   // Overall Global Career Performance Metrics (Lendo cada show uma ÚNICA VEZ e desconsiderando movimentações avulsas do extrato)
   const globalMetrics = useMemo(() => {
     const safeTransactions = Array.isArray(transactions) ? transactions : [];
-    const validShows = uniqueShows.filter(s => {
-      if (!s || s.status === 'Cancelado') return false;
-      if (timeRange === 'all') return true;
+    const validShows = uniqueShows.filter((s) => {
+      if (!s || s.status === "Cancelado") return false;
+      if (timeRange === "all") return true;
       if (!s.date) return true;
       if (monthsData.length > 0) {
         const minMonth = monthsData[0].monthKey;
@@ -173,9 +241,17 @@ export const PerformanceDashboard: React.FC<Props> = ({
     });
 
     const totalShowsCount = validShows.length;
-    const completedShowsCount = validShows.filter(s => s && s.status === 'Realizado').length;
-    const confirmedShowsCount = validShows.filter(s => s && s.status === 'Confirmado').length;
-    const quotesShowsCount = validShows.filter(s => s && (s.status === 'Orçamento' || s.status === 'Aguardando confirmação')).length;
+    const completedShowsCount = validShows.filter(
+      (s) => s && s.status === "Realizado",
+    ).length;
+    const confirmedShowsCount = validShows.filter(
+      (s) => s && s.status === "Confirmado",
+    ).length;
+    const quotesShowsCount = validShows.filter(
+      (s) =>
+        s &&
+        (s.status === "Orçamento" || s.status === "Aguardando confirmação"),
+    ).length;
 
     // REGRA AUDITADA: Receita Total Bruta de Cachês = valores EFETIVAMENTE RECEBIDOS dos shows cadastrados
     // [Cachê Base Recebido] + [Extras / Hora Extra / Gorjeta Recebidos]
@@ -192,33 +268,44 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
     // Custos Totais da Música (somando despesas da carreira no período + parcelas PAGAS de dívidas da Música, excluindo Pessoais)
     const startRangeDate =
-      timeRange !== 'all' && monthsData.length > 0 ? `${monthsData[0].monthKey}-01` : undefined;
+      timeRange !== "all" && monthsData.length > 0
+        ? `${monthsData[0].monthKey}-01`
+        : undefined;
     const endRangeDate =
-      timeRange !== 'all' && monthsData.length > 0
+      timeRange !== "all" && monthsData.length > 0
         ? `${monthsData[monthsData.length - 1].monthKey}-31`
         : undefined;
 
-    const consolidatedPeriod = consolidateCareerExpenses(safeTransactions, debts, {
-      startDate: startRangeDate,
-      endDate: endRangeDate,
-      onlyPaidForAll: false
-    });
+    const consolidatedPeriod = consolidateCareerExpenses(
+      safeTransactions,
+      debts,
+      {
+        startDate: startRangeDate,
+        endDate: endRangeDate,
+        onlyPaidForAll: false,
+      },
+    );
     const periodBusinessExpenseTxs = consolidatedPeriod.allCareerExpenses;
 
-    const globalTxIds = new Set(periodBusinessExpenseTxs.map(t => t.id));
+    const globalTxIds = new Set(periodBusinessExpenseTxs.map((t) => t.id));
     let globalUnlinkedShowExpenses = 0;
 
-    validShows.forEach(s => {
+    validShows.forEach((s) => {
       if (Array.isArray(s.expenseItems)) {
-        s.expenseItems.forEach(e => {
-          if (e && e.amount && (!e.transactionId || !globalTxIds.has(e.transactionId))) {
+        s.expenseItems.forEach((e) => {
+          if (
+            e &&
+            e.amount &&
+            (!e.transactionId || !globalTxIds.has(e.transactionId))
+          ) {
             globalUnlinkedShowExpenses += Number(e.amount) || 0;
           }
         });
       }
     });
 
-    const totalMusicExpenses = consolidatedPeriod.totalAmount + globalUnlinkedShowExpenses;
+    const totalMusicExpenses =
+      consolidatedPeriod.totalAmount + globalUnlinkedShowExpenses;
     const debtInstallmentsTotal = consolidatedPeriod.debtInstallmentsTotal;
     const debtInstallmentsCount = consolidatedPeriod.debtCareerExpenses.length;
 
@@ -229,19 +316,34 @@ export const PerformanceDashboard: React.FC<Props> = ({
     const netCashProfit = totalReceivedInCash - totalMusicExpenses;
 
     // Margem de Lucro Real (%)
-    const profitMargin = totalGrossRevenue > 0 ? (netRealProfit / totalGrossRevenue) * 100 : 0;
+    const profitMargin =
+      totalGrossRevenue > 0 ? (netRealProfit / totalGrossRevenue) * 100 : 0;
 
     // Ticket Médio por Show com Recebimento (cada show lido uma ÚNICA VEZ)
-    const showsWithReceipts = validShows.filter(s => {
+    const showsWithReceipts = validShows.filter((s) => {
       const fin = getShowFinancialSummary(s, safeTransactions);
       return fin.totalReceived > 0;
     });
-    const divisorShows = showsWithReceipts.length > 0 ? showsWithReceipts.length : (totalShowsCount > 0 ? totalShowsCount : 1);
-    const averageTicketPerShow = totalShowsCount > 0 ? totalGrossRevenue / divisorShows : 0;
-    const averageProfitPerShow = totalShowsCount > 0 ? netRealProfit / divisorShows : 0;
+    const divisorShows =
+      showsWithReceipts.length > 0
+        ? showsWithReceipts.length
+        : totalShowsCount > 0
+          ? totalShowsCount
+          : 1;
+    const averageTicketPerShow =
+      totalShowsCount > 0 ? totalGrossRevenue / divisorShows : 0;
+    const averageProfitPerShow =
+      totalShowsCount > 0 ? netRealProfit / divisorShows : 0;
 
     // Média de Lucro Mensal
-    const monthsDivisor = timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : timeRange === '12m' ? 12 : Math.max(1, chartSeries.length || 1);
+    const monthsDivisor =
+      timeRange === "3m"
+        ? 3
+        : timeRange === "6m"
+          ? 6
+          : timeRange === "12m"
+            ? 12
+            : Math.max(1, chartSeries.length || 1);
     const averageMonthlyProfit = netRealProfit / monthsDivisor;
 
     // Fundo de Depreciação / Reserva para Equipamento Acumulada
@@ -268,33 +370,43 @@ export const PerformanceDashboard: React.FC<Props> = ({
       averageTicketPerShow,
       averageProfitPerShow,
       averageMonthlyProfit,
-      totalEquipmentReserve
+      totalEquipmentReserve,
     };
   }, [uniqueShows, transactions, debts, timeRange, monthsData, chartSeries]);
 
   // Breakdown by Event Type
   const eventTypesBreakdown = useMemo(() => {
     const map = new Map<string, { count: number; totalRevenue: number }>();
-    uniqueShows.filter(s => s.status !== 'Cancelado').forEach(s => {
-      const type = s.eventType || 'Bar / Pub / Restaurante';
-      const existing = map.get(type) || { count: 0, totalRevenue: 0 };
-      const fin = getShowFinancialSummary(s, transactions);
-      map.set(type, {
-        count: existing.count + 1,
-        totalRevenue: existing.totalRevenue + fin.totalPredicted
+    uniqueShows
+      .filter((s) => s.status !== "Cancelado")
+      .forEach((s) => {
+        const type = s.eventType || "Bar / Pub / Restaurante";
+        const existing = map.get(type) || { count: 0, totalRevenue: 0 };
+        const fin = getShowFinancialSummary(s, transactions);
+        map.set(type, {
+          count: existing.count + 1,
+          totalRevenue: existing.totalRevenue + fin.totalPredicted,
+        });
       });
-    });
 
-    return Array.from(map.entries()).map(([type, data]) => ({
-      type,
-      count: data.count,
-      totalRevenue: data.totalRevenue,
-      percentage: globalMetrics.totalGrossRevenue > 0 ? (data.totalRevenue / globalMetrics.totalGrossRevenue) * 100 : 0
-    })).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    return Array.from(map.entries())
+      .map(([type, data]) => ({
+        type,
+        count: data.count,
+        totalRevenue: data.totalRevenue,
+        percentage:
+          globalMetrics.totalGrossRevenue > 0
+            ? (data.totalRevenue / globalMetrics.totalGrossRevenue) * 100
+            : 0,
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
   }, [uniqueShows, transactions, globalMetrics.totalGrossRevenue]);
 
   // Chart Dimensions & Calculations for SVG
-  const maxVal = Math.max(...chartSeries.map(d => Math.max(d.revenue, d.expenses, d.profit, 1000)), 3000);
+  const maxVal = Math.max(
+    ...chartSeries.map((d) => Math.max(d.revenue, d.expenses, d.profit, 1000)),
+    3000,
+  );
   const chartHeight = 180;
   const chartWidth = 560;
   const paddingX = 40;
@@ -313,13 +425,18 @@ export const PerformanceDashboard: React.FC<Props> = ({
   };
 
   // Build SVG Path strings
-  const revenuePoints = chartSeries.map((d, i) => `${getX(i)},${getY(d.revenue)}`).join(' ');
-  const expensePoints = chartSeries.map((d, i) => `${getX(i)},${getY(d.expenses)}`).join(' ');
-  const profitPoints = chartSeries.map((d, i) => `${getX(i)},${getY(d.profit)}`).join(' ');
+  const revenuePoints = chartSeries
+    .map((d, i) => `${getX(i)},${getY(d.revenue)}`)
+    .join("");
+  const expensePoints = chartSeries
+    .map((d, i) => `${getX(i)},${getY(d.expenses)}`)
+    .join("");
+  const profitPoints = chartSeries
+    .map((d, i) => `${getX(i)},${getY(d.profit)}`)
+    .join("");
 
   return (
     <div className="space-y-6">
-      
       {/* 1. SELETOR DE PERÍODO & INTRO */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
         <div className="flex items-center space-x-3">
@@ -337,24 +454,30 @@ export const PerformanceDashboard: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center space-x-1 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 self-start sm:self-auto">
-          {(['all', '3m', '6m', '12m'] as const).map(range => (
+          {(["all", "3m", "6m", "12m"] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition active:scale-95 ${
                 timeRange === range
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                  : 'text-zinc-400 hover:text-white'
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-600/30"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
-              {range === 'all' ? 'Geral (Todos)' : range === '3m' ? '3 Meses' : range === '6m' ? '6 Meses' : '12 Meses'}
+              {range === "all"
+                ? "Geral (Todos)"
+                : range === "3m"
+                  ? "3 Meses"
+                  : range === "6m"
+                    ? "6 Meses"
+                    : "12 Meses"}
             </button>
           ))}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* BANNER / STATUS DE AUDITORIA DE CACHÊS & EXTRATOS                        */}
+      {/* BANNER / STATUS DE AUDITORIA DE CACHÊS & EXTRATOS */}
       {/* ========================================================================= */}
       <div className="p-4 rounded-3xl bg-zinc-900/90 border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
         <div className="flex items-start sm:items-center space-x-3">
@@ -363,7 +486,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
           </div>
           <div className="space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-white">Auditoria Estrita de Receitas de Shows</span>
+              <span className="text-xs sm:text-sm font-black text-white">
+                Auditoria Estrita de Receitas de Shows
+              </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 100% Baseada em Eventos Cadastrados
               </span>
@@ -374,7 +499,12 @@ export const PerformanceDashboard: React.FC<Props> = ({
               )}
             </div>
             <p className="text-[11px] text-zinc-400">
-              Receita calculada exclusivamente sobre os cachês recebidos de <strong className="text-zinc-200">{globalMetrics.totalShowsCount} shows cadastrados</strong>. {auditResult.unlinkedExtratoIncomes.length} movimentações no extrato foram desconsideradas para não inflacionar os valores.
+              Receita calculada exclusivamente sobre os cachês recebidos de{" "}
+              <strong className="text-zinc-200">
+                {globalMetrics.totalShowsCount} shows cadastrados
+              </strong>
+              . {auditResult.unlinkedExtratoIncomes.length} movimentações no
+              extrato foram desconsideradas para não inflacionar os valores.
             </p>
           </div>
         </div>
@@ -389,10 +519,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. CARDS PRINCIPAIS DE PERFORMANCE (REQUISITO 1 DO BRIEFING)              */}
+      {/* 2. CARDS PRINCIPAIS DE PERFORMANCE (REQUISITO 1 DO BRIEFING) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        
         {/* CARD 1: TOTAL DE SHOWS */}
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-purple-950/40 via-[#16131f] to-[#121214] border border-purple-500/30 space-y-2 shadow-lg">
           <div className="flex items-center justify-between">
@@ -408,10 +537,13 @@ export const PerformanceDashboard: React.FC<Props> = ({
             <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
               {globalMetrics.totalShowsCount}
             </span>
-            <span className="text-xs text-purple-300 font-bold">apresentações</span>
+            <span className="text-xs text-purple-300 font-bold">
+              apresentações
+            </span>
           </div>
           <p className="text-[10px] text-zinc-400 font-medium">
-            {globalMetrics.confirmedShowsCount} confirmados • {globalMetrics.quotesShowsCount} em negociação
+            {globalMetrics.confirmedShowsCount} confirmados •{" "}
+            {globalMetrics.quotesShowsCount} em negociação
           </p>
         </div>
 
@@ -432,7 +564,8 @@ export const PerformanceDashboard: React.FC<Props> = ({
             </span>
           </div>
           <p className="text-[10px] text-zinc-400 font-medium">
-            Contratado total: {formatCurrency(globalMetrics.totalContractedRevenue)}
+            Contratado total:{" "}
+            {formatCurrency(globalMetrics.totalContractedRevenue)}
           </p>
         </div>
 
@@ -455,7 +588,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
           <p className="text-[10px] text-zinc-400 font-medium">
             {globalMetrics.debtInstallmentsTotal > 0
               ? `Inclui ${formatCurrency(globalMetrics.debtInstallmentsTotal)} (${globalMetrics.debtInstallmentsCount}x parcelas pagas)`
-              : 'Equipe, logística, locomoção e infra'}
+              : "Equipe, logística, locomoção e infra"}
           </p>
         </div>
 
@@ -471,9 +604,13 @@ export const PerformanceDashboard: React.FC<Props> = ({
             </span>
           </div>
           <div className="flex items-baseline space-x-1.5">
-            <span className={`text-xl sm:text-2xl font-black tabular-nums ${
-              globalMetrics.netRealProfit >= 0 ? 'text-blue-400' : 'text-rose-400'
-            }`}>
+            <span
+              className={`text-xl sm:text-2xl font-black tabular-nums ${
+                globalMetrics.netRealProfit >= 0
+                  ? "text-blue-400"
+                  : "text-rose-400"
+              }`}
+            >
               {formatCurrency(globalMetrics.netRealProfit)}
             </span>
           </div>
@@ -502,14 +639,12 @@ export const PerformanceDashboard: React.FC<Props> = ({
             Reserva acumulada retida de shows
           </p>
         </div>
-
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. MÉDIAS E INDICADORES ESTRATÉGICOS (MÉDIA MENSAL & TICKET MÉDIO)        */}
+      {/* 3. MÉDIAS E INDICADORES ESTRATÉGICOS (MÉDIA MENSAL & TICKET MÉDIO) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
         {/* TICKET MÉDIO POR APRESENTAÇÃO */}
         <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
           <div className="flex items-center justify-between">
@@ -521,24 +656,34 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 Ticket Médio por Show
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">Por apresentação</span>
+            <span className="text-[10px] text-zinc-400 font-bold">
+              Por apresentação
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Cachê Médio Recebido</span>
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase">
+                Cachê Médio Recebido
+              </span>
               <span className="text-lg font-black text-amber-300 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageTicketPerShow)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Média por show com recebimento</span>
+              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">
+                Média por show com recebimento
+              </span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Lucro Médio</span>
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase">
+                Lucro Médio
+              </span>
               <span className="text-lg font-black text-emerald-400 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageProfitPerShow)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Lucro limpo por evento</span>
+              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">
+                Lucro limpo por evento
+              </span>
             </div>
           </div>
         </div>
@@ -554,32 +699,41 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 Média de Lucro Mensal
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">Histórico do período</span>
+            <span className="text-[10px] text-zinc-400 font-bold">
+              Histórico do período
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Lucro Médio / Mês</span>
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase">
+                Lucro Médio / Mês
+              </span>
               <span className="text-lg font-black text-emerald-400 tabular-nums block mt-1">
                 {formatCurrency(globalMetrics.averageMonthlyProfit)}
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Média líquida mensal</span>
+              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">
+                Média líquida mensal
+              </span>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase">Margem Operacional</span>
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase">
+                Margem Operacional
+              </span>
               <span className="text-lg font-black text-purple-400 tabular-nums block mt-1">
                 {globalMetrics.profitMargin.toFixed(1)}%
               </span>
-              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">Eficiência de custos</span>
+              <span className="text-[9px] text-zinc-400 font-medium mt-0.5 block">
+                Eficiência de custos
+              </span>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. GRÁFICO DE FLUXO DE CAIXA MENSAL (RECEITA VS DESPESA VS LUCRO)         */}
+      {/* 4. GRÁFICO DE FLUXO DE CAIXA MENSAL (RECEITA VS DESPESA VS LUCRO) */}
       {/* ========================================================================= */}
       <div className="p-5 sm:p-6 rounded-3xl bg-[#141416] border border-zinc-800 space-y-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -591,7 +745,8 @@ export const PerformanceDashboard: React.FC<Props> = ({
               </h3>
             </div>
             <p className="text-[11px] text-zinc-400 mt-0.5">
-              Comparativo de Receitas (Cachês), Despesas (Equipe/Logística) e Lucro Líquido Real.
+              Comparativo de Receitas (Cachês), Despesas (Equipe/Logística) e
+              Lucro Líquido Real.
             </p>
           </div>
 
@@ -615,13 +770,22 @@ export const PerformanceDashboard: React.FC<Props> = ({
         {/* GRÁFICO SVG RESPONSIVO */}
         <div className="w-full overflow-x-auto no-scrollbar py-2">
           <div className="min-w-[500px] sm:min-w-full">
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-44 sm:h-52 overflow-visible">
+            <svg
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+              className="w-full h-44 sm:h-52 overflow-visible"
+            >
               <defs>
                 <linearGradient id="profitAreaGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
                   <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
                 </linearGradient>
-                <linearGradient id="revenueAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient
+                  id="revenueAreaGrad"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
                   <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
                   <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                 </linearGradient>
@@ -649,7 +813,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
                       fontSize="9"
                       fontWeight="bold"
                     >
-                      {formatCurrency(maxVal * ratio).replace('R$', '').trim()}
+                      {formatCurrency(maxVal * ratio)
+                        .replace("R$", "")
+                        .trim()}
                     </text>
                   </g>
                 );
@@ -657,7 +823,7 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
               {/* Linha de Lucro (Sombreado) */}
               <path
-                d={`M ${getX(0)},${paddingY + innerHeight} L ${profitPoints.split(' ').join(' L ')} L ${getX(chartSeries.length - 1)},${paddingY + innerHeight} Z`}
+                d={`M ${getX(0)},${paddingY + innerHeight} L ${profitPoints.split("").join(" L")} L ${getX(chartSeries.length - 1)},${paddingY + innerHeight} Z`}
                 fill="url(#profitAreaGrad)"
               />
 
@@ -701,7 +867,11 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 const isHovered = activeChartPoint === i;
 
                 return (
-                  <g key={d.key} onMouseEnter={() => setActiveChartPoint(i)} className="cursor-pointer">
+                  <g
+                    key={d.key}
+                    onMouseEnter={() => setActiveChartPoint(i)}
+                    className="cursor-pointer"
+                  >
                     {/* Linha vertical de foco */}
                     {isHovered && (
                       <line
@@ -716,11 +886,32 @@ export const PerformanceDashboard: React.FC<Props> = ({
                     )}
 
                     {/* Círculo Receita */}
-                    <circle cx={x} cy={yRev} r={isHovered ? "5" : "3.5"} fill="#10b981" stroke="#141416" strokeWidth="2" />
+                    <circle
+                      cx={x}
+                      cy={yRev}
+                      r={isHovered ? "5" : "3.5"}
+                      fill="#10b981"
+                      stroke="#141416"
+                      strokeWidth="2"
+                    />
                     {/* Círculo Despesa */}
-                    <circle cx={x} cy={yExp} r={isHovered ? "5" : "3.5"} fill="#f43f5e" stroke="#141416" strokeWidth="2" />
+                    <circle
+                      cx={x}
+                      cy={yExp}
+                      r={isHovered ? "5" : "3.5"}
+                      fill="#f43f5e"
+                      stroke="#141416"
+                      strokeWidth="2"
+                    />
                     {/* Círculo Lucro */}
-                    <circle cx={x} cy={yProf} r={isHovered ? "6" : "4.5"} fill="#a855f7" stroke="#ffffff" strokeWidth="2" />
+                    <circle
+                      cx={x}
+                      cy={yProf}
+                      r={isHovered ? "6" : "4.5"}
+                      fill="#a855f7"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
 
                     {/* Mês no Eixo X */}
                     <text
@@ -742,19 +933,34 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
         {/* Detalhe do mês selecionado ou resumo em cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-zinc-800">
-          {chartSeries.slice(-4).map(m => (
-            <div key={m.key} className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-1">
+          {chartSeries.slice(-4).map((m) => (
+            <div
+              key={m.key}
+              className="p-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-1"
+            >
               <div className="flex items-center justify-between text-[11px] font-bold text-zinc-400">
                 <span>{m.label}</span>
-                <span className="text-purple-400">{m.showsCount} {m.showsCount === 1 ? 'show' : 'shows'}</span>
+                <span className="text-purple-400">
+                  {m.showsCount} {m.showsCount === 1 ? "show" : "shows"}
+                </span>
               </div>
               <div className="flex items-baseline justify-between">
-                <span className="text-xs text-emerald-400 font-bold">+{formatCurrency(m.revenue)}</span>
-                <span className="text-xs text-rose-400 font-bold">-{formatCurrency(m.expenses)}</span>
+                <span className="text-xs text-emerald-400 font-bold">
+                  +{formatCurrency(m.revenue)}
+                </span>
+                <span className="text-xs text-rose-400 font-bold">
+                  -{formatCurrency(m.expenses)}
+                </span>
               </div>
               <div className="text-xs font-black text-white pt-0.5 border-t border-zinc-800 flex items-center justify-between">
                 <span className="text-[10px] text-zinc-400">Lucro:</span>
-                <span className={m.profit >= 0 ? 'text-purple-400' : 'text-rose-400'}>{formatCurrency(m.profit)}</span>
+                <span
+                  className={
+                    m.profit >= 0 ? "text-purple-400" : "text-rose-400"
+                  }
+                >
+                  {formatCurrency(m.profit)}
+                </span>
               </div>
             </div>
           ))}
@@ -762,10 +968,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. RAIO-X POR TIPO DE EVENTO & GASTOS DA MÚSICA / PARCELAMENTOS           */}
+      {/* 5. RAIO-X POR TIPO DE EVENTO & GASTOS DA MÚSICA / PARCELAMENTOS */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        
         {/* EVENTOS POR CATEGORIA */}
         <div className="p-5 rounded-3xl bg-[#141416] border border-zinc-800 space-y-4">
           <div className="flex items-center justify-between">
@@ -775,22 +980,32 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 Faturamento por Tipo de Evento
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400 font-bold">Mix de Shows</span>
+            <span className="text-[10px] text-zinc-400 font-bold">
+              Mix de Shows
+            </span>
           </div>
 
           <div className="space-y-3 pt-1">
             {eventTypesBreakdown.length === 0 ? (
-              <p className="text-xs text-zinc-400 py-4 text-center">Nenhum show registrado com categoria ainda.</p>
+              <p className="text-xs text-zinc-400 py-4 text-center">
+                Nenhum show registrado com categoria ainda.
+              </p>
             ) : (
               eventTypesBreakdown.map((item) => (
                 <div key={item.type} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
                       <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span className="font-bold text-zinc-200">{item.type}</span>
-                      <span className="text-[10px] text-zinc-400">({item.count} {item.count === 1 ? 'show' : 'shows'})</span>
+                      <span className="font-bold text-zinc-200">
+                        {item.type}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">
+                        ({item.count} {item.count === 1 ? "show" : "shows"})
+                      </span>
                     </div>
-                    <span className="font-black text-white">{formatCurrency(item.totalRevenue)}</span>
+                    <span className="font-black text-white">
+                      {formatCurrency(item.totalRevenue)}
+                    </span>
                   </div>
                   <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                     <div
@@ -818,14 +1033,17 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 {globalMetrics.debtInstallmentsCount}x Parcelas Pagas Incluídas
               </span>
             ) : (
-              <span className="text-[10px] text-zinc-400 font-bold">Custos Consolidados</span>
+              <span className="text-[10px] text-zinc-400 font-bold">
+                Custos Consolidados
+              </span>
             )}
           </div>
 
           <div className="space-y-3 pt-1">
             {globalMetrics.bySubcategory.length === 0 ? (
               <p className="text-xs text-zinc-400 py-4 text-center">
-                Nenhum gasto da carreira ou parcela paga vinculada à música no período.
+                Nenhum gasto da carreira ou parcela paga vinculada à música no
+                período.
               </p>
             ) : (
               globalMetrics.bySubcategory.map((sub) => (
@@ -833,10 +1051,13 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2 min-w-0">
                       <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
-                      <span className="font-bold text-zinc-200 truncate">{sub.label}</span>
+                      <span className="font-bold text-zinc-200 truncate">
+                        {sub.label}
+                      </span>
                       <span className="text-[10px] text-zinc-400 shrink-0">
-                        ({sub.count} {sub.count === 1 ? 'item' : 'itens'}
-                        {sub.debtCount > 0 ? ` • ${sub.debtCount}x dívida` : ''})
+                        ({sub.count} {sub.count === 1 ? "item" : "itens"}
+                        {sub.debtCount > 0 ? ` • ${sub.debtCount}x dívida` : ""}
+                        )
                       </span>
                     </div>
                     <span className="font-black text-rose-400 tabular-nums shrink-0 ml-2">
@@ -846,7 +1067,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-rose-500 to-purple-500 rounded-full"
-                      style={{ width: `${Math.min(100, Math.max(4, sub.percentage))}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.max(4, sub.percentage))}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -854,16 +1077,14 @@ export const PerformanceDashboard: React.FC<Props> = ({
             )}
           </div>
         </div>
-
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL DE AUDITORIA COMPLETA DE CACHÊS & EXTRATOS                        */}
+      {/* MODAL DE AUDITORIA COMPLETA DE CACHÊS & EXTRATOS */}
       {/* ========================================================================= */}
       {isAuditModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <div className="w-full max-w-3xl bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-            
             {/* MODAL HEADER */}
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800 shrink-0">
               <div className="flex items-center space-x-2.5">
@@ -871,9 +1092,12 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white">Auditoria de Cachês & Extratos</h3>
+                  <h3 className="text-base font-black text-white">
+                    Auditoria de Cachês & Extratos
+                  </h3>
                   <p className="text-[11px] text-zinc-400">
-                    Conferência estrita: Receitas baseadas unicamente em eventos cadastrados.
+                    Conferência estrita: Receitas baseadas unicamente em eventos
+                    cadastrados.
                   </p>
                 </div>
               </div>
@@ -888,7 +1112,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
             {/* AUDIT SUMMARY STATS */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 shrink-0">
               <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
-                <span className="text-[10px] font-bold uppercase text-zinc-400">Receita Auditada dos Shows</span>
+                <span className="text-[10px] font-bold uppercase text-zinc-400">
+                  Receita Auditada dos Shows
+                </span>
                 <span className="text-lg font-black text-emerald-400 tabular-nums block">
                   {formatCurrency(auditResult.totalAuditedReceived)}
                 </span>
@@ -898,17 +1124,22 @@ export const PerformanceDashboard: React.FC<Props> = ({
               </div>
 
               <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
-                <span className="text-[10px] font-bold uppercase text-zinc-400">Movimentações Desconsideradas</span>
+                <span className="text-[10px] font-bold uppercase text-zinc-400">
+                  Movimentações Desconsideradas
+                </span>
                 <span className="text-lg font-black text-amber-400 tabular-nums block">
                   {formatCurrency(auditResult.totalExcludedExtratoIncome)}
                 </span>
                 <span className="text-[10px] text-zinc-500">
-                  {auditResult.unlinkedExtratoIncomes.length} entradas no extrato sem show
+                  {auditResult.unlinkedExtratoIncomes.length} entradas no
+                  extrato sem show
                 </span>
               </div>
 
               <div className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
-                <span className="text-[10px] font-bold uppercase text-zinc-400">Sugestões de Vínculo</span>
+                <span className="text-[10px] font-bold uppercase text-zinc-400">
+                  Sugestões de Vínculo
+                </span>
                 <span className="text-lg font-black text-purple-400 tabular-nums block">
                   {activeMatches.length}
                 </span>
@@ -921,11 +1152,11 @@ export const PerformanceDashboard: React.FC<Props> = ({
             {/* AUDIT TABS */}
             <div className="flex items-center space-x-1.5 border-b border-zinc-800 pb-2 shrink-0 overflow-x-auto no-scrollbar">
               <button
-                onClick={() => setAuditTab('matches')}
+                onClick={() => setAuditTab("matches")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
-                  auditTab === 'matches'
-                    ? 'bg-purple-600 text-white'
-                    : 'text-zinc-400 hover:text-white bg-zinc-900'
+                  auditTab === "matches"
+                    ? "bg-purple-600 text-white"
+                    : "text-zinc-400 hover:text-white bg-zinc-900"
                 }`}
               >
                 <span>Sugestões de Vínculo</span>
@@ -935,11 +1166,11 @@ export const PerformanceDashboard: React.FC<Props> = ({
               </button>
 
               <button
-                onClick={() => setAuditTab('shows')}
+                onClick={() => setAuditTab("shows")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
-                  auditTab === 'shows'
-                    ? 'bg-purple-600 text-white'
-                    : 'text-zinc-400 hover:text-white bg-zinc-900'
+                  auditTab === "shows"
+                    ? "bg-purple-600 text-white"
+                    : "text-zinc-400 hover:text-white bg-zinc-900"
                 }`}
               >
                 <span>Shows Conferidos</span>
@@ -949,11 +1180,11 @@ export const PerformanceDashboard: React.FC<Props> = ({
               </button>
 
               <button
-                onClick={() => setAuditTab('excluded')}
+                onClick={() => setAuditTab("excluded")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 whitespace-nowrap ${
-                  auditTab === 'excluded'
-                    ? 'bg-purple-600 text-white'
-                    : 'text-zinc-400 hover:text-white bg-zinc-900'
+                  auditTab === "excluded"
+                    ? "bg-purple-600 text-white"
+                    : "text-zinc-400 hover:text-white bg-zinc-900"
                 }`}
               >
                 <span>Extrato Desconsiderado</span>
@@ -965,149 +1196,202 @@ export const PerformanceDashboard: React.FC<Props> = ({
 
             {/* AUDIT TAB CONTENT */}
             <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              
               {/* TAB 1: SUGESTÕES DE VÍNCULO */}
-              {auditTab === 'matches' && (
+              {auditTab === "matches" && (
                 <div className="space-y-3">
                   {activeMatches.length === 0 ? (
                     <div className="p-8 rounded-2xl bg-zinc-900/50 border border-dashed border-zinc-800 text-center space-y-2">
-                      <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
-                      <p className="text-sm font-bold text-white">Nenhum cachê pendente de conferência</p>
+                      <CheckCircle2
+                        size={32}
+                        className="mx-auto text-emerald-400"
+                      />
+                      <p className="text-sm font-bold text-white">
+                        Nenhum cachê pendente de conferência
+                      </p>
                       <p className="text-xs text-zinc-400">
-                        Todas as transações do extrato reconhecidas como cachê já estão vinculadas aos seus respectivos shows.
+                        Todas as transações do extrato reconhecidas como cachê
+                        já estão vinculadas aos seus respectivos shows.
                       </p>
                     </div>
                   ) : (
-                    activeMatches.map(({ transaction: tx, candidateShow, matchReason, confidence }) => (
-                      <div
-                        key={tx.id}
-                        className="p-4 rounded-2xl bg-zinc-900 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                      >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs font-black text-white truncate">
-                              {tx.description}
-                            </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
-                              {formatCurrency(tx.amount)}
-                            </span>
-                            <span className="text-[10px] text-zinc-400">
-                              {tx.date}
-                            </span>
-                          </div>
-                          
-                          <div className="text-xs text-zinc-300 flex items-center space-x-1.5">
-                            <ArrowRight size={13} className="text-purple-400 shrink-0" />
-                            <span>Vincular ao Show: <strong className="text-white">{candidateShow.contractorName || candidateShow.name}</strong> ({candidateShow.date})</span>
-                          </div>
-                          
-                          <p className="text-[10px] text-emerald-400 font-medium">
-                            ✓ {matchReason}
-                          </p>
-                        </div>
+                    activeMatches.map(
+                      ({
+                        transaction: tx,
+                        candidateShow,
+                        matchReason,
+                        confidence,
+                      }) => (
+                        <div
+                          key={tx.id}
+                          className="p-4 rounded-2xl bg-zinc-900 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs font-black text-white truncate">
+                                {tx.description}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                                {formatCurrency(tx.amount)}
+                              </span>
+                              <span className="text-[10px] text-zinc-400">
+                                {tx.date}
+                              </span>
+                            </div>
 
-                        <div className="flex items-center space-x-2 shrink-0">
-                          <button
-                            onClick={() => handleLinkAuditMatch(tx, candidateShow)}
-                            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center space-x-1 transition active:scale-95 shadow-md shadow-purple-600/20"
-                          >
-                            <Link2 size={13} />
-                            <span>Vincular ao Show</span>
-                          </button>
-                          <button
-                            onClick={() => handleDismissMatch(tx.id)}
-                            className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs font-bold transition"
-                          >
-                            Dispensar
-                          </button>
+                            <div className="text-xs text-zinc-300 flex items-center space-x-1.5">
+                              <ArrowRight
+                                size={13}
+                                className="text-purple-400 shrink-0"
+                              />
+                              <span>
+                                Vincular ao Show:{" "}
+                                <strong className="text-white">
+                                  {candidateShow.contractorName ||
+                                    candidateShow.name}
+                                </strong>{" "}
+                                ({candidateShow.date})
+                              </span>
+                            </div>
+
+                            <p className="text-[10px] text-emerald-400 font-medium">
+                              ✓ {matchReason}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <button
+                              onClick={() =>
+                                handleLinkAuditMatch(tx, candidateShow)
+                              }
+                              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center space-x-1 transition active:scale-95 shadow-md shadow-purple-600/20"
+                            >
+                              <Link2 size={13} />
+                              <span>Vincular ao Show</span>
+                            </button>
+                            <button
+                              onClick={() => handleDismissMatch(tx.id)}
+                              className="px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-xs font-bold transition"
+                            >
+                              Dispensar
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ),
+                    )
                   )}
                 </div>
               )}
 
               {/* TAB 2: SHOWS CADASTRADOS & CONFERIDOS */}
-              {auditTab === 'shows' && (
+              {auditTab === "shows" && (
                 <div className="space-y-2.5">
-                  {auditResult.auditedShows.map(({ show, financialSummary: fin, linkedTransactions: linked, statusMessage }) => (
-                    <div
-                      key={show.id}
-                      className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs font-black text-white truncate">
-                            {show.contractorName || show.name}
-                          </span>
-                          <span className="text-[10px] text-zinc-400">{show.date}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            fin.totalReceived >= fin.totalPredicted && fin.totalPredicted > 0
-                              ? 'bg-emerald-500/20 text-emerald-300'
-                              : fin.totalReceived > 0
-                              ? 'bg-amber-500/20 text-amber-300'
-                              : 'bg-zinc-800 text-zinc-400'
-                          }`}>
-                            {statusMessage}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-zinc-400">
-                          Recebido: <strong className="text-emerald-400">{formatCurrency(fin.totalReceived)}</strong> de {formatCurrency(fin.totalPredicted)} previsto
-                          {fin.extraReceived > 0 && ` (inclui ${formatCurrency(fin.extraReceived)} de extras)`}
-                        </p>
-                        {linked.length > 0 && (
-                          <div className="text-[10px] text-zinc-500 flex flex-wrap gap-1.5 pt-0.5">
-                            {linked.map(t => (
-                              <span key={t.id} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">
-                                Pix: {formatCurrency(t.amount)} ({t.date})
-                              </span>
-                            ))}
+                  {auditResult.auditedShows.map(
+                    ({
+                      show,
+                      financialSummary: fin,
+                      linkedTransactions: linked,
+                      statusMessage,
+                    }) => (
+                      <div
+                        key={show.id}
+                        className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-black text-white truncate">
+                              {show.contractorName || show.name}
+                            </span>
+                            <span className="text-[10px] text-zinc-400">
+                              {show.date}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                fin.totalReceived >= fin.totalPredicted &&
+                                fin.totalPredicted > 0
+                                  ? "bg-emerald-500/20 text-emerald-300"
+                                  : fin.totalReceived > 0
+                                    ? "bg-amber-500/20 text-amber-300"
+                                    : "bg-zinc-800 text-zinc-400"
+                              }`}
+                            >
+                              {statusMessage}
+                            </span>
                           </div>
-                        )}
-                      </div>
+                          <p className="text-[11px] text-zinc-400">
+                            Recebido:{" "}
+                            <strong className="text-emerald-400">
+                              {formatCurrency(fin.totalReceived)}
+                            </strong>{" "}
+                            de {formatCurrency(fin.totalPredicted)} previsto
+                            {fin.extraReceived > 0 &&
+                              ` (inclui ${formatCurrency(fin.extraReceived)} de extras)`}
+                          </p>
+                          {linked.length > 0 && (
+                            <div className="text-[10px] text-zinc-500 flex flex-wrap gap-1.5 pt-0.5">
+                              {linked.map((t) => (
+                                <span
+                                  key={t.id}
+                                  className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300"
+                                >
+                                  Pix: {formatCurrency(t.amount)} ({t.date})
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
 
-                      <div className="shrink-0 flex items-center space-x-2">
-                        <span className="text-xs font-bold text-emerald-400 tabular-nums">
-                          {formatCurrency(fin.totalReceived)}
-                        </span>
-                        {onSelectShow && (
-                          <button
-                            onClick={() => {
-                              setIsAuditModalOpen(false);
-                              onSelectShow(show);
-                            }}
-                            className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
-                          >
-                            <ExternalLink size={13} />
-                          </button>
-                        )}
+                        <div className="shrink-0 flex items-center space-x-2">
+                          <span className="text-xs font-bold text-emerald-400 tabular-nums">
+                            {formatCurrency(fin.totalReceived)}
+                          </span>
+                          {onSelectShow && (
+                            <button
+                              onClick={() => {
+                                setIsAuditModalOpen(false);
+                                onSelectShow(show);
+                              }}
+                              className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
+                            >
+                              <ExternalLink size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               )}
 
               {/* TAB 3: MOVIMENTAÇÕES DE EXTRATO DESCONSIDERADAS */}
-              {auditTab === 'excluded' && (
+              {auditTab === "excluded" && (
                 <div className="space-y-2.5">
                   <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-start space-x-2">
                     <AlertCircle size={16} className="shrink-0 mt-0.5" />
                     <span>
-                      Estas movimentações foram <strong>desconsideradas</strong> no Dashboard de Performance para evitar inflacionar as receitas e ticket médio da carreira. Elas permanecem salvas normalmente no seu livro-razão / extrato geral.
+                      Estas movimentações foram <strong>desconsideradas</strong>{" "}
+                      no Dashboard de Performance para evitar inflacionar as
+                      receitas e ticket médio da carreira. Elas permanecem
+                      salvas normalmente no seu livro-razão / extrato geral.
                     </span>
                   </div>
 
                   {auditResult.unlinkedExtratoIncomes.length === 0 ? (
-                    <p className="text-xs text-zinc-500 text-center py-4">Nenhuma movimentação avulsa encontrada.</p>
+                    <p className="text-xs text-zinc-500 text-center py-4">
+                      Nenhuma movimentação avulsa encontrada.
+                    </p>
                   ) : (
-                    auditResult.unlinkedExtratoIncomes.map(t => (
+                    auditResult.unlinkedExtratoIncomes.map((t) => (
                       <div
                         key={t.id}
                         className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800/80 flex items-center justify-between text-xs"
                       >
                         <div className="min-w-0 pr-3">
-                          <span className="font-bold text-zinc-200 block truncate">{t.description}</span>
-                          <span className="text-[10px] text-zinc-500">{t.date} • {t.originalBankDescription || 'Extrato'}</span>
+                          <span className="font-bold text-zinc-200 block truncate">
+                            {t.description}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">
+                            {t.date} • {t.originalBankDescription || "Extrato"}
+                          </span>
                         </div>
                         <span className="font-bold text-zinc-400 tabular-nums shrink-0">
                           +{formatCurrency(t.amount)}
@@ -1117,7 +1401,6 @@ export const PerformanceDashboard: React.FC<Props> = ({
                   )}
                 </div>
               )}
-
             </div>
 
             {/* MODAL FOOTER */}
@@ -1129,11 +1412,9 @@ export const PerformanceDashboard: React.FC<Props> = ({
                 Fechar Auditoria
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 };

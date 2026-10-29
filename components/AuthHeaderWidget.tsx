@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
-import { useFinance } from '../context/FinanceContext';
-import { LogIn, LogOut, Cloud, CloudOff, Sparkles, RefreshCw, CheckCircle2, Database } from 'lucide-react';
+import React, { useState } from "react";
+import { useFinance } from "../context/FinanceContext";
+import {
+  LogIn,
+  LogOut,
+  Cloud,
+  CloudOff,
+  Sparkles,
+  RefreshCw,
+  CheckCircle2,
+  Database,
+} from "lucide-react";
 
 export const AuthHeaderWidget: React.FC = () => {
-  const { currentUser, isAuthLoading, isDemoMode, exitDemoMode, signInWithGoogle, logoutUser, consolidateToDefaultDatabase } = useFinance();
+  const {
+    currentUser,
+    isAuthLoading,
+    isDemoMode,
+    exitDemoMode,
+    signInWithGoogle,
+    logoutUser,
+    consolidateToDefaultDatabase,
+  } = useFinance();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
@@ -13,10 +30,10 @@ export const AuthHeaderWidget: React.FC = () => {
     setSyncFeedback(null);
     try {
       const result = await consolidateToDefaultDatabase();
-      setSyncFeedback(result.message || 'Sincronizado no banco (default)!');
+      setSyncFeedback(result.message || "Sincronizado no banco (default)!");
       setTimeout(() => setSyncFeedback(null), 5000);
     } catch (e) {
-      setSyncFeedback('Erro ao sincronizar.');
+      setSyncFeedback("Erro ao sincronizar.");
       setTimeout(() => setSyncFeedback(null), 4000);
     } finally {
       setIsSyncing(false);
@@ -40,14 +57,14 @@ export const AuthHeaderWidget: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2">
           <div className="flex items-center space-x-3 min-w-0">
             {currentUser.photoURL ? (
-              <img 
-                src={currentUser.photoURL} 
-                alt={currentUser.displayName || 'Usuário'} 
-                className="w-8 h-8 rounded-full border border-blue-900/30 shrink-0" 
+              <img
+                src={currentUser.photoURL}
+                alt={currentUser.displayName || "Usuário"}
+                className="w-8 h-8 rounded-full border border-blue-900/30 shrink-0"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-blue-900 text-yellow-400 font-extrabold flex items-center justify-center shrink-0 text-xs shadow-sm">
-                {currentUser.email?.charAt(0).toUpperCase() || 'U'}
+                {currentUser.email?.charAt(0).toUpperCase() || "U"}
               </div>
             )}
             <div className="min-w-0">
@@ -60,13 +77,15 @@ export const AuthHeaderWidget: React.FC = () => {
                   <span>Banco (default)</span>
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 truncate max-w-[200px]">{currentUser.email}</p>
+              <p className="text-[11px] text-slate-500 truncate max-w-[200px]">
+                {currentUser.email}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 self-end sm:self-auto shrink-0">
             {syncFeedback ? (
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 flex items-center gap-1 animate-fade-in">
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 flex items-center gap-1 animate-fade-in ">
                 <CheckCircle2 size={13} className="text-emerald-600" />
                 <span>{syncFeedback}</span>
               </span>
@@ -77,8 +96,15 @@ export const AuthHeaderWidget: React.FC = () => {
                 className="py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition flex items-center space-x-1.5 border border-slate-300 disabled:opacity-50"
                 title="Consolidar e enviar todas as transações para o banco (default)"
               >
-                <RefreshCw size={12} className={isSyncing ? 'animate-spin text-blue-900' : 'text-slate-600'} />
-                <span>{isSyncing ? 'Consolidando...' : 'Sincronizar (default)'}</span>
+                <RefreshCw
+                  size={12}
+                  className={
+                    isSyncing ? "animate-spin text-blue-900" : "text-slate-600"
+                  }
+                />
+                <span>
+                  {isSyncing ? "Consolidando..." : "Sincronizar (default)"}
+                </span>
               </button>
             )}
 
@@ -100,12 +126,16 @@ export const AuthHeaderWidget: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <p className="font-extrabold text-slate-900 text-xs">Modo Demonstração</p>
+                <p className="font-extrabold text-slate-900 text-xs">
+                  Modo Demonstração
+                </p>
                 <span className="text-[9px] bg-yellow-200 text-yellow-900 font-black uppercase px-1.5 py-0.2 rounded">
                   Visitante
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500">Dados de teste em memória local</p>
+              <p className="text-[11px] text-slate-500">
+                Dados de teste em memória local
+              </p>
             </div>
           </div>
 
@@ -125,8 +155,12 @@ export const AuthHeaderWidget: React.FC = () => {
               <CloudOff size={16} />
             </div>
             <div>
-              <p className="font-extrabold text-slate-900 text-xs">Desconectado da Nuvem</p>
-              <p className="text-[11px] text-slate-500">Conecte sua conta para direcionar tudo ao banco (default)</p>
+              <p className="font-extrabold text-slate-900 text-xs">
+                Desconectado da Nuvem
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Conecte sua conta para direcionar tudo ao banco (default)
+              </p>
             </div>
           </div>
 

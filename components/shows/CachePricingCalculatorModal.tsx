@@ -1,19 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Calculator, X, Plus, Trash2, DollarSign, Users, 
-  Truck, Utensils, Percent, CheckCircle2, Sparkles, ArrowRight,
-  ShieldCheck, FilePlus, Copy, MessageSquare, Calendar, MapPin, 
-  Clock, Settings, Check, Share2, Sliders, Fuel, Music
-} from 'lucide-react';
-import { parseCurrencyInput } from '../../services/financeAggregator';
-import { useFinance } from '../../context/FinanceContext';
-import { ShowStatus } from '../../types';
-import { getLocalDateString } from '../../services/dateUtils';
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Calculator,
+  X,
+  Plus,
+  Trash2,
+  DollarSign,
+  Users,
+  Truck,
+  Utensils,
+  Percent,
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  FilePlus,
+  Copy,
+  MessageSquare,
+  Calendar,
+  MapPin,
+  Clock,
+  Settings,
+  Check,
+  Share2,
+  Sliders,
+  Fuel,
+  Music,
+} from "lucide-react";
+import { parseCurrencyInput } from "../../services/financeAggregator";
+import { useFinance } from "../../context/FinanceContext";
+import { ShowStatus } from "../../types";
+import { getLocalDateString } from "../../services/dateUtils";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onCreateQuote?: (totalCache: number, contractorName?: string, notes?: string, date?: string, location?: string) => void;
+  onCreateQuote?: (
+    totalCache: number,
+    contractorName?: string,
+    notes?: string,
+    date?: string,
+    location?: string,
+  ) => void;
 }
 
 export interface SupportMusician {
@@ -28,27 +55,29 @@ export interface SmartCachePresets {
   reservePercent: number;
 }
 
-const STORAGE_PRESETS_KEY = 'smart_cache_360_presets';
+const STORAGE_PRESETS_KEY = "smart_cache_360_presets";
 
 const DEFAULT_PRESETS: SmartCachePresets = {
   hourlyRates: {
-    'Voz e Violão': 80,
-    'Duo': 120,
-    'Banda': 200,
+    "Voz e Violão": 80,
+    Duo: 120,
+    Banda: 200,
   },
-  kmCost: 1.50,
+  kmCost: 1.5,
   reservePercent: 10,
 };
 
 export const CachePricingCalculatorModal: React.FC<Props> = ({
   isOpen,
   onClose,
-  onCreateQuote
+  onCreateQuote,
 }) => {
   const { addShow } = useFinance();
 
   // Tab mode: 'calculator' | 'presets'
-  const [activeSubTab, setActiveSubTab] = useState<'calculator' | 'presets'>('calculator');
+  const [activeSubTab, setActiveSubTab] = useState<"calculator" | "presets">(
+    "calculator",
+  );
 
   // Load Presets from LocalStorage
   const [presets, setPresets] = useState<SmartCachePresets>(() => {
@@ -57,82 +86,106 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
       if (stored) {
         const parsed = JSON.parse(stored);
         return {
-          hourlyRates: { ...DEFAULT_PRESETS.hourlyRates, ...(parsed.hourlyRates || {}) },
+          hourlyRates: {
+            ...DEFAULT_PRESETS.hourlyRates,
+            ...(parsed.hourlyRates || {}),
+          },
           kmCost: Number(parsed.kmCost) || DEFAULT_PRESETS.kmCost,
-          reservePercent: Number(parsed.reservePercent) || DEFAULT_PRESETS.reservePercent,
+          reservePercent:
+            Number(parsed.reservePercent) || DEFAULT_PRESETS.reservePercent,
         };
       }
     } catch (e) {
-      console.error('Erro ao carregar presets do Smart Cachê 360', e);
+      console.error("Erro ao carregar presets do Smart Cachê 360", e);
     }
     return DEFAULT_PRESETS;
   });
 
   // Preset Editor Form State
   const [presetRates, setPresetRates] = useState<Record<string, string>>({
-    'Voz e Violão': String(presets.hourlyRates['Voz e Violão'] || 80),
-    'Duo': String(presets.hourlyRates['Duo'] || 120),
-    'Banda': String(presets.hourlyRates['Banda'] || 200),
+    "Voz e Violão": String(presets.hourlyRates["Voz e Violão"] || 80),
+    Duo: String(presets.hourlyRates["Duo"] || 120),
+    Banda: String(presets.hourlyRates["Banda"] || 200),
   });
-  const [presetKmCostInput, setPresetKmCostInput] = useState(String(presets.kmCost));
-  const [presetReserveInput, setPresetReserveInput] = useState(String(presets.reservePercent));
+  const [presetKmCostInput, setPresetKmCostInput] = useState(
+    String(presets.kmCost),
+  );
+  const [presetReserveInput, setPresetReserveInput] = useState(
+    String(presets.reservePercent),
+  );
   const [presetSaveSuccess, setPresetSaveSuccess] = useState(false);
 
   // --- CALCULATOR INPUTS ---
-  const [selectedFormat, setSelectedFormat] = useState<string>('Voz e Violão');
-  const [showHoursInput, setShowHoursInput] = useState<string>('2');
+  const [selectedFormat, setSelectedFormat] = useState<string>("Voz e Violão");
+  const [showHoursInput, setShowHoursInput] = useState<string>("2");
 
   // Tempo Dedicado
-  const [travelTimeMinutesInput, setTravelTimeMinutesInput] = useState<string>('60');
-  const [soundcheckTimeMinutesInput, setSoundcheckTimeMinutesInput] = useState<string>('60');
+  const [travelTimeMinutesInput, setTravelTimeMinutesInput] =
+    useState<string>("60");
+  const [soundcheckTimeMinutesInput, setSoundcheckTimeMinutesInput] =
+    useState<string>("60");
 
   // Modelo Flexível de Receita
-  const [revenueModel, setRevenueModel] = useState<'fixed' | 'couvert' | 'hybrid'>('fixed');
-  const [estimatedPeopleInput, setEstimatedPeopleInput] = useState<string>('80');
-  const [couvertPriceInput, setCouvertPriceInput] = useState<string>('15');
-  const [guaranteedMinCacheInput, setGuaranteedMinCacheInput] = useState<string>('500');
-  const [couvertPercentageInput, setCouvertPercentageInput] = useState<string>('100');
+  const [revenueModel, setRevenueModel] = useState<
+    "fixed" | "couvert" | "hybrid"
+  >("fixed");
+  const [estimatedPeopleInput, setEstimatedPeopleInput] =
+    useState<string>("80");
+  const [couvertPriceInput, setCouvertPriceInput] = useState<string>("15");
+  const [guaranteedMinCacheInput, setGuaranteedMinCacheInput] =
+    useState<string>("500");
+  const [couvertPercentageInput, setCouvertPercentageInput] =
+    useState<string>("100");
 
   // Deslocamento & Combustível (Veículo Próprio)
-  const [totalKmInput, setTotalKmInput] = useState<string>('40');
-  const [carKmPerLiterInput, setCarKmPerLiterInput] = useState<string>('10');
-  const [fuelPricePerLiterInput, setFuelPricePerLiterInput] = useState<string>('6.00');
-  const [tollAmountInput, setTollAmountInput] = useState<string>('15');
-  const [costPerKmInput, setCostPerKmInput] = useState<string>(String(presets.kmCost));
+  const [totalKmInput, setTotalKmInput] = useState<string>("40");
+  const [carKmPerLiterInput, setCarKmPerLiterInput] = useState<string>("10");
+  const [fuelPricePerLiterInput, setFuelPricePerLiterInput] =
+    useState<string>("6.00");
+  const [tollAmountInput, setTollAmountInput] = useState<string>("15");
+  const [costPerKmInput, setCostPerKmInput] = useState<string>(
+    String(presets.kmCost),
+  );
 
   // Fundo de Depreciação / Reserva para Equipamento
-  const [equipmentReserveFixedInput, setEquipmentReserveFixedInput] = useState<string>('20');
+  const [equipmentReserveFixedInput, setEquipmentReserveFixedInput] =
+    useState<string>("20");
 
   // Custos Diretos
-  const [foodCostInput, setFoodCostInput] = useState<string>('50');
-  const [otherCostsInput, setOtherCostsInput] = useState<string>('0');
-  
+  const [foodCostInput, setFoodCostInput] = useState<string>("50");
+  const [otherCostsInput, setOtherCostsInput] = useState<string>("0");
+
   // Músicos de Apoio
   const [supportMusicians, setSupportMusicians] = useState<SupportMusician[]>([
-    { id: '1', name: 'Músico de Apoio / Percussão', amount: 200 }
+    { id: "1", name: "Músico de Apoio / Percussão", amount: 200 },
   ]);
-  const [newMusicianName, setNewMusicianName] = useState('');
-  const [newMusicianAmount, setNewMusicianAmount] = useState('');
+  const [newMusicianName, setNewMusicianName] = useState("");
+  const [newMusicianAmount, setNewMusicianAmount] = useState("");
 
   // Ajustes Finais
   const [hourlyRateInput, setHourlyRateInput] = useState<string>(
-    String(presets.hourlyRates['Voz e Violão'] || 80)
+    String(presets.hourlyRates["Voz e Violão"] || 80),
   );
-  const [reservePercent, setReservePercent] = useState<number>(presets.reservePercent);
-  const [commissionPercentInput, setCommissionPercentInput] = useState<string>('10');
+  const [reservePercent, setReservePercent] = useState<number>(
+    presets.reservePercent,
+  );
+  const [commissionPercentInput, setCommissionPercentInput] =
+    useState<string>("10");
 
   // --- SEÇÃO PROPOSTA & MENSAGEM ---
   const [showProposalSection, setShowProposalSection] = useState(false);
-  const [contractorName, setContractorName] = useState('');
-  const [contractorPhone, setContractorPhone] = useState('');
-  const [eventLocation, setEventLocation] = useState('');
+  const [contractorName, setContractorName] = useState("");
+  const [contractorPhone, setContractorPhone] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
   const [eventDate, setEventDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
     return getLocalDateString(d);
   });
-  const [eventTime, setEventTime] = useState('20:00');
-  const [paymentTerms, setPaymentTerms] = useState('50% na reserva via PIX e 50% após o show');
+  const [eventTime, setEventTime] = useState("20:00");
+  const [paymentTerms, setPaymentTerms] = useState(
+    "50% na reserva via PIX e 50% após o show",
+  );
 
   // Copy feedback
   const [copySuccess, setCopySuccess] = useState(false);
@@ -151,28 +204,34 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
     const val = parseCurrencyInput(newMusicianAmount);
     if (!newMusicianName.trim() || val <= 0) return;
 
-    setSupportMusicians(prev => [
+    setSupportMusicians((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
         name: newMusicianName.trim(),
-        amount: val
-      }
+        amount: val,
+      },
     ]);
-    setNewMusicianName('');
-    setNewMusicianAmount('');
+    setNewMusicianName("");
+    setNewMusicianAmount("");
   };
 
   const handleRemoveMusician = (id: string) => {
-    setSupportMusicians(prev => prev.filter(m => m.id !== id));
+    setSupportMusicians((prev) => prev.filter((m) => m.id !== id));
   };
 
   // --- FINANCIAL FORMULA (CÁLCULO REVERSO E MÉTRICAS INTEGRADAS) ---
   const calculations = useMemo(() => {
     const showHours = Math.max(0.5, parseFloat(showHoursInput) || 0);
     const travelMins = Math.max(0, parseFloat(travelTimeMinutesInput) || 0);
-    const soundcheckMins = Math.max(0, parseFloat(soundcheckTimeMinutesInput) || 0);
-    const totalTimeHours = Math.max(0.5, Math.round((showHours + (travelMins / 60) + (soundcheckMins / 60)) * 10) / 10);
+    const soundcheckMins = Math.max(
+      0,
+      parseFloat(soundcheckTimeMinutesInput) || 0,
+    );
+    const totalTimeHours = Math.max(
+      0.5,
+      Math.round((showHours + travelMins / 60 + soundcheckMins / 60) * 10) / 10,
+    );
 
     // Logística Veículo Próprio
     const totalKm = Math.max(0, parseFloat(totalKmInput) || 0);
@@ -183,15 +242,26 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
     const kmTotalCost = calculatedFuelCost + tollVal;
 
     // Fundo de Depreciação / Reserva de Equipamento
-    const equipmentReserveVal = Math.max(0, parseCurrencyInput(equipmentReserveFixedInput));
+    const equipmentReserveVal = Math.max(
+      0,
+      parseCurrencyInput(equipmentReserveFixedInput),
+    );
 
     // Direct Costs
     const foodCost = Math.max(0, parseCurrencyInput(foodCostInput));
     const otherCosts = Math.max(0, parseCurrencyInput(otherCostsInput));
-    const musiciansTotalCost = supportMusicians.reduce((acc, m) => acc + m.amount, 0);
+    const musiciansTotalCost = supportMusicians.reduce(
+      (acc, m) => acc + m.amount,
+      0,
+    );
 
     // 1. Custo Operacional
-    const operationalCost = kmTotalCost + foodCost + otherCosts + musiciansTotalCost + equipmentReserveVal;
+    const operationalCost =
+      kmTotalCost +
+      foodCost +
+      otherCosts +
+      musiciansTotalCost +
+      equipmentReserveVal;
 
     // 2. Mão de Obra Artista
     const hourlyRate = Math.max(0, parseCurrencyInput(hourlyRateInput));
@@ -206,9 +276,13 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
     const reserveValue = valueWithReserve - subtotal;
 
     // 5. CACHÊ BASE CALCULADO
-    const commPercentNum = Math.min(90, Math.max(0, parseCurrencyInput(commissionPercentInput)));
+    const commPercentNum = Math.min(
+      90,
+      Math.max(0, parseCurrencyInput(commissionPercentInput)),
+    );
     const commRatio = commPercentNum / 100;
-    const calculatedBaseCache = commRatio < 1 ? valueWithReserve / (1 - commRatio) : valueWithReserve;
+    const calculatedBaseCache =
+      commRatio < 1 ? valueWithReserve / (1 - commRatio) : valueWithReserve;
 
     // Cálculo por Modelo de Receita
     const people = Math.max(0, parseFloat(estimatedPeopleInput) || 0);
@@ -217,21 +291,27 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
     const cPct = Math.max(0, parseFloat(couvertPercentageInput) || 100) / 100;
 
     let finalRevenue = calculatedBaseCache;
-    if (revenueModel === 'couvert') {
+    if (revenueModel === "couvert") {
       finalRevenue = people * cPrice;
-    } else if (revenueModel === 'hybrid') {
-      finalRevenue = minCache + (people * cPrice * cPct);
+    } else if (revenueModel === "hybrid") {
+      finalRevenue = minCache + people * cPrice * cPct;
     }
 
     const recommendedCache = Math.max(1, Math.round(finalRevenue * 100) / 100);
-    const commissionValue = recommendedCache > valueWithReserve ? recommendedCache - valueWithReserve : 0;
+    const commissionValue =
+      recommendedCache > valueWithReserve
+        ? recommendedCache - valueWithReserve
+        : 0;
 
     // Lucro Líquido no Bolso (após todas as despesas e reserva de equipamento)
-    const netProfitInPocket = Math.round((recommendedCache - operationalCost) * 100) / 100;
-    const netProfitAfterEquipmentReserve = Math.round((netProfitInPocket - equipmentReserveVal) * 100) / 100;
+    const netProfitInPocket =
+      Math.round((recommendedCache - operationalCost) * 100) / 100;
+    const netProfitAfterEquipmentReserve =
+      Math.round((netProfitInPocket - equipmentReserveVal) * 100) / 100;
 
     // Lucro por Hora Trabalhada
-    const profitPerHour = Math.round((netProfitInPocket / totalTimeHours) * 100) / 100;
+    const profitPerHour =
+      Math.round((netProfitInPocket / totalTimeHours) * 100) / 100;
 
     return {
       showHours,
@@ -264,31 +344,51 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
       recommendedCache,
       netProfitInPocket,
       netProfitAfterEquipmentReserve,
-      profitPerHour
+      profitPerHour,
     };
   }, [
-    showHoursInput, travelTimeMinutesInput, soundcheckTimeMinutesInput,
-    totalKmInput, carKmPerLiterInput, fuelPricePerLiterInput, tollAmountInput,
-    foodCostInput, otherCostsInput, supportMusicians, hourlyRateInput,
-    reservePercent, commissionPercentInput, revenueModel, estimatedPeopleInput,
-    couvertPriceInput, guaranteedMinCacheInput, couvertPercentageInput, equipmentReserveFixedInput
+    showHoursInput,
+    travelTimeMinutesInput,
+    soundcheckTimeMinutesInput,
+    totalKmInput,
+    carKmPerLiterInput,
+    fuelPricePerLiterInput,
+    tollAmountInput,
+    foodCostInput,
+    otherCostsInput,
+    supportMusicians,
+    hourlyRateInput,
+    reservePercent,
+    commissionPercentInput,
+    revenueModel,
+    estimatedPeopleInput,
+    couvertPriceInput,
+    guaranteedMinCacheInput,
+    couvertPercentageInput,
+    equipmentReserveFixedInput,
   ]);
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   // Save presets to localStorage
   const handleSavePresets = () => {
     const updatedRates: Record<string, number> = {};
-    Object.keys(presetRates).forEach(key => {
+    Object.keys(presetRates).forEach((key) => {
       updatedRates[key] = parseCurrencyInput(presetRates[key]);
     });
 
     const newPresets: SmartCachePresets = {
       hourlyRates: updatedRates,
       kmCost: parseCurrencyInput(presetKmCostInput) || 1.5,
-      reservePercent: Math.min(20, Math.max(0, parseFloat(presetReserveInput) || 10)),
+      reservePercent: Math.min(
+        20,
+        Math.max(0, parseFloat(presetReserveInput) || 10),
+      ),
     };
 
     setPresets(newPresets);
@@ -297,21 +397,25 @@ export const CachePricingCalculatorModal: React.FC<Props> = ({
       setPresetSaveSuccess(true);
       setTimeout(() => setPresetSaveSuccess(false), 2500);
     } catch (e) {
-      console.error('Erro ao salvar presets', e);
+      console.error("Erro ao salvar presets", e);
     }
   };
 
   // --- GENERATED PROPOSAL TEXT ---
   const proposalFormattedText = useMemo(() => {
-    const dateFormatted = eventDate ? eventDate.split('-').reverse().join('/') : 'A definir';
-    const clientGreeting = contractorName.trim() ? `Olá, ${contractorName.trim()}!` : 'Olá!';
+    const dateFormatted = eventDate
+      ? eventDate.split("-").reverse().join("/")
+      : "A definir";
+    const clientGreeting = contractorName.trim()
+      ? `Olá, ${contractorName.trim()}!`
+      : "Olá!";
 
     return `${clientGreeting} Tudo bem? 🎶
 
 Segue a proposta comercial para a apresentação musical:
 
-📅 Data: ${dateFormatted}${eventTime ? ` às ${eventTime}` : ''}
-📍 Local: ${eventLocation.trim() || 'A combinar'}
+📅 Data: ${dateFormatted}${eventTime ? ` às ${eventTime}` : ""}
+📍 Local: ${eventLocation.trim() || "A combinar"}
 🎤 Formato: ${selectedFormat} (${calculations.showHours}h de show)
 
 💰 Cachê Comercial: ${formatCurrency(calculations.recommendedCache)}
@@ -321,8 +425,13 @@ Segue a proposta comercial para a apresentação musical:
 
 Fico à disposição para confirmar a data na agenda! 🚀`;
   }, [
-    contractorName, eventDate, eventTime, eventLocation,
-    selectedFormat, calculations, paymentTerms
+    contractorName,
+    eventDate,
+    eventTime,
+    eventLocation,
+    selectedFormat,
+    calculations,
+    paymentTerms,
   ]);
 
   const handleCopyMessage = async () => {
@@ -331,21 +440,21 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2500);
     } catch (err) {
-      console.error('Erro ao copiar', err);
+      console.error("Erro ao copiar", err);
     }
   };
 
   const handleSendWhatsApp = () => {
-    const cleanPhone = contractorPhone.replace(/\D/g, '');
+    const cleanPhone = contractorPhone.replace(/\D/g, "");
     const encodedText = encodeURIComponent(proposalFormattedText);
-    const url = cleanPhone 
+    const url = cleanPhone
       ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedText}`
       : `https://api.whatsapp.com/send?text=${encodedText}`;
-    window.open(url, '_blank');
+    window.open(url, "_blank");
   };
 
   const handleSaveToAgenda = () => {
-    const dateStr = eventDate || new Date().toISOString().split('T')[0];
+    const dateStr = eventDate || new Date().toISOString().split("T")[0];
     const notesSummary = `Orçamento gerado via Smart Cachê 360:
 - Formato: ${selectedFormat} (${calculations.showHours}h)
 - Lucro Líquido Artista: ${formatCurrency(calculations.netProfitInPocket)}
@@ -360,18 +469,18 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
         contractorName || selectedFormat,
         notesSummary,
         dateStr,
-        eventLocation
+        eventLocation,
       );
     } else {
       addShow({
-        name: `${selectedFormat} - ${contractorName || 'Orçamento'}`,
-        contractorName: contractorName || 'A definir',
-        location: eventLocation || 'A definir',
+        name: `${selectedFormat} - ${contractorName || "Orçamento"}`,
+        contractorName: contractorName || "A definir",
+        location: eventLocation || "A definir",
         date: dateStr,
-        time: eventTime || '20:00',
+        time: eventTime || "20:00",
         totalCache: calculations.recommendedCache,
-        status: 'Orçamento' as ShowStatus,
-        notes: notesSummary
+        status: "Orçamento" as ShowStatus,
+        notes: notesSummary,
       });
     }
 
@@ -387,7 +496,6 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[120] flex items-center justify-center p-3 sm:p-4 animate-fade-in max-w-full overflow-x-hidden">
       <div className="bg-[#121212] text-slate-100 w-full max-w-3xl rounded-[2.5rem] shadow-2xl border border-[#2a2a2a] p-5 sm:p-7 animate-slide-up max-h-[92vh] overflow-y-auto no-scrollbar space-y-6">
-        
         {/* HEADER SPOTIFY STYLE */}
         <div className="flex items-center justify-between pb-4 border-b border-[#27272a]">
           <div className="flex items-center space-x-3">
@@ -412,11 +520,15 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
           <div className="flex items-center space-x-2">
             <button
               type="button"
-              onClick={() => setActiveSubTab(prev => prev === 'calculator' ? 'presets' : 'calculator')}
+              onClick={() =>
+                setActiveSubTab((prev) =>
+                  prev === "calculator" ? "presets" : "calculator",
+                )
+              }
               className={`p-2.5 rounded-2xl border text-xs font-bold transition flex items-center space-x-1.5 ${
-                activeSubTab === 'presets'
-                  ? 'bg-[#1ed760] text-black border-[#1ed760]'
-                  : 'bg-[#181818] text-slate-300 border-[#27272a] hover:border-[#3f3f46]'
+                activeSubTab === "presets"
+                  ? "bg-[#1ed760] text-black border-[#1ed760]"
+                  : "bg-[#181818] text-slate-300 border-[#27272a] hover:border-[#3f3f46]"
               }`}
               title="Configurações de Presets"
             >
@@ -435,7 +547,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
         </div>
 
         {/* EDITOR DE PRESETS (SE SELECIONADO) */}
-        {activeSubTab === 'presets' ? (
+        {activeSubTab === "presets" ? (
           <div className="space-y-5 p-5 rounded-3xl bg-[#181818] border border-[#27272a]">
             <div className="flex items-center justify-between pb-3 border-b border-[#27272a]">
               <div className="flex items-center space-x-2 text-[#1ed760]">
@@ -445,7 +557,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 </h4>
               </div>
               <button
-                onClick={() => setActiveSubTab('calculator')}
+                onClick={() => setActiveSubTab("calculator")}
                 className="text-xs text-slate-400 hover:text-white underline"
               >
                 Voltar à Calculadora
@@ -453,7 +565,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
             </div>
 
             <p className="text-xs text-slate-400">
-              Personalize sua hora técnica por formato, custo de combustível por KM e percentual de reserva padrão. Esses valores serão salvos automaticamente no seu navegador.
+              Personalize sua hora técnica por formato, custo de combustível por
+              KM e percentual de reserva padrão. Esses valores serão salvos
+              automaticamente no seu navegador.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -463,8 +577,13 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 </label>
                 <input
                   type="text"
-                  value={presetRates['Voz e Violão'] || ''}
-                  onChange={e => setPresetRates(r => ({ ...r, 'Voz e Violão': e.target.value }))}
+                  value={presetRates["Voz e Violão"] || ""}
+                  onChange={(e) =>
+                    setPresetRates((r) => ({
+                      ...r,
+                      "Voz e Violão": e.target.value,
+                    }))
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#121212] border border-[#27272a] text-sm font-bold text-white outline-none focus:border-[#1ed760]"
                 />
               </div>
@@ -475,8 +594,10 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 </label>
                 <input
                   type="text"
-                  value={presetRates['Duo'] || ''}
-                  onChange={e => setPresetRates(r => ({ ...r, 'Duo': e.target.value }))}
+                  value={presetRates["Duo"] || ""}
+                  onChange={(e) =>
+                    setPresetRates((r) => ({ ...r, Duo: e.target.value }))
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#121212] border border-[#27272a] text-sm font-bold text-white outline-none focus:border-[#1ed760]"
                 />
               </div>
@@ -487,8 +608,10 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 </label>
                 <input
                   type="text"
-                  value={presetRates['Banda'] || ''}
-                  onChange={e => setPresetRates(r => ({ ...r, 'Banda': e.target.value }))}
+                  value={presetRates["Banda"] || ""}
+                  onChange={(e) =>
+                    setPresetRates((r) => ({ ...r, Banda: e.target.value }))
+                  }
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#121212] border border-[#27272a] text-sm font-bold text-white outline-none focus:border-[#1ed760]"
                 />
               </div>
@@ -502,7 +625,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 <input
                   type="text"
                   value={presetKmCostInput}
-                  onChange={e => setPresetKmCostInput(e.target.value)}
+                  onChange={(e) => setPresetKmCostInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#121212] border border-[#27272a] text-sm font-bold text-white outline-none focus:border-[#1ed760]"
                 />
               </div>
@@ -514,7 +637,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 <input
                   type="text"
                   value={presetReserveInput}
-                  onChange={e => setPresetReserveInput(e.target.value)}
+                  onChange={(e) => setPresetReserveInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-[#121212] border border-[#27272a] text-sm font-bold text-white outline-none focus:border-[#1ed760]"
                 />
               </div>
@@ -527,7 +650,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   <span>Presets salvos com sucesso!</span>
                 </span>
               ) : (
-                <span className="text-[11px] text-slate-500">Salvo no armazenamento local.</span>
+                <span className="text-[11px] text-slate-500">
+                  Salvo no armazenamento local.
+                </span>
               )}
 
               <button
@@ -554,7 +679,11 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       Cachê Final Recomendado
                     </span>
                     <span className="text-[9px] font-black uppercase bg-[#1ed760]/20 text-[#1ed760] px-2 py-0.5 rounded-full border border-[#1ed760]/30">
-                      {revenueModel === 'fixed' ? 'Cachê Fixo' : revenueModel === 'couvert' ? 'Couvert Artístico' : 'Híbrido'}
+                      {revenueModel === "fixed"
+                        ? "Cachê Fixo"
+                        : revenueModel === "couvert"
+                          ? "Couvert Artístico"
+                          : "Híbrido"}
                     </span>
                   </div>
 
@@ -563,52 +692,83 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   </div>
 
                   <p className="text-[11px] text-slate-300 mt-1">
-                    Garante <strong className="text-[#1ed760] font-black">{formatCurrency(calculations.netProfitInPocket)}</strong> no seu bolso (<strong>{formatCurrency(calculations.profitPerHour)}/hora</strong> para {calculations.totalTimeHours}h dedicadas).
+                    Garante{" "}
+                    <strong className="text-[#1ed760] font-black">
+                      {formatCurrency(calculations.netProfitInPocket)}
+                    </strong>{" "}
+                    no seu bolso (
+                    <strong>
+                      {formatCurrency(calculations.profitPerHour)}/hora
+                    </strong>{" "}
+                    para {calculations.totalTimeHours}h dedicadas).
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setShowProposalSection(prev => !prev)}
+                  onClick={() => setShowProposalSection((prev) => !prev)}
                   className="px-5 py-3 rounded-2xl bg-[#1ed760] hover:bg-[#22c55e] text-black text-xs font-black uppercase tracking-wider transition active:scale-95 shadow-lg shadow-[#1ed760]/20 flex items-center justify-center space-x-2 shrink-0"
                 >
                   <MessageSquare size={16} strokeWidth={2.5} />
-                  <span>{showProposalSection ? 'Ocultar Proposta' : 'Gerar Proposta p/ WhatsApp'}</span>
+                  <span>
+                    {showProposalSection
+                      ? "Ocultar Proposta"
+                      : "Gerar Proposta p/ WhatsApp"}
+                  </span>
                 </button>
               </div>
 
               {/* DETALHAMENTO EM MINI BADGES INCLUINDO MÉTRICA DE LUCRO POR HORA */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-3 border-t border-[#27272a] text-[11px] relative z-10">
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">Custos Operacionais</span>
-                  <span className="text-xs font-black text-rose-400 tabular-nums">{formatCurrency(calculations.operationalCost)}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">
+                    Custos Operacionais
+                  </span>
+                  <span className="text-xs font-black text-rose-400 tabular-nums">
+                    {formatCurrency(calculations.operationalCost)}
+                  </span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">Mão de Obra ({calculations.showHours}h)</span>
-                  <span className="text-xs font-black text-sky-400 tabular-nums">{formatCurrency(calculations.artistLaborCost)}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">
+                    Mão de Obra ({calculations.showHours}h)
+                  </span>
+                  <span className="text-xs font-black text-sky-400 tabular-nums">
+                    {formatCurrency(calculations.artistLaborCost)}
+                  </span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">Reserva Equip.</span>
-                  <span className="text-xs font-black text-amber-400 tabular-nums">{formatCurrency(calculations.equipmentReserveVal)}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">
+                    Reserva Equip.
+                  </span>
+                  <span className="text-xs font-black text-amber-400 tabular-nums">
+                    {formatCurrency(calculations.equipmentReserveVal)}
+                  </span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#181818]/80 border border-[#27272a] space-y-0.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 block">Tempo Total</span>
-                  <span className="text-xs font-black text-purple-300 tabular-nums">{calculations.totalTimeHours}h dedicadas</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 block">
+                    Tempo Total
+                  </span>
+                  <span className="text-xs font-black text-purple-300 tabular-nums">
+                    {calculations.totalTimeHours}h dedicadas
+                  </span>
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#1ed760]/10 border border-[#1ed760]/30 space-y-0.5 col-span-2 sm:col-span-1">
-                  <span className="text-[9px] font-black uppercase text-[#1ed760] block">Lucro / Hora</span>
-                  <span className="text-xs font-black text-[#1ed760] tabular-nums">{formatCurrency(calculations.profitPerHour)}/h</span>
+                  <span className="text-[9px] font-black uppercase text-[#1ed760] block">
+                    Lucro / Hora
+                  </span>
+                  <span className="text-xs font-black text-[#1ed760] tabular-nums">
+                    {formatCurrency(calculations.profitPerHour)}/h
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* SEÇÃO DE ENTRADAS INTELIGENTES E CONFIGURAÇÃO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
               {/* BLOCO 1: MODELO DE RECEITA & TEMPO DEDICADO */}
               <div className="p-4 rounded-2xl bg-[#181818] border border-[#27272a] space-y-3.5">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center space-x-2">
@@ -623,18 +783,18 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
-                      { id: 'fixed', label: 'Cachê Fixo' },
-                      { id: 'couvert', label: 'Couvert Artístico' },
-                      { id: 'hybrid', label: 'Híbrido' }
-                    ].map(m => (
+                      { id: "fixed", label: "Cachê Fixo" },
+                      { id: "couvert", label: "Couvert Artístico" },
+                      { id: "hybrid", label: "Híbrido" },
+                    ].map((m) => (
                       <button
                         key={m.id}
                         type="button"
                         onClick={() => setRevenueModel(m.id as any)}
                         className={`py-2 px-1.5 rounded-xl text-xs font-black transition border ${
                           revenueModel === m.id
-                            ? 'bg-[#1ed760] text-black border-[#1ed760]'
-                            : 'bg-[#121212] text-slate-300 border-[#27272a] hover:border-[#3f3f46]'
+                            ? "bg-[#1ed760] text-black border-[#1ed760]"
+                            : "bg-[#121212] text-slate-300 border-[#27272a] hover:border-[#3f3f46]"
                         }`}
                       >
                         {m.label}
@@ -644,8 +804,8 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 </div>
 
                 {/* Parâmetros Específicos do Modelo de Receita */}
-                {revenueModel === 'couvert' && (
-                  <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] grid grid-cols-2 gap-2 animate-fade-in">
+                {revenueModel === "couvert" && (
+                  <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] grid grid-cols-2 gap-2 animate-fade-in ">
                     <div>
                       <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
                         Pessoas Estimadas
@@ -654,7 +814,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         type="number"
                         min="1"
                         value={estimatedPeopleInput}
-                        onChange={e => setEstimatedPeopleInput(e.target.value)}
+                        onChange={(e) =>
+                          setEstimatedPeopleInput(e.target.value)
+                        }
                         placeholder="Ex: 80"
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
@@ -666,7 +828,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       <input
                         type="text"
                         value={couvertPriceInput}
-                        onChange={e => setCouvertPriceInput(e.target.value)}
+                        onChange={(e) => setCouvertPriceInput(e.target.value)}
                         placeholder="Ex: 15,00"
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-[#1ed760] outline-none focus:border-[#1ed760]"
                       />
@@ -674,8 +836,8 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   </div>
                 )}
 
-                {revenueModel === 'hybrid' && (
-                  <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] grid grid-cols-2 gap-2 animate-fade-in">
+                {revenueModel === "hybrid" && (
+                  <div className="p-3 rounded-xl bg-[#121212] border border-[#27272a] grid grid-cols-2 gap-2 animate-fade-in ">
                     <div>
                       <label className="block text-[9px] font-black uppercase text-slate-400 mb-0.5">
                         Cachê Mínimo Garantido (R$)
@@ -683,7 +845,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       <input
                         type="text"
                         value={guaranteedMinCacheInput}
-                        onChange={e => setGuaranteedMinCacheInput(e.target.value)}
+                        onChange={(e) =>
+                          setGuaranteedMinCacheInput(e.target.value)
+                        }
                         placeholder="Ex: 500,00"
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-[#1ed760] outline-none focus:border-[#1ed760]"
                       />
@@ -695,7 +859,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       <input
                         type="text"
                         value={couvertPriceInput}
-                        onChange={e => setCouvertPriceInput(e.target.value)}
+                        onChange={(e) => setCouvertPriceInput(e.target.value)}
                         placeholder="Ex: 15,00"
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
@@ -708,7 +872,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         type="number"
                         min="1"
                         value={estimatedPeopleInput}
-                        onChange={e => setEstimatedPeopleInput(e.target.value)}
+                        onChange={(e) =>
+                          setEstimatedPeopleInput(e.target.value)
+                        }
                         placeholder="Ex: 80"
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
@@ -722,7 +888,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         min="1"
                         max="100"
                         value={couvertPercentageInput}
-                        onChange={e => setCouvertPercentageInput(e.target.value)}
+                        onChange={(e) =>
+                          setCouvertPercentageInput(e.target.value)
+                        }
                         placeholder="Ex: 100%"
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
@@ -736,15 +904,15 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     Formato Artístico
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
-                    {['Voz e Violão', 'Duo', 'Banda'].map(fmt => (
+                    {["Voz e Violão", "Duo", "Banda"].map((fmt) => (
                       <button
                         key={fmt}
                         type="button"
                         onClick={() => handleFormatChange(fmt)}
                         className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition border ${
                           selectedFormat === fmt
-                            ? 'bg-purple-600 text-white border-purple-500'
-                            : 'bg-[#121212] text-slate-400 border-[#27272a]'
+                            ? "bg-purple-600 text-white border-purple-500"
+                            : "bg-[#121212] text-slate-400 border-[#27272a]"
                         }`}
                       >
                         {fmt}
@@ -769,7 +937,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         step="10"
                         min="0"
                         value={travelTimeMinutesInput}
-                        onChange={e => setTravelTimeMinutesInput(e.target.value)}
+                        onChange={(e) =>
+                          setTravelTimeMinutesInput(e.target.value)
+                        }
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
                     </div>
@@ -783,7 +953,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         step="10"
                         min="0"
                         value={soundcheckTimeMinutesInput}
-                        onChange={e => setSoundcheckTimeMinutesInput(e.target.value)}
+                        onChange={(e) =>
+                          setSoundcheckTimeMinutesInput(e.target.value)
+                        }
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
                     </div>
@@ -797,15 +969,22 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                         step="0.5"
                         min="0.5"
                         value={showHoursInput}
-                        onChange={e => setShowHoursInput(e.target.value)}
+                        onChange={(e) => setShowHoursInput(e.target.value)}
                         className="w-full px-2.5 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                       />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] pt-1 text-slate-300">
-                    <span>Tempo Total Dedicado: <strong className="text-purple-300">{calculations.totalTimeHours} horas</strong></span>
-                    <span className="font-bold text-[#1ed760]">{formatCurrency(calculations.profitPerHour)} / hora</span>
+                    <span>
+                      Tempo Total Dedicado:{" "}
+                      <strong className="text-purple-300">
+                        {calculations.totalTimeHours} horas
+                      </strong>
+                    </span>
+                    <span className="font-bold text-[#1ed760]">
+                      {formatCurrency(calculations.profitPerHour)} / hora
+                    </span>
                   </div>
                 </div>
               </div>
@@ -831,7 +1010,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       type="number"
                       min="0"
                       value={totalKmInput}
-                      onChange={e => setTotalKmInput(e.target.value)}
+                      onChange={(e) => setTotalKmInput(e.target.value)}
                       placeholder="Ex: 80"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -846,7 +1025,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       step="0.5"
                       min="1"
                       value={carKmPerLiterInput}
-                      onChange={e => setCarKmPerLiterInput(e.target.value)}
+                      onChange={(e) => setCarKmPerLiterInput(e.target.value)}
                       placeholder="Ex: 10"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -859,7 +1038,9 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={fuelPricePerLiterInput}
-                      onChange={e => setFuelPricePerLiterInput(e.target.value)}
+                      onChange={(e) =>
+                        setFuelPricePerLiterInput(e.target.value)
+                      }
                       placeholder="Ex: 6.00"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -872,7 +1053,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={tollAmountInput}
-                      onChange={e => setTollAmountInput(e.target.value)}
+                      onChange={(e) => setTollAmountInput(e.target.value)}
                       placeholder="Ex: 15.00"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -882,11 +1063,19 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 <div className="p-2.5 rounded-xl bg-[#121212] border border-[#27272a] space-y-1 text-xs">
                   <div className="flex justify-between text-slate-400 text-[11px]">
                     <span>Fórmula Combustível:</span>
-                    <span>({calculations.totalKm} km / {calculations.kmPerLiter} km/l) × {formatCurrency(calculations.fuelPrice)} = <strong className="text-white">{formatCurrency(calculations.calculatedFuelCost)}</strong></span>
+                    <span>
+                      ({calculations.totalKm} km / {calculations.kmPerLiter}{" "}
+                      km/l) × {formatCurrency(calculations.fuelPrice)} ={" "}
+                      <strong className="text-white">
+                        {formatCurrency(calculations.calculatedFuelCost)}
+                      </strong>
+                    </span>
                   </div>
                   <div className="flex justify-between text-sky-400 font-bold border-t border-[#27272a] pt-1">
                     <span>Combustível + Pedágio:</span>
-                    <span className="tabular-nums">{formatCurrency(calculations.kmTotalCost)}</span>
+                    <span className="tabular-nums">
+                      {formatCurrency(calculations.kmTotalCost)}
+                    </span>
                   </div>
                 </div>
 
@@ -903,16 +1092,18 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   <input
                     type="text"
                     value={equipmentReserveFixedInput}
-                    onChange={e => setEquipmentReserveFixedInput(e.target.value)}
+                    onChange={(e) =>
+                      setEquipmentReserveFixedInput(e.target.value)
+                    }
                     placeholder="Ex: 20.00"
                     className="w-full px-3 py-1.5 rounded-lg bg-[#181818] border border-[#27272a] text-xs font-bold text-amber-300 outline-none focus:border-amber-400"
                   />
                   <p className="text-[9px] text-slate-400">
-                    Valor acumulado para substituição e manutenção de instrumentos e cabos.
+                    Valor acumulado para substituição e manutenção de
+                    instrumentos e cabos.
                   </p>
                 </div>
               </div>
-
             </div>
 
             {/* BLOCO 3: CUSTOS DIRETO ADICIONAIS & MÚSICOS DE APOIO */}
@@ -923,7 +1114,12 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   <span>3. Insumos & Músicos de Apoio</span>
                 </h4>
                 <span className="text-xs font-black text-rose-400 tabular-nums">
-                  Outros Custos: {formatCurrency(calculations.foodCost + calculations.otherCosts + calculations.musiciansTotalCost)}
+                  Outros Custos:{" "}
+                  {formatCurrency(
+                    calculations.foodCost +
+                      calculations.otherCosts +
+                      calculations.musiciansTotalCost,
+                  )}
                 </span>
               </div>
 
@@ -935,7 +1131,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   <input
                     type="text"
                     value={foodCostInput}
-                    onChange={e => setFoodCostInput(e.target.value)}
+                    onChange={(e) => setFoodCostInput(e.target.value)}
                     placeholder="Ex: 50"
                     className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                   />
@@ -948,7 +1144,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   <input
                     type="text"
                     value={otherCostsInput}
-                    onChange={e => setOtherCostsInput(e.target.value)}
+                    onChange={(e) => setOtherCostsInput(e.target.value)}
                     placeholder="Ex: 100"
                     className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                   />
@@ -961,18 +1157,21 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   Músicos de Apoio / Freelas ({supportMusicians.length})
                 </span>
 
-                <form onSubmit={handleAddSupportMusician} className="flex gap-2">
+                <form
+                  onSubmit={handleAddSupportMusician}
+                  className="flex gap-2"
+                >
                   <input
                     type="text"
                     value={newMusicianName}
-                    onChange={e => setNewMusicianName(e.target.value)}
+                    onChange={(e) => setNewMusicianName(e.target.value)}
                     placeholder="Ex: Baterista / Roadie"
                     className="flex-1 px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                   />
                   <input
                     type="text"
                     value={newMusicianAmount}
-                    onChange={e => setNewMusicianAmount(e.target.value)}
+                    onChange={(e) => setNewMusicianAmount(e.target.value)}
                     placeholder="R$ 200"
                     className="w-24 px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                   />
@@ -987,12 +1186,14 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
 
                 {supportMusicians.length > 0 && (
                   <div className="space-y-1 max-h-32 overflow-y-auto no-scrollbar">
-                    {supportMusicians.map(mus => (
+                    {supportMusicians.map((mus) => (
                       <div
                         key={mus.id}
                         className="p-2 rounded-xl bg-[#121212] border border-[#27272a] flex items-center justify-between text-xs"
                       >
-                        <span className="font-bold text-slate-300">{mus.name}</span>
+                        <span className="font-bold text-slate-300">
+                          {mus.name}
+                        </span>
                         <div className="flex items-center space-x-2">
                           <span className="font-black text-purple-400 tabular-nums">
                             {formatCurrency(mus.amount)}
@@ -1029,7 +1230,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                   max="20"
                   step="1"
                   value={reservePercent}
-                  onChange={e => setReservePercent(Number(e.target.value))}
+                  onChange={(e) => setReservePercent(Number(e.target.value))}
                   className="w-full accent-[#1ed760] cursor-pointer"
                 />
               </div>
@@ -1041,7 +1242,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                 <input
                   type="text"
                   value={commissionPercentInput}
-                  onChange={e => setCommissionPercentInput(e.target.value)}
+                  onChange={(e) => setCommissionPercentInput(e.target.value)}
                   placeholder="Ex: 10"
                   className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-purple-400 outline-none focus:border-[#1ed760]"
                 />
@@ -1072,7 +1273,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={contractorName}
-                      onChange={e => setContractorName(e.target.value)}
+                      onChange={(e) => setContractorName(e.target.value)}
                       placeholder="Ex: Bar do Zé"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -1085,7 +1286,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={contractorPhone}
-                      onChange={e => setContractorPhone(e.target.value)}
+                      onChange={(e) => setContractorPhone(e.target.value)}
                       placeholder="(11) 99999-8888"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -1098,7 +1299,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={eventLocation}
-                      onChange={e => setEventLocation(e.target.value)}
+                      onChange={(e) => setEventLocation(e.target.value)}
                       placeholder="Ex: São Paulo - SP"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -1111,7 +1312,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="date"
                       value={eventDate}
-                      onChange={e => setEventDate(e.target.value)}
+                      onChange={(e) => setEventDate(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
                   </div>
@@ -1123,7 +1324,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={eventTime}
-                      onChange={e => setEventTime(e.target.value)}
+                      onChange={(e) => setEventTime(e.target.value)}
                       placeholder="20:00"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -1136,7 +1337,7 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     <input
                       type="text"
                       value={paymentTerms}
-                      onChange={e => setPaymentTerms(e.target.value)}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
                       placeholder="Ex: 50% na reserva via PIX e 50% após o show"
                       className="w-full px-3 py-2 rounded-xl bg-[#121212] border border-[#27272a] text-xs font-bold text-white outline-none focus:border-[#1ed760]"
                     />
@@ -1161,8 +1362,12 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                       onClick={handleCopyMessage}
                       className="px-4 py-2.5 rounded-xl bg-[#27272a] hover:bg-[#3f3f46] text-white text-xs font-bold transition flex items-center space-x-1.5 active:scale-95"
                     >
-                      {copySuccess ? <Check size={15} className="text-[#1ed760]" /> : <Copy size={15} />}
-                      <span>{copySuccess ? 'Copiado!' : 'Copiar Texto'}</span>
+                      {copySuccess ? (
+                        <Check size={15} className="text-[#1ed760]" />
+                      ) : (
+                        <Copy size={15} />
+                      )}
+                      <span>{copySuccess ? "Copiado!" : "Copiar Texto"}</span>
                     </button>
 
                     <button
@@ -1180,8 +1385,16 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
                     onClick={handleSaveToAgenda}
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-black uppercase tracking-wider transition flex items-center space-x-1.5 shadow-md active:scale-95"
                   >
-                    {savedToAgendaSuccess ? <Check size={15} /> : <FilePlus size={15} />}
-                    <span>{savedToAgendaSuccess ? 'Salvo na Agenda!' : 'Salvar como Orçamento na Agenda'}</span>
+                    {savedToAgendaSuccess ? (
+                      <Check size={15} />
+                    ) : (
+                      <FilePlus size={15} />
+                    )}
+                    <span>
+                      {savedToAgendaSuccess
+                        ? "Salvo na Agenda!"
+                        : "Salvar como Orçamento na Agenda"}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -1202,7 +1415,6 @@ Fico à disposição para confirmar a data na agenda! 🚀`;
             Fechar
           </button>
         </div>
-
       </div>
     </div>
   );

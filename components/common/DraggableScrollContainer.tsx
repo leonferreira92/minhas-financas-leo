@@ -1,5 +1,5 @@
-import React from 'react';
-import { useDraggableScroll } from '../../hooks/useDraggableScroll';
+import React from "react";
+import { useDraggableScroll } from "../../hooks/useDraggableScroll";
 
 interface Props extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -12,7 +12,7 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
  */
 export const DraggableScrollContainer: React.FC<Props> = ({
   children,
-  className = '',
+  className = "",
   dragSpeed = 1.3,
   ...props
 }) => {

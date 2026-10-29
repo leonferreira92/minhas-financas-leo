@@ -1,13 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { MusicLocomotionExpense, Show } from '../../types';
-import { useFinance } from '../../context/FinanceContext';
-import { 
-  Car, Fuel, Plus, Trash2, Edit3, Calculator, 
-  MapPin, Calendar, Clock, DollarSign, ArrowUpRight, 
-  CheckCircle2, X, Search, Navigation, Music, Sparkles
-} from 'lucide-react';
-import { getLocalDateString } from '../../services/dateUtils';
-import { getShowDayFuelExpenses } from '../../services/showFinanceSyncService';
+import React, { useState, useMemo } from "react";
+import { MusicLocomotionExpense, Show } from "../../types";
+import { useFinance } from "../../context/FinanceContext";
+import {
+  Car,
+  Fuel,
+  Plus,
+  Trash2,
+  Edit3,
+  Calculator,
+  MapPin,
+  Calendar,
+  Clock,
+  DollarSign,
+  ArrowUpRight,
+  CheckCircle2,
+  X,
+  Search,
+  Navigation,
+  Music,
+  Sparkles,
+} from "lucide-react";
+import { getLocalDateString } from "../../services/dateUtils";
+import { getShowDayFuelExpenses } from "../../services/showFinanceSyncService";
 
 interface Props {
   shows: Show[];
@@ -15,41 +29,46 @@ interface Props {
 }
 
 export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
-  const { 
-    locomotionExpenses, 
+  const {
+    locomotionExpenses,
     transactions,
-    addLocomotionExpense, 
-    updateLocomotionExpense, 
+    addLocomotionExpense,
+    updateLocomotionExpense,
     deleteLocomotionExpense,
-    isBlurred 
+    isBlurred,
   } = useFinance();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<MusicLocomotionExpense | null>(null);
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
+  const [editingExpense, setEditingExpense] =
+    useState<MusicLocomotionExpense | null>(null);
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>("all");
 
   // Form states
-  const [formType, setFormType] = useState<MusicLocomotionExpense['type']>('fuel');
-  const [formTitle, setFormTitle] = useState('');
+  const [formType, setFormType] =
+    useState<MusicLocomotionExpense["type"]>("fuel");
+  const [formTitle, setFormTitle] = useState("");
   const [formDate, setFormDate] = useState(() => getLocalDateString());
-  const [formAmount, setFormAmount] = useState('');
-  const [formKm, setFormKm] = useState('');
-  const [formPricePerKm, setFormPricePerKm] = useState('1.20'); // Padrão R$ 1,20 por KM
-  const [formOrigin, setFormOrigin] = useState('');
-  const [formDestination, setFormDestination] = useState('');
-  const [formShowId, setFormShowId] = useState<string>('');
-  const [formNotes, setFormNotes] = useState('');
+  const [formAmount, setFormAmount] = useState("");
+  const [formKm, setFormKm] = useState("");
+  const [formPricePerKm, setFormPricePerKm] = useState("1.20"); // Padrão R$ 1,20 por KM
+  const [formOrigin, setFormOrigin] = useState("");
+  const [formDestination, setFormDestination] = useState("");
+  const [formShowId, setFormShowId] = useState<string>("");
+  const [formNotes, setFormNotes] = useState("");
 
   const formatCurrency = (val: number) => {
-    if (isBlurred) return 'R$ •••••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    if (isBlurred) return "R$ •••••";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   // Helper when KM or PricePerKM changes in mileage mode
   const handleKmChange = (newKm: string, newPrice: string = formPricePerKm) => {
     setFormKm(newKm);
-    const kmNum = parseFloat(newKm.replace(',', '.')) || 0;
-    const priceNum = parseFloat(newPrice.replace(',', '.')) || 0;
+    const kmNum = parseFloat(newKm.replace(", ", ".")) || 0;
+    const priceNum = parseFloat(newPrice.replace(", ", ".")) || 0;
     if (kmNum > 0 && priceNum > 0) {
       setFormAmount((kmNum * priceNum).toFixed(2));
     }
@@ -63,51 +82,55 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
   const handleOpenModal = (expense?: MusicLocomotionExpense) => {
     if (expense) {
       setEditingExpense(expense);
-      setFormType(expense.type || 'fuel');
-      setFormTitle(expense.title || '');
+      setFormType(expense.type || "fuel");
+      setFormTitle(expense.title || "");
       setFormDate(expense.date || getLocalDateString());
-      setFormAmount(expense.amount ? String(expense.amount) : '');
-      setFormKm(expense.km ? String(expense.km) : '');
-      setFormPricePerKm(expense.pricePerKm ? String(expense.pricePerKm) : '1.20');
-      setFormOrigin(expense.origin || '');
-      setFormDestination(expense.destination || '');
-      setFormShowId(expense.showId || '');
-      setFormNotes(expense.notes || '');
+      setFormAmount(expense.amount ? String(expense.amount) : "");
+      setFormKm(expense.km ? String(expense.km) : "");
+      setFormPricePerKm(
+        expense.pricePerKm ? String(expense.pricePerKm) : "1.20",
+      );
+      setFormOrigin(expense.origin || "");
+      setFormDestination(expense.destination || "");
+      setFormShowId(expense.showId || "");
+      setFormNotes(expense.notes || "");
     } else {
       setEditingExpense(null);
-      setFormType('fuel');
-      setFormTitle('');
+      setFormType("fuel");
+      setFormTitle("");
       setFormDate(getLocalDateString());
-      setFormAmount('');
-      setFormKm('');
-      setFormPricePerKm('1.20');
-      setFormOrigin('');
-      setFormDestination('');
-      setFormShowId('');
-      setFormNotes('');
+      setFormAmount("");
+      setFormKm("");
+      setFormPricePerKm("1.20");
+      setFormOrigin("");
+      setFormDestination("");
+      setFormShowId("");
+      setFormNotes("");
     }
     setIsModalOpen(true);
   };
 
   const handleSaveExpense = (e: React.FormEvent) => {
     e.preventDefault();
-    const amt = parseFloat(formAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    const amt =
+      parseFloat(formAmount.replace(/[^\d.,]/g, "").replace(", ", ".")) || 0;
     if (amt <= 0) return;
 
-    const kmNum = parseFloat(formKm.replace(',', '.')) || undefined;
-    const priceKmNum = parseFloat(formPricePerKm.replace(',', '.')) || undefined;
+    const kmNum = parseFloat(formKm.replace(", ", ".")) || undefined;
+    const priceKmNum =
+      parseFloat(formPricePerKm.replace(", ", ".")) || undefined;
 
     const defaultTitleByType = {
-      uber: 'Corrida Uber / 99',
-      fuel: 'Abastecimento Combustível',
+      uber: "Corrida Uber / 99",
+      fuel: "Abastecimento Combustível",
       mileage: `Deslocamento (${kmNum || 0} KM)`,
-      toll: 'Pedágio',
-      parking: 'Estacionamento'
+      toll: "Pedágio",
+      parking: "Estacionamento",
     };
 
     const finalTitle = formTitle.trim() || defaultTitleByType[formType];
 
-    const data: Omit<MusicLocomotionExpense, 'id' | 'createdAt'> = {
+    const data: Omit<MusicLocomotionExpense, "id" | "createdAt"> = {
       type: formType,
       title: finalTitle,
       date: formDate,
@@ -117,13 +140,13 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
       origin: formOrigin.trim() || undefined,
       destination: formDestination.trim() || undefined,
       showId: formShowId || undefined,
-      notes: formNotes.trim() || undefined
+      notes: formNotes.trim() || undefined,
     };
 
     if (editingExpense) {
       updateLocomotionExpense({
         ...editingExpense,
-        ...data
+        ...data,
       });
     } else {
       addLocomotionExpense(data, true);
@@ -133,7 +156,11 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
   };
 
   const handleDelete = (id: string, title: string) => {
-    if (window.confirm(`Deseja excluir a despesa "${title}" e remover do financeiro?`)) {
+    if (
+      window.confirm(
+        `Deseja excluir a despesa"${title}" e remover do financeiro? `,
+      )
+    ) {
       deleteLocomotionExpense(id, true);
     }
   };
@@ -146,58 +173,68 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
   // Unifica despesas de locomoção manuais com combustíveis de shows
   const allLocomotionItems = useMemo<MusicLocomotionExpense[]>(() => {
     const list: MusicLocomotionExpense[] = [...locomotionExpenses];
-    const registeredTxIds = new Set(locomotionExpenses.map(l => l.transactionId).filter(Boolean));
+    const registeredTxIds = new Set(
+      locomotionExpenses.map((l) => l.transactionId).filter(Boolean),
+    );
 
     // 1. Adicionar transações de combustível identificadas em dias de show
-    showDayFuel.forEach(item => {
+    showDayFuel.forEach((item) => {
       const tx = item.transaction;
       if (registeredTxIds.has(tx.id)) return;
       registeredTxIds.add(tx.id);
 
       list.push({
         id: `loco_fuel_tx_${tx.id}`,
-        type: 'fuel',
+        type: "fuel",
         title: tx.description || `Abastecimento (${item.showName})`,
         amount: Number(tx.amount) || 0,
         date: tx.date || getLocalDateString(),
         showId: item.matchedShow?.id || tx.showId,
         transactionId: tx.id,
         notes: `⛽ Abastecimento no dia do show: ${item.showName}`,
-        createdAt: tx.createdAt
+        createdAt: tx.createdAt,
       });
     });
 
     // 2. Adicionar itens de logística de shows com combustível
-    shows.forEach(show => {
-      if (show.status === 'Cancelado') return;
+    shows.forEach((show) => {
+      if (show.status === "Cancelado") return;
       if (Array.isArray(show.logistics)) {
-        show.logistics.forEach(log => {
-          const desc = (log.description || '').toLowerCase();
-          if (log.type === 'fuel' || desc.includes('combust') || desc.includes('gasolina') || desc.includes('posto')) {
-            if (log.transactionId && registeredTxIds.has(log.transactionId)) return;
+        show.logistics.forEach((log) => {
+          const desc = (log.description || "").toLowerCase();
+          if (
+            log.type === "fuel" ||
+            desc.includes("combust") ||
+            desc.includes("gasolina") ||
+            desc.includes("posto")
+          ) {
+            if (log.transactionId && registeredTxIds.has(log.transactionId))
+              return;
             list.push({
               id: `loco_show_log_${show.id}_${log.id || log.description}`,
-              type: 'fuel',
-              title: log.description || `Combustível - ${show.contractorName || show.name}`,
+              type: "fuel",
+              title:
+                log.description ||
+                `Combustível - ${show.contractorName || show.name}`,
               amount: Number(log.amount) || 0,
               date: show.date,
               showId: show.id,
               transactionId: log.transactionId,
               notes: `⛽ Logística do show: ${show.contractorName || show.name}`,
-              createdAt: show.createdAt
+              createdAt: show.createdAt,
             });
           }
         });
       } else if (show.expenses && Number(show.expenses.fuel) > 0) {
         list.push({
           id: `loco_show_fuel_${show.id}`,
-          type: 'fuel',
+          type: "fuel",
           title: `Combustível - ${show.contractorName || show.name}`,
           amount: Number(show.expenses.fuel) || 0,
           date: show.date,
           showId: show.id,
           notes: `⛽ Combustível lançado no show: ${show.contractorName || show.name}`,
-          createdAt: show.createdAt
+          createdAt: show.createdAt,
         });
       }
     });
@@ -207,30 +244,43 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
 
   // Metrics
   const locomotionMetrics = useMemo(() => {
-    const totalAmount = allLocomotionItems.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const totalKm = allLocomotionItems.reduce((s, l) => s + (Number(l.km) || 0), 0);
-    const fuelAmount = allLocomotionItems.filter(l => l.type === 'fuel').reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const uberAmount = allLocomotionItems.filter(l => l.type === 'uber').reduce((s, l) => s + (Number(l.amount) || 0), 0);
-    const tollAndParking = allLocomotionItems.filter(l => l.type === 'toll' || l.type === 'parking').reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const totalAmount = allLocomotionItems.reduce(
+      (s, l) => s + (Number(l.amount) || 0),
+      0,
+    );
+    const totalKm = allLocomotionItems.reduce(
+      (s, l) => s + (Number(l.km) || 0),
+      0,
+    );
+    const fuelAmount = allLocomotionItems
+      .filter((l) => l.type === "fuel")
+      .reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const uberAmount = allLocomotionItems
+      .filter((l) => l.type === "uber")
+      .reduce((s, l) => s + (Number(l.amount) || 0), 0);
+    const tollAndParking = allLocomotionItems
+      .filter((l) => l.type === "toll" || l.type === "parking")
+      .reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
     return {
       totalAmount,
       totalKm,
       fuelAmount,
       uberAmount,
-      tollAndParking
+      tollAndParking,
     };
   }, [allLocomotionItems]);
 
   const filteredExpenses = useMemo(() => {
     return allLocomotionItems
-      .filter(l => selectedTypeFilter === 'all' || l.type === selectedTypeFilter)
-      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      .filter(
+        (l) => selectedTypeFilter === "all" || l.type === selectedTypeFilter,
+      )
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [allLocomotionItems, selectedTypeFilter]);
 
   return (
     <div className="space-y-5">
-      
       {/* HEADER DA ABA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
         <div>
@@ -239,7 +289,8 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
             <span>Locomoção, Combustível & KM Rodado</span>
           </h2>
           <p className="text-[11px] text-zinc-400">
-            Controle de viagens para shows, cálculo de custo por KM rodado, corridas Uber e pedágios.
+            Controle de viagens para shows, cálculo de custo por KM rodado,
+            corridas Uber e pedágios.
           </p>
         </div>
 
@@ -255,54 +306,70 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
       {/* KPI CARDS DE LOCOMOÇÃO */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-1">
-          <span className="text-[10px] font-bold uppercase text-zinc-400">Total Gasto em Transporte</span>
+          <span className="text-[10px] font-bold uppercase text-zinc-400">
+            Total Gasto em Transporte
+          </span>
           <span className="text-xl font-black text-amber-400 tabular-nums block">
             {formatCurrency(locomotionMetrics.totalAmount)}
           </span>
-          <span className="text-[10px] text-zinc-500 font-medium">Todos os deslocamentos</span>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-1">
-          <span className="text-[10px] font-bold uppercase text-zinc-400">Total KM Rodados</span>
-          <span className="text-xl font-black text-white tabular-nums block">
-            {locomotionMetrics.totalKm.toLocaleString('pt-BR')} km
+          <span className="text-[10px] text-zinc-500 font-medium">
+            Todos os deslocamentos
           </span>
-          <span className="text-[10px] text-zinc-500 font-medium">Viagens computadas</span>
         </div>
 
         <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-1">
-          <span className="text-[10px] font-bold uppercase text-zinc-400">Combustível</span>
+          <span className="text-[10px] font-bold uppercase text-zinc-400">
+            Total KM Rodados
+          </span>
+          <span className="text-xl font-black text-white tabular-nums block">
+            {locomotionMetrics.totalKm.toLocaleString("pt-BR")} km
+          </span>
+          <span className="text-[10px] text-zinc-500 font-medium">
+            Viagens computadas
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-1">
+          <span className="text-[10px] font-bold uppercase text-zinc-400">
+            Combustível
+          </span>
           <span className="text-xl font-black text-emerald-400 tabular-nums block">
             {formatCurrency(locomotionMetrics.fuelAmount)}
           </span>
-          <span className="text-[10px] text-zinc-500 font-medium">Postos e abastecimento</span>
+          <span className="text-[10px] text-zinc-500 font-medium">
+            Postos e abastecimento
+          </span>
         </div>
 
         <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-1">
-          <span className="text-[10px] font-bold uppercase text-zinc-400">Uber & Apps</span>
+          <span className="text-[10px] font-bold uppercase text-zinc-400">
+            Uber & Apps
+          </span>
           <span className="text-xl font-black text-purple-400 tabular-nums block">
             {formatCurrency(locomotionMetrics.uberAmount)}
           </span>
-          <span className="text-[10px] text-zinc-500 font-medium">Corridas e transporte</span>
+          <span className="text-[10px] text-zinc-500 font-medium">
+            Corridas e transporte
+          </span>
         </div>
       </div>
 
       {/* FILTROS DE TIPO */}
       <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
         {[
-          { id: 'all', label: 'Todos' },
-          { id: 'fuel', label: 'Combustível' },
-          { id: 'mileage', label: 'KM Rodado' },
-          { id: 'uber', label: 'Uber / 99' },
-          { id: 'toll', label: 'Pedágio & Estac.' }
-        ].map(filter => (
+          { id: "all", label: "Todos" },
+          { id: "fuel", label: "Combustível" },
+          { id: "mileage", label: "KM Rodado" },
+          { id: "uber", label: "Uber / 99" },
+          { id: "toll", label: "Pedágio & Estac." },
+        ].map((filter) => (
           <button
             key={filter.id}
             onClick={() => setSelectedTypeFilter(filter.id)}
             className={`px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition active:scale-95 ${
               selectedTypeFilter === filter.id
-                ? 'bg-amber-500 text-zinc-950 shadow-sm'
-                : 'text-zinc-400 hover:text-white bg-[#121214]'
+                ? "bg-amber-500 text-zinc-950 shadow-sm"
+                : "text-zinc-400 hover:text-white bg-[#121214]"
             }`}
           >
             {filter.label}
@@ -314,8 +381,13 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
       {filteredExpenses.length === 0 ? (
         <div className="p-8 rounded-3xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-3">
           <Car size={32} className="mx-auto text-zinc-600" />
-          <p className="text-sm font-bold text-white">Nenhum gasto de locomoção registrado</p>
-          <p className="text-xs text-zinc-400">Use a calculadora de KM rodado ou registre abastecimentos para descontar do lucro real.</p>
+          <p className="text-sm font-bold text-white">
+            Nenhum gasto de locomoção registrado
+          </p>
+          <p className="text-xs text-zinc-400">
+            Use a calculadora de KM rodado ou registre abastecimentos para
+            descontar do lucro real.
+          </p>
           <button
             onClick={() => handleOpenModal()}
             className="px-4 py-2 rounded-xl bg-amber-500 text-zinc-950 font-black uppercase text-xs inline-flex items-center space-x-1"
@@ -326,8 +398,8 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
         </div>
       ) : (
         <div className="space-y-2.5">
-          {filteredExpenses.map(expense => {
-            const linkedShow = shows.find(s => s.id === expense.showId);
+          {filteredExpenses.map((expense) => {
+            const linkedShow = shows.find((s) => s.id === expense.showId);
 
             return (
               <div
@@ -335,13 +407,22 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
                 className="p-4 rounded-2xl bg-[#141416] border border-zinc-800 hover:border-zinc-700 transition flex items-center justify-between gap-3 group"
               >
                 <div className="flex items-center space-x-3 min-w-0">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                    expense.type === 'fuel' ? 'bg-emerald-500/10 text-emerald-400' :
-                    expense.type === 'uber' ? 'bg-purple-500/10 text-purple-400' :
-                    expense.type === 'mileage' ? 'bg-amber-500/10 text-amber-400' :
-                    'bg-blue-500/10 text-blue-400'
-                  }`}>
-                    {expense.type === 'fuel' ? <Fuel size={18} /> : <Car size={18} />}
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                      expense.type === "fuel"
+                        ? "bg-emerald-500/10 text-emerald-400"
+                        : expense.type === "uber"
+                          ? "bg-purple-500/10 text-purple-400"
+                          : expense.type === "mileage"
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-blue-500/10 text-blue-400"
+                    }`}
+                  >
+                    {expense.type === "fuel" ? (
+                      <Fuel size={18} />
+                    ) : (
+                      <Car size={18} />
+                    )}
                   </div>
 
                   <div className="min-w-0">
@@ -351,7 +432,8 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
                       </span>
                       {expense.km && (
                         <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-zinc-800 text-amber-300">
-                          {expense.km} km ({formatCurrency(expense.pricePerKm || 1.20)}/km)
+                          {expense.km} km (
+                          {formatCurrency(expense.pricePerKm || 1.2)}/km)
                         </span>
                       )}
                     </div>
@@ -402,11 +484,14 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-[#18181b] border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <h3 className="text-base font-black text-white flex items-center space-x-2">
                 <Car size={18} className="text-amber-400" />
-                <span>{editingExpense ? 'Editar Deslocamento' : 'Novo Deslocamento & Locomoção'}</span>
+                <span>
+                  {editingExpense
+                    ? "Editar Deslocamento"
+                    : "Novo Deslocamento & Locomoção"}
+                </span>
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -418,23 +503,25 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
 
             <form onSubmit={handleSaveExpense} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Tipo de Despesa</label>
+                <label className="text-zinc-400 font-bold block mb-1">
+                  Tipo de Despesa
+                </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
-                    { id: 'fuel', label: 'Combustível' },
-                    { id: 'mileage', label: 'KM Rodado' },
-                    { id: 'uber', label: 'Uber / App' },
-                    { id: 'toll', label: 'Pedágio' },
-                    { id: 'parking', label: 'Estacionamento' }
-                  ].map(t => (
+                    { id: "fuel", label: "Combustível" },
+                    { id: "mileage", label: "KM Rodado" },
+                    { id: "uber", label: "Uber / App" },
+                    { id: "toll", label: "Pedágio" },
+                    { id: "parking", label: "Estacionamento" },
+                  ].map((t) => (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => setFormType(t.id as any)}
                       className={`p-2 rounded-xl font-bold text-[11px] transition active:scale-95 ${
                         formType === t.id
-                          ? 'bg-amber-500 text-zinc-950 font-black'
-                          : 'bg-[#121214] text-zinc-400 border border-zinc-800'
+                          ? "bg-amber-500 text-zinc-950 font-black"
+                          : "bg-[#121214] text-zinc-400 border border-zinc-800"
                       }`}
                     >
                       {t.label}
@@ -444,7 +531,7 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
               </div>
 
               {/* MODO KM RODADO: CALCULADORA AUTOMÁTICA */}
-              {formType === 'mileage' && (
+              {formType === "mileage" && (
                 <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
                   <span className="text-[10px] font-black uppercase text-amber-300 flex items-center gap-1">
                     <Calculator size={13} />
@@ -453,7 +540,9 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-zinc-400 font-bold block mb-1">KM Total Rodado</label>
+                      <label className="text-zinc-400 font-bold block mb-1">
+                        KM Total Rodado
+                      </label>
                       <input
                         type="number"
                         step="0.1"
@@ -465,7 +554,9 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
                     </div>
 
                     <div>
-                      <label className="text-zinc-400 font-bold block mb-1">Valor por KM (R$)</label>
+                      <label className="text-zinc-400 font-bold block mb-1">
+                        Valor por KM (R$)
+                      </label>
                       <input
                         type="number"
                         step="0.05"
@@ -481,7 +572,9 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Valor Total (R$) *</label>
+                  <label className="text-zinc-400 font-bold block mb-1">
+                    Valor Total (R$) *
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -494,7 +587,9 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
                 </div>
 
                 <div>
-                  <label className="text-zinc-400 font-bold block mb-1">Data *</label>
+                  <label className="text-zinc-400 font-bold block mb-1">
+                    Data *
+                  </label>
                   <input
                     type="date"
                     required
@@ -506,7 +601,9 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Descrição / Trajeto</label>
+                <label className="text-zinc-400 font-bold block mb-1">
+                  Descrição / Trajeto
+                </label>
                 <input
                   type="text"
                   value={formTitle}
@@ -517,14 +614,16 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
               </div>
 
               <div>
-                <label className="text-zinc-400 font-bold block mb-1">Vincular a um Show (Opcional)</label>
+                <label className="text-zinc-400 font-bold block mb-1">
+                  Vincular a um Show (Opcional)
+                </label>
                 <select
                   value={formShowId}
                   onChange={(e) => {
                     const sid = e.target.value;
                     setFormShowId(sid);
                     if (sid) {
-                      const selectedShow = shows.find(s => s.id === sid);
+                      const selectedShow = shows.find((s) => s.id === sid);
                       if (selectedShow && selectedShow.date) {
                         setFormDate(selectedShow.date);
                       }
@@ -532,12 +631,17 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
                   }}
                   className="w-full bg-[#121214] border border-zinc-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
                 >
-                  <option value="">Gasto Geral de Transporte da Carreira</option>
-                  {shows.filter(s => s.status !== 'Cancelado').map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.date} - {s.contractorName || s.name} ({s.location || s.city || 'Sem local'})
-                    </option>
-                  ))}
+                  <option value="">
+                    Gasto Geral de Transporte da Carreira
+                  </option>
+                  {shows
+                    .filter((s) => s.status !== "Cancelado")
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.date} - {s.contractorName || s.name} (
+                        {s.location || s.city || "Sem local"})
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -560,7 +664,6 @@ export const LocomotionModuleView: React.FC<Props> = ({ shows }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

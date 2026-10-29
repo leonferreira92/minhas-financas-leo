@@ -1,16 +1,30 @@
-import React, { useState, useMemo } from 'react';
-import { Show, ShowStatus } from '../../types';
-import { useFinance } from '../../context/FinanceContext';
-import { 
-  Calendar, MapPin, DollarSign, Clock, Users, Fuel, 
-  ArrowRight, Plus, Search, Filter, CheckCircle2, 
-  AlertTriangle, TrendingUp, Sparkles, FileText, ChevronRight,
-  Download, Database
-} from 'lucide-react';
-import { getStatusConfig, getShowDisplayHierarchy } from '../shows/types';
-import { getShowFinancialSummary } from '../../services/showFinanceSyncService';
-import { downloadShowsERPMigrationJSON } from '../../services/showExportService';
-import { useDraggableScroll } from '../../hooks/useDraggableScroll';
+import React, { useState, useMemo } from "react";
+import { Show, ShowStatus } from "../../types";
+import { useFinance } from "../../context/FinanceContext";
+import {
+  Calendar,
+  MapPin,
+  DollarSign,
+  Clock,
+  Users,
+  Fuel,
+  ArrowRight,
+  Plus,
+  Search,
+  Filter,
+  CheckCircle2,
+  AlertTriangle,
+  TrendingUp,
+  Sparkles,
+  FileText,
+  ChevronRight,
+  Download,
+  Database,
+} from "lucide-react";
+import { getStatusConfig, getShowDisplayHierarchy } from "../shows/types";
+import { getShowFinancialSummary } from "../../services/showFinanceSyncService";
+import { downloadShowsERPMigrationJSON } from "../../services/showExportService";
+import { useDraggableScroll } from "../../hooks/useDraggableScroll";
 
 interface Props {
   shows: Show[];
@@ -23,43 +37,57 @@ export const ShowsManagementView: React.FC<Props> = ({
   shows,
   onSelectShow,
   onOpenCreateShow,
-  onExportERP
+  onExportERP,
 }) => {
   const { transactions, isBlurred, settings } = useFinance();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'cache_desc' | 'profit_desc'>('date_desc');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<
+    "date_desc" | "date_asc" | "cache_desc" | "profit_desc"
+  >("date_desc");
 
   const filtersRef = useDraggableScroll<HTMLDivElement>({ dragSpeed: 1.2 });
 
   const formatCurrency = (val: number) => {
-    if (isBlurred) return 'R$ •••••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    if (isBlurred) return "R$ •••••";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   const filteredShows = useMemo(() => {
     const safeShows = Array.isArray(shows) ? shows : [];
     return safeShows
-      .filter(s => {
-        const matchSearch = searchTerm === '' ||
-          (s.contractorName && s.contractorName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      .filter((s) => {
+        const matchSearch =
+          searchTerm === "" ||
+          (s.contractorName &&
+            s.contractorName
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
           (s.name && s.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (s.location && s.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (s.location &&
+            s.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (s.city && s.city.toLowerCase().includes(searchTerm.toLowerCase()));
 
-        const matchStatus = statusFilter === 'all' || s.status === statusFilter;
+        const matchStatus = statusFilter === "all" || s.status === statusFilter;
 
         return matchSearch && matchStatus;
       })
       .sort((a, b) => {
-        if (sortBy === 'date_desc') return (b.date || '').localeCompare(a.date || '');
-        if (sortBy === 'date_asc') return (a.date || '').localeCompare(b.date || '');
-        if (sortBy === 'cache_desc') {
-          const cacheA = a.totalCache || (a as any).cache || (a as any).price || 0;
-          const cacheB = b.totalCache || (b as any).cache || (b as any).price || 0;
+        if (sortBy === "date_desc")
+          return (b.date || "").localeCompare(a.date || "");
+        if (sortBy === "date_asc")
+          return (a.date || "").localeCompare(b.date || "");
+        if (sortBy === "cache_desc") {
+          const cacheA =
+            a.totalCache || (a as any).cache || (a as any).price || 0;
+          const cacheB =
+            b.totalCache || (b as any).cache || (b as any).price || 0;
           return cacheB - cacheA;
         }
-        if (sortBy === 'profit_desc') {
+        if (sortBy === "profit_desc") {
           const profA = getShowFinancialSummary(a, transactions).netProfit;
           const profB = getShowFinancialSummary(b, transactions).netProfit;
           return profB - profA;
@@ -70,7 +98,6 @@ export const ShowsManagementView: React.FC<Props> = ({
 
   return (
     <div className="space-y-5">
-      
       {/* HEADER & AÇÕES */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#121214] p-4 rounded-3xl border border-zinc-800">
         <div>
@@ -79,23 +106,33 @@ export const ShowsManagementView: React.FC<Props> = ({
             <span>Gestão Detalhada de Shows & Lucratividade</span>
           </h2>
           <p className="text-[11px] text-zinc-400">
-            Ficha de cada apresentação com cachê bruto, custos de equipe/logística e margem líquida.
+            Ficha de cada apresentação com cachê bruto, custos de
+            equipe/logística e margem líquida.
           </p>
         </div>
 
         <div className="flex items-center space-x-2 self-start sm:self-auto flex-wrap gap-y-2">
           <button
-            onClick={onExportERP || (() => downloadShowsERPMigrationJSON(shows, transactions, settings))}
+            onClick={
+              onExportERP ||
+              (() =>
+                downloadShowsERPMigrationJSON(shows, transactions, settings))
+            }
             className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-900/40 to-purple-800/40 hover:from-purple-800/60 hover:to-purple-700/60 text-purple-200 text-xs font-black uppercase tracking-wider border border-purple-500/40 transition active:scale-95 flex items-center space-x-1.5 shadow-sm group"
             title="Exportar Todos os Shows (Migração ERP) - Gera shows_migracao_leo_ferreira.json"
           >
-            <Download size={14} className="text-purple-400 group-hover:translate-y-0.5 transition-transform" />
-            <span className="hidden sm:inline">Exportar Todos os Shows (Migração ERP)</span>
+            <Download
+              size={14}
+              className="text-purple-400 group-hover:translate-y-0.5 transition-transform"
+            />
+            <span className="hidden sm:inline">
+              Exportar Todos os Shows (Migração ERP)
+            </span>
             <span className="sm:hidden">Exportar ERP</span>
           </button>
 
           <button
-            onClick={() => onOpenCreateShow('Orçamento')}
+            onClick={() => onOpenCreateShow("Orçamento")}
             className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider border border-amber-500/30 transition active:scale-95 flex items-center space-x-1"
           >
             <FileText size={14} />
@@ -103,7 +140,7 @@ export const ShowsManagementView: React.FC<Props> = ({
           </button>
 
           <button
-            onClick={() => onOpenCreateShow('Confirmado')}
+            onClick={() => onOpenCreateShow("Confirmado")}
             className="px-4 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider flex items-center space-x-1.5 transition active:scale-95 shadow-md shadow-purple-500/20"
           >
             <Plus size={16} strokeWidth={3} />
@@ -115,7 +152,10 @@ export const ShowsManagementView: React.FC<Props> = ({
       {/* FILTROS E BUSCA */}
       <div className="flex flex-col sm:flex-row items-center gap-2.5">
         <div className="relative flex-1 w-full">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+          />
           <input
             type="text"
             value={searchTerm}
@@ -125,7 +165,7 @@ export const ShowsManagementView: React.FC<Props> = ({
           />
         </div>
 
-        <div 
+        <div
           ref={filtersRef}
           className="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 cursor-grab active:cursor-grabbing select-none"
         >
@@ -159,9 +199,11 @@ export const ShowsManagementView: React.FC<Props> = ({
         <div className="p-8 rounded-3xl bg-[#121214] border border-dashed border-zinc-800 text-center space-y-3">
           <Calendar size={32} className="mx-auto text-zinc-600" />
           <p className="text-sm font-bold text-white">Nenhum show encontrado</p>
-          <p className="text-xs text-zinc-400">Tente ajustar seus filtros ou adicione uma nova apresentação.</p>
+          <p className="text-xs text-zinc-400">
+            Tente ajustar seus filtros ou adicione uma nova apresentação.
+          </p>
           <button
-            onClick={() => onOpenCreateShow('Confirmado')}
+            onClick={() => onOpenCreateShow("Confirmado")}
             className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs inline-flex items-center space-x-1"
           >
             <Plus size={14} />
@@ -170,12 +212,15 @@ export const ShowsManagementView: React.FC<Props> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredShows.map(show => {
+          {filteredShows.map((show) => {
             const statusCfg = getStatusConfig(show.status);
             const fin = getShowFinancialSummary(show, transactions);
-            const isCompleted = show.status === 'Realizado';
+            const isCompleted = show.status === "Realizado";
             const totalCosts = fin.totalExpenses;
-            const marginPct = fin.totalPredicted > 0 ? (fin.netProfit / fin.totalPredicted) * 100 : 0;
+            const marginPct =
+              fin.totalPredicted > 0
+                ? (fin.netProfit / fin.totalPredicted) * 100
+                : 0;
             const hierarchy = getShowDisplayHierarchy(show);
 
             return (
@@ -194,13 +239,20 @@ export const ShowsManagementView: React.FC<Props> = ({
                           <span>{show.date}</span>
                         </span>
 
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}>
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${statusCfg.badgeClass}`}
+                        >
                           {show.status}
                         </span>
 
                         <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-900 text-zinc-300 border border-zinc-800">
-                          <MapPin size={10} className="text-purple-400 shrink-0" />
-                          <span className="truncate max-w-[140px]">{hierarchy.cityTag}</span>
+                          <MapPin
+                            size={10}
+                            className="text-purple-400 shrink-0"
+                          />
+                          <span className="truncate max-w-[140px]">
+                            {hierarchy.cityTag}
+                          </span>
                         </span>
                       </div>
 
@@ -216,16 +268,17 @@ export const ShowsManagementView: React.FC<Props> = ({
                     </div>
 
                     <span className="text-xs font-black text-zinc-400 bg-zinc-900 px-2 py-1 rounded-xl border border-zinc-800 shrink-0">
-                      {show.time || '20:00'}
+                      {show.time || "20:00"}
                     </span>
                   </div>
 
                   {/* PAINEL DE METRICAS FINANCEIRAS DO SHOW (REQUISITO 2) */}
                   <div className="p-3 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-2">
-                    
                     {/* Linha 1: Cachê Bruto */}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-400 font-bold">Cachê Bruto:</span>
+                      <span className="text-zinc-400 font-bold">
+                        Cachê Bruto:
+                      </span>
                       <span className="font-black text-white tabular-nums">
                         {formatCurrency(fin.totalPredicted)}
                       </span>
@@ -233,7 +286,9 @@ export const ShowsManagementView: React.FC<Props> = ({
 
                     {/* Linha 2: Custos de Equipe & Logística */}
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-400 font-bold">Custos da Música:</span>
+                      <span className="text-zinc-400 font-bold">
+                        Custos da Música:
+                      </span>
                       <span className="font-bold text-rose-400 tabular-nums">
                         -{formatCurrency(totalCosts)}
                       </span>
@@ -241,7 +296,9 @@ export const ShowsManagementView: React.FC<Props> = ({
 
                     {/* Linha 3: Lucro Líquido Real & Margem */}
                     <div className="flex items-center justify-between text-xs pt-1.5 border-t border-zinc-800 font-black">
-                      <span className="text-purple-300 uppercase text-[10px]">Lucro Líquido:</span>
+                      <span className="text-purple-300 uppercase text-[10px]">
+                        Lucro Líquido:
+                      </span>
                       <div className="flex items-center space-x-1.5">
                         <span className="text-emerald-400 tabular-nums">
                           {formatCurrency(fin.netProfit)}
@@ -257,14 +314,24 @@ export const ShowsManagementView: React.FC<Props> = ({
                   <div className="space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-zinc-400 font-bold">
                       <span>Recebido: {formatCurrency(fin.totalReceived)}</span>
-                      <span className={fin.totalPending === 0 ? 'text-emerald-400' : 'text-amber-400'}>
-                        {fin.totalPending === 0 ? '✓ 100% Quitado' : `Falta: ${formatCurrency(fin.totalPending)}`}
+                      <span
+                        className={
+                          fin.totalPending === 0
+                            ? "text-emerald-400"
+                            : "text-amber-400"
+                        }
+                      >
+                        {fin.totalPending === 0
+                          ? "✓ 100% Quitado"
+                          : `Falta: ${formatCurrency(fin.totalPending)}`}
                       </span>
                     </div>
                     <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${fin.totalPending === 0 ? 'bg-[#1ed760]' : 'bg-purple-500'}`}
-                        style={{ width: `${fin.totalPredicted > 0 ? (fin.totalReceived / fin.totalPredicted) * 100 : 0}%` }}
+                        className={`h-full rounded-full ${fin.totalPending === 0 ? "bg-[#1ed760]" : "bg-purple-500"}`}
+                        style={{
+                          width: `${fin.totalPredicted > 0 ? (fin.totalReceived / fin.totalPredicted) * 100 : 0}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -273,14 +340,16 @@ export const ShowsManagementView: React.FC<Props> = ({
                 {/* Footer do Card */}
                 <div className="flex items-center justify-between pt-2 border-t border-zinc-800 text-xs text-purple-400 font-bold">
                   <span>Ver Ficha e Lançar Pagamento</span>
-                  <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  <ChevronRight
+                    size={14}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
                 </div>
               </div>
             );
           })}
         </div>
       )}
-
     </div>
   );
 };

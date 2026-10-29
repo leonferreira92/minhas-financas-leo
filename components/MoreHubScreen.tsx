@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useFinance } from '../context/FinanceContext';
+import React, { useState, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useFinance } from "../context/FinanceContext";
 import {
   Search,
   Settings as SettingsIcon,
@@ -24,15 +24,15 @@ import {
   Bell,
   X,
   ShieldCheck,
-  FileText
-} from 'lucide-react';
-import { AuthHeaderWidget } from './AuthHeaderWidget';
-import { TransactionForm } from './TransactionForm';
-import { BankImportModal } from './BankImportModal';
-import { Settings } from './Settings';
-import { FinancialSettingsScreen } from './FinancialSettingsScreen';
-import { CategoryList } from './CategoryList';
-import { AlertsScreen } from './AlertsScreen';
+  FileText,
+} from "lucide-react";
+import { AuthHeaderWidget } from "./AuthHeaderWidget";
+import { TransactionForm } from "./TransactionForm";
+import { BankImportModal } from "./BankImportModal";
+import { Settings } from "./Settings";
+import { FinancialSettingsScreen } from "./FinancialSettingsScreen";
+import { CategoryList } from "./CategoryList";
+import { AlertsScreen } from "./AlertsScreen";
 
 interface MenuItem {
   id: string;
@@ -56,26 +56,29 @@ interface MenuCategory {
 export const MoreHubScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const directTab = searchParams.get('tab');
+  const directTab = searchParams.get("tab");
 
   const { getSystemAlerts } = useFinance();
-  const alertsCount = useMemo(() => getSystemAlerts().length, [getSystemAlerts]);
+  const alertsCount = useMemo(
+    () => getSystemAlerts().length,
+    [getSystemAlerts],
+  );
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isBankImportOpen, setIsBankImportOpen] = useState(false);
   const [activeSubScreen, setActiveSubScreen] = useState<
-    'settings' | 'financial' | 'categories' | 'alerts' | null
+    "settings" | "financial" | "categories" | "alerts" | null
   >(
-    directTab === 'settings'
-      ? 'settings'
-      : directTab === 'financial'
-        ? 'financial'
-        : directTab === 'categories'
-          ? 'categories'
-          : directTab === 'alerts'
-            ? 'alerts'
-            : null
+    directTab === "settings"
+      ? "settings"
+      : directTab === "financial"
+        ? "financial"
+        : directTab === "categories"
+          ? "categories"
+          : directTab === "alerts"
+            ? "alerts"
+            : null,
   );
 
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
@@ -83,209 +86,212 @@ export const MoreHubScreen: React.FC = () => {
     plan: true,
     debts: false,
     reports: false,
-    system: false
+    system: false,
   });
 
   const toggleSection = (id: string) => {
-    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+    setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const menuCategories: MenuCategory[] = useMemo(
     () => [
       {
-        id: 'day',
-        title: 'Dia a dia',
+        id: "day",
+        title: "Dia a dia",
         icon: Wallet,
-        accent: 'text-blue-800',
-        iconBg: 'bg-blue-50',
+        accent: "text-blue-800",
+        iconBg: "bg-blue-50",
         items: [
           {
-            id: 'extrato',
-            title: 'Extrato',
-            desc: 'Receitas, despesas e transferências',
+            id: "extrato",
+            title: "Extrato",
+            desc: "Receitas, despesas e transferências",
             icon: Receipt,
-            action: () => navigate('/lancamentos'),
-            keywords: 'extrato transacoes lancamentos movimentacoes receitas despesas'
+            action: () => navigate("/lancamentos"),
+            keywords:
+              "extrato transacoes lancamentos movimentacoes receitas despesas",
           },
           {
-            id: 'contas',
-            title: 'Contas e saldos',
-            desc: 'Bancos, carteira e conciliação',
+            id: "contas",
+            title: "Contas e saldos",
+            desc: "Bancos, carteira e conciliação",
             icon: Landmark,
-            action: () => navigate('/contas'),
-            keywords: 'contas bancos carteiras saldo patrimonio'
+            action: () => navigate("/contas"),
+            keywords: "contas bancos carteiras saldo patrimonio",
           },
           {
-            id: 'novo_lancamento',
-            title: 'Novo lançamento',
-            desc: 'Receita, despesa ou transferência',
+            id: "novo_lancamento",
+            title: "Novo lançamento",
+            desc: "Receita, despesa ou transferência",
             icon: Plus,
             action: () => setIsTxModalOpen(true),
-            badge: 'Rápido',
-            keywords: 'novo lancamento despesa receita adicionar'
+            badge: "Rápido",
+            keywords: "novo lancamento despesa receita adicionar",
           },
           {
-            id: 'categorias_pessoais',
-            title: 'Categorias',
-            desc: 'Organizar gastos e receitas',
+            id: "categorias_pessoais",
+            title: "Categorias",
+            desc: "Organizar gastos e receitas",
             icon: FolderTree,
-            action: () => setActiveSubScreen('categories'),
-            keywords: 'categorias grupos classificacao'
-          }
-        ]
+            action: () => setActiveSubScreen("categories"),
+            keywords: "categorias grupos classificacao",
+          },
+        ],
       },
       {
-        id: 'plan',
-        title: 'Planejamento',
+        id: "plan",
+        title: "Planejamento",
         icon: Target,
-        accent: 'text-indigo-700',
-        iconBg: 'bg-indigo-50',
+        accent: "text-indigo-700",
+        iconBg: "bg-indigo-50",
         items: [
           {
-            id: 'planejamento',
-            title: 'Orçamentos',
-            desc: 'Tetos por categoria e regra 50/30/20',
+            id: "planejamento",
+            title: "Orçamentos",
+            desc: "Tetos por categoria e regra 50/30/20",
             icon: Target,
-            action: () => navigate('/planejamento'),
-            keywords: 'orcamento planejamento tetos metas 50 30 20'
+            action: () => navigate("/planejamento"),
+            keywords: "orcamento planejamento tetos metas 50 30 20",
           },
           {
-            id: 'inteligencia',
-            title: 'Visão inteligente',
-            desc: 'Quanto posso gastar e projeções',
+            id: "inteligencia",
+            title: "Visão inteligente",
+            desc: "Quanto posso gastar e projeções",
             icon: Sparkles,
-            action: () => navigate('/inteligencia'),
-            keywords: 'inteligencia insights posso gastar custo vida projecao'
+            action: () => navigate("/inteligencia"),
+            keywords: "inteligencia insights posso gastar custo vida projecao",
           },
           {
-            id: 'gastos',
-            title: 'Análise de gastos',
-            desc: 'Distribuição por categoria no mês',
+            id: "gastos",
+            title: "Análise de gastos",
+            desc: "Distribuição por categoria no mês",
             icon: BarChart3,
-            action: () => navigate('/gastos'),
-            keywords: 'gastos graficos analise categorias consumo'
+            action: () => navigate("/gastos"),
+            keywords: "gastos graficos analise categorias consumo",
           },
           {
-            id: 'parametros_financeiros',
-            title: 'Reserva e regras',
-            desc: 'Reserva mínima e categorias essenciais',
+            id: "parametros_financeiros",
+            title: "Reserva e regras",
+            desc: "Reserva mínima e categorias essenciais",
             icon: Sliders,
-            action: () => setActiveSubScreen('financial'),
-            keywords: 'parametros reserva metas configuracao'
-          }
-        ]
+            action: () => setActiveSubScreen("financial"),
+            keywords: "parametros reserva metas configuracao",
+          },
+        ],
       },
       {
-        id: 'debts',
-        title: 'Dívidas e fixas',
+        id: "debts",
+        title: "Dívidas e fixas",
         icon: CreditCard,
-        accent: 'text-rose-700',
-        iconBg: 'bg-rose-50',
+        accent: "text-rose-700",
+        iconBg: "bg-rose-50",
         items: [
           {
-            id: 'controle_dividas',
-            title: 'Dívidas',
-            desc: 'Financiamentos, cartão e quitação',
+            id: "controle_dividas",
+            title: "Dívidas",
+            desc: "Financiamentos, cartão e quitação",
             icon: ShieldAlert,
-            action: () => navigate('/dividas'),
-            keywords: 'dividas financiamento emprestimo quitacao'
+            action: () => navigate("/dividas"),
+            keywords: "dividas financiamento emprestimo quitacao",
           },
           {
-            id: 'contas_fixas',
-            title: 'Contas fixas',
-            desc: 'Água, luz, internet e recorrentes',
+            id: "contas_fixas",
+            title: "Contas fixas",
+            desc: "Água, luz, internet e recorrentes",
             icon: RefreshCw,
-            action: () => navigate('/contas-fixas'),
-            keywords: 'contas fixas pendentes recorrentes agendadas agua luz internet'
+            action: () => navigate("/contas-fixas"),
+            keywords:
+              "contas fixas pendentes recorrentes agendadas agua luz internet",
           },
           {
-            id: 'parcelamentos',
-            title: 'Parcelamentos',
-            desc: 'Parcelas abertas de cartão e bancos',
+            id: "parcelamentos",
+            title: "Parcelamentos",
+            desc: "Parcelas abertas de cartão e bancos",
             icon: CreditCard,
-            action: () => navigate('/dividas'),
-            keywords: 'parcelas parcelamento cartao credito'
-          }
-        ]
+            action: () => navigate("/dividas"),
+            keywords: "parcelas parcelamento cartao credito",
+          },
+        ],
       },
       {
-        id: 'reports',
-        title: 'Relatórios',
+        id: "reports",
+        title: "Relatórios",
         icon: FileText,
-        accent: 'text-amber-700',
-        iconBg: 'bg-amber-50',
+        accent: "text-amber-700",
+        iconBg: "bg-amber-50",
         items: [
           {
-            id: 'relatorio_ia',
-            title: 'Relatório para IA',
-            desc: 'Diagnóstico e simulação de decisões',
+            id: "relatorio_ia",
+            title: "Relatório para IA",
+            desc: "Diagnóstico e simulação de decisões",
             icon: Sparkles,
-            action: () => navigate('/relatorios?tab=ai'),
-            badge: 'IA',
-            keywords: 'ia inteligência gemini relatorio diagnostico cenario'
+            action: () => navigate("/relatorios?tab=ai"),
+            badge: "IA",
+            keywords: "ia inteligência gemini relatorio diagnostico cenario",
           },
           {
-            id: 'relatorios',
-            title: 'Balanço e fluxo',
-            desc: 'Resumo mensal, fluxo e calendário',
+            id: "relatorios",
+            title: "Balanço e fluxo",
+            desc: "Resumo mensal, fluxo e calendário",
             icon: FileText,
-            action: () => navigate('/relatorios?tab=summary'),
-            keywords: 'balanco fluxo calendario relatorios'
+            action: () => navigate("/relatorios?tab=summary"),
+            keywords: "balanco fluxo calendario relatorios",
           },
           {
-            id: 'importador_extrato',
-            title: 'Importar extrato',
-            desc: 'Arquivos OFX ou CSV do banco',
+            id: "importador_extrato",
+            title: "Importar extrato",
+            desc: "Arquivos OFX ou CSV do banco",
             icon: UploadCloud,
             action: () => setIsBankImportOpen(true),
-            keywords: 'importar extrato ofx csv banco'
+            keywords: "importar extrato ofx csv banco",
           },
           {
-            id: 'central_alertas',
-            title: 'Central de alertas',
-            desc: 'Vencimentos, orçamentos e caixa',
+            id: "central_alertas",
+            title: "Central de alertas",
+            desc: "Vencimentos, orçamentos e caixa",
             icon: Bell,
-            action: () => setActiveSubScreen('alerts'),
+            action: () => setActiveSubScreen("alerts"),
             badge: alertsCount > 0 ? `${alertsCount}` : undefined,
-            keywords: 'alertas avisos vencimentos notificacoes'
-          }
-        ]
+            keywords: "alertas avisos vencimentos notificacoes",
+          },
+        ],
       },
       {
-        id: 'system',
-        title: 'Conta e dados',
+        id: "system",
+        title: "Conta e dados",
         icon: Database,
-        accent: 'text-slate-600',
-        iconBg: 'bg-slate-100',
+        accent: "text-slate-600",
+        iconBg: "bg-slate-100",
         items: [
           {
-            id: 'config_gerais',
-            title: 'Sincronização e backup',
-            desc: 'Conta Google, nuvem e restauração',
+            id: "config_gerais",
+            title: "Sincronização e backup",
+            desc: "Conta Google, nuvem e restauração",
             icon: Database,
-            action: () => setActiveSubScreen('settings'),
-            keywords: 'firebase nuvem conta google sync sincronizacao banco backup'
+            action: () => setActiveSubScreen("settings"),
+            keywords:
+              "firebase nuvem conta google sync sincronizacao banco backup",
           },
           {
-            id: 'backup_json',
-            title: 'Exportar / importar JSON',
-            desc: 'Cópia de segurança dos seus dados',
+            id: "backup_json",
+            title: "Exportar / importar JSON",
+            desc: "Cópia de segurança dos seus dados",
             icon: ShieldCheck,
-            action: () => setActiveSubScreen('settings'),
-            keywords: 'backup restauracao json exportar importar'
-          }
-        ]
-      }
+            action: () => setActiveSubScreen("settings"),
+            keywords: "backup restauracao json exportar importar",
+          },
+        ],
+      },
     ],
-    [navigate, alertsCount]
+    [navigate, alertsCount],
   );
 
   const filteredResults = useMemo(() => {
     if (!searchTerm.trim()) return null;
     const term = searchTerm.toLowerCase();
     const matches: MenuItem[] = [];
-    menuCategories.forEach(cat => {
-      cat.items.forEach(item => {
+    menuCategories.forEach((cat) => {
+      cat.items.forEach((item) => {
         if (
           item.title.toLowerCase().includes(term) ||
           item.desc.toLowerCase().includes(term) ||
@@ -322,10 +328,15 @@ export const MoreHubScreen: React.FC = () => {
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-slate-500 block truncate">{item.desc}</span>
+            <span className="text-[11px] text-slate-500 block truncate">
+              {item.desc}
+            </span>
           </div>
         </div>
-        <ChevronRight size={15} className="text-slate-300 group-hover:text-blue-800 transition shrink-0" />
+        <ChevronRight
+          size={15}
+          className="text-slate-300 group-hover:text-blue-800 transition shrink-0"
+        />
       </button>
     );
   };
@@ -344,21 +355,21 @@ export const MoreHubScreen: React.FC = () => {
           </button>
         </div>
 
-        {activeSubScreen === 'settings' && <Settings />}
-        {activeSubScreen === 'financial' && <FinancialSettingsScreen />}
-        {activeSubScreen === 'categories' && <CategoryList />}
-        {activeSubScreen === 'alerts' && <AlertsScreen />}
+        {activeSubScreen === "settings" && <Settings />}
+        {activeSubScreen === "financial" && <FinancialSettingsScreen />}
+        {activeSubScreen === "categories" && <CategoryList />}
+        {activeSubScreen === "alerts" && <AlertsScreen />}
       </div>
     );
   }
 
   return (
     <div className="space-y-5 pb-28 animate-fade-in text-slate-800">
-      <div className="rounded-[1.75rem] bg-gradient-to-br from-[#002d6c] via-[#003882] to-[#0a4a9e] p-5 shadow-lg text-white relative overflow-hidden">
-        <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-[#fcca00]/10 blur-2xl pointer-events-none" />
+      <div className="rounded-[1.75rem] bg-gradient-to-br from-[#0F388A] via-[#0F388A] to-[#0a4a9e] p-5 shadow-lg text-white relative overflow-hidden">
+        <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-[#FACC15]/10 blur-2xl pointer-events-none" />
         <div className="relative flex items-start justify-between gap-3">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#fcca00]">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#FACC15]">
               Finanças pessoais
             </span>
             <h1 className="text-xl font-black tracking-tight mt-1">Menu</h1>
@@ -368,8 +379,8 @@ export const MoreHubScreen: React.FC = () => {
           </div>
           <button
             type="button"
-            onClick={() => setActiveSubScreen('settings')}
-            className="p-2.5 rounded-2xl bg-blue-950/50 hover:bg-blue-950/70 border border-blue-500/30 text-blue-100 hover:text-[#fcca00] transition active:scale-95 shrink-0"
+            onClick={() => setActiveSubScreen("settings")}
+            className="p-2.5 rounded-2xl bg-blue-950/50 hover:bg-blue-950/70 border border-blue-500/30 text-blue-100 hover:text-[#FACC15] transition active:scale-95 shrink-0"
             title="Configurações"
           >
             <SettingsIcon size={18} />
@@ -378,18 +389,21 @@ export const MoreHubScreen: React.FC = () => {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3.5 top-3.5 text-slate-400" size={17} />
+        <Search
+          className="absolute left-3.5 top-3.5 text-slate-400"
+          size={17}
+        />
         <input
           type="text"
           placeholder="Buscar: extrato, orçamento, dívidas, backup..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-9 py-3 rounded-2xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 text-xs font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none shadow-sm"
         />
         {searchTerm && (
           <button
             type="button"
-            onClick={() => setSearchTerm('')}
+            onClick={() => setSearchTerm("")}
             className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-700"
           >
             <X size={15} />
@@ -416,7 +430,7 @@ export const MoreHubScreen: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {menuCategories.map(category => {
+          {menuCategories.map((category) => {
             const isOpen = openSections[category.id] ?? false;
             const CategoryIcon = category.icon;
 
@@ -447,7 +461,7 @@ export const MoreHubScreen: React.FC = () => {
                   </div>
                   <div
                     className={`p-1 rounded-lg text-slate-400 transition-transform duration-200 ${
-                      isOpen ? 'rotate-180 text-blue-800' : ''
+                      isOpen ? "rotate-180 text-blue-800" : ""
                     }`}
                   >
                     <ChevronDown size={17} />
@@ -465,9 +479,14 @@ export const MoreHubScreen: React.FC = () => {
         </div>
       )}
 
-      {isTxModalOpen && <TransactionForm onClose={() => setIsTxModalOpen(false)} />}
+      {isTxModalOpen && (
+        <TransactionForm onClose={() => setIsTxModalOpen(false)} />
+      )}
       {isBankImportOpen && (
-        <BankImportModal isOpen={isBankImportOpen} onClose={() => setIsBankImportOpen(false)} />
+        <BankImportModal
+          isOpen={isBankImportOpen}
+          onClose={() => setIsBankImportOpen(false)}
+        />
       )}
     </div>
   );

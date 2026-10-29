@@ -1,13 +1,13 @@
-import React from 'react';
-import { Transaction, Category, Account } from '../../types';
-import { getIcon } from '../../constants';
+import React from "react";
+import { Transaction, Category, Account } from "../../types";
+import { getIcon } from "../../constants";
 import {
   isVinyDebtOrTransaction,
   extractInstallmentNumber,
   VINY_MUSIC_START_INSTALLMENT,
   VINY_MUSIC_END_INSTALLMENT,
-  VINY_MONTHLY_MUSIC_FIXED
-} from '../../services/financeAggregator';
+  VINY_MONTHLY_MUSIC_FIXED,
+} from "../../services/financeAggregator";
 import {
   ArrowDownCircle,
   ArrowRightLeft,
@@ -18,8 +18,8 @@ import {
   Repeat,
   Wallet,
   Edit3,
-  Trash2
-} from 'lucide-react';
+  Trash2,
+} from "lucide-react";
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -44,30 +44,35 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
   onEdit,
   onToggleStatus,
   onDelete,
-  onOpenShow
+  onOpenShow,
 }) => {
   const Icon = category ? getIcon(category.icon) : ArrowDownCircle;
-  const isExpense = t.type === 'expense' || t.type === 'goal_deposit';
-  const isIncome = t.type === 'income' || t.type === 'goal_withdraw';
-  const isPending = t.status === 'pending';
+  const isExpense = t.type === "expense" || t.type === "goal_deposit";
+  const isIncome = t.type === "income" || t.type === "goal_withdraw";
+  const isPending = t.status === "pending";
   const isVinyTx = isVinyDebtOrTransaction(undefined, t);
   const vinyInstNum = isVinyTx ? extractInstallmentNumber(t) : 0;
   const isVinySoundRange =
     isVinyTx &&
     vinyInstNum >= VINY_MUSIC_START_INSTALLMENT &&
     vinyInstNum <= VINY_MUSIC_END_INSTALLMENT;
-  const cleanTxAmount = Math.max(0, Math.round((Math.abs(Number(t.amount)) || 0) * 100) / 100);
-  const vinyMusicShare = isVinySoundRange ? Math.min(cleanTxAmount, VINY_MONTHLY_MUSIC_FIXED) : 0;
+  const cleanTxAmount = Math.max(
+    0,
+    Math.round((Math.abs(Number(t.amount)) || 0) * 100) / 100,
+  );
+  const vinyMusicShare = isVinySoundRange
+    ? Math.min(cleanTxAmount, VINY_MONTHLY_MUSIC_FIXED)
+    : 0;
   const vinyPersonalShare = isVinyTx
     ? Math.max(0, Math.round((cleanTxAmount - vinyMusicShare) * 100) / 100)
     : 0;
   const isBusiness = isVinyTx
     ? vinyMusicShare > 0
-    : t.scope === 'BUSINESS' ||
-      t.categoryId === 'cat_33' ||
-      t.categoryId === 'cat_equipamentos' ||
-      t.categoryId === 'cat_producao_shows' ||
-      t.categoryId === 'cat_logistica_shows' ||
+    : t.scope === "BUSINESS" ||
+      t.categoryId === "cat_33" ||
+      t.categoryId === "cat_equipamentos" ||
+      t.categoryId === "cat_producao_shows" ||
+      t.categoryId === "cat_logistica_shows" ||
       Boolean(t.showId);
 
   return (
@@ -76,10 +81,10 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
       onClick={() => onEdit(t)}
       className={`group p-4 sm:p-4.5 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer flex items-start sm:items-center justify-between gap-4 ${
         isHighlighted
-          ? 'ring-2 ring-emerald-500 shadow-lg bg-emerald-500/10 border-emerald-500/40'
+          ? "ring-2 ring-emerald-500 shadow-lg bg-emerald-500/10 border-emerald-500/40"
           : isPending
-          ? 'bg-[#18181b] border-amber-500/30 hover:border-amber-500/50'
-          : 'bg-[#18181b] border-zinc-800/80 hover:border-zinc-700 hover:shadow-xs'
+            ? "bg-[#18181b] border-amber-500/30 hover:border-amber-500/50"
+            : "bg-[#18181b] border-zinc-800/80 hover:border-zinc-700 hover:shadow-xs"
       }`}
     >
       {/* Lado Esquerdo: Ícone + Título (em linha própria sem truncamento pelas tags) + Badges com Gap amplo */}
@@ -89,18 +94,18 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           <div
             className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-xs transition-transform group-hover:scale-105 ${
               isExpense
-                ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
                 : isIncome
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : 'bg-zinc-800 text-zinc-300 border border-zinc-700/60'
+                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                  : "bg-zinc-800 text-zinc-300 border border-zinc-700/60"
             }`}
           >
-            {t.type === 'transfer' ? (
+            {t.type === "transfer" ? (
               <ArrowRightLeft size={19} />
-            ) : t.type === 'goal_deposit' || t.type === 'goal_withdraw' ? (
+            ) : t.type === "goal_deposit" || t.type === "goal_withdraw" ? (
               <PiggyBank size={19} />
             ) : (
-              <Icon size={19} style={{ color: category?.color || '#22c55e' }} />
+              <Icon size={19} style={{ color: category?.color || "#22c55e" }} />
             )}
           </div>
 
@@ -109,7 +114,11 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
               className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-zinc-900 flex items-center justify-center shadow-xs"
               title="Lançamento Agendado/Pendente"
             >
-              <Clock size={8} className="text-black font-black" strokeWidth={3} />
+              <Clock
+                size={8}
+                className="text-black font-black"
+                strokeWidth={3}
+              />
             </div>
           )}
         </div>
@@ -117,24 +126,30 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
         {/* Detalhes do Lançamento: Nome separado das Badges com espaçamento (gap) adequado */}
         <div className="min-w-0 flex-1 flex flex-col gap-2">
           <h4 className="transaction-item-title text-xs sm:text-sm font-black text-white group-hover:text-emerald-400 transition-colors leading-relaxed break-words">
-            {t.description || 'Sem descrição'}
+            {t.description || "Sem descrição"}
           </h4>
 
           <div className="transaction-badges-row flex flex-wrap items-center gap-2">
             {/* Categoria */}
             <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wide mr-1">
-              {t.type === 'transfer' ? 'Transferência' : category ? category.name : 'Geral'}
+              {t.type === "transfer"
+                ? "Transferência"
+                : category
+                  ? category.name
+                  : "Geral"}
             </span>
 
             {/* Badge Módulo: Pessoal vs Música (com rateio dinâmico Viny se aplicável) */}
             {isVinyTx && vinyMusicShare > 0 ? (
               <>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 bg-purple-600 text-white border-purple-400/40">
-                  🎸 Música {!isBlurred ? formatCurrency(vinyMusicShare) : '••••'}
+                  🎸 Música{" "}
+                  {!isBlurred ? formatCurrency(vinyMusicShare) : "••••"}
                 </span>
                 {vinyPersonalShare > 0 && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 bg-zinc-800 text-zinc-200 border-zinc-700">
-                    👤 Pessoal {!isBlurred ? formatCurrency(vinyPersonalShare) : '••••'}
+                    👤 Pessoal{" "}
+                    {!isBlurred ? formatCurrency(vinyPersonalShare) : "••••"}
                   </span>
                 )}
               </>
@@ -142,18 +157,22 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shrink-0 ${
                   isBusiness
-                    ? 'bg-purple-600 text-white border-purple-400/40'
-                    : 'bg-zinc-800 text-zinc-200 border-zinc-700'
+                    ? "bg-purple-600 text-white border-purple-400/40"
+                    : "bg-zinc-800 text-zinc-200 border-zinc-700"
                 }`}
               >
-                {isBusiness ? '🎸 Música' : '👤 Pessoal'}
+                {isBusiness ? "🎸 Música" : "👤 Pessoal"}
               </span>
             )}
 
             {/* Badge Status: Pendente vs Efetivado */}
             {isPending ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-black border border-amber-400 uppercase tracking-wider shrink-0">
-                <Clock size={9} className="shrink-0 text-black" strokeWidth={2.5} />
+                <Clock
+                  size={9}
+                  className="shrink-0 text-black"
+                  strokeWidth={2.5}
+                />
                 <span>Pendente</span>
               </span>
             ) : (
@@ -211,17 +230,17 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           <span
             className={`text-xs sm:text-base font-black tabular-nums block ${
               isExpense
-                ? 'text-white'
+                ? "text-white"
                 : isIncome
-                ? 'text-emerald-400'
-                : 'text-sky-400'
+                  ? "text-emerald-400"
+                  : "text-sky-400"
             }`}
           >
-            {isExpense ? '- ' : isIncome ? '+ ' : ''}
-            {!isBlurred ? formatCurrency(Math.abs(t.amount)) : '••••••'}
+            {isExpense ? "-" : isIncome ? "+ " : ""}
+            {!isBlurred ? formatCurrency(Math.abs(t.amount)) : "••••••"}
           </span>
           <span className="text-[9px] text-zinc-400 block">
-            {isPending ? 'Projetado' : 'Liquidado'}
+            {isPending ? "Projetado" : "Liquidado"}
           </span>
         </div>
 
@@ -231,13 +250,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({
           onClick={(e) => onToggleStatus(e, t)}
           className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all active:scale-90 shadow-xs shrink-0 ${
             isPending
-              ? 'bg-amber-500 text-black border border-amber-400 hover:bg-emerald-500 hover:text-black hover:border-emerald-400'
-              : 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-xs'
+              ? "bg-amber-500 text-black border border-amber-400 hover:bg-emerald-500 hover:text-black hover:border-emerald-400"
+              : "bg-emerald-500 text-black hover:bg-emerald-400 shadow-xs"
           }`}
           title={
             isPending
-              ? 'Clique para marcar como EFETIVADO (Recebido/Pago)'
-              : 'Clique para marcar como AGENDADO (Pendente)'
+              ? "Clique para marcar como EFETIVADO (Recebido/Pago)"
+              : "Clique para marcar como AGENDADO (Pendente)"
           }
         >
           {isPending ? (

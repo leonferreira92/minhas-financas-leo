@@ -1,1 +1,4 @@
-export { TransactionForm as TransactionModal, TransactionForm } from '../TransactionForm';
+export {
+  TransactionForm as TransactionModal,
+  TransactionForm,
+} from "../TransactionForm";

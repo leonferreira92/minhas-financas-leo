@@ -1,72 +1,94 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useFinance } from '../context/FinanceContext';
-import { 
-  BarChart3, ChevronLeft, ChevronRight, TrendingDown, 
-  ArrowUpRight, PieChart, Calendar, Filter, ArrowLeft,
-  Sparkles, Layers, Wallet, Tag
-} from 'lucide-react';
-import { getIcon } from '../constants';
-import { ScopeSelector } from './ScopeSelector';
-import { matchesScope, Transaction } from '../types';
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useFinance } from "../context/FinanceContext";
+import {
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+  TrendingDown,
+  ArrowUpRight,
+  PieChart,
+  Calendar,
+  Filter,
+  ArrowLeft,
+  Sparkles,
+  Layers,
+  Wallet,
+  Tag,
+} from "lucide-react";
+import { getIcon } from "../constants";
+import { ScopeSelector } from "./ScopeSelector";
+import { matchesScope, Transaction } from "../types";
 import {
   isCareerExpenseTransaction,
   getTransactionCareerAndPersonalSplit,
-  DEFAULT_PERSONAL_DEBT_CATEGORY_ID
-} from '../services/financeAggregator';
+  DEFAULT_PERSONAL_DEBT_CATEGORY_ID,
+} from "../services/financeAggregator";
 
 export const ExpenseAnalysisScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { transactions, debts, categories, activeScope, isBlurred, accounts } = useFinance();
+  const { transactions, debts, categories, activeScope, isBlurred, accounts } =
+    useFinance();
 
   // Current month state (YYYY-MM)
-  const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const currentMonthStr = useMemo(
+    () => new Date().toISOString().slice(0, 7),
+    [],
+  );
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
 
   const formatCurrency = (val: number) => {
-    if (isBlurred) return 'R$ •••••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    if (isBlurred) return "R$ •••••";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(val);
   };
 
   // Month navigation offset
   const changeMonth = (offset: number) => {
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const [y, m] = selectedMonth.split("-").map(Number);
     const d = new Date(y, m - 1 + offset, 1);
     const newY = d.getFullYear();
-    const newM = String(d.getMonth() + 1).padStart(2, '0');
+    const newM = String(d.getMonth() + 1).padStart(2, "0");
     setSelectedMonth(`${newY}-${newM}`);
   };
 
   // Month Label
   const monthName = useMemo(() => {
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const [y, m] = selectedMonth.split("-").map(Number);
     const date = new Date(y, m - 1, 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
   }, [selectedMonth]);
 
   // Despesas do mês no escopo ativo (pessoal por padrão)
   const monthExpenses = useMemo(() => {
     const result: Transaction[] = [];
 
-    transactions.forEach(t => {
-      if (t.type !== 'expense') return;
+    transactions.forEach((t) => {
+      if (t.type !== "expense") return;
       if (!t.date || !t.date.startsWith(selectedMonth)) return;
-      if (t.status === 'cancelled') return;
+      if (t.status === "cancelled") return;
 
-      if (activeScope === 'BUSINESS') {
-        if (t.debtId && t.status !== 'paid') return;
-        const { careerAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+      if (activeScope === "BUSINESS") {
+        if (t.debtId && t.status !== "paid") return;
+        const { careerAmount } = getTransactionCareerAndPersonalSplit(
+          t,
+          debts,
+          transactions,
+        );
         if (careerAmount > 0) {
           result.push({
             ...t,
-            amount: careerAmount
+            amount: careerAmount,
           });
         }
         return;
       }
 
-      if (activeScope === 'PERSONAL') {
-        const { careerAmount, personalAmount } = getTransactionCareerAndPersonalSplit(t, debts, transactions);
+      if (activeScope === "PERSONAL") {
+        const { careerAmount, personalAmount } =
+          getTransactionCareerAndPersonalSplit(t, debts, transactions);
         if (personalAmount > 0) {
           const isSplitDebt = !!t.debtId && careerAmount > 0;
           result.push({
@@ -74,8 +96,10 @@ export const ExpenseAnalysisScreen: React.FC = () => {
             amount: personalAmount,
             categoryId: isSplitDebt
               ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID
-              : (t.debtId && (!t.categoryId || t.categoryId === 'cat_1') ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID : t.categoryId),
-            subcategory: isSplitDebt ? undefined : t.subcategory
+              : t.debtId && (!t.categoryId || t.categoryId === "cat_1")
+                ? DEFAULT_PERSONAL_DEBT_CATEGORY_ID
+                : t.categoryId,
+            subcategory: isSplitDebt ? undefined : t.subcategory,
           });
         }
         return;
@@ -96,42 +120,59 @@ export const ExpenseAnalysisScreen: React.FC = () => {
 
   // Total paid vs pending
   const paidExpense = useMemo(() => {
-    return monthExpenses.filter(t => t.status === 'paid').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    return monthExpenses
+      .filter((t) => t.status === "paid")
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   }, [monthExpenses]);
 
   const pendingExpense = useMemo(() => {
-    return monthExpenses.filter(t => t.status === 'pending').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    return monthExpenses
+      .filter((t) => t.status === "pending")
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
   }, [monthExpenses]);
 
   // Aggregated categories sorted highest to lowest
   const categoryStats = useMemo(() => {
-    const map = new Map<string, { amount: number; count: number; customName?: string }>();
-    monthExpenses.forEach(t => {
-      const hasMusicSub = activeScope === 'BUSINESS' && t.subcategory;
-      const key = hasMusicSub ? `sub_${t.subcategory}` : (t.categoryId || 'cat_other');
-      const prev = map.get(key) || { amount: 0, count: 0, customName: hasMusicSub ? String(t.subcategory) : undefined };
+    const map = new Map<
+      string,
+      { amount: number; count: number; customName?: string }
+    >();
+    monthExpenses.forEach((t) => {
+      const hasMusicSub = activeScope === "BUSINESS" && t.subcategory;
+      const key = hasMusicSub
+        ? `sub_${t.subcategory}`
+        : t.categoryId || "cat_other";
+      const prev = map.get(key) || {
+        amount: 0,
+        count: 0,
+        customName: hasMusicSub ? String(t.subcategory) : undefined,
+      };
       map.set(key, {
         amount: prev.amount + (Number(t.amount) || 0),
         count: prev.count + 1,
-        customName: prev.customName || (hasMusicSub ? String(t.subcategory) : undefined)
+        customName:
+          prev.customName || (hasMusicSub ? String(t.subcategory) : undefined),
       });
     });
 
     const list = Array.from(map.entries()).map(([catId, data]) => {
-      const baseCat = categories.find(c => c.id === catId);
+      const baseCat = categories.find((c) => c.id === catId);
       const cat = baseCat || {
         id: catId,
-        name: data.customName || (catId === 'cat_other' ? 'Outros / Diversos' : 'Categoria Geral'),
-        color: data.customName ? '#64748b' : '#64748b',
-        icon: data.customName ? 'Tag' : 'Tag',
-        type: 'expense' as const
+        name:
+          data.customName ||
+          (catId === "cat_other" ? "Outros / Diversos" : "Categoria Geral"),
+        color: data.customName ? "#64748b" : "#64748b",
+        icon: data.customName ? "Tag" : "Tag",
+        type: "expense" as const,
       };
-      const percentage = totalExpense > 0 ? (data.amount / totalExpense) * 100 : 0;
+      const percentage =
+        totalExpense > 0 ? (data.amount / totalExpense) * 100 : 0;
       return {
         cat,
         amount: data.amount,
         count: data.count,
-        percentage
+        percentage,
       };
     });
 
@@ -141,7 +182,7 @@ export const ExpenseAnalysisScreen: React.FC = () => {
   // Maximum value for bar scaling
   const maxCategoryAmount = useMemo(() => {
     if (categoryStats.length === 0) return 1;
-    return Math.max(...categoryStats.map(c => c.amount));
+    return Math.max(...categoryStats.map((c) => c.amount));
   }, [categoryStats]);
 
   return (
@@ -157,10 +198,12 @@ export const ExpenseAnalysisScreen: React.FC = () => {
           </button>
           <div>
             <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <BarChart3 className="text-[#003882]" size={22} />
+              <BarChart3 className="text-[#0F388A]" size={22} />
               <span>Meus gastos</span>
             </h1>
-            <p className="text-[11px] text-slate-500 font-medium">Distribuição por categoria no mês</p>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Distribuição por categoria no mês
+            </p>
           </div>
         </div>
 
@@ -177,8 +220,12 @@ export const ExpenseAnalysisScreen: React.FC = () => {
         </button>
 
         <div className="text-center">
-          <span className="text-[10px] uppercase tracking-widest text-blue-800 font-black">Período</span>
-          <p className="text-sm font-black text-slate-900 capitalize">{monthName}</p>
+          <span className="text-[10px] uppercase tracking-widest text-blue-800 font-black">
+            Período
+          </span>
+          <p className="text-sm font-black text-slate-900 capitalize">
+            {monthName}
+          </p>
         </div>
 
         <button
@@ -191,7 +238,7 @@ export const ExpenseAnalysisScreen: React.FC = () => {
       </div>
 
       {/* CARD PRINCIPAL DE TOTAL DE GASTOS */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#002d6c] to-[#001838] border border-blue-600/30 p-5 shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0F388A] to-[#0A255D] border border-blue-600/30 p-5 shadow-xl">
         <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col justify-between">
@@ -213,12 +260,20 @@ export const ExpenseAnalysisScreen: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-blue-700/40 text-xs">
             <div>
-              <span className="text-blue-300 text-[10px] uppercase font-bold block">Efetivado (Pago)</span>
-              <span className="text-sm font-black text-white">{formatCurrency(paidExpense)}</span>
+              <span className="text-blue-300 text-[10px] uppercase font-bold block">
+                Efetivado (Pago)
+              </span>
+              <span className="text-sm font-black text-white">
+                {formatCurrency(paidExpense)}
+              </span>
             </div>
             <div>
-              <span className="text-amber-300 text-[10px] uppercase font-bold block">Previsto (A Pagar)</span>
-              <span className="text-sm font-black text-amber-200">{formatCurrency(pendingExpense)}</span>
+              <span className="text-amber-300 text-[10px] uppercase font-bold block">
+                Previsto (A Pagar)
+              </span>
+              <span className="text-sm font-black text-amber-200">
+                {formatCurrency(pendingExpense)}
+              </span>
             </div>
           </div>
         </div>
@@ -227,7 +282,7 @@ export const ExpenseAnalysisScreen: React.FC = () => {
       <div className="p-4 rounded-3xl bg-white border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <BarChart3 size={15} className="text-[#003882]" />
+            <BarChart3 size={15} className="text-[#0F388A]" />
             <span>Top categorias</span>
           </h3>
           <span className="text-[10px] text-slate-400">% do total</span>
@@ -240,20 +295,30 @@ export const ExpenseAnalysisScreen: React.FC = () => {
         ) : (
           <div className="space-y-4">
             <div className="h-44 flex items-end justify-between gap-2 pt-6 pb-2 px-1 border-b border-slate-100">
-              {categoryStats.slice(0, 6).map(item => {
-                const heightPercent = maxCategoryAmount > 0 
-                  ? Math.max(12, Math.round((item.amount / maxCategoryAmount) * 100)) 
-                  : 12;
+              {categoryStats.slice(0, 6).map((item) => {
+                const heightPercent =
+                  maxCategoryAmount > 0
+                    ? Math.max(
+                        12,
+                        Math.round((item.amount / maxCategoryAmount) * 100),
+                      )
+                    : 12;
 
                 return (
-                  <div key={item.cat.id} className="flex-1 flex flex-col items-center h-full justify-end group">
+                  <div
+                    key={item.cat.id}
+                    className="flex-1 flex flex-col items-center h-full justify-end group"
+                  >
                     <span className="text-[10px] font-black text-slate-500 mb-1 group-hover:text-blue-800 transition">
                       {item.percentage.toFixed(0)}%
                     </span>
-                    <div className="w-full max-w-[38px] bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all duration-300 group-hover:scale-y-105" style={{ height: `${heightPercent}%` }}>
-                      <div 
+                    <div
+                      className="w-full max-w-[38px] bg-slate-100 rounded-t-lg overflow-hidden flex flex-col justify-end transition-all duration-300 group-hover:scale-y-105"
+                      style={{ height: `${heightPercent}%` }}
+                    >
+                      <div
                         className="w-full h-full rounded-t-lg transition"
-                        style={{ backgroundColor: item.cat.color || '#003882' }}
+                        style={{ backgroundColor: item.cat.color || "#0F388A" }}
                       />
                     </div>
                     <span className="text-[9px] font-bold text-slate-400 mt-2 truncate w-full text-center">
@@ -263,7 +328,9 @@ export const ExpenseAnalysisScreen: React.FC = () => {
                 );
               })}
             </div>
-            <p className="text-[10px] text-center text-slate-400">Principais categorias do mês</p>
+            <p className="text-[10px] text-center text-slate-400">
+              Principais categorias do mês
+            </p>
           </div>
         )}
       </div>
@@ -273,7 +340,9 @@ export const ExpenseAnalysisScreen: React.FC = () => {
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">
             Detalhamento
           </h3>
-          <span className="text-[10px] text-slate-400 font-bold">{categoryStats.length} categorias</span>
+          <span className="text-[10px] text-slate-400 font-bold">
+            {categoryStats.length} categorias
+          </span>
         </div>
 
         {categoryStats.length === 0 ? (
@@ -285,27 +354,33 @@ export const ExpenseAnalysisScreen: React.FC = () => {
             {categoryStats.map((item, idx) => {
               const Icon = getIcon(item.cat.icon);
               return (
-                <div 
+                <div
                   key={item.cat.id}
                   className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-blue-200 transition flex flex-col gap-2.5 shadow-sm"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 min-w-0">
-                      <div 
+                      <div
                         className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-inner"
-                        style={{ backgroundColor: `${item.cat.color || '#003882'}20`, color: item.cat.color || '#003882' }}
+                        style={{
+                          backgroundColor: `${item.cat.color || "#0F388A"}20`,
+                          color: item.cat.color || "#0F388A",
+                        }}
                       >
                         <Icon size={18} />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs font-black text-slate-900 truncate">{item.cat.name}</span>
+                          <span className="text-xs font-black text-slate-900 truncate">
+                            {item.cat.name}
+                          </span>
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">
                             #{idx + 1}
                           </span>
                         </div>
                         <span className="text-[10px] text-slate-500 block">
-                          {item.count} {item.count === 1 ? 'lançamento' : 'lançamentos'}
+                          {item.count}{" "}
+                          {item.count === 1 ? "lançamento" : "lançamentos"}
                         </span>
                       </div>
                     </div>
@@ -321,11 +396,11 @@ export const ExpenseAnalysisScreen: React.FC = () => {
                   </div>
 
                   <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div 
+                    <div
                       className="h-full rounded-full transition-all duration-500"
-                      style={{ 
+                      style={{
                         width: `${item.percentage}%`,
-                        backgroundColor: item.cat.color || '#003882'
+                        backgroundColor: item.cat.color || "#0F388A",
                       }}
                     />
                   </div>

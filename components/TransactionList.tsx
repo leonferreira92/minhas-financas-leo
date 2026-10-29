@@ -1,88 +1,121 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useFinance } from '../context/FinanceContext';
-import { getIcon } from '../constants';
-import { 
-  ArrowDownCircle, CheckCircle2, Search, Filter, Clock, 
-  Repeat, Calendar, XCircle, ChevronDown, TrendingUp, 
-  TrendingDown, Check, Circle, Wallet, ArrowRightLeft, 
-  ChevronLeft, ChevronRight, PiggyBank, Plus,
-  ListFilter, X, Receipt, Music, Eye, EyeOff, Sparkles,
-  ArrowUpRight, ArrowDownRight, MoreVertical, Edit3, Trash2, User,
-  UploadCloud
-} from 'lucide-react';
-import { Transaction, matchesScope } from '../types';
-import { TransactionForm } from './TransactionForm';
-import { BankImportModal } from './BankImportModal';
-import { TransactionItem } from './ui/TransactionItem';
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useFinance } from "../context/FinanceContext";
+import { getIcon } from "../constants";
+import {
+  ArrowDownCircle,
+  CheckCircle2,
+  Search,
+  Filter,
+  Clock,
+  Repeat,
+  Calendar,
+  XCircle,
+  ChevronDown,
+  TrendingUp,
+  TrendingDown,
+  Check,
+  Circle,
+  Wallet,
+  ArrowRightLeft,
+  ChevronLeft,
+  ChevronRight,
+  PiggyBank,
+  Plus,
+  ListFilter,
+  X,
+  Receipt,
+  Music,
+  Eye,
+  EyeOff,
+  Sparkles,
+  ArrowUpRight,
+  ArrowDownRight,
+  MoreVertical,
+  Edit3,
+  Trash2,
+  User,
+  UploadCloud,
+} from "lucide-react";
+import { Transaction, matchesScope } from "../types";
+import { TransactionForm } from "./TransactionForm";
+import { BankImportModal } from "./BankImportModal";
+import { TransactionItem } from "./ui/TransactionItem";
 
-export type PeriodPreset = 'this_month' | 'prev_month' | 'next_month' | 'this_year' | 'custom';
-export type TypeFilter = 'all' | 'income' | 'expense';
-export type StatusFilter = 'all' | 'paid' | 'pending';
+export type PeriodPreset =
+  "this_month" | "prev_month" | "next_month" | "this_year" | "custom";
+export type TypeFilter = "all" | "income" | "expense";
+export type StatusFilter = "all" | "paid" | "pending";
 
 export const TransactionList: React.FC = () => {
   const navigate = useNavigate();
-  const { 
-    transactions, 
-    categories, 
-    updateTransaction, 
+  const {
+    transactions,
+    categories,
+    updateTransaction,
     deleteTransaction,
-    accounts, 
-    isBlurred, 
+    accounts,
+    isBlurred,
     toggleBlur,
     activeScope,
-    setActiveScope
+    setActiveScope,
   } = useFinance();
-  
+
   // Modal State for Editing / Creating Transaction
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
+  const [isNewTransactionModalOpen, setIsNewTransactionModalOpen] =
+    useState(false);
   const [isBankImportOpen, setIsBankImportOpen] = useState(false);
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null);
 
   // Deep linking highlight
   const [searchParams] = useSearchParams();
-  const highlightId = searchParams.get('highlightId') || searchParams.get('txId');
+  const highlightId =
+    searchParams.get("highlightId") || searchParams.get("txId");
 
   // Device current local date
   const getDeviceToday = () => {
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
   const deviceToday = useMemo(() => getDeviceToday(), []);
-  const currentYearMonth = useMemo(() => deviceToday.slice(0, 7), [deviceToday]);
+  const currentYearMonth = useMemo(
+    () => deviceToday.slice(0, 7),
+    [deviceToday],
+  );
   const currentYear = useMemo(() => deviceToday.slice(0, 4), [deviceToday]);
 
   // Filters State
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('this_month');
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("this_month");
   const [selectedMonth, setSelectedMonth] = useState<string>(currentYearMonth);
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [categoryIdFilter, setCategoryIdFilter] = useState('');
-  const [accountIdFilter, setAccountIdFilter] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [categoryIdFilter, setCategoryIdFilter] = useState("");
+  const [accountIdFilter, setAccountIdFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Sincronizar navegação direta por highlightId
   useEffect(() => {
     if (highlightId && transactions.length > 0) {
-      const found = transactions.find(t => t.id === highlightId);
+      const found = transactions.find((t) => t.id === highlightId);
       if (found) {
         if (found.date) {
           const txMonth = found.date.slice(0, 7);
           setSelectedMonth(txMonth);
           if (txMonth !== currentYearMonth) {
-            setPeriodPreset('custom');
+            setPeriodPreset("custom");
           }
         }
         setEditingTransaction(found);
         setTimeout(() => {
           const el = document.getElementById(`tx-${highlightId}`);
           if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
           }
         }, 200);
       }
@@ -91,24 +124,24 @@ export const TransactionList: React.FC = () => {
 
   // Sincronizar filtros vindos da URL (ex: vindos dos cliques na DRE)
   useEffect(() => {
-    const urlType = searchParams.get('type') as TypeFilter | null;
-    const urlSearch = searchParams.get('search');
-    const urlScope = searchParams.get('scope');
-    const urlMonth = searchParams.get('month');
+    const urlType = searchParams.get("type") as TypeFilter | null;
+    const urlSearch = searchParams.get("search");
+    const urlScope = searchParams.get("scope");
+    const urlMonth = searchParams.get("month");
 
-    if (urlType && ['all', 'income', 'expense'].includes(urlType)) {
+    if (urlType && ["all", "income", "expense"].includes(urlType)) {
       setTypeFilter(urlType);
     }
     if (urlSearch) {
       setSearchTerm(urlSearch);
     }
-    if (urlScope && ['ALL', 'PERSONAL', 'BUSINESS'].includes(urlScope)) {
+    if (urlScope && ["ALL", "PERSONAL", "BUSINESS"].includes(urlScope)) {
       setActiveScope(urlScope as any);
     }
     if (urlMonth && /^\d{4}-\d{2}$/.test(urlMonth)) {
       setSelectedMonth(urlMonth);
       if (urlMonth !== currentYearMonth) {
-        setPeriodPreset('custom');
+        setPeriodPreset("custom");
       }
     }
   }, [searchParams, currentYearMonth, setActiveScope]);
@@ -116,80 +149,97 @@ export const TransactionList: React.FC = () => {
   // Handle Quick Period Preset changes
   const handlePeriodPresetChange = (preset: PeriodPreset) => {
     setPeriodPreset(preset);
-    const [currY, currM] = currentYearMonth.split('-').map(Number);
-    if (preset === 'this_month') {
+    const [currY, currM] = currentYearMonth.split("-").map(Number);
+    if (preset === "this_month") {
       setSelectedMonth(currentYearMonth);
-    } else if (preset === 'prev_month') {
+    } else if (preset === "prev_month") {
       const prevD = new Date(currY, currM - 2, 1);
       const prevY = prevD.getFullYear();
-      const prevM = String(prevD.getMonth() + 1).padStart(2, '0');
+      const prevM = String(prevD.getMonth() + 1).padStart(2, "0");
       setSelectedMonth(`${prevY}-${prevM}`);
-    } else if (preset === 'next_month') {
+    } else if (preset === "next_month") {
       const nextD = new Date(currY, currM, 1);
       const nextY = nextD.getFullYear();
-      const nextM = String(nextD.getMonth() + 1).padStart(2, '0');
+      const nextM = String(nextD.getMonth() + 1).padStart(2, "0");
       setSelectedMonth(`${nextY}-${nextM}`);
     }
   };
 
   // Month navigation buttons (< e >)
   const changeMonthOffset = (offset: number) => {
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const [y, m] = selectedMonth.split("-").map(Number);
     const d = new Date(y, m - 1 + offset, 1);
     const newY = d.getFullYear();
-    const newM = String(d.getMonth() + 1).padStart(2, '0');
+    const newM = String(d.getMonth() + 1).padStart(2, "0");
     const newMonthStr = `${newY}-${newM}`;
     setSelectedMonth(newMonthStr);
     if (newMonthStr === currentYearMonth) {
-      setPeriodPreset('this_month');
+      setPeriodPreset("this_month");
     } else {
-      setPeriodPreset('custom');
+      setPeriodPreset("custom");
     }
   };
 
   // Period label for display
   const periodLabel = useMemo(() => {
-    if (periodPreset === 'this_year') {
+    if (periodPreset === "this_year") {
       return `Ano de ${currentYear}`;
     }
-    const [y, m] = selectedMonth.split('-').map(Number);
+    const [y, m] = selectedMonth.split("-").map(Number);
     const date = new Date(y, m - 1, 1);
-    return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
   }, [periodPreset, selectedMonth, currentYear]);
 
   // Currency formatting helper
   const formatCurrency = (val?: number | null) => {
     const num = Number(val) || 0;
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(num);
   };
 
   const normalizeSearchText = (val?: string | null) =>
-    (val || '')
+    (val || "")
       .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .trim();
 
   // 1. Filtragem principal de transações por período e módulo (Tudo | Apenas Pessoal | Apenas Música)
   const periodTransactions = useMemo(() => {
     const hasSearch = searchTerm.trim().length > 0;
-    return transactions.filter(t => {
-      if (!t || !t.date || t.status === 'cancelled') return false;
+    return transactions.filter((t) => {
+      if (!t || !t.date || t.status === "cancelled") return false;
       if (accountIdFilter) {
-        if (t.accountId !== accountIdFilter && t.destinationAccountId !== accountIdFilter) {
+        if (
+          t.accountId !== accountIdFilter &&
+          t.destinationAccountId !== accountIdFilter
+        ) {
           return false;
         }
       } else if (!hasSearch) {
-        const acc = accounts.find(a => a.id === t.accountId);
-        const scopeMatches = matchesScope(t.scope, activeScope) || (acc ? matchesScope(acc.scope, activeScope) : false);
+        const acc = accounts.find((a) => a.id === t.accountId);
+        const scopeMatches =
+          matchesScope(t.scope, activeScope) ||
+          (acc ? matchesScope(acc.scope, activeScope) : false);
         if (!scopeMatches) return false;
       }
-      if (periodPreset === 'this_year') {
+      if (periodPreset === "this_year") {
         return t.date.startsWith(currentYear);
       }
       return t.date.startsWith(selectedMonth);
     });
-  }, [transactions, periodPreset, selectedMonth, currentYear, activeScope, accountIdFilter, searchTerm, accounts]);
+  }, [
+    transactions,
+    periodPreset,
+    selectedMonth,
+    currentYear,
+    activeScope,
+    accountIdFilter,
+    searchTerm,
+    accounts,
+  ]);
 
   // 2. Filtragem adicional da lista (tipo, status, categoria, conta, busca)
   const filteredTransactions = useMemo(() => {
@@ -197,35 +247,62 @@ export const TransactionList: React.FC = () => {
     const normTerm = normalizeSearchText(searchTerm);
 
     return periodTransactions
-      .filter(t => {
+      .filter((t) => {
         // Filtro por tipo
-        if (typeFilter === 'income') return t.type === 'income' || t.type === 'goal_withdraw' || (t.type === 'transfer' && accountIdFilter && t.destinationAccountId === accountIdFilter);
-        if (typeFilter === 'expense') return t.type === 'expense' || t.type === 'goal_deposit' || (t.type === 'transfer' && (!accountIdFilter || t.accountId === accountIdFilter));
+        if (typeFilter === "income")
+          return (
+            t.type === "income" ||
+            t.type === "goal_withdraw" ||
+            (t.type === "transfer" &&
+              accountIdFilter &&
+              t.destinationAccountId === accountIdFilter)
+          );
+        if (typeFilter === "expense")
+          return (
+            t.type === "expense" ||
+            t.type === "goal_deposit" ||
+            (t.type === "transfer" &&
+              (!accountIdFilter || t.accountId === accountIdFilter))
+          );
         return true;
       })
-      .filter(t => {
+      .filter((t) => {
         // Filtro por status
-        if (statusFilter === 'paid') return t.status === 'paid';
-        if (statusFilter === 'pending') return t.status === 'pending';
+        if (statusFilter === "paid") return t.status === "paid";
+        if (statusFilter === "pending") return t.status === "pending";
         return true;
       })
-      .filter(t => {
+      .filter((t) => {
         if (categoryIdFilter) return t.categoryId === categoryIdFilter;
         return true;
       })
-      .filter(t => {
-        if (accountIdFilter) return t.accountId === accountIdFilter || t.destinationAccountId === accountIdFilter;
+      .filter((t) => {
+        if (accountIdFilter)
+          return (
+            t.accountId === accountIdFilter ||
+            t.destinationAccountId === accountIdFilter
+          );
         return true;
       })
-      .filter(t => {
+      .filter((t) => {
         if (!hasSearch) return true;
         const desc = normalizeSearchText(t.description);
         const showName = normalizeSearchText(t.showName);
-        const cat = normalizeSearchText(categories.find(c => c.id === t.categoryId)?.name);
-        const acc = normalizeSearchText(accounts.find(a => a.id === t.accountId)?.name);
-        const destAcc = t.destinationAccountId ? normalizeSearchText(accounts.find(a => a.id === t.destinationAccountId)?.name) : '';
+        const cat = normalizeSearchText(
+          categories.find((c) => c.id === t.categoryId)?.name,
+        );
+        const acc = normalizeSearchText(
+          accounts.find((a) => a.id === t.accountId)?.name,
+        );
+        const destAcc = t.destinationAccountId
+          ? normalizeSearchText(
+              accounts.find((a) => a.id === t.destinationAccountId)?.name,
+            )
+          : "";
         const amtStr = String(Math.abs(Number(t.amount) || 0));
-        const amtFmt = formatCurrency(Math.abs(Number(t.amount) || 0)).toLowerCase();
+        const amtFmt = formatCurrency(
+          Math.abs(Number(t.amount) || 0),
+        ).toLowerCase();
         return (
           desc.includes(normTerm) ||
           showName.includes(normTerm) ||
@@ -237,14 +314,23 @@ export const TransactionList: React.FC = () => {
         );
       })
       .sort((a, b) => {
-        const dateA = String(a.date || '');
-        const dateB = String(b.date || '');
+        const dateA = String(a.date || "");
+        const dateB = String(b.date || "");
         if (dateA !== dateB) {
           return dateB.localeCompare(dateA);
         }
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
-  }, [periodTransactions, typeFilter, statusFilter, categoryIdFilter, accountIdFilter, searchTerm, categories, accounts]);
+  }, [
+    periodTransactions,
+    typeFilter,
+    statusFilter,
+    categoryIdFilter,
+    accountIdFilter,
+    searchTerm,
+    categories,
+    accounts,
+  ]);
 
   // 3. Cálculo dos 4 KPI Cards do Período Selecionado (sobre filteredTransactions)
   const kpiData = useMemo(() => {
@@ -253,28 +339,32 @@ export const TransactionList: React.FC = () => {
     let pendingIncome = 0;
     let pendingExpense = 0;
 
-    filteredTransactions.forEach(t => {
+    filteredTransactions.forEach((t) => {
       const amt = Math.abs(Number(t.amount) || 0);
       const isInc =
-        t.type === 'income' ||
-        t.type === 'goal_withdraw' ||
-        (t.type === 'transfer' && Boolean(accountIdFilter) && t.destinationAccountId === accountIdFilter);
+        t.type === "income" ||
+        t.type === "goal_withdraw" ||
+        (t.type === "transfer" &&
+          Boolean(accountIdFilter) &&
+          t.destinationAccountId === accountIdFilter);
       const isExp =
-        t.type === 'expense' ||
-        t.type === 'goal_deposit' ||
-        (t.type === 'transfer' && (!accountIdFilter || t.accountId === accountIdFilter));
+        t.type === "expense" ||
+        t.type === "goal_deposit" ||
+        (t.type === "transfer" &&
+          (!accountIdFilter || t.accountId === accountIdFilter));
 
-      if (t.status === 'paid') {
+      if (t.status === "paid") {
         if (isInc) paidIncome += amt;
         if (isExp) paidExpense += amt;
-      } else if (t.status === 'pending') {
+      } else if (t.status === "pending") {
         if (isInc) pendingIncome += amt;
         if (isExp) pendingExpense += amt;
       }
     });
 
     const netResult = Math.round((paidIncome - paidExpense) * 100) / 100;
-    const netProjected = Math.round((pendingIncome - pendingExpense) * 100) / 100;
+    const netProjected =
+      Math.round((pendingIncome - pendingExpense) * 100) / 100;
 
     return {
       paidIncome: Math.round(paidIncome * 100) / 100,
@@ -282,38 +372,48 @@ export const TransactionList: React.FC = () => {
       netResult,
       pendingIncome: Math.round(pendingIncome * 100) / 100,
       pendingExpense: Math.round(pendingExpense * 100) / 100,
-      netProjected
+      netProjected,
     };
   }, [filteredTransactions, accountIdFilter]);
 
   // 4. Agrupamento por data (Hoje, Ontem, Datas Anteriores)
   const groupedTransactions = useMemo(() => {
-    return filteredTransactions.reduce((acc, t) => {
-      const dateKey = t.date || 'Sem data';
-      if (!acc[dateKey]) acc[dateKey] = [];
-      acc[dateKey].push(t);
-      return acc;
-    }, {} as Record<string, Transaction[]>);
+    return filteredTransactions.reduce(
+      (acc, t) => {
+        const dateKey = t.date || "Sem data";
+        if (!acc[dateKey]) acc[dateKey] = [];
+        acc[dateKey].push(t);
+        return acc;
+      },
+      {} as Record<string, Transaction[]>,
+    );
   }, [filteredTransactions]);
 
   const formatDateLabel = (dateStr: string) => {
-    if (dateStr === deviceToday) return 'HOJE';
-    
+    if (dateStr === deviceToday) return "HOJE";
+
     // Ontem
-    const [y, m, d] = deviceToday.split('-').map(Number);
+    const [y, m, d] = deviceToday.split("-").map(Number);
     const yestDate = new Date(y, m - 1, d - 1);
-    const yestStr = `${yestDate.getFullYear()}-${String(yestDate.getMonth() + 1).padStart(2, '0')}-${String(yestDate.getDate()).padStart(2, '0')}`;
-    if (dateStr === yestStr) return 'ONTEM';
+    const yestStr = `${yestDate.getFullYear()}-${String(yestDate.getMonth() + 1).padStart(2, "0")}-${String(yestDate.getDate()).padStart(2, "0")}`;
+    if (dateStr === yestStr) return "ONTEM";
 
     // Amanhã
     const tomDate = new Date(y, m - 1, d + 1);
-    const tomStr = `${tomDate.getFullYear()}-${String(tomDate.getMonth() + 1).padStart(2, '0')}-${String(tomDate.getDate()).padStart(2, '0')}`;
-    if (dateStr === tomStr) return 'AMANHÃ';
+    const tomStr = `${tomDate.getFullYear()}-${String(tomDate.getMonth() + 1).padStart(2, "0")}-${String(tomDate.getDate()).padStart(2, "0")}`;
+    if (dateStr === tomStr) return "AMANHÃ";
 
     try {
-      const [dy, dm, dd] = dateStr.split('-').map(Number);
+      const [dy, dm, dd] = dateStr.split("-").map(Number);
       const dt = new Date(dy, dm - 1, dd, 12, 0, 0);
-      return dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+      return dt
+        .toLocaleDateString("pt-BR", {
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+        .toUpperCase();
     } catch {
       return dateStr.toUpperCase();
     }
@@ -322,10 +422,10 @@ export const TransactionList: React.FC = () => {
   // Toggle rápido de status (Agendado <-> Efetivado com 1 clique)
   const handleToggleStatus = (e: React.MouseEvent, t: Transaction) => {
     e.stopPropagation();
-    const newStatus = t.status === 'paid' ? 'pending' : 'paid';
+    const newStatus = t.status === "paid" ? "pending" : "paid";
     updateTransaction({
       ...t,
-      status: newStatus
+      status: newStatus,
     });
   };
 
@@ -337,39 +437,37 @@ export const TransactionList: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6 pb-28 animate-fade-in text-slate-900 dark:text-slate-100">
-      
+    <div className="w-full max-w-full overflow-x-hidden space-y-4 sm:space-y-6 pb-28 animate-fade-in text-slate-900">
       {/* 1. SELETOR DE PERÍODO & NAVEGAÇÃO TEMPORAL MODERNA */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
-        
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
               <Receipt size={20} strokeWidth={2.5} />
             </div>
             <div>
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block">
                 Extrato Consolidado
               </span>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white capitalize">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 capitalize">
                 {periodLabel}
               </h2>
             </div>
           </div>
 
           {/* Navegação Rápida de Mês */}
-          <div className="flex items-center space-x-1.5 self-start sm:self-auto bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+          <div className="flex items-center space-x-1.5 self-start sm:self-auto bg-slate-100 p-1 rounded-2xl border border-slate-200/60">
             <button
               onClick={() => changeMonthOffset(-1)}
-              className="p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition active:scale-95"
+              className="p-1.5 rounded-xl text-slate-600 hover:bg-white transition active:scale-95"
               title="Mês Anterior"
             >
               <ChevronLeft size={16} />
             </button>
 
             <div className="relative group px-2">
-              <span className="text-xs font-black uppercase text-slate-800 dark:text-slate-100 tracking-wider cursor-pointer">
-                {periodPreset === 'this_year' ? currentYear : selectedMonth}
+              <span className="text-xs font-black uppercase text-slate-800 tracking-wider cursor-pointer">
+                {periodPreset === "this_year" ? currentYear : selectedMonth}
               </span>
               <input
                 type="month"
@@ -377,7 +475,7 @@ export const TransactionList: React.FC = () => {
                 onChange={(e) => {
                   if (e.target.value) {
                     setSelectedMonth(e.target.value);
-                    setPeriodPreset('custom');
+                    setPeriodPreset("custom");
                   }
                 }}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
@@ -387,7 +485,7 @@ export const TransactionList: React.FC = () => {
 
             <button
               onClick={() => changeMonthOffset(1)}
-              className="p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition active:scale-95"
+              className="p-1.5 rounded-xl text-slate-600 hover:bg-white transition active:scale-95"
               title="Próximo Mês"
             >
               <ChevronRight size={16} />
@@ -398,25 +496,29 @@ export const TransactionList: React.FC = () => {
         {/* Botões de Acesso Rápido de Período */}
         <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pt-1">
           {[
-            { id: 'this_month', label: 'Este Mês' },
-            { id: 'prev_month', label: 'Mês Passado' },
-            { id: 'next_month', label: 'Próximo Mês' },
-            { id: 'this_year', label: 'Ano Atual' },
-            { id: 'custom', label: 'Personalizado', icon: Calendar }
+            { id: "this_month", label: "Este Mês" },
+            { id: "prev_month", label: "Mês Passado" },
+            { id: "next_month", label: "Próximo Mês" },
+            { id: "this_year", label: "Ano Atual" },
+            { id: "custom", label: "Personalizado", icon: Calendar },
           ].map((preset) => {
             const isActive = periodPreset === preset.id;
             const Icon = preset.icon;
             return (
               <button
                 key={preset.id}
-                onClick={() => handlePeriodPresetChange(preset.id as PeriodPreset)}
+                onClick={() =>
+                  handlePeriodPresetChange(preset.id as PeriodPreset)
+                }
                 className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap active:scale-95 flex items-center space-x-1 border ${
                   isActive
-                    ? 'bg-emerald-500 text-black border-emerald-500 shadow-sm'
-                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-emerald-500 text-black border-emerald-500 shadow-sm"
+                    : "bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100 hover:text-slate-900"
                 }`}
               >
-                {Icon && <Icon size={12} className={isActive ? 'text-black' : ''} />}
+                {Icon && (
+                  <Icon size={12} className={isActive ? "text-black" : ""} />
+                )}
                 <span>{preset.label}</span>
               </button>
             );
@@ -424,51 +526,57 @@ export const TransactionList: React.FC = () => {
         </div>
 
         {/* Filtro Simples de Módulo: [ Tudo | Apenas Pessoal | Apenas Música ] */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 w-full sm:w-auto">
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200/60 w-full sm:w-auto">
             <button
-              onClick={() => setActiveScope('ALL')}
+              onClick={() => setActiveScope("ALL")}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 ${
-                activeScope === 'ALL'
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-black shadow-xs'
-                  : 'text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white'
+                activeScope === "ALL"
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
               }`}
             >
               Tudo
             </button>
             <button
-              onClick={() => setActiveScope('PERSONAL')}
+              onClick={() => setActiveScope("PERSONAL")}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1.5 ${
-                activeScope === 'PERSONAL'
-                  ? 'bg-emerald-500 text-black shadow-xs'
-                  : 'text-slate-500 dark:text-slate-300 hover:text-emerald-500'
+                activeScope === "PERSONAL"
+                  ? "bg-emerald-500 text-black shadow-xs"
+                  : "text-slate-500 hover:text-emerald-500"
               }`}
             >
-              <User size={13} className={activeScope === 'PERSONAL' ? 'text-black' : ''} />
+              <User
+                size={13}
+                className={activeScope === "PERSONAL" ? "text-black" : ""}
+              />
               <span>Apenas Pessoal</span>
             </button>
             <button
-              onClick={() => setActiveScope('BUSINESS')}
+              onClick={() => setActiveScope("BUSINESS")}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center space-x-1.5 ${
-                activeScope === 'BUSINESS'
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-slate-500 dark:text-slate-300 hover:text-purple-400'
+                activeScope === "BUSINESS"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-500 hover:text-purple-400"
               }`}
             >
-              <Music size={13} className={activeScope === 'BUSINESS' ? 'text-white' : ''} />
+              <Music
+                size={13}
+                className={activeScope === "BUSINESS" ? "text-white" : ""}
+              />
               <span>Apenas Música</span>
             </button>
           </div>
 
           <span className="text-[11px] font-bold text-slate-400">
-            {periodTransactions.length} {periodTransactions.length === 1 ? 'lançamento' : 'lançamentos'}
+            {periodTransactions.length}{" "}
+            {periodTransactions.length === 1 ? "lançamento" : "lançamentos"}
           </span>
         </div>
       </div>
 
       {/* 2. CABEÇALHO DE TOTAIS & RESUMO FINANCEIRO (4 KPI CARDS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        
         {/* KPI 1: RECEITAS EFETIVADAS */}
         <div className="p-4 sm:p-5 rounded-3xl bg-[#18181b] border border-zinc-800/80 shadow-xs space-y-2 relative overflow-hidden">
           <div className="flex items-center justify-between">
@@ -481,7 +589,7 @@ export const TransactionList: React.FC = () => {
           </div>
           <div className="space-y-0.5">
             <span className="text-base sm:text-xl font-black text-emerald-400 tabular-nums block">
-              {!isBlurred ? formatCurrency(kpiData.paidIncome) : '••••••'}
+              {!isBlurred ? formatCurrency(kpiData.paidIncome) : "••••••"}
             </span>
             <span className="text-[10px] text-zinc-400 font-medium block">
               Total recebido no período
@@ -501,7 +609,7 @@ export const TransactionList: React.FC = () => {
           </div>
           <div className="space-y-0.5">
             <span className="text-base sm:text-xl font-black text-rose-400 tabular-nums block">
-              {!isBlurred ? formatCurrency(kpiData.paidExpense) : '••••••'}
+              {!isBlurred ? formatCurrency(kpiData.paidExpense) : "••••••"}
             </span>
             <span className="text-[10px] text-zinc-400 font-medium block">
               Total pago no período
@@ -510,28 +618,40 @@ export const TransactionList: React.FC = () => {
         </div>
 
         {/* KPI 3: SALDO LÍQUIDO DO PERÍODO */}
-        <div className={`p-4 sm:p-5 rounded-3xl border shadow-xs space-y-2 relative overflow-hidden ${
-          kpiData.netResult >= 0 
-            ? 'bg-[#18181b] border-emerald-500/30' 
-            : 'bg-[#18181b] border-rose-500/30'
-        }`}>
+        <div
+          className={`p-4 sm:p-5 rounded-3xl border shadow-xs space-y-2 relative overflow-hidden ${
+            kpiData.netResult >= 0
+              ? "bg-[#18181b] border-emerald-500/30"
+              : "bg-[#18181b] border-rose-500/30"
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <span className={`text-[10px] font-black uppercase tracking-wider ${
-              kpiData.netResult >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}>
+            <span
+              className={`text-[10px] font-black uppercase tracking-wider ${
+                kpiData.netResult >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
               Saldo Líquido
             </span>
-            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${
-              kpiData.netResult >= 0 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-            }`}>
+            <div
+              className={`w-7 h-7 rounded-xl flex items-center justify-center ${
+                kpiData.netResult >= 0
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+              }`}
+            >
               <Wallet size={15} strokeWidth={2.5} />
             </div>
           </div>
           <div className="space-y-0.5">
-            <span className={`text-base sm:text-xl font-black tabular-nums block ${
-              kpiData.netResult >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}>
-              {!isBlurred ? `${kpiData.netResult >= 0 ? '+' : ''}${formatCurrency(kpiData.netResult)}` : '••••••'}
+            <span
+              className={`text-base sm:text-xl font-black tabular-nums block ${
+                kpiData.netResult >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {!isBlurred
+                ? `${kpiData.netResult >= 0 ? "+ " : ""}${formatCurrency(kpiData.netResult)}`
+                : "••••••"}
             </span>
             <span className="text-[10px] text-zinc-400 font-medium block">
               Receitas - Despesas
@@ -551,23 +671,28 @@ export const TransactionList: React.FC = () => {
           </div>
           <div className="space-y-0.5">
             <span className="text-base sm:text-xl font-black text-amber-400 tabular-nums block">
-              {!isBlurred ? `+${formatCurrency(kpiData.pendingIncome)}` : '••••••'}
+              {!isBlurred
+                ? `+${formatCurrency(kpiData.pendingIncome)}`
+                : "••••••"}
             </span>
             <span className="text-[10px] text-zinc-400 font-medium block truncate">
-              {kpiData.pendingExpense > 0 ? `A pagar: ${formatCurrency(kpiData.pendingExpense)}` : 'Nenhuma saída pendente'}
+              {kpiData.pendingExpense > 0
+                ? `A pagar: ${formatCurrency(kpiData.pendingExpense)}`
+                : "Nenhuma saída pendente"}
             </span>
           </div>
         </div>
-
       </div>
 
       {/* 3. BARRA DE FILTROS RÁPIDOS E BUSCA */}
       <div className="bg-[#18181b] rounded-3xl p-4 sm:p-5 border border-zinc-800/80 shadow-sm space-y-4">
-        
         {/* Linha 1: Busca e Botão Novo Lançamento */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+            <Search
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
+              size={16}
+            />
             <input
               type="text"
               placeholder="Buscar por show, contratante, categoria, valor..."
@@ -577,7 +702,7 @@ export const TransactionList: React.FC = () => {
             />
             {searchTerm && (
               <button
-                onClick={() => setSearchTerm('')}
+                onClick={() => setSearchTerm("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-0.5"
               >
                 <XCircle size={15} />
@@ -608,36 +733,35 @@ export const TransactionList: React.FC = () => {
 
         {/* Linha 2: Filtros de Tipo e Filtros de Status */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-zinc-800">
-          
           {/* Tipo: Todos | Entradas | Saídas */}
           <div className="flex items-center space-x-1 bg-[#121212] p-1 rounded-2xl border border-zinc-800/80">
             <button
-              onClick={() => setTypeFilter('all')}
+              onClick={() => setTypeFilter("all")}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                typeFilter === 'all'
-                  ? 'bg-zinc-800 text-white shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
+                typeFilter === "all"
+                  ? "bg-zinc-800 text-white shadow-xs"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
               Todos os Tipos
             </button>
             <button
-              onClick={() => setTypeFilter('income')}
+              onClick={() => setTypeFilter("income")}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center space-x-1 ${
-                typeFilter === 'income'
-                  ? 'bg-emerald-500 text-zinc-950 font-black shadow-xs'
-                  : 'text-zinc-400 hover:text-emerald-400'
+                typeFilter === "income"
+                  ? "bg-emerald-500 text-zinc-950 font-black shadow-xs"
+                  : "text-zinc-400 hover:text-emerald-400"
               }`}
             >
               <TrendingUp size={11} />
               <span>Entradas</span>
             </button>
             <button
-              onClick={() => setTypeFilter('expense')}
+              onClick={() => setTypeFilter("expense")}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center space-x-1 ${
-                typeFilter === 'expense'
-                  ? 'bg-rose-500 text-white shadow-xs'
-                  : 'text-zinc-400 hover:text-rose-400'
+                typeFilter === "expense"
+                  ? "bg-rose-500 text-white shadow-xs"
+                  : "text-zinc-400 hover:text-rose-400"
               }`}
             >
               <TrendingDown size={11} />
@@ -648,59 +772,66 @@ export const TransactionList: React.FC = () => {
           {/* Status: Todos | Efetivados | Agendados */}
           <div className="flex items-center space-x-1 bg-[#121212] p-1 rounded-2xl border border-zinc-800/80">
             <button
-              onClick={() => setStatusFilter('all')}
+              onClick={() => setStatusFilter("all")}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                statusFilter === 'all'
-                  ? 'bg-zinc-800 text-white shadow-xs'
-                  : 'text-zinc-400 hover:text-white'
+                statusFilter === "all"
+                  ? "bg-zinc-800 text-white shadow-xs"
+                  : "text-zinc-400 hover:text-white"
               }`}
             >
               Todos Status
             </button>
             <button
-              onClick={() => setStatusFilter('paid')}
+              onClick={() => setStatusFilter("paid")}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center space-x-1 ${
-                statusFilter === 'paid'
-                  ? 'bg-emerald-500 text-zinc-950 font-black shadow-xs'
-                  : 'text-zinc-400 hover:text-emerald-400'
+                statusFilter === "paid"
+                  ? "bg-emerald-500 text-zinc-950 font-black shadow-xs"
+                  : "text-zinc-400 hover:text-emerald-400"
               }`}
             >
               <Check size={11} strokeWidth={3} />
               <span>Efetivados</span>
             </button>
             <button
-              onClick={() => setStatusFilter('pending')}
+              onClick={() => setStatusFilter("pending")}
               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center space-x-1 ${
-                statusFilter === 'pending'
-                  ? 'bg-amber-500 text-zinc-950 font-black shadow-xs'
-                  : 'text-zinc-400 hover:text-amber-400'
+                statusFilter === "pending"
+                  ? "bg-amber-500 text-zinc-950 font-black shadow-xs"
+                  : "text-zinc-400 hover:text-amber-400"
               }`}
             >
               <Clock size={11} />
               <span>Agendados</span>
             </button>
           </div>
-
         </div>
 
         {/* Linha 3: Filtros secundários de Categoria & Conta */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
           <div className="relative">
             <select
               value={categoryIdFilter}
               onChange={(e) => setCategoryIdFilter(e.target.value)}
               className={`pl-3 pr-8 py-1.5 rounded-xl text-[10px] font-bold uppercase transition cursor-pointer border outline-none appearance-none ${
-                categoryIdFilter 
-                  ? 'bg-indigo-600 text-white border-indigo-600' 
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                categoryIdFilter
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-slate-50 text-slate-600 border-slate-200"
               }`}
             >
               <option value="">Todas as Categorias</option>
-              {categories.slice().sort((a,b) => a.name.localeCompare(b.name)).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+              {categories
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
-            <ChevronDown size={12} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${categoryIdFilter ? 'text-white' : 'text-slate-400'}`} />
+            <ChevronDown
+              size={12}
+              className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${categoryIdFilter ? "text-white" : "text-slate-400"}`}
+            />
           </div>
 
           <div className="relative">
@@ -708,27 +839,36 @@ export const TransactionList: React.FC = () => {
               value={accountIdFilter}
               onChange={(e) => setAccountIdFilter(e.target.value)}
               className={`pl-3 pr-8 py-1.5 rounded-xl text-[10px] font-bold uppercase transition cursor-pointer border outline-none appearance-none ${
-                accountIdFilter 
-                  ? 'bg-indigo-600 text-white border-indigo-600' 
-                  : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                accountIdFilter
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-slate-50 text-slate-600 border-slate-200"
               }`}
             >
               <option value="">Todas as Contas</option>
-              {accounts.map(a => (
-                <option key={a.id} value={a.id}>{a.name}</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
               ))}
             </select>
-            <ChevronDown size={12} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${accountIdFilter ? 'text-white' : 'text-slate-400'}`} />
+            <ChevronDown
+              size={12}
+              className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${accountIdFilter ? "text-white" : "text-slate-400"}`}
+            />
           </div>
 
-          {(categoryIdFilter || accountIdFilter || searchTerm || typeFilter !== 'all' || statusFilter !== 'all') && (
+          {(categoryIdFilter ||
+            accountIdFilter ||
+            searchTerm ||
+            typeFilter !== "all" ||
+            statusFilter !== "all") && (
             <button
               onClick={() => {
-                setCategoryIdFilter('');
-                setAccountIdFilter('');
-                setSearchTerm('');
-                setTypeFilter('all');
-                setStatusFilter('all');
+                setCategoryIdFilter("");
+                setAccountIdFilter("");
+                setSearchTerm("");
+                setTypeFilter("all");
+                setStatusFilter("all");
               }}
               className="text-[10px] font-black uppercase text-rose-500 hover:underline flex items-center space-x-1 pl-1"
             >
@@ -738,24 +878,25 @@ export const TransactionList: React.FC = () => {
           )}
 
           <div className="ml-auto text-[10px] font-bold text-slate-400">
-            Exibindo {filteredTransactions.length} de {periodTransactions.length} lançamentos
+            Exibindo {filteredTransactions.length} de{" "}
+            {periodTransactions.length} lançamentos
           </div>
         </div>
-
       </div>
 
       {/* 4. LISTA MODULAR DE MOVIMENTAÇÕES AGRUPADAS POR DATA */}
       <div className="space-y-6">
         {Object.keys(groupedTransactions).length === 0 ? (
-          <div className="text-center py-16 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+          <div className="text-center py-16 px-4 bg-white rounded-3xl border border-dashed border-slate-200 space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
               <Receipt size={24} />
             </div>
-            <p className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+            <p className="text-sm font-black text-slate-700 uppercase tracking-wider">
               Nenhuma movimentação encontrada
             </p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-              Não há lançamentos para os filtros selecionados no período de {periodLabel}.
+              Não há lançamentos para os filtros selecionados no período de{" "}
+              {periodLabel}.
             </p>
             <button
               onClick={() => setIsNewTransactionModalOpen(true)}
@@ -766,40 +907,56 @@ export const TransactionList: React.FC = () => {
             </button>
           </div>
         ) : (
-          (Object.entries(groupedTransactions) as [string, Transaction[]][]).map(([date, items]) => {
+          (
+            Object.entries(groupedTransactions) as [string, Transaction[]][]
+          ).map(([date, items]) => {
             const isToday = date === deviceToday;
-            const hasPaidInGroup = items.some(t => t.status === 'paid');
+            const hasPaidInGroup = items.some((t) => t.status === "paid");
             const dayNet = parseFloat(
-              items.reduce((sum, t) => {
-                if (t.status === 'cancelled') return sum;
-                if (hasPaidInGroup && statusFilter !== 'pending' && t.status !== 'paid') return sum;
-                const amt = Math.abs(Number(t.amount) || 0);
-                const isInc =
-                  t.type === 'income' ||
-                  t.type === 'goal_withdraw' ||
-                  (t.type === 'transfer' && Boolean(accountIdFilter) && t.destinationAccountId === accountIdFilter);
-                return isInc ? sum + amt : sum - amt;
-              }, 0).toFixed(2)
+              items
+                .reduce((sum, t) => {
+                  if (t.status === "cancelled") return sum;
+                  if (
+                    hasPaidInGroup &&
+                    statusFilter !== "pending" &&
+                    t.status !== "paid"
+                  )
+                    return sum;
+                  const amt = Math.abs(Number(t.amount) || 0);
+                  const isInc =
+                    t.type === "income" ||
+                    t.type === "goal_withdraw" ||
+                    (t.type === "transfer" &&
+                      Boolean(accountIdFilter) &&
+                      t.destinationAccountId === accountIdFilter);
+                  return isInc ? sum + amt : sum - amt;
+                }, 0)
+                .toFixed(2),
             );
 
             return (
               <div key={date} className="space-y-2.5">
-                
                 {/* Header de Grupo de Data */}
                 <div className="flex items-center space-x-3 px-1">
-                  <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5 ${
-                    isToday
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}>
+                  <div
+                    className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center space-x-1.5 ${
+                      isToday
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-slate-200/70 text-slate-700"
+                    }`}
+                  >
                     <Calendar size={11} />
                     <span>{formatDateLabel(date)}</span>
                   </div>
-                  <div className="h-px bg-slate-200/80 dark:border-slate-800 flex-1" />
+                  <div className="h-px bg-slate-200/80 flex-1" />
                   <div className="flex items-center space-x-1.5 text-[10px] font-bold text-slate-400">
                     <span>Saldo do dia:</span>
-                    <span className={`font-black tabular-nums ${dayNet >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                      {!isBlurred ? `${dayNet >= 0 ? '+' : ''}${formatCurrency(dayNet)}` : '••••••'}
+                    <span
+                      className={`font-black tabular-nums ${dayNet >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                    >
+                      {!isBlurred
+                        ? `${dayNet >= 0 ? "+ " : ""}${formatCurrency(dayNet)}`
+                        : "••••••"}
                     </span>
                   </div>
                 </div>
@@ -807,8 +964,10 @@ export const TransactionList: React.FC = () => {
                 {/* Cards Modulares de Lançamento */}
                 <div className="space-y-2.5">
                   {items.map((t) => {
-                    const category = categories.find(c => c.id === t.categoryId);
-                    const account = accounts.find(a => a.id === t.accountId);
+                    const category = categories.find(
+                      (c) => c.id === t.categoryId,
+                    );
+                    const account = accounts.find((a) => a.id === t.accountId);
                     const isHighlighted = t.id === highlightId;
 
                     return (
@@ -823,12 +982,13 @@ export const TransactionList: React.FC = () => {
                         onEdit={(tx) => setEditingTransaction(tx)}
                         onToggleStatus={handleToggleStatus}
                         onDelete={handleDelete}
-                        onOpenShow={(showId) => navigate(`/shows?showId=${showId}`)}
+                        onOpenShow={(showId) =>
+                          navigate(`/shows?showId=${showId}`)
+                        }
                       />
                     );
                   })}
                 </div>
-
               </div>
             );
           })
@@ -845,9 +1005,7 @@ export const TransactionList: React.FC = () => {
 
       {/* MODAL NOVA TRANSAÇÃO */}
       {isNewTransactionModalOpen && (
-        <TransactionForm
-          onClose={() => setIsNewTransactionModalOpen(false)}
-        />
+        <TransactionForm onClose={() => setIsNewTransactionModalOpen(false)} />
       )}
 
       {/* MODAL IMPORTAÇÃO DE EXTRATO BANCÁRIO */}
