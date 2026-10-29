@@ -10,13 +10,16 @@ import {
   Star,
 } from "lucide-react";
 import { CategoryAvatar } from "./CategoryAvatar";
+import { EssentialityBadge } from "./EssentialityBadge";
 
 export interface CategoryAccordionGroup {
   parent: Category;
   children: Category[];
+  /** Média mensal na janela de período selecionada */
   monthTotal: number;
   usageCount: number;
   childUsage: Record<string, number>;
+  childMonthTotals?: Record<string, number>;
 }
 
 interface Props {
@@ -70,7 +73,15 @@ export const CategoryAccordion: React.FC<Props> = ({
 
   return (
     <div className="space-y-2.5">
-      {groups.map(({ parent, children, monthTotal, usageCount, childUsage }) => {
+      {groups.map(
+        ({
+          parent,
+          children,
+          monthTotal,
+          usageCount,
+          childUsage,
+          childMonthTotals = {},
+        }) => {
         const isOpen = Boolean(expanded[parent.id]);
         const subCount = children.length;
         const isDefault = defaultCategoryId === parent.id;
@@ -93,10 +104,11 @@ export const CategoryAccordion: React.FC<Props> = ({
                   variant="parent"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <h3 className="font-bold text-slate-800 text-sm truncate">
                       {parent.name}
                     </h3>
+                    <EssentialityBadge category={parent} compact />
                     {parent.isSystem && (
                       <Lock size={11} className="text-slate-300 shrink-0" />
                     )}
@@ -205,6 +217,7 @@ export const CategoryAccordion: React.FC<Props> = ({
                     <ul className="space-y-1.5 pl-3 ml-2 border-l-2 border-slate-200/80">
                       {children.map((child) => {
                         const childCount = childUsage[child.id] || 0;
+                        const childAvg = childMonthTotals[child.id] || 0;
                         const childIsDefault = defaultCategoryId === child.id;
                         return (
                           <li
@@ -234,20 +247,37 @@ export const CategoryAccordion: React.FC<Props> = ({
                                 variant="child"
                               />
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-700 truncate flex items-center gap-1">
-                                  {child.name}
+                                <p className="text-xs font-bold text-slate-700 truncate flex items-center gap-1.5">
+                                  <span className="truncate">{child.name}</span>
+                                  <EssentialityBadge category={child} compact />
                                   {childIsDefault && (
                                     <Star
                                       size={10}
-                                      className="text-amber-500 fill-amber-500"
+                                      className="text-amber-500 fill-amber-500 shrink-0"
                                     />
                                   )}
                                 </p>
-                                <p className="text-[10px] text-slate-400">
-                                  {childCount}{" "}
-                                  {childCount === 1
-                                    ? "lançamento"
-                                    : "lançamentos"}
+                                <p className="text-[10px] text-slate-400 flex items-center gap-1.5 flex-wrap">
+                                  <span>
+                                    {childCount}{" "}
+                                    {childCount === 1
+                                      ? "lançamento"
+                                      : "lançamentos"}
+                                  </span>
+                                  <span className="text-slate-300">·</span>
+                                  <span
+                                    className={`font-semibold tabular-nums ${
+                                      flowType === "expense"
+                                        ? "text-rose-500"
+                                        : "text-emerald-600"
+                                    }`}
+                                  >
+                                    {formatCurrency(childAvg)}
+                                    <span className="text-slate-400 font-medium">
+                                      {" "}
+                                      /mês
+                                    </span>
+                                  </span>
                                 </p>
                               </div>
                             </div>
@@ -299,3 +329,4 @@ export const CategoryAccordion: React.FC<Props> = ({
     </div>
   );
 };
+

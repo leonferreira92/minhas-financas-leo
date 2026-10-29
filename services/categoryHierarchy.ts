@@ -1,4 +1,5 @@
 import { Category, Transaction, TransactionType } from '../types';
+import { ensureCategoryEssentiality } from './categoryEssentiality';
 
 export const isParentCategory = (cat: Category): boolean =>
   cat.parentId == null || cat.parentId === '';
@@ -144,12 +145,12 @@ export function buildExtratoCategoryQuery(
 }
 
 export function normalizeCategoryRecord(cat: Category, systemIds: Set<string>): Category {
-  return {
+  return ensureCategoryEssentiality({
     ...cat,
     parentId: cat.parentId ?? null,
     isSystem: cat.isSystem ?? systemIds.has(cat.id),
     archived: Boolean(cat.archived),
-  };
+  });
 }
 
 /** Categorias disponíveis para novos lançamentos (não arquivadas). */

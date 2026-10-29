@@ -25,6 +25,13 @@ export type CareerDebtSubcategory =
 
 export type AlertType = 'overdue' | 'today' | 'tomorrow' | 'week' | 'risk';
 
+/** Classificação de essencialidade (Custo de Vida / Relatórios Inteligentes) */
+export type CategoryEssentiality =
+  | 'essential'
+  | 'lifestyle'
+  | 'investment'
+  | 'debt';
+
 export interface Category {
   id: string;
   name: string;
@@ -37,6 +44,15 @@ export interface Category {
   isSystem?: boolean;
   /** Arquivada: oculta em novos lançamentos; histórico preservado */
   archived?: boolean;
+  /**
+   * Essencialidade financeira da categoria.
+   * - essential: gastos fixos / necessidades (Custo Mínimo de Sobrevivência)
+   * - lifestyle: estilo de vida / lazer / desejos
+   * - investment: aportes e futuro
+   * - debt: dívidas e empréstimos
+   */
+  essentiality?: CategoryEssentiality;
+  /** @deprecated Preferir `essentiality`. Mantido para compatibilidade com dados legados. */
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   scope?: ScopeType;
 }

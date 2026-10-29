@@ -1,4 +1,5 @@
-import { Category, Account, FinancialSettings, MusicCostCategory, TransactionType } from './types';
+import { Category, Account, FinancialSettings, MusicCostCategory, TransactionType, CategoryEssentiality } from './types';
+import { resolveCategoryEssentiality } from './services/categoryEssentiality';
 
 /** Reexporta a biblioteca expandida de ícones (Mobills) */
 export {
@@ -86,7 +87,7 @@ const RAW_DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_14', name: 'Internet / Celular', type: 'expense', color: '#0ea5e9', icon: 'Wifi', classification: 'essential', scope: 'PERSONAL' },
   { id: 'cat_26', name: 'Seguros', type: 'expense', color: '#64748b', icon: 'Umbrella', classification: 'essential', scope: 'PERSONAL' },
   { id: 'cat_27', name: 'Impostos / Taxas', type: 'expense', color: '#94a3b8', icon: 'Receipt', classification: 'essential', scope: 'PERSONAL' },
-  { id: 'cat_dividas', name: 'Dívidas / Empréstimo Pessoal', type: 'expense', color: '#6366f1', icon: 'CreditCard', classification: 'essential', scope: 'PERSONAL' },
+  { id: 'cat_dividas', name: 'Dívidas / Empréstimo Pessoal', type: 'expense', color: '#6366f1', icon: 'CreditCard', classification: 'essential', essentiality: 'debt', scope: 'PERSONAL' },
 
   // --- ESTILO DE VIDA / PESSOAL (30%) ---
   { id: 'cat_5', name: 'Restaurantes', type: 'expense', color: '#8b5cf6', icon: 'Utensils', classification: 'personal', scope: 'PERSONAL' },
@@ -129,11 +130,16 @@ const RAW_DEFAULT_CATEGORIES: Category[] = [
 ];
 
 /** Defaults como categorias mãe do sistema (hierarquia Mobills). */
-export const DEFAULT_CATEGORIES: Category[] = RAW_DEFAULT_CATEGORIES.map((c) => ({
-  ...c,
-  parentId: null,
-  isSystem: true,
-}));
+export const DEFAULT_CATEGORIES: Category[] = RAW_DEFAULT_CATEGORIES.map((c) => {
+  const essentiality: CategoryEssentiality =
+    c.essentiality || resolveCategoryEssentiality(c);
+  return {
+    ...c,
+    parentId: null,
+    isSystem: true,
+    essentiality,
+  };
+});
 
 export const SYSTEM_CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((c) => c.id));
 

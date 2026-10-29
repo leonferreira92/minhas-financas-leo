@@ -19,9 +19,12 @@ import {
   buildCategoryTree,
   buildExtratoCategoryQuery,
   countCategoryUsage,
-  sumMonthAmountForCategory,
 } from "../services/categoryHierarchy";
-import { getCurrentMonthPrefix } from "../services/dateUtils";
+import {
+  PERIOD_OPTIONS,
+  CategoryPeriodKey,
+  averageMonthlyForCategory,
+} from "../services/categoryEssentiality";
 import {
   CategoryFormModal,
   CategoryFormValues,
@@ -73,8 +76,8 @@ export const CategoryList = () => {
   const [deleteBlockMessage, setDeleteBlockMessage] = useState<string | null>(
     null,
   );
+  const [period, setPeriod] = useState<CategoryPeriodKey>("6m");
 
-  const monthPrefix = useMemo(() => getCurrentMonthPrefix(), []);
   const usageStats = useMemo(
     () => countCategoryUsage(transactions),
     [transactions],
@@ -108,30 +111,46 @@ export const CategoryList = () => {
   }, [categories, activeTab, scopeFilter]);
 
   const accordionGroups = useMemo(() => {
+    const flowType = activeTab === "income" ? "income" : "expense";
     const tree = buildCategoryTree(scopedCategories, activeTab);
     return tree
       .filter((g) => scopedCategories.some((c) => c.id === g.parent.id))
-      .map((g) => ({
-        parent: g.parent,
-        children: g.children.filter((ch) => !ch.archived),
-        monthTotal: sumMonthAmountForCategory(
-          transactions,
-          g.parent.id,
-          categories,
-          monthPrefix,
-          activeTab === "income" ? "income" : "expense",
-        ),
-        usageCount: usageStats[g.parent.id] || 0,
-        childUsage: Object.fromEntries(
-          g.children.map((ch) => [ch.id, usageStats[ch.id] || 0]),
-        ),
-      }));
+      .map((g) => {
+        const children = g.children.filter((ch) => !ch.archived);
+        return {
+          parent: g.parent,
+          children,
+          monthTotal: averageMonthlyForCategory(
+            transactions,
+            g.parent.id,
+            categories,
+            period,
+            flowType,
+          ),
+          usageCount: usageStats[g.parent.id] || 0,
+          childUsage: Object.fromEntries(
+            children.map((ch) => [ch.id, usageStats[ch.id] || 0]),
+          ),
+          childMonthTotals: Object.fromEntries(
+            children.map((ch) => [
+              ch.id,
+              averageMonthlyForCategory(
+                transactions,
+                ch.id,
+                categories,
+                period,
+                flowType,
+              ),
+            ]),
+          ),
+        };
+      });
   }, [
     scopedCategories,
     activeTab,
     transactions,
     categories,
-    monthPrefix,
+    period,
     usageStats,
   ]);
 
@@ -177,6 +196,7 @@ export const CategoryList = () => {
         icon: values.icon,
         scope: values.scope,
         parentId: values.parentId,
+        essentiality: values.essentiality,
         isSystem: editing.isSystem,
         archived: editing.archived,
       });
@@ -188,6 +208,7 @@ export const CategoryList = () => {
         icon: values.icon,
         scope: values.scope,
         parentId: values.parentId,
+        essentiality: values.essentiality,
         isSystem: false,
         archived: false,
       });
@@ -414,6 +435,26 @@ export const CategoryList = () => {
           >
             <ArrowUpCircle size={15} className="mr-1.5" /> Receitas
           </button>
+        </div>
+
+        <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
+          {PERIOD_OPTIONS.map((opt) => {
+            const active = period === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setPeriod(opt.key)}
+                className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 border ${
+                  active
+                    ? "bg-white border-slate-300 text-slate-800 shadow-xs"
+                    : "bg-transparent border-transparent text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 

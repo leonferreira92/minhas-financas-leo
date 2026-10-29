@@ -1,8 +1,19 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Category, ScopeType, TransactionType } from "../../types";
+import {
+  Category,
+  CategoryEssentiality,
+  ScopeType,
+  TransactionType,
+} from "../../types";
 import { CATEGORY_COLOR_PALETTE } from "../../constants";
 import { getParentCategories } from "../../services/categoryHierarchy";
 import { PERSONAL_ONLY_MODE } from "../../services/personalOnlyMode";
+import {
+  ESSENTIALITY_OPTIONS,
+  getDefaultEssentiality,
+  getEssentialityOption,
+  resolveCategoryEssentiality,
+} from "../../services/categoryEssentiality";
 import {
   X,
   CheckCircle2,
@@ -27,6 +38,7 @@ export interface CategoryFormValues {
   icon: string;
   scope: ScopeType;
   parentId: string | null;
+  essentiality: CategoryEssentiality;
   isSystem?: boolean;
 }
 
@@ -63,6 +75,9 @@ export const CategoryFormModal: React.FC<Props> = ({
   const [icon, setIcon] = useState("ShoppingBag");
   const [mode, setMode] = useState<CategoryFormMode>("parent");
   const [parentId, setParentId] = useState<string>("");
+  const [essentiality, setEssentiality] = useState<CategoryEssentiality>(
+    getDefaultEssentiality(defaultType),
+  );
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   const parentOptions = useMemo(
@@ -81,6 +96,7 @@ export const CategoryFormModal: React.FC<Props> = ({
       setScope(editing.scope || "PERSONAL");
       setColor(editing.color);
       setIcon(editing.icon);
+      setEssentiality(resolveCategoryEssentiality(editing));
       const isChild = Boolean(editing.parentId);
       setMode(isChild ? "child" : "parent");
       setParentId(editing.parentId || "");
@@ -102,14 +118,20 @@ export const CategoryFormModal: React.FC<Props> = ({
           setType(parent.type);
           setColor(parent.color);
           setScope(parent.scope || "PERSONAL");
+          setEssentiality(resolveCategoryEssentiality(parent));
+        } else {
+          setEssentiality(getDefaultEssentiality(defaultType));
         }
       } else {
         setMode("parent");
         setParentId("");
+        setEssentiality(getDefaultEssentiality(defaultType));
       }
     }
     setIconPickerOpen(false);
   }, [open, editing, defaultType, defaultScope, forceParentId, categories]);
+
+  const selectedEssentiality = getEssentialityOption(essentiality);
 
   if (!open) return null;
 
@@ -126,6 +148,7 @@ export const CategoryFormModal: React.FC<Props> = ({
       icon,
       scope,
       parentId: mode === "child" ? parentId : null,
+      essentiality,
       isSystem: editing?.isSystem,
     });
   };
@@ -238,6 +261,7 @@ export const CategoryFormModal: React.FC<Props> = ({
                   if (p) {
                     setType(p.type);
                     setScope(p.scope || "PERSONAL");
+                    setEssentiality(resolveCategoryEssentiality(p));
                   }
                 }}
                 disabled={Boolean(forceParentId)}
@@ -300,7 +324,12 @@ export const CategoryFormModal: React.FC<Props> = ({
               <div className="flex space-x-2">
                 <button
                   type="button"
-                  onClick={() => setType("expense")}
+                  onClick={() => {
+                    setType("expense");
+                    if (!editing) {
+                      setEssentiality(getDefaultEssentiality("expense"));
+                    }
+                  }}
                   disabled={lockedType}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
                     type === "expense"
@@ -312,7 +341,12 @@ export const CategoryFormModal: React.FC<Props> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setType("income")}
+                  onClick={() => {
+                    setType("income");
+                    if (!editing) {
+                      setEssentiality(getDefaultEssentiality("income"));
+                    }
+                  }}
                   disabled={lockedType}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${
                     type === "income"
@@ -325,6 +359,44 @@ export const CategoryFormModal: React.FC<Props> = ({
               </div>
             </div>
           )}
+
+          {/* Essencialidade */}
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">
+              Essencialidade
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ESSENTIALITY_OPTIONS.map((opt) => {
+                const active = essentiality === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setEssentiality(opt.value)}
+                    className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold border-2 transition-all active:scale-95 ${
+                      active
+                        ? opt.pillActive
+                        : "border-slate-100 bg-slate-50 text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    <span className="mr-1" aria-hidden>
+                      {opt.emoji}
+                    </span>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 px-1 text-[11px] text-slate-500 font-medium leading-relaxed">
+              {selectedEssentiality.description}
+            </p>
+            {mode === "parent" && editing && (
+              <p className="mt-1 px-1 text-[10px] text-slate-400">
+                Subcategorias herdam esta classificação (podem ser alteradas
+                individualmente).
+              </p>
+            )}
+          </div>
 
           {/* Cores */}
           <div>

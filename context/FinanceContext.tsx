@@ -17,6 +17,10 @@ import {
   transactionMatchesCategoryFilter,
 } from '../services/categoryHierarchy';
 import {
+  getDefaultEssentiality,
+  resolveCategoryEssentiality,
+} from '../services/categoryEssentiality';
+import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
   resolveDefaultPersonalDebtCategoryId,
@@ -643,10 +647,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
               color: '#6366f1',
               icon: 'CreditCard',
               classification: 'essential',
-              scope: 'PERSONAL'
+              essentiality: 'debt' as const,
+              scope: 'PERSONAL',
+              parentId: null,
+              isSystem: true,
             }
           ];
         }
+        cleanCategories = cleanCategories.map(c =>
+          normalizeCategoryRecord(c, SYSTEM_CATEGORY_IDS),
+        );
         setCategories(cleanCategories);
         StorageService.saveCategories(cleanCategories);
       }
@@ -993,6 +1003,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         color: '#6366f1',
         icon: 'CreditCard',
         classification: 'essential',
+        essentiality: 'debt',
         scope: 'PERSONAL'
       };
       storedCategories.push(catDividas);
@@ -2530,13 +2541,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       parentId: c.parentId ?? null,
       isSystem: false,
     };
-    // Subcategoria herda type/scope do pai quando possível
+    // Subcategoria herda type/scope/essentiality do pai quando possível
     if (newCat.parentId) {
       const parent = categories.find(p => p.id === newCat.parentId);
       if (parent) {
         newCat.type = parent.type;
         newCat.scope = parent.scope || newCat.scope;
+        if (!newCat.essentiality) {
+          newCat.essentiality = resolveCategoryEssentiality(parent);
+        }
       }
+    }
+    if (!newCat.essentiality) {
+      newCat.essentiality = getDefaultEssentiality(newCat.type);
     }
     saveCategories([...categories, newCat]);
     if (currentUser) {
@@ -2550,6 +2567,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       parentId: c.parentId ?? null,
       isSystem: prev?.isSystem ?? c.isSystem ?? SYSTEM_CATEGORY_IDS.has(c.id),
       archived: Boolean(c.archived),
+      essentiality: c.essentiality || resolveCategoryEssentiality(c),
     };
     if (next.parentId) {
       const parent = categories.find(p => p.id === next.parentId);
@@ -2558,9 +2576,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         next.scope = parent.scope || next.scope;
       }
     }
-    saveCategories(categories.map(cat => cat.id === c.id ? next : cat));
+
+    const prevEss = prev ? resolveCategoryEssentiality(prev) : undefined;
+    const nextEss = next.essentiality;
+    const isParent = !next.parentId;
+    const parentEssentialityChanged =
+      isParent && Boolean(nextEss) && prevEss !== nextEss;
+
+    let nextList = categories.map(cat => (cat.id === c.id ? next : cat));
+    const toSync: Category[] = [next];
+
+    // Ao alterar essencialidade da mãe, filhas herdam por padrão.
+    // Filhas com override manual (valor ≠ da mãe anterior) são preservadas.
+    if (parentEssentialityChanged && nextEss) {
+      nextList = nextList.map(cat => {
+        if (cat.parentId !== next.id) return cat;
+        const childEss = cat.essentiality
+          ? cat.essentiality
+          : resolveCategoryEssentiality(cat);
+        if (prevEss && childEss !== prevEss) return cat;
+        const inherited = { ...cat, essentiality: nextEss };
+        toSync.push(inherited);
+        return inherited;
+      });
+    }
+
+    saveCategories(nextList);
     if (currentUser) {
-      saveCategoryToFirestore(currentUser.uid, next);
+      toSync.forEach(cat => saveCategoryToFirestore(currentUser.uid, cat));
     }
   };
   const deleteCategory = (id: string): { success: boolean; error?: string } => {
