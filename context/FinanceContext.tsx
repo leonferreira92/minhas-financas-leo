@@ -3,7 +3,13 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { Transaction, Category, BalanceSummary, AppSettings, Debt, DebtStatus, SystemAlert, Account, TransactionType, TransactionStatus, Budget, DashboardWidgetConfig, Show, ShowPayment, ShowPaymentType, ShowCostGroup, ShowExpenseSubcategory, ShowLogisticsSubcategory, ShowEquipmentSubcategory, FinancialSettings, ActiveScopeFilter, ScopeType, matchesScope, Venue, MusicianCrewMember, MusicLocomotionExpense, MusicCostItem } from '../types';
 import { StorageService } from '../services/storageService';
 import { NotificationService } from '../services/notificationService';
-import { APP_THEMES, DEFAULT_CATEGORIES, DEFAULT_FINANCIAL_SETTINGS } from '../constants';
+import {
+  APP_THEMES,
+  DEFAULT_CATEGORIES,
+  DEFAULT_FINANCIAL_SETTINGS,
+  UNCATEGORIZED_CATEGORY_ID,
+  resolveFallbackCategoryId,
+} from '../constants';
 import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
@@ -994,11 +1000,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Migração das transações (preservando rigorosamente datas, valores e vínculos)
     let transactionsChanged = false;
+    const knownCategoryIds = new Set(finalCategories.map(c => c.id));
+    knownCategoryIds.add(UNCATEGORIZED_CATEGORY_ID);
     const migratedTransactions = storedTransactions.map(t => {
       let modified = false;
       let newCatId = t.categoryId;
       let newScope = t.scope;
       const descLower = (t.description || '').toLowerCase();
+
+      // Sem categoria / ID órfão → "A Classificar" (nunca acumular em Roupas/Calçados)
+      if (t.type !== 'transfer' && t.type !== 'adjustment') {
+        const resolved = resolveFallbackCategoryId(
+          newCatId || (t as Transaction & { category?: string }).category,
+          t.type,
+          knownCategoryIds,
+        );
+        if (resolved !== newCatId) {
+          newCatId = resolved;
+          modified = true;
+        }
+      }
 
       // Transações com categoria duplicada ou cachê -> apontar para cat_33
       if (duplicateCatIds.has(t.categoryId) || t.categoryId === 'cat_33' || (descLower.includes('cachê') || descLower.includes('cache'))) {

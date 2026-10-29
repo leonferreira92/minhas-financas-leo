@@ -50,9 +50,14 @@ interface ActiveDebtItem {
 interface Props {
   onSelectDebt?: (debtId: string) => void;
   onNewDebt?: () => void;
+  /** Quando true, omite o card grande de compromisso (já exibido no Hero da página). */
+  compactSummary?: boolean;
 }
 
-export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
+export const ActiveDebtsPanel: React.FC<Props> = ({
+  onSelectDebt,
+  compactSummary = false,
+}) => {
   const {
     debts,
     transactions,
@@ -258,82 +263,90 @@ export const ActiveDebtsPanel: React.FC<Props> = ({ onSelectDebt }) => {
   return (
     <div className="space-y-6">
       {/* --------------------------------------------------------------------- */}
-      {/* CARD DE RESUMO: PARCELAS ATUAIS POR MÊS E QUEDA PREVISTA */}
+      {/* CARD DE RESUMO / CRONOGRAMA DE ALÍVIO */}
       {/* --------------------------------------------------------------------- */}
-      <div className="bg-white text-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-200 relative overflow-hidden">
-        <div className="relative z-10 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 block mb-1">
-                Comprometimento mensal
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-slate-900">
-                Parcelas atuais por mês:{" "}
-                {formatBRL(parsedDebtsData.totalCommittedPerMonth)}
-              </h2>
-            </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-[#0F388A] border border-blue-100 w-fit">
-              {parsedDebtsData.items.length}{" "}
-              {parsedDebtsData.items.length === 1
-                ? "dívida ativa"
-                : "dívidas ativas"}
-            </span>
-          </div>
-
-          <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-            Soma exata das parcelas mensais de todos os passivos com saldo
-            devedor pendente. Dívidas com saldo R$ 0,00 são desconsideradas.
-          </p>
-
-          {/* CRONOGRAMA DE ALÍVIO: QUANTO O VALOR CAIRÁ QUANDO CADA DÍVIDA TERMINAR */}
-          {parsedDebtsData.reliefSchedule.length > 0 && (
-            <div className="pt-4 border-t border-slate-100 space-y-2.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
-                Cronograma de Alívio do Fluxo de Caixa:
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {parsedDebtsData.reliefSchedule.map((milestone, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold text-[#0F388A]">
-                        {milestone.monthYear}
-                      </span>
-                      <span className="text-[10px] font-black text-[#10B981] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 shrink-0">
-                        -{formatBRL(milestone.reliefAmount)}/mês
-                      </span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-600 truncate">
-                      Fim de:{" "}
-                      <strong className="text-slate-900">
-                        {milestone.debtsNames}
-                      </strong>
-                    </p>
-
-                    <div className="pt-1 text-[10px] text-slate-600 border-t border-slate-200 flex items-center justify-between gap-2">
-                      <span>Parcelas caem para:</span>
-                      <strong
-                        className={`tabular-nums font-black ${
-                          milestone.newCommittedPerMonth === 0
-                            ? "text-[#10B981]"
-                            : "text-slate-900"
-                        }`}
-                      >
-                        {milestone.newCommittedPerMonth === 0
-                          ? "R$ 0,00 (Quitado!)"
-                          : formatBRL(milestone.newCommittedPerMonth)}
-                      </strong>
-                    </div>
+      {(!compactSummary || parsedDebtsData.reliefSchedule.length > 0) && (
+        <div className="bg-white text-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-200 relative overflow-hidden">
+          <div className="relative z-10 space-y-4">
+            {!compactSummary && (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 block mb-1">
+                      Comprometimento mensal
+                    </span>
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-slate-900">
+                      Parcelas atuais por mês:{" "}
+                      {formatBRL(parsedDebtsData.totalCommittedPerMonth)}
+                    </h2>
                   </div>
-                ))}
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-[#0F388A] border border-blue-100 w-fit">
+                    {parsedDebtsData.items.length}{" "}
+                    {parsedDebtsData.items.length === 1
+                      ? "dívida ativa"
+                      : "dívidas ativas"}
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                  Soma exata das parcelas mensais de todos os passivos com saldo
+                  devedor pendente. Dívidas com saldo R$ 0,00 são
+                  desconsideradas.
+                </p>
+              </>
+            )}
+
+            {parsedDebtsData.reliefSchedule.length > 0 && (
+              <div
+                className={`${compactSummary ? "" : "pt-4 border-t border-slate-100 "}space-y-2.5`}
+              >
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 block">
+                  Cronograma de Alívio do Fluxo de Caixa:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {parsedDebtsData.reliefSchedule.map((milestone, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[#0F388A]">
+                          {milestone.monthYear}
+                        </span>
+                        <span className="text-[10px] font-black text-[#10B981] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 shrink-0">
+                          -{formatBRL(milestone.reliefAmount)}/mês
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 truncate">
+                        Fim de:{" "}
+                        <strong className="text-slate-900">
+                          {milestone.debtsNames}
+                        </strong>
+                      </p>
+
+                      <div className="pt-1 text-[10px] text-slate-600 border-t border-slate-200 flex items-center justify-between gap-2">
+                        <span>Parcelas caem para:</span>
+                        <strong
+                          className={`tabular-nums font-black ${
+                            milestone.newCommittedPerMonth === 0
+                              ? "text-[#10B981]"
+                              : "text-slate-900"
+                          }`}
+                        >
+                          {milestone.newCommittedPerMonth === 0
+                            ? "R$ 0,00 (Quitado!)"
+                            : formatBRL(milestone.newCommittedPerMonth)}
+                        </strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* --------------------------------------------------------------------- */}
       {/* PAINEL DETALHADO DE CADA DÍVIDA ATIVA */}

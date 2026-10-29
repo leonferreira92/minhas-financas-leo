@@ -122,12 +122,13 @@ export const TransactionList: React.FC = () => {
     }
   }, [highlightId, transactions, currentYearMonth]);
 
-  // Sincronizar filtros vindos da URL (ex: vindos dos cliques na DRE)
+  // Sincronizar filtros vindos da URL (ex: vindos dos cliques na DRE / Categorias)
   useEffect(() => {
     const urlType = searchParams.get("type") as TypeFilter | null;
     const urlSearch = searchParams.get("search");
     const urlScope = searchParams.get("scope");
     const urlMonth = searchParams.get("month");
+    const urlCategory = searchParams.get("category");
 
     if (urlType && ["all", "income", "expense"].includes(urlType)) {
       setTypeFilter(urlType);
@@ -143,6 +144,9 @@ export const TransactionList: React.FC = () => {
       if (urlMonth !== currentYearMonth) {
         setPeriodPreset("custom");
       }
+    }
+    if (urlCategory) {
+      setCategoryIdFilter(urlCategory);
     }
   }, [searchParams, currentYearMonth, setActiveScope]);
 

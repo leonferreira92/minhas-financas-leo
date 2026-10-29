@@ -17,8 +17,9 @@ import {
   Music,
   Sparkles,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PERSONAL_ONLY_MODE } from "../services/personalOnlyMode";
 
 const COLORS = [
@@ -40,6 +41,7 @@ const COLORS = [
 ];
 
 export const CategoryList = () => {
+  const navigate = useNavigate();
   const {
     categories,
     transactions,
@@ -141,6 +143,10 @@ export const CategoryList = () => {
   // Helper to get usage count safely inside render
   const getUsageCount = (id: string) => categoryStats[id] || 0;
 
+  const openCategoryExtrato = (cat: Category) => {
+    navigate(`/lancamentos?category=${encodeURIComponent(cat.id)}`);
+  };
+
   return (
     <div className="pb-24 animate-fade-in text-slate-900 min-h-screen relative max-w-full overflow-x-hidden">
       {/* --- Header --- */}
@@ -230,8 +236,17 @@ export const CategoryList = () => {
           return (
             <div
               key={cat.id}
-              onClick={() => openEditCategory(cat)}
+              onClick={() => openCategoryExtrato(cat)}
               className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-transform cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openCategoryExtrato(cat);
+                }
+              }}
+              title="Ver lançamentos desta categoria"
             >
               <div className="flex items-center space-x-3.5 min-w-0">
                 <div
@@ -273,14 +288,20 @@ export const CategoryList = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 shrink-0">
-                {isInUse ? (
-                  <div className="flex items-center bg-slate-100 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                    <Lock size={10} className="mr-1" /> Em uso
-                  </div>
-                ) : (
-                  <ChevronRight size={18} className="text-slate-300" />
-                )}
+              <div className="flex items-center space-x-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditCategory(cat);
+                  }}
+                  className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-500 hover:text-[#0F388A] hover:bg-blue-50 hover:border-blue-100 transition active:scale-95"
+                  aria-label={`Editar categoria ${cat.name}`}
+                  title="Editar categoria"
+                >
+                  <Pencil size={15} />
+                </button>
+                <ChevronRight size={18} className="text-slate-300" />
               </div>
             </div>
           );

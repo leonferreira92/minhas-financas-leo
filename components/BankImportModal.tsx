@@ -431,7 +431,7 @@ export const BankImportModal: React.FC<BankImportModalProps> = ({
           ? "cat_transfer"
           : item.showId && !PERSONAL_ONLY_MODE
             ? "cat_33"
-            : item.categoryId || (type === "income" ? "cat_6" : "cat_7"),
+            : item.categoryId || "cat_other",
         description:
           item.description.trim() ||
           item.originalDescription ||

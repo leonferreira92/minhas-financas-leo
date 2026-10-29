@@ -40,7 +40,8 @@ const accountsList: Account[] = Array.isArray(raw.accounts) ? raw.accounts.map((
 const MERCADO_PAGO_ID = 'c7566b59-3683-4c90-8293-2ff7af82f3b3';
 const transactionsList: Transaction[] = Array.isArray(raw.transactions) ? raw.transactions.map((tx: any) => {
   const accountId = tx.accountId === 'acc_mp' ? MERCADO_PAGO_ID : (tx.accountId || '');
-  const categoryId = tx.categoryId || tx.category || 'cat_9';
+  // Sem categoria / ID vazio → "A Classificar" (nunca "Roupas / Calçados")
+  const categoryId = tx.categoryId || tx.category || 'cat_other';
   return {
     ...tx,
     accountId,

@@ -1,4 +1,4 @@
-import { Category, Account, FinancialSettings, MusicCostCategory } from './types';
+import { Category, Account, FinancialSettings, MusicCostCategory, TransactionType } from './types';
 import { 
   ShoppingBag, Utensils, Home, Car, HeartPulse, 
   Zap, Smartphone, Briefcase, DollarSign, Coffee,
@@ -11,8 +11,38 @@ import {
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
   BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy,
-  Handshake
+  Handshake, CircleHelp, Tag
 } from 'lucide-react';
+
+/** Categoria padrão para lançamentos sem vínculo / ID inválido (revisão manual). */
+export const UNCATEGORIZED_CATEGORY_ID = 'cat_other';
+
+/**
+ * Resolve o ID de categoria quando o vínculo está ausente ou não existe na lista.
+ * Nunca usa "Roupas / Calçados" (cat_9) nem a primeira despesa da lista como fallback.
+ */
+export function resolveFallbackCategoryId(
+  categoryId: string | undefined | null,
+  type?: TransactionType,
+  knownCategoryIds?: Iterable<string>,
+): string {
+  if (type === 'transfer') return 'cat_transfer';
+  if (type === 'adjustment') return 'cat_adjustment';
+
+  const id = typeof categoryId === 'string' ? categoryId.trim() : '';
+  if (!id) return UNCATEGORIZED_CATEGORY_ID;
+
+  if (knownCategoryIds) {
+    const set =
+      knownCategoryIds instanceof Set
+        ? knownCategoryIds
+        : new Set(knownCategoryIds);
+    if (set.has(id)) return id;
+    return UNCATEGORIZED_CATEGORY_ID;
+  }
+
+  return id;
+}
 
 export interface CareerSubcategoryOption {
   id: string;
@@ -62,6 +92,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_20', name: 'Presentes / Doações', type: 'expense', color: '#fb923c', icon: 'Gift', classification: 'personal', scope: 'PERSONAL' },
   { id: 'cat_28', name: 'Hobby / Diversão', type: 'expense', color: '#8b5cf6', icon: 'Gem', classification: 'personal', scope: 'PERSONAL' },
   { id: 'cat_29', name: 'Viagem / Férias', type: 'expense', color: '#06b6d4', icon: 'Globe', classification: 'personal', scope: 'PERSONAL' },
+  { id: 'cat_other', name: 'A Classificar', type: 'expense', color: '#94a3b8', icon: 'CircleHelp', classification: 'personal', scope: 'PERSONAL' },
 
   // --- FUTURO / INVESTIMENTOS (20%) ---
   { id: 'cat_8', name: 'Ações / FIIs', type: 'income', color: '#10b981', icon: 'TrendingUp', classification: 'future', scope: 'PERSONAL' },
@@ -107,7 +138,7 @@ export const ICON_MAP: Record<string, any> = {
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
   BarChart3, Fingerprint, LayoutDashboard, Clock,
-  Handshake
+  Handshake, CircleHelp, Tag
 };
 
 export const getIcon = (name: string) => ICON_MAP[name] || DollarSign;

@@ -101,6 +101,7 @@ export const ExtratoScreen: React.FC = () => {
   const currentYearMonth = useMemo(() => getCurrentMonthPrefix(), []);
   const monthFromUrl = searchParams.get("month");
   const statusFromUrl = searchParams.get("status");
+  const categoryFromUrl = searchParams.get("category");
   const highlightId = searchParams.get("highlightId");
 
   const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -109,6 +110,10 @@ export const ExtratoScreen: React.FC = () => {
       : currentYearMonth,
   );
   const [viewMode, setViewMode] = useState<ViewMode>("month");
+  /** Quando true, o filtro de categoria ignora o recorte mensal (drill-down da lista de categorias). */
+  const [categoryAllDates, setCategoryAllDates] = useState(
+    Boolean(categoryFromUrl && !monthFromUrl),
+  );
 
   const [statusFilter, setStatusFilter] = useState<TypeStatusFilter>(() => {
     if (
@@ -122,11 +127,15 @@ export const ExtratoScreen: React.FC = () => {
   });
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryIdFilter, setCategoryIdFilter] = useState(
+    categoryFromUrl || "",
+  );
 
   useEffect(() => {
     if (monthFromUrl && /^\d{4}-\d{2}$/.test(monthFromUrl)) {
       setSelectedMonth(monthFromUrl);
       setViewMode("month");
+      setCategoryAllDates(false);
     }
     if (
       statusFromUrl === "paid" ||
@@ -135,7 +144,12 @@ export const ExtratoScreen: React.FC = () => {
     ) {
       setStatusFilter(statusFromUrl);
     }
-  }, [monthFromUrl, statusFromUrl]);
+    if (categoryFromUrl) {
+      setCategoryIdFilter(categoryFromUrl);
+      setShowFiltersPanel(true);
+      if (!monthFromUrl) setCategoryAllDates(true);
+    }
+  }, [monthFromUrl, statusFromUrl, categoryFromUrl]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -220,8 +234,18 @@ export const ExtratoScreen: React.FC = () => {
           }
         }
 
+        if (categoryIdFilter) {
+          const txCat = (t.categoryId || "").trim();
+          if (categoryIdFilter === "cat_other") {
+            if (txCat && txCat !== "cat_other") return false;
+          } else if (txCat !== categoryIdFilter) {
+            return false;
+          }
+        }
+
         const isHighlighted = Boolean(highlightId && t.id === highlightId);
-        if (!isHighlighted) {
+        const skipMonthCut = Boolean(categoryIdFilter && categoryAllDates);
+        if (!isHighlighted && !skipMonthCut) {
           if (isFutureOnly) {
             if (!t.date) return false;
             if (
@@ -296,6 +320,8 @@ export const ExtratoScreen: React.FC = () => {
     statusFilter,
     selectedAccountId,
     searchTerm,
+    categoryIdFilter,
+    categoryAllDates,
     todayStr,
     categories,
     accounts,
@@ -930,14 +956,17 @@ export const ExtratoScreen: React.FC = () => {
             type="button"
             onClick={() => setShowFiltersPanel(!showFiltersPanel)}
             className={`px-3.5 py-2 rounded-2xl border font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shrink-0 ${
-              showFiltersPanel || searchTerm || selectedAccountId !== "all"
+              showFiltersPanel ||
+              searchTerm ||
+              selectedAccountId !== "all" ||
+              categoryIdFilter
                 ? "bg-amber-50 text-amber-800 border-amber-200"
                 : "bg-white text-slate-600 border-slate-200"
             }`}
           >
             <Filter size={14} />
             Filtros
-            {(searchTerm || selectedAccountId !== "all") && (
+            {(searchTerm || selectedAccountId !== "all" || categoryIdFilter) && (
               <span className="w-2 h-2 rounded-full bg-[#FACC15]" />
             )}
           </button>
@@ -958,6 +987,31 @@ export const ExtratoScreen: React.FC = () => {
             Relatório IA
           </button>
         </div>
+
+        {categoryIdFilter && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0F388A] text-[#FACC15] text-[11px] font-black">
+              {categories.find((c) => c.id === categoryIdFilter)?.name ||
+                "Categoria"}
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryIdFilter("");
+                  setCategoryAllDates(false);
+                }}
+                className="p-0.5 rounded-full hover:bg-blue-800 transition"
+                aria-label="Limpar filtro de categoria"
+              >
+                <X size={12} />
+              </button>
+            </span>
+            {categoryAllDates && (
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Todas as datas
+              </span>
+            )}
+          </div>
+        )}
 
         {showFiltersPanel && (
           <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-sm text-slate-800">
@@ -982,6 +1036,30 @@ export const ExtratoScreen: React.FC = () => {
                   <X size={14} />
                 </button>
               )}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] font-bold text-slate-500 shrink-0">
+                Categoria:
+              </label>
+              <select
+                value={categoryIdFilter}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setCategoryIdFilter(next);
+                  setCategoryAllDates(Boolean(next));
+                }}
+                className="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:border-blue-500 outline-none"
+              >
+                <option value="">Todas as categorias</option>
+                {categories
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
             </div>
             <div className="flex items-center gap-2">
               <label className="text-[11px] font-bold text-slate-500 shrink-0">
@@ -1159,7 +1237,8 @@ export const ExtratoScreen: React.FC = () => {
                                 </span>
                               )}
                               <span className="text-[10px] text-slate-500 truncate">
-                                {cat?.name || "Geral"} · {acc?.name || "Conta"}
+                                {cat?.name || "A Classificar"} ·{" "}
+                                {acc?.name || "Conta"}
                               </span>
                             </div>
                           </div>

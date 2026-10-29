@@ -282,19 +282,18 @@ export function suggestCategoryAndScope(
     };
   }
 
-  // Fallbacks
-  if (type === 'income') {
-    const salaryCat = categories.find(c => c.id === 'cat_6' || c.type === 'income');
-    return {
-      suggestedCategoryId: salaryCat ? salaryCat.id : 'cat_6',
-      suggestedScope: 'PERSONAL'
-    };
-  }
+  // Fallbacks: sem match heurístico → "A Classificar" (nunca Roupas/Calçados nem 1ª despesa)
+  const uncategorized =
+    categories.find(
+      (c) =>
+        c.id === 'cat_other' ||
+        (c.name || '').toLowerCase().includes('classificar') ||
+        (c.name || '').toLowerCase() === 'outros',
+    ) || null;
 
-  const otherExpense = categories.find(c => c.id === 'cat_7' || c.type === 'expense') || categories[0];
   return {
-    suggestedCategoryId: otherExpense ? otherExpense.id : 'cat_7',
-    suggestedScope: 'PERSONAL'
+    suggestedCategoryId: uncategorized ? uncategorized.id : 'cat_other',
+    suggestedScope: 'PERSONAL',
   };
 }
 
@@ -669,7 +668,8 @@ export function detectDuplicates(
 
   const resolveCategory = (item: ParsedBankTransaction, type: BankTxType): string => {
     if (type === 'transfer') return 'cat_transfer';
-    return item.suggestedCategoryId || (type === 'income' ? 'cat_6' : 'cat_7');
+    // Sem sugestão → revisão manual (A Classificar), não Salário/Pró-Labore/Roupas
+    return item.suggestedCategoryId || 'cat_other';
   };
 
   return parsed.map(item => {
