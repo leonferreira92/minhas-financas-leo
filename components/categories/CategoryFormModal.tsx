@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect } from "react";
 import { Category, ScopeType, TransactionType } from "../../types";
 import {
   CATEGORY_COLOR_PALETTE,
-  getIcon,
   ICON_MAP,
 } from "../../constants";
 import { getParentCategories } from "../../services/categoryHierarchy";
@@ -18,6 +17,7 @@ import {
   User,
   Music,
 } from "lucide-react";
+import { CategoryAvatar } from "./CategoryAvatar";
 
 export type CategoryFormMode = "parent" | "child";
 
@@ -138,11 +138,9 @@ export const CategoryFormModal: React.FC<Props> = ({
     });
   };
 
-  const PreviewIcon = getIcon(icon);
-
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center backdrop-blur-sm animate-fade-in p-0 sm:p-4">
-      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up max-h-[92vh] overflow-y-auto no-scrollbar border border-slate-100">
+      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl animate-slide-up max-h-[92vh] overflow-y-auto no-scrollbar border border-slate-100">
         <div className="flex justify-between items-center mb-5">
           <div>
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
@@ -163,14 +161,14 @@ export const CategoryFormModal: React.FC<Props> = ({
         </div>
 
         <div className="space-y-5">
-          {/* Preview */}
+          {/* Preview Mobills */}
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: `${color}33`, color }}
-            >
-              <PreviewIcon size={22} />
-            </div>
+            <CategoryAvatar
+              icon={icon}
+              color={color}
+              size="lg"
+              variant={mode === "child" ? "child" : "parent"}
+            />
             <div className="min-w-0">
               <p className="font-black text-slate-800 truncate">
                 {name.trim() || "Nome da categoria"}

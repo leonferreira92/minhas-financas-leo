@@ -49,6 +49,7 @@ import { CategorySelector } from "./ui/CategorySelector";
 import {
   resolveCategorySelection,
   getEffectiveCategorySelectionId,
+  getActiveCategories,
 } from "../services/categoryHierarchy";
 import { generateUUID } from "../services/uuidHelper";
 import { getLocalDateString } from "../services/dateUtils";
@@ -91,15 +92,35 @@ export const TransactionForm: React.FC<Props> = ({
     addShow,
     checkTransactionImpact,
     getDefaultAccountForScope,
+    settings,
   } = useFinance();
+
+  const resolveInitialSelection = () => {
+    if (transaction) {
+      return {
+        categoryId: transaction.categoryId || "",
+        subcategoryId: transaction.subcategoryId,
+      };
+    }
+    const seed =
+      initialCategoryId ||
+      (initialType === "income"
+        ? settings.defaultIncomeCategoryId
+        : settings.defaultExpenseCategoryId) ||
+      "";
+    if (!seed) return { categoryId: "", subcategoryId: undefined as string | undefined };
+    return resolveCategorySelection(seed, categories);
+  };
+
+  const initialSelection = resolveInitialSelection();
 
   // Primary Form State
   const [type, setType] = useState<TransactionType>(initialType);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState(initialCategoryId || "");
+  const [categoryId, setCategoryId] = useState(initialSelection.categoryId);
   const [subcategoryId, setSubcategoryId] = useState<string | undefined>(
-    transaction?.subcategoryId,
+    initialSelection.subcategoryId,
   );
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
@@ -377,7 +398,7 @@ export const TransactionForm: React.FC<Props> = ({
   // 3. RANKING DE CATEGORIAS (FILTRADO POR ESCOPO RIGOROSO)
   // ==========================================
   const moduleCategories = useMemo(() => {
-    return categories.filter((c) => {
+    return getActiveCategories(categories).filter((c) => {
       // Filtrar por tipo (expense / income)
       if (c.type !== type) return false;
       if (PERSONAL_ONLY_MODE && isBusinessCategory(c)) return false;

@@ -11,7 +11,11 @@ import {
   SYSTEM_CATEGORY_IDS,
   resolveFallbackCategoryId,
 } from '../constants';
-import { normalizeCategoryRecord } from '../services/categoryHierarchy';
+import {
+  normalizeCategoryRecord,
+  resolveCategorySelection,
+  transactionMatchesCategoryFilter,
+} from '../services/categoryHierarchy';
 import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
@@ -129,6 +133,8 @@ interface FinanceContextType {
   addCategory: (c: Omit<Category, 'id'>) => void;
   updateCategory: (c: Category) => void;
   deleteCategory: (id: string) => void;
+  /** Reatribui em lote lançamentos de uma categoria/sub para outra */
+  moveCategoryTransactions: (fromCategoryId: string, toCategoryId: string) => number;
   
   addAccount: (a: Omit<Account, 'id'>) => void;
   updateAccount: (a: Account) => void;
@@ -2532,6 +2538,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...c,
       parentId: c.parentId ?? null,
       isSystem: prev?.isSystem ?? c.isSystem ?? SYSTEM_CATEGORY_IDS.has(c.id),
+      archived: Boolean(c.archived),
     };
     if (next.parentId) {
       const parent = categories.find(p => p.id === next.parentId);
@@ -2553,6 +2560,31 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (currentUser) {
       deleteCategoryFromFirestore(currentUser.uid, id);
     }
+  };
+
+  const moveCategoryTransactions = (fromCategoryId: string, toCategoryId: string): number => {
+    if (!fromCategoryId || !toCategoryId || fromCategoryId === toCategoryId) return 0;
+    const resolved = resolveCategorySelection(toCategoryId, categories);
+    const movedIds = new Set<string>();
+    const nextTxs = transactions.map(t => {
+      if (!transactionMatchesCategoryFilter(t, fromCategoryId, categories)) return t;
+      movedIds.add(t.id);
+      return {
+        ...t,
+        categoryId: resolved.categoryId,
+        category: resolved.categoryId,
+        subcategoryId: resolved.subcategoryId,
+      };
+    });
+    if (movedIds.size > 0) {
+      saveTransactions(nextTxs);
+      if (currentUser) {
+        nextTxs
+          .filter(t => movedIds.has(t.id))
+          .forEach(t => saveTransactionToFirestore(currentUser.uid, t));
+      }
+    }
+    return movedIds.size;
   };
 
   const saveBudget = (b: Budget) => {
@@ -3535,7 +3567,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       transactions: normalizedTransactions, categories, debts, accounts: derivedAccounts, budgets, shows: normalizedShows, venues, crew, locomotionExpenses, musicCostItems, settings, isBlurred, toggleBlur,
       activeScope, setActiveScope, getDefaultAccountForScope,
       addTransaction, importTransactions, updateTransaction, updateTransactionSeries, updateDebtTransaction, recalculateDebtSeries, deleteTransaction, extendFixedSeries, checkTransactionImpact,
-      addCategory, updateCategory, deleteCategory,
+      addCategory, updateCategory, deleteCategory, moveCategoryTransactions,
       addAccount, updateAccount, deleteAccount, reconcileBalance, getAccountBalance,
       addDebt, updateDebt, updateDebtCostCenter, toggleInstallmentCostCenter, deleteDebt, getDebtProgress,
       saveBudget, deleteBudget,

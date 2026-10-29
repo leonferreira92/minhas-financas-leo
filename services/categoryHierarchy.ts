@@ -115,7 +115,21 @@ export function normalizeCategoryRecord(cat: Category, systemIds: Set<string>): 
     ...cat,
     parentId: cat.parentId ?? null,
     isSystem: cat.isSystem ?? systemIds.has(cat.id),
+    archived: Boolean(cat.archived),
   };
+}
+
+/** Categorias disponíveis para novos lançamentos (não arquivadas). */
+export function getActiveCategories(categories: Category[]): Category[] {
+  const archivedIds = new Set(
+    categories.filter((c) => c.archived).map((c) => c.id),
+  );
+  return categories.filter((c) => {
+    if (c.archived) return false;
+    // Filho de mãe arquivada também some do seletor
+    if (c.parentId && archivedIds.has(c.parentId)) return false;
+    return true;
+  });
 }
 
 export function countCategoryUsage(

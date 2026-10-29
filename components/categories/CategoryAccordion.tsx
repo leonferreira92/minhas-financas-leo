@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { Category } from "../../types";
-import { getIcon } from "../../constants";
 import {
   ChevronDown,
   Plus,
+  MoreHorizontal,
   Pencil,
   Trash2,
   Lock,
+  Star,
 } from "lucide-react";
+import { CategoryAvatar } from "./CategoryAvatar";
 
 export interface CategoryAccordionGroup {
   parent: Category;
@@ -20,22 +22,28 @@ export interface CategoryAccordionGroup {
 interface Props {
   groups: CategoryAccordionGroup[];
   formatCurrency: (n: number) => string;
+  defaultCategoryId?: string;
   onOpenParent: (parent: Category) => void;
   onEditParent: (parent: Category) => void;
   onAddChild: (parent: Category) => void;
+  onParentMenu: (parent: Category) => void;
   onEditChild: (child: Category) => void;
   onDeleteChild: (child: Category) => void;
+  onChildMenu?: (child: Category) => void;
   flowType: "expense" | "income";
 }
 
 export const CategoryAccordion: React.FC<Props> = ({
   groups,
   formatCurrency,
+  defaultCategoryId,
   onOpenParent,
   onEditParent,
   onAddChild,
+  onParentMenu,
   onEditChild,
   onDeleteChild,
+  onChildMenu,
   flowType,
 }) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -60,33 +68,27 @@ export const CategoryAccordion: React.FC<Props> = ({
   return (
     <div className="space-y-2.5">
       {groups.map(({ parent, children, monthTotal, usageCount, childUsage }) => {
-        const Icon = getIcon(parent.icon);
         const isOpen = Boolean(expanded[parent.id]);
         const subCount = children.length;
+        const isDefault = defaultCategoryId === parent.id;
 
         return (
           <div
             key={parent.id}
             className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
           >
-            {/* Card mãe */}
-            <div className="flex items-center gap-2 p-3.5">
+            <div className="flex items-center gap-1.5 p-3.5">
               <button
                 type="button"
-                onClick={() => {
-                  toggle(parent.id);
-                }}
+                onClick={() => toggle(parent.id)}
                 className="flex items-center gap-3 min-w-0 flex-1 text-left active:scale-[0.99] transition"
               >
-                <div
-                  className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-                  style={{
-                    backgroundColor: `${parent.color}33`,
-                    color: parent.color,
-                  }}
-                >
-                  <Icon size={20} />
-                </div>
+                <CategoryAvatar
+                  icon={parent.icon}
+                  color={parent.color}
+                  size="md"
+                  variant="parent"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <h3 className="font-bold text-slate-800 text-sm truncate">
@@ -94,6 +96,12 @@ export const CategoryAccordion: React.FC<Props> = ({
                     </h3>
                     {parent.isSystem && (
                       <Lock size={11} className="text-slate-300 shrink-0" />
+                    )}
+                    {isDefault && (
+                      <Star
+                        size={12}
+                        className="text-amber-500 fill-amber-500 shrink-0"
+                      />
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -130,77 +138,91 @@ export const CategoryAccordion: React.FC<Props> = ({
                 />
               </button>
 
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-0.5 shrink-0">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onAddChild(parent);
                   }}
-                  className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-500 hover:text-[#0F388A] hover:bg-blue-50 transition active:scale-95"
-                  title="Adicionar subcategoria"
-                  aria-label={`Adicionar subcategoria em ${parent.name}`}
+                  className="p-2 rounded-xl text-slate-400 hover:text-[#0F388A] hover:bg-blue-50 transition active:scale-95"
+                  title="Criar subcategoria"
+                  aria-label={`Criar subcategoria em ${parent.name}`}
                 >
-                  <Plus size={15} />
+                  <Plus size={18} strokeWidth={2.5} />
                 </button>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onEditParent(parent);
+                    onParentMenu(parent);
                   }}
-                  className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-500 hover:text-[#0F388A] hover:bg-blue-50 transition active:scale-95"
-                  title="Editar categoria"
-                  aria-label={`Editar ${parent.name}`}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition active:scale-95"
+                  title="Mais opções"
+                  aria-label={`Opções de ${parent.name}`}
                 >
-                  <Pencil size={15} />
+                  <MoreHorizontal size={18} />
                 </button>
               </div>
             </div>
 
-            {/* Filhos (acordeão) */}
             <div
               className={`grid transition-[grid-template-rows] duration-300 ease-out ${
                 isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
               }`}
             >
               <div className="overflow-hidden">
-                <div className="border-t border-slate-100 bg-slate-50/70 px-3 pb-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onOpenParent(parent)}
-                    className="w-full text-left text-[10px] font-black uppercase tracking-wider text-[#0F388A] px-2 py-2 hover:underline"
-                  >
-                    Ver lançamentos desta categoria →
-                  </button>
+                <div className="border-t border-slate-100 bg-slate-50/80 px-3 pb-3 pt-1">
+                  <div className="flex items-center justify-between gap-2 px-1 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onOpenParent(parent)}
+                      className="text-[10px] font-black uppercase tracking-wider text-[#0F388A] hover:underline"
+                    >
+                      Ver lançamentos →
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onEditParent(parent)}
+                      className="text-[10px] font-bold text-slate-400 hover:text-[#0F388A] flex items-center gap-1"
+                    >
+                      <Pencil size={11} /> Editar
+                    </button>
+                  </div>
 
                   {children.length === 0 ? (
-                    <p className="text-[11px] text-slate-400 px-2 py-2">
-                      Sem subcategorias. Use + para criar.
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onAddChild(parent)}
+                      className="w-full text-left text-[11px] text-slate-400 px-2 py-2.5 rounded-xl border border-dashed border-slate-200 hover:border-[#0F388A]/30 hover:text-[#0F388A] transition"
+                    >
+                      Sem subcategorias. Toque para criar.
+                    </button>
                   ) : (
-                    <ul className="space-y-1.5 pl-3 ml-2 border-l-2 border-slate-200">
+                    <ul className="space-y-1.5 pl-3 ml-2 border-l-2 border-slate-200/80">
                       {children.map((child) => {
-                        const ChildIcon = getIcon(child.icon);
                         const childCount = childUsage[child.id] || 0;
+                        const childIsDefault = defaultCategoryId === child.id;
                         return (
                           <li
                             key={child.id}
-                            className="flex items-center justify-between gap-2 rounded-xl bg-white border border-slate-100 px-3 py-2.5"
+                            className="flex items-center justify-between gap-2 rounded-xl bg-white border border-slate-100/90 px-3 py-2.5 shadow-xs"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div
-                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                                style={{
-                                  backgroundColor: `${child.color}33`,
-                                  color: child.color,
-                                }}
-                              >
-                                <ChildIcon size={14} />
-                              </div>
+                              <CategoryAvatar
+                                icon={child.icon}
+                                color={child.color}
+                                variant="child"
+                              />
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-700 truncate">
+                                <p className="text-xs font-bold text-slate-700 truncate flex items-center gap-1">
                                   {child.name}
+                                  {childIsDefault && (
+                                    <Star
+                                      size={10}
+                                      className="text-amber-500 fill-amber-500"
+                                    />
+                                  )}
                                 </p>
                                 <p className="text-[10px] text-slate-400">
                                   {childCount}{" "}
@@ -210,7 +232,7 @@ export const CategoryAccordion: React.FC<Props> = ({
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-0.5 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => onEditChild(child)}
@@ -219,15 +241,26 @@ export const CategoryAccordion: React.FC<Props> = ({
                               >
                                 <Pencil size={14} />
                               </button>
-                              {!child.isSystem && (
+                              {onChildMenu ? (
                                 <button
                                   type="button"
-                                  onClick={() => onDeleteChild(child)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                                  aria-label={`Excluir ${child.name}`}
+                                  onClick={() => onChildMenu(child)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                  aria-label={`Opções de ${child.name}`}
                                 >
-                                  <Trash2 size={14} />
+                                  <MoreHorizontal size={14} />
                                 </button>
+                              ) : (
+                                !child.isSystem && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onDeleteChild(child)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                    aria-label={`Excluir ${child.name}`}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )
                               )}
                             </div>
                           </li>

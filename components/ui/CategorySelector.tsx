@@ -6,7 +6,9 @@ import {
   buildCategoryTree,
   getEffectiveCategorySelectionId,
   isParentCategory,
+  getActiveCategories,
 } from "../../services/categoryHierarchy";
+import { CategoryAvatar } from "../categories/CategoryAvatar";
 
 interface CategorySelectorProps {
   categories: Category[];
@@ -62,17 +64,22 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   const useTree =
     hierarchical ?? (columns === "modal" || columns === "grouped");
 
+  const activeCats = useMemo(
+    () => getActiveCategories(categories),
+    [categories],
+  );
+
   const tree = useMemo(
-    () => buildCategoryTree(categories, transactionType),
-    [categories, transactionType],
+    () => buildCategoryTree(activeCats, transactionType),
+    [activeCats, transactionType],
   );
 
   const flatList = useMemo(() => {
     if (useTree) return [];
-    return categories.filter(
+    return activeCats.filter(
       (c) => !transactionType || c.type === transactionType,
     );
-  }, [categories, transactionType, useTree]);
+  }, [activeCats, transactionType, useTree]);
 
   const getSelectedCardClasses = () => {
     if (scope === "BUSINESS") {
@@ -105,10 +112,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   const activeStyle = getSelectedCardClasses();
 
   const renderChip = (cat: Category, opts?: { indented?: boolean; bold?: boolean }) => {
-    const Icon = getIcon(cat.icon);
     const isSelected = effectiveSelected === cat.id;
-    const badgeBg = cat.color || "#6366f1";
-    const badgeIconContrast = getHighContrastTextColor(badgeBg);
     const indented = opts?.indented;
     const bold = opts?.bold ?? isParentCategory(cat);
 
@@ -129,26 +133,26 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
             : "border-slate-200/80 bg-slate-50/90 text-slate-800 hover:border-emerald-500/60 hover:bg-slate-100 hover:text-black"
         }`}
       >
-        <div
-          className={`category-icon-badge ${
-            indented ? "w-7 h-7" : columns === "compact" ? "w-8 h-8" : "w-9 h-9"
-          } rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors ${
-            isSelected ? activeStyle.iconWrap : "ring-1 ring-black/10"
-          }`}
-          style={
-            !isSelected
-              ? { backgroundColor: badgeBg, color: badgeIconContrast }
-              : undefined
-          }
-        >
-          <Icon
-            size={indented ? 14 : columns === "compact" ? 16 : 18}
-            style={{
-              color: isSelected ? activeStyle.iconColor : badgeIconContrast,
-            }}
-            strokeWidth={2.5}
+        {isSelected ? (
+          <div
+            className={`category-icon-badge ${
+              indented ? "w-7 h-7" : columns === "compact" ? "w-8 h-8" : "w-9 h-9"
+            } rounded-full flex items-center justify-center shrink-0 ${activeStyle.iconWrap}`}
+          >
+            {React.createElement(getIcon(cat.icon), {
+              size: indented ? 14 : columns === "compact" ? 16 : 18,
+              style: { color: activeStyle.iconColor },
+              strokeWidth: 2.5,
+            })}
+          </div>
+        ) : (
+          <CategoryAvatar
+            icon={cat.icon}
+            color={cat.color}
+            size="sm"
+            variant={indented ? "child" : "parent"}
           />
-        </div>
+        )}
 
         <span
           className={`category-card-label text-xs truncate flex-1 ${
@@ -176,17 +180,17 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   if (useTree) {
     const visibleTree = tree.filter(({ parent, children }) => {
       const inList =
-        categories.some((c) => c.id === parent.id) ||
-        children.some((ch) => categories.some((c) => c.id === ch.id));
+        activeCats.some((c) => c.id === parent.id) ||
+        children.some((ch) => activeCats.some((c) => c.id === ch.id));
       return inList;
     });
 
     return (
       <div className="space-y-3">
         {visibleTree.map(({ parent, children }) => {
-          const parentInFilter = categories.some((c) => c.id === parent.id);
+          const parentInFilter = activeCats.some((c) => c.id === parent.id);
           const filteredChildren = children.filter((ch) =>
-            categories.some((c) => c.id === ch.id),
+            activeCats.some((c) => c.id === ch.id),
           );
           // Se a busca/ranking só trouxe filhos, ainda mostra o pai como cabeçalho
           const showParent = parentInFilter || filteredChildren.length > 0;

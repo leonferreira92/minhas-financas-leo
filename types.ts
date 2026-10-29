@@ -35,6 +35,8 @@ export interface Category {
   parentId?: string | null;
   /** Categorias padrão do sistema (não deletáveis) */
   isSystem?: boolean;
+  /** Arquivada: oculta em novos lançamentos; histórico preservado */
+  archived?: boolean;
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   scope?: ScopeType;
 }
@@ -183,6 +185,10 @@ export interface AppSettings {
   financialSettings?: FinancialSettings;
   personalDefaultAccountId?: string;
   businessDefaultAccountId?: string;
+  /** Categoria padrão ao abrir novo lançamento de despesa */
+  defaultExpenseCategoryId?: string;
+  /** Categoria padrão ao abrir novo lançamento de receita */
+  defaultIncomeCategoryId?: string;
   /** Flag da migração de corte pessoal (ex.: '2026-10-01') */
   legacyPersonalCutoffApplied?: string;
   /** Reabre despesas pendentes do módulo carreira no caixa pessoal (para limpeza) */

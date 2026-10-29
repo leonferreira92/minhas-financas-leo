@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Trash2,
   Layers,
+  MoreHorizontal,
 } from "lucide-react";
 import { PERSONAL_ONLY_MODE } from "../services/personalOnlyMode";
 import {
@@ -25,6 +26,12 @@ import {
   CategoryFormValues,
 } from "./categories/CategoryFormModal";
 import { CategoryAccordion } from "./categories/CategoryAccordion";
+import {
+  CategoryActionsSheet,
+  CategoryAction,
+} from "./categories/CategoryActionsSheet";
+import { MoveTransactionsModal } from "./categories/MoveTransactionsModal";
+import { ArchivedCategoriesSheet } from "./categories/ArchivedCategoriesSheet";
 
 export const CategoryList = () => {
   const navigate = useNavigate();
@@ -34,7 +41,10 @@ export const CategoryList = () => {
     addCategory,
     updateCategory,
     deleteCategory,
+    moveCategoryTransactions,
     activeScope,
+    settings,
+    updateSettings,
   } = useFinance();
 
   const [activeTab, setActiveTab] = useState<TransactionType>("expense");
@@ -46,6 +56,15 @@ export const CategoryList = () => {
   const [editing, setEditing] = useState<Category | null>(null);
   const [forceParentId, setForceParentId] = useState<string | null>(null);
   const [newChoiceOpen, setNewChoiceOpen] = useState(false);
+
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [actionsGlobal, setActionsGlobal] = useState(false);
+  const [actionsCategory, setActionsCategory] = useState<Category | null>(null);
+
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveFromId, setMoveFromId] = useState<string | null>(null);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(
     null,
@@ -60,6 +79,11 @@ export const CategoryList = () => {
     [transactions],
   );
 
+  const defaultCategoryId =
+    activeTab === "income"
+      ? settings.defaultIncomeCategoryId
+      : settings.defaultExpenseCategoryId;
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -67,8 +91,14 @@ export const CategoryList = () => {
       maximumFractionDigits: 0,
     }).format(val || 0);
 
+  const showToast = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 2800);
+  };
+
   const scopedCategories = useMemo(() => {
     return categories.filter((c) => {
+      if (c.archived) return false;
       if (c.type !== activeTab) return false;
       if (c.type === "transfer" || c.type === "adjustment") return false;
       if (scopeFilter === "ALL") return true;
@@ -78,12 +108,11 @@ export const CategoryList = () => {
 
   const accordionGroups = useMemo(() => {
     const tree = buildCategoryTree(scopedCategories, activeTab);
-    // Inclui só mães que passam no filtro de scope (já filtrado)
     return tree
       .filter((g) => scopedCategories.some((c) => c.id === g.parent.id))
       .map((g) => ({
         parent: g.parent,
-        children: g.children,
+        children: g.children.filter((ch) => !ch.archived),
         monthTotal: sumMonthAmountForCategory(
           transactions,
           g.parent.id,
@@ -125,6 +154,18 @@ export const CategoryList = () => {
     setIsModalOpen(true);
   };
 
+  const openGlobalMenu = () => {
+    setActionsGlobal(true);
+    setActionsCategory(null);
+    setActionsOpen(true);
+  };
+
+  const openCategoryMenu = (cat: Category) => {
+    setActionsGlobal(false);
+    setActionsCategory(cat);
+    setActionsOpen(true);
+  };
+
   const handleSave = (values: CategoryFormValues) => {
     if (editing) {
       updateCategory({
@@ -136,6 +177,7 @@ export const CategoryList = () => {
         scope: values.scope,
         parentId: values.parentId,
         isSystem: editing.isSystem,
+        archived: editing.archived,
       });
     } else {
       addCategory({
@@ -146,6 +188,7 @@ export const CategoryList = () => {
         scope: values.scope,
         parentId: values.parentId,
         isSystem: false,
+        archived: false,
       });
     }
     setIsModalOpen(false);
@@ -153,24 +196,85 @@ export const CategoryList = () => {
     setForceParentId(null);
   };
 
+  const setAsDefault = (cat: Category) => {
+    if (cat.type === "income") {
+      updateSettings({ defaultIncomeCategoryId: cat.id });
+    } else {
+      updateSettings({ defaultExpenseCategoryId: cat.id });
+    }
+    showToast(`“${cat.name}” definida como padrão`);
+  };
+
+  const archiveCategory = (cat: Category, archived: boolean) => {
+    updateCategory({ ...cat, archived });
+    if (
+      archived &&
+      (settings.defaultExpenseCategoryId === cat.id ||
+        settings.defaultIncomeCategoryId === cat.id)
+    ) {
+      updateSettings(
+        cat.type === "income"
+          ? { defaultIncomeCategoryId: undefined }
+          : { defaultExpenseCategoryId: undefined },
+      );
+    }
+    showToast(
+      archived
+        ? `“${cat.name}” arquivada`
+        : `“${cat.name}” restaurada`,
+    );
+  };
+
+  const handleAction = (action: CategoryAction) => {
+    const cat = actionsCategory;
+    switch (action) {
+      case "create_sub":
+        openNewChild(cat || undefined);
+        break;
+      case "edit":
+        if (cat) openEdit(cat);
+        break;
+      case "move_transactions":
+        setMoveFromId(cat?.id || null);
+        setMoveOpen(true);
+        break;
+      case "set_default":
+        if (cat) setAsDefault(cat);
+        break;
+      case "archive":
+        if (cat) archiveCategory(cat, true);
+        break;
+      case "unarchive":
+        if (cat) archiveCategory(cat, false);
+        break;
+      case "view_archived":
+        setArchivedOpen(true);
+        break;
+      default:
+        break;
+    }
+  };
+
   const requestDelete = (cat: Category) => {
     if (cat.isSystem) {
       setDeleteBlockMessage(
-        "Categorias do sistema não podem ser excluídas.",
+        "Categorias do sistema não podem ser excluídas. Você pode arquivá-las.",
       );
       return;
     }
-    const children = categories.filter((c) => c.parentId === cat.id);
+    const children = categories.filter(
+      (c) => c.parentId === cat.id && !c.archived,
+    );
     if (children.length > 0) {
       setDeleteBlockMessage(
-        `Exclua ou mova as ${children.length} subcategoria(s) antes de remover esta categoria mãe.`,
+        `Exclua, mova ou arquive as ${children.length} subcategoria(s) antes de remover esta categoria mãe.`,
       );
       return;
     }
     const count = usageStats[cat.id] || 0;
     if (count > 0) {
       setDeleteBlockMessage(
-        `Esta categoria não pode ser excluída pois possui ${count} lançamento(s) associado(s).`,
+        `Esta categoria possui ${count} lançamento(s). Use “Mover transações” ou “Arquivar” em vez de excluir.`,
       );
       return;
     }
@@ -189,6 +293,17 @@ export const CategoryList = () => {
     navigate(`/lancamentos?category=${encodeURIComponent(cat.id)}`);
   };
 
+  const handleMoveConfirm = (fromId: string, toId: string) => {
+    const n = moveCategoryTransactions(fromId, toId);
+    setMoveOpen(false);
+    setMoveFromId(null);
+    showToast(
+      n > 0
+        ? `${n} lançamento${n === 1 ? "" : "s"} movido${n === 1 ? "" : "s"}`
+        : "Nenhum lançamento para mover",
+    );
+  };
+
   return (
     <div className="pb-24 animate-fade-in text-slate-900 min-h-screen relative max-w-full overflow-x-hidden">
       <div className="sticky top-0 bg-slate-50/95 backdrop-blur-md z-20 px-1 pt-2 pb-2">
@@ -205,18 +320,29 @@ export const CategoryList = () => {
                 Categorias
               </h1>
               <p className="text-[11px] text-slate-400 font-medium">
-                Estrutura hierárquica · mães e subcategorias
+                Estrutura hierárquica · estilo Mobills
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setNewChoiceOpen(true)}
-            className="shrink-0 px-3 py-2 rounded-xl bg-[#0F388A] text-[#FACC15] text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 shadow-md active:scale-95"
-          >
-            <Plus size={14} />
-            Nova
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={openGlobalMenu}
+              className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-slate-800 transition active:scale-95"
+              aria-label="Mais opções"
+              title="Mais opções"
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewChoiceOpen(true)}
+              className="px-3 py-2 rounded-xl bg-[#0F388A] text-[#FACC15] text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 shadow-md active:scale-95"
+            >
+              <Plus size={14} />
+              Nova
+            </button>
+          </div>
         </div>
 
         {!PERSONAL_ONLY_MODE && (
@@ -280,12 +406,15 @@ export const CategoryList = () => {
         <CategoryAccordion
           groups={accordionGroups}
           formatCurrency={formatCurrency}
+          defaultCategoryId={defaultCategoryId}
           flowType={activeTab === "income" ? "income" : "expense"}
           onOpenParent={openExtrato}
           onEditParent={openEdit}
           onAddChild={openNewChild}
+          onParentMenu={openCategoryMenu}
           onEditChild={openEdit}
           onDeleteChild={requestDelete}
+          onChildMenu={openCategoryMenu}
         />
       </div>
 
@@ -300,10 +429,9 @@ export const CategoryList = () => {
         </button>
       </div>
 
-      {/* Escolha: mãe ou sub */}
       {newChoiceOpen && (
         <div className="fixed inset-0 bg-black/50 z-[55] flex items-end sm:items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3 animate-slide-up">
+          <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl space-y-3 animate-slide-up">
             <h3 className="text-base font-black text-slate-800 px-1">
               O que deseja criar?
             </h3>
@@ -360,7 +488,7 @@ export const CategoryList = () => {
           (activeScope === "BUSINESS" ? "BUSINESS" : "PERSONAL") as ScopeType
         }
         forceParentId={forceParentId}
-        categories={categories}
+        categories={categories.filter((c) => !c.archived)}
         usageCount={editing ? usageStats[editing.id] || 0 : 0}
         onClose={() => {
           setIsModalOpen(false);
@@ -375,6 +503,42 @@ export const CategoryList = () => {
               }
             : undefined
         }
+      />
+
+      <CategoryActionsSheet
+        open={actionsOpen}
+        global={actionsGlobal}
+        category={actionsCategory}
+        isDefault={
+          Boolean(
+            actionsCategory &&
+              (actionsCategory.type === "income"
+                ? settings.defaultIncomeCategoryId === actionsCategory.id
+                : settings.defaultExpenseCategoryId === actionsCategory.id),
+          )
+        }
+        onClose={() => setActionsOpen(false)}
+        onAction={handleAction}
+      />
+
+      <MoveTransactionsModal
+        open={moveOpen}
+        categories={categories}
+        transactions={transactions}
+        initialFromId={moveFromId}
+        flowType={activeTab === "income" ? "income" : "expense"}
+        onClose={() => {
+          setMoveOpen(false);
+          setMoveFromId(null);
+        }}
+        onConfirm={handleMoveConfirm}
+      />
+
+      <ArchivedCategoriesSheet
+        open={archivedOpen}
+        categories={categories}
+        onClose={() => setArchivedOpen(false)}
+        onUnarchive={(cat) => archiveCategory(cat, false)}
       />
 
       {deleteConfirmationId && (
@@ -429,6 +593,12 @@ export const CategoryList = () => {
               Entendido
             </button>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[120] px-4 py-2.5 rounded-2xl bg-[#0F388A] text-[#FACC15] text-xs font-black shadow-xl border border-[#FACC15]/30 max-w-[90vw] animate-fade-in">
+          {toast}
         </div>
       )}
     </div>
