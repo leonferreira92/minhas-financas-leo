@@ -110,6 +110,39 @@ export function transactionMatchesCategoryFilter(
   );
 }
 
+/**
+ * Filtro hierárquico: categoria mãe + subcategoria opcional.
+ * subcategoryId vazio = todas as subs da mãe.
+ */
+export function transactionMatchesHierarchyFilter(
+  t: Pick<Transaction, 'categoryId' | 'subcategoryId'>,
+  categoryId: string,
+  subcategoryId: string | undefined,
+  categories: Category[],
+): boolean {
+  if (!categoryId && !subcategoryId) return true;
+
+  if (subcategoryId) {
+    return (
+      t.subcategoryId === subcategoryId ||
+      t.categoryId === subcategoryId
+    );
+  }
+
+  return transactionMatchesCategoryFilter(t, categoryId, categories);
+}
+
+/** Monta query string para drill-down Categorias → Extrato */
+export function buildExtratoCategoryQuery(
+  categoryId: string,
+  subcategoryId?: string | null,
+): string {
+  const params = new URLSearchParams();
+  params.set('categoryId', categoryId);
+  if (subcategoryId) params.set('subcategoryId', subcategoryId);
+  return params.toString();
+}
+
 export function normalizeCategoryRecord(cat: Category, systemIds: Set<string>): Category {
   return {
     ...cat,

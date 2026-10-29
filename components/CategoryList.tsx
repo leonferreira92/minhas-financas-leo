@@ -17,6 +17,7 @@ import {
 import { PERSONAL_ONLY_MODE } from "../services/personalOnlyMode";
 import {
   buildCategoryTree,
+  buildExtratoCategoryQuery,
   countCategoryUsage,
   sumMonthAmountForCategory,
 } from "../services/categoryHierarchy";
@@ -289,8 +290,11 @@ export const CategoryList = () => {
     setEditing(null);
   };
 
-  const openExtrato = (cat: Category) => {
-    navigate(`/lancamentos?category=${encodeURIComponent(cat.id)}`);
+  const openExtrato = (cat: Category, subcategory?: Category) => {
+    const parentId = subcategory?.parentId || cat.id;
+    const subId = subcategory?.id;
+    const qs = buildExtratoCategoryQuery(parentId, subId);
+    navigate(`/lancamentos?${qs}`);
   };
 
   const handleMoveConfirm = (fromId: string, toId: string) => {
@@ -408,7 +412,8 @@ export const CategoryList = () => {
           formatCurrency={formatCurrency}
           defaultCategoryId={defaultCategoryId}
           flowType={activeTab === "income" ? "income" : "expense"}
-          onOpenParent={openExtrato}
+          onOpenParent={(parent) => openExtrato(parent)}
+          onOpenChild={(child, parent) => openExtrato(parent, child)}
           onEditParent={openEdit}
           onAddChild={openNewChild}
           onParentMenu={openCategoryMenu}

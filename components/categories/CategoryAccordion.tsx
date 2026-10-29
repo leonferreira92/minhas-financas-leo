@@ -24,6 +24,8 @@ interface Props {
   formatCurrency: (n: number) => string;
   defaultCategoryId?: string;
   onOpenParent: (parent: Category) => void;
+  /** Clique na linha da subcategoria → extrato filtrado */
+  onOpenChild?: (child: Category, parent: Category) => void;
   onEditParent: (parent: Category) => void;
   onAddChild: (parent: Category) => void;
   onParentMenu: (parent: Category) => void;
@@ -38,6 +40,7 @@ export const CategoryAccordion: React.FC<Props> = ({
   formatCurrency,
   defaultCategoryId,
   onOpenParent,
+  onOpenChild,
   onEditParent,
   onAddChild,
   onParentMenu,
@@ -206,7 +209,23 @@ export const CategoryAccordion: React.FC<Props> = ({
                         return (
                           <li
                             key={child.id}
-                            className="flex items-center justify-between gap-2 rounded-xl bg-white border border-slate-100/90 px-3 py-2.5 shadow-xs"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() =>
+                              onOpenChild
+                                ? onOpenChild(child, parent)
+                                : onOpenParent(parent)
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onOpenChild
+                                  ? onOpenChild(child, parent)
+                                  : onOpenParent(parent);
+                              }
+                            }}
+                            title={`Ver lançamentos de ${child.name}`}
+                            className="flex items-center justify-between gap-2 rounded-xl bg-white border border-slate-100/90 px-3 py-2.5 shadow-xs cursor-pointer hover:border-[#0F388A]/30 hover:bg-blue-50/40 active:scale-[0.99] transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <CategoryAvatar
@@ -232,7 +251,10 @@ export const CategoryAccordion: React.FC<Props> = ({
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-0.5 shrink-0">
+                            <div
+                              className="flex items-center gap-0.5 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <button
                                 type="button"
                                 onClick={() => onEditChild(child)}

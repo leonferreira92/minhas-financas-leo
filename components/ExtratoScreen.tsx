@@ -25,6 +25,7 @@ import {
   TrendingDown,
   AlertTriangle,
   Lightbulb,
+  Wallet,
 } from "lucide-react";
 import { Transaction, matchesScope } from "../types";
 import { getIcon } from "../constants";
@@ -45,9 +46,10 @@ import {
 } from "../services/aiReportService";
 import { computeChainedMonthProjection } from "../services/monthCashPanel";
 import {
-  transactionMatchesCategoryFilter,
-  getCategoryBreadcrumb,
+  transactionMatchesHierarchyFilter,
   getDisplayCategory,
+  getCategoryById,
+  getChildCategories,
 } from "../services/categoryHierarchy";
 
 type TypeStatusFilter = "all" | "paid" | "pending" | "shows" | "accounts";
@@ -106,7 +108,11 @@ export const ExtratoScreen: React.FC = () => {
   const currentYearMonth = useMemo(() => getCurrentMonthPrefix(), []);
   const monthFromUrl = searchParams.get("month");
   const statusFromUrl = searchParams.get("status");
-  const categoryFromUrl = searchParams.get("category");
+  // Aceita category / categoryId e subcategory / subcategoryId
+  const categoryFromUrl =
+    searchParams.get("categoryId") || searchParams.get("category");
+  const subcategoryFromUrl =
+    searchParams.get("subcategoryId") || searchParams.get("subcategory");
   const highlightId = searchParams.get("highlightId");
 
   const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -117,7 +123,7 @@ export const ExtratoScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   /** Quando true, o filtro de categoria ignora o recorte mensal (drill-down da lista de categorias). */
   const [categoryAllDates, setCategoryAllDates] = useState(
-    Boolean(categoryFromUrl && !monthFromUrl),
+    Boolean((categoryFromUrl || subcategoryFromUrl) && !monthFromUrl),
   );
 
   const [statusFilter, setStatusFilter] = useState<TypeStatusFilter>(() => {
@@ -132,8 +138,13 @@ export const ExtratoScreen: React.FC = () => {
   });
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryIdFilter, setCategoryIdFilter] = useState(
-    categoryFromUrl || "",
+  const [categoryIdFilter, setCategoryIdFilter] = useState(() => {
+    if (!categoryFromUrl) return "";
+    // Se veio só um id de sub via category legado, resolve a mãe
+    return categoryFromUrl;
+  });
+  const [subcategoryIdFilter, setSubcategoryIdFilter] = useState(
+    subcategoryFromUrl || "",
   );
 
   useEffect(() => {
@@ -149,12 +160,23 @@ export const ExtratoScreen: React.FC = () => {
     ) {
       setStatusFilter(statusFromUrl);
     }
-    if (categoryFromUrl) {
-      setCategoryIdFilter(categoryFromUrl);
+    if (categoryFromUrl || subcategoryFromUrl) {
+      let parentId = categoryFromUrl || "";
+      let subId = subcategoryFromUrl || "";
+      // Se categoryFromUrl for uma sub (legado), promove para mãe + sub
+      if (parentId && categories.length > 0) {
+        const maybe = categories.find((c) => c.id === parentId);
+        if (maybe?.parentId) {
+          subId = subId || maybe.id;
+          parentId = maybe.parentId;
+        }
+      }
+      setCategoryIdFilter(parentId);
+      setSubcategoryIdFilter(subId);
       setShowFiltersPanel(true);
       if (!monthFromUrl) setCategoryAllDates(true);
     }
-  }, [monthFromUrl, statusFromUrl, categoryFromUrl]);
+  }, [monthFromUrl, statusFromUrl, categoryFromUrl, subcategoryFromUrl, categories]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -239,14 +261,15 @@ export const ExtratoScreen: React.FC = () => {
           }
         }
 
-        if (categoryIdFilter) {
-          if (categoryIdFilter === "cat_other") {
+        if (categoryIdFilter || subcategoryIdFilter) {
+          if (categoryIdFilter === "cat_other" && !subcategoryIdFilter) {
             const txCat = (t.categoryId || "").trim();
             if (txCat && txCat !== "cat_other") return false;
           } else if (
-            !transactionMatchesCategoryFilter(
+            !transactionMatchesHierarchyFilter(
               t,
               categoryIdFilter,
+              subcategoryIdFilter || undefined,
               categories,
             )
           ) {
@@ -255,7 +278,9 @@ export const ExtratoScreen: React.FC = () => {
         }
 
         const isHighlighted = Boolean(highlightId && t.id === highlightId);
-        const skipMonthCut = Boolean(categoryIdFilter && categoryAllDates);
+        const skipMonthCut = Boolean(
+          (categoryIdFilter || subcategoryIdFilter) && categoryAllDates,
+        );
         if (!isHighlighted && !skipMonthCut) {
           if (isFutureOnly) {
             if (!t.date) return false;
@@ -332,6 +357,7 @@ export const ExtratoScreen: React.FC = () => {
     selectedAccountId,
     searchTerm,
     categoryIdFilter,
+    subcategoryIdFilter,
     categoryAllDates,
     todayStr,
     categories,
@@ -970,14 +996,18 @@ export const ExtratoScreen: React.FC = () => {
               showFiltersPanel ||
               searchTerm ||
               selectedAccountId !== "all" ||
-              categoryIdFilter
+              categoryIdFilter ||
+              subcategoryIdFilter
                 ? "bg-amber-50 text-amber-800 border-amber-200"
                 : "bg-white text-slate-600 border-slate-200"
             }`}
           >
             <Filter size={14} />
             Filtros
-            {(searchTerm || selectedAccountId !== "all" || categoryIdFilter) && (
+            {(searchTerm ||
+              selectedAccountId !== "all" ||
+              categoryIdFilter ||
+              subcategoryIdFilter) && (
               <span className="w-2 h-2 rounded-full bg-[#FACC15]" />
             )}
           </button>
@@ -999,23 +1029,40 @@ export const ExtratoScreen: React.FC = () => {
           </button>
         </div>
 
-        {categoryIdFilter && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0F388A] text-[#FACC15] text-[11px] font-black">
-              {categories.find((c) => c.id === categoryIdFilter)?.name ||
-                "Categoria"}
-              <button
-                type="button"
-                onClick={() => {
-                  setCategoryIdFilter("");
-                  setCategoryAllDates(false);
-                }}
-                className="p-0.5 rounded-full hover:bg-blue-800 transition"
-                aria-label="Limpar filtro de categoria"
-              >
-                <X size={12} />
-              </button>
-            </span>
+        {(categoryIdFilter || subcategoryIdFilter || categoryAllDates) && (
+          <div className="flex items-center gap-2 flex-wrap animate-fade-in">
+            {categoryIdFilter && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0F388A] text-[#FACC15] text-[11px] font-bold transition">
+                {getCategoryById(categories, categoryIdFilter)?.name ||
+                  "Categoria"}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryIdFilter("");
+                    setSubcategoryIdFilter("");
+                    setCategoryAllDates(false);
+                  }}
+                  className="p-0.5 rounded-full hover:bg-blue-800 transition"
+                  aria-label="Limpar filtro de categoria"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+            {subcategoryIdFilter && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[11px] font-medium border border-slate-200 transition animate-fade-in">
+                {getCategoryById(categories, subcategoryIdFilter)?.name ||
+                  "Subcategoria"}
+                <button
+                  type="button"
+                  onClick={() => setSubcategoryIdFilter("")}
+                  className="p-0.5 rounded-full hover:bg-slate-200 transition"
+                  aria-label="Limpar filtro de subcategoria"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
             {categoryAllDates && (
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 Todas as datas
@@ -1025,7 +1072,7 @@ export const ExtratoScreen: React.FC = () => {
         )}
 
         {showFiltersPanel && (
-          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-sm text-slate-800">
+          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-sm text-slate-800 animate-fade-in">
             <div className="relative">
               <Search
                 className="absolute left-3 top-2.5 text-slate-400"
@@ -1049,7 +1096,7 @@ export const ExtratoScreen: React.FC = () => {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-[11px] font-bold text-slate-500 shrink-0">
+              <label className="text-[11px] font-bold text-slate-500 shrink-0 w-20">
                 Categoria:
               </label>
               <select
@@ -1057,41 +1104,50 @@ export const ExtratoScreen: React.FC = () => {
                 onChange={(e) => {
                   const next = e.target.value;
                   setCategoryIdFilter(next);
+                  setSubcategoryIdFilter("");
                   setCategoryAllDates(Boolean(next));
                 }}
                 className="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:border-blue-500 outline-none"
               >
                 <option value="">Todas as categorias</option>
                 {categories
-                  .filter((c) => !c.parentId)
+                  .filter((c) => !c.parentId && !c.archived)
                   .slice()
                   .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-                  .map((parent) => {
-                    const children = categories
-                      .filter((c) => c.parentId === parent.id)
-                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-                    if (children.length === 0) {
-                      return (
-                        <option key={parent.id} value={parent.id}>
-                          {parent.name}
-                        </option>
-                      );
-                    }
-                    return (
-                      <optgroup key={parent.id} label={parent.name}>
-                        <option value={parent.id}>{parent.name} (todas)</option>
-                        {children.map((ch) => (
-                          <option key={ch.id} value={ch.id}>
-                            {ch.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    );
-                  })}
+                  .map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.name}
+                    </option>
+                  ))}
               </select>
             </div>
+            {categoryIdFilter &&
+              getChildCategories(categories, categoryIdFilter).length > 0 && (
+                <div className="flex items-center gap-2 animate-fade-in">
+                  <label className="text-[11px] font-bold text-slate-500 shrink-0 w-20">
+                    Subcategoria:
+                  </label>
+                  <select
+                    value={subcategoryIdFilter}
+                    onChange={(e) => {
+                      setSubcategoryIdFilter(e.target.value);
+                      setCategoryAllDates(true);
+                    }}
+                    className="flex-1 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:border-blue-500 outline-none"
+                  >
+                    <option value="">Todas as subcategorias</option>
+                    {getChildCategories(categories, categoryIdFilter).map(
+                      (ch) => (
+                        <option key={ch.id} value={ch.id}>
+                          {ch.name}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+              )}
             <div className="flex items-center gap-2">
-              <label className="text-[11px] font-bold text-slate-500 shrink-0">
+              <label className="text-[11px] font-bold text-slate-500 shrink-0 w-20">
                 Conta:
               </label>
               <select
@@ -1197,12 +1253,11 @@ export const ExtratoScreen: React.FC = () => {
 
                 <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden divide-y divide-slate-100 shadow-sm">
                   {group.transactions.map((t) => {
-                    const cat = getDisplayCategory(
-                      categories,
-                      t.categoryId,
-                      t.subcategoryId,
-                    );
-                    const catLabel = getCategoryBreadcrumb(
+                    const parentCat = getCategoryById(categories, t.categoryId);
+                    const subCat = t.subcategoryId
+                      ? getCategoryById(categories, t.subcategoryId)
+                      : undefined;
+                    const displayCat = getDisplayCategory(
                       categories,
                       t.categoryId,
                       t.subcategoryId,
@@ -1220,7 +1275,10 @@ export const ExtratoScreen: React.FC = () => {
                       t.type === "expense" &&
                       t.date &&
                       t.date < todayStr;
-                    const Icon = getIcon(cat?.icon || "Tag");
+                    const iconColor = parentCat?.color || displayCat?.color || "#0F388A";
+                    const Icon = getIcon(
+                      displayCat?.icon || parentCat?.icon || "Tag",
+                    );
 
                     return (
                       <div
@@ -1242,40 +1300,70 @@ export const ExtratoScreen: React.FC = () => {
                       >
                         <div className="flex items-start space-x-3.5 min-w-0 pr-3 flex-1">
                           <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                            style={{
-                              backgroundColor: `${cat?.color || "#3b82f6"}20`,
-                              color: cat?.color || "#3b82f6",
-                            }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-white shadow-sm"
+                            style={{ backgroundColor: iconColor }}
                           >
-                            <Icon size={18} />
+                            <Icon size={18} className="text-white" />
                           </div>
 
                           <div className="min-w-0 flex-1 flex flex-col gap-1.5">
                             <span className="text-xs sm:text-sm font-bold text-slate-800 block leading-relaxed break-words group-hover:text-[#0F388A] transition">
                               {t.description || "Sem descrição"}
                             </span>
-                            <div className="flex flex-wrap items-center gap-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
                               {isOverdue && (
-                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-rose-600 text-white uppercase">
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-rose-600 text-white uppercase">
                                   Atrasada
                                 </span>
                               )}
                               {isPending && !isOverdue && (
-                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-amber-400 text-black uppercase">
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-400 text-black uppercase">
                                   Pendente
                                 </span>
                               )}
                               {isLoanMovement(t) && (
-                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-sky-600 text-white uppercase inline-flex items-center gap-1">
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-sky-600 text-white uppercase inline-flex items-center gap-1">
                                   <Handshake size={10} strokeWidth={2.5} />
                                   {t.loanPerson
                                     ? `Emprést. · ${t.loanPerson}`
                                     : "Empréstimo"}
                                 </span>
                               )}
-                              <span className="text-[10px] text-slate-500 truncate">
-                                {catLabel} · {acc?.name || "Conta"}
+                              {/* Badge categoria mãe + subcategoria */}
+                              {subCat ? (
+                                <>
+                                  <span
+                                    className="inline-flex items-center gap-1 bg-white text-slate-500 font-medium px-2 py-0.5 rounded-full text-[11px] border border-slate-200 truncate max-w-[8rem]"
+                                    title={parentCat?.name}
+                                  >
+                                    <span
+                                      className="w-1.5 h-1.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: iconColor }}
+                                    />
+                                    {parentCat?.name || "Categoria"}
+                                  </span>
+                                  <span className="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded-full text-xs truncate max-w-[10rem] sm:max-w-[14rem]">
+                                    {subCat.name}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded-full text-xs truncate max-w-[12rem]">
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: iconColor }}
+                                  />
+                                  {parentCat?.name ||
+                                    displayCat?.name ||
+                                    "A Classificar"}
+                                </span>
+                              )}
+                              {/* Badge conta / banco */}
+                              <span className="inline-flex items-center gap-1 bg-white text-slate-500 font-medium px-2 py-0.5 rounded-full text-[11px] border border-slate-200 truncate max-w-[9rem] sm:max-w-[12rem]">
+                                <Wallet
+                                  size={11}
+                                  className="shrink-0 text-slate-400"
+                                />
+                                {acc?.name || "Conta"}
                               </span>
                             </div>
                           </div>
