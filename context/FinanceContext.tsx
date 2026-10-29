@@ -8,8 +8,10 @@ import {
   DEFAULT_CATEGORIES,
   DEFAULT_FINANCIAL_SETTINGS,
   UNCATEGORIZED_CATEGORY_ID,
+  SYSTEM_CATEGORY_IDS,
   resolveFallbackCategoryId,
 } from '../constants';
+import { normalizeCategoryRecord } from '../services/categoryHierarchy';
 import {
   resolveDebtInstallmentCostCenter,
   resolveCareerSubcategoryMeta,
@@ -982,10 +984,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       catDividas.type = 'expense';
     }
 
-    // Remover categorias duplicadas
+    // Remover categorias duplicadas + normalizar hierarquia (parentId / isSystem)
     let finalCategories = deduplicateItemsById(
       storedCategories.filter(c => !duplicateCatIds.has(c.id) && !duplicateEquipCatIds.has(c.id))
-    );
+    ).map(c => normalizeCategoryRecord(c, SYSTEM_CATEGORY_IDS));
 
     // Garantir defaults que faltem
     const existingIds = new Set(finalCategories.map(c => c.id));
@@ -2505,19 +2507,48 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const addCategory = (c: Omit<Category, 'id'>) => {
-    const newCat = { ...c, id: generateUUID() };
+    const newCat: Category = {
+      ...c,
+      id: generateUUID(),
+      parentId: c.parentId ?? null,
+      isSystem: false,
+    };
+    // Subcategoria herda type/scope do pai quando possível
+    if (newCat.parentId) {
+      const parent = categories.find(p => p.id === newCat.parentId);
+      if (parent) {
+        newCat.type = parent.type;
+        newCat.scope = parent.scope || newCat.scope;
+      }
+    }
     saveCategories([...categories, newCat]);
     if (currentUser) {
       saveCategoryToFirestore(currentUser.uid, newCat);
     }
   };
   const updateCategory = (c: Category) => {
-    saveCategories(categories.map(cat => cat.id === c.id ? c : cat));
+    const prev = categories.find(cat => cat.id === c.id);
+    const next: Category = {
+      ...c,
+      parentId: c.parentId ?? null,
+      isSystem: prev?.isSystem ?? c.isSystem ?? SYSTEM_CATEGORY_IDS.has(c.id),
+    };
+    if (next.parentId) {
+      const parent = categories.find(p => p.id === next.parentId);
+      if (parent) {
+        next.type = parent.type;
+        next.scope = parent.scope || next.scope;
+      }
+    }
+    saveCategories(categories.map(cat => cat.id === c.id ? next : cat));
     if (currentUser) {
-      saveCategoryToFirestore(currentUser.uid, c);
+      saveCategoryToFirestore(currentUser.uid, next);
     }
   };
   const deleteCategory = (id: string) => {
+    const target = categories.find(c => c.id === id);
+    if (target?.isSystem || SYSTEM_CATEGORY_IDS.has(id)) return;
+    if (categories.some(c => c.parentId === id)) return;
     saveCategories(categories.filter(c => c.id !== id));
     if (currentUser) {
       deleteCategoryFromFirestore(currentUser.uid, id);

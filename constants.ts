@@ -11,8 +11,17 @@ import {
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
   BarChart3, Fingerprint, LayoutDashboard, Clock, Laptop, Target, Sparkles, Trophy,
-  Handshake, CircleHelp, Tag
+  Handshake, CircleHelp, Tag, Wallet, Bike, Shirt, Building2, Film, Bed,
+  Wrench, Phone, Leaf, Dog
 } from 'lucide-react';
+
+/** Paleta moderna/pastel para o Color Picker de categorias */
+export const CATEGORY_COLOR_PALETTE = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+  '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+  '#ec4899', '#f43f5e', '#fb7185', '#64748b', '#94a3b8',
+];
 
 /** Categoria padrão para lançamentos sem vínculo / ID inválido (revisão manual). */
 export const UNCATEGORIZED_CATEGORY_ID = 'cat_other';
@@ -64,7 +73,7 @@ export const CAREER_DEBT_SUBCATEGORIES: CareerSubcategoryOption[] = [
   { id: 'Outros Custos da Música', label: 'Outros Custos da Música', categoryId: 'cat_equipamentos', musicCostKey: 'other' },
 ];
 
-export const DEFAULT_CATEGORIES: Category[] = [
+const RAW_DEFAULT_CATEGORIES: Category[] = [
   // --- DESPESAS ESSENCIAIS PESSOAIS (50%) ---
   { id: 'cat_1', name: 'Mercado', type: 'expense', color: '#ef4444', icon: 'ShoppingCart', classification: 'essential', scope: 'PERSONAL' },
   { id: 'cat_2', name: 'Aluguel / Condomínio', type: 'expense', color: '#f97316', icon: 'Home', classification: 'essential', scope: 'PERSONAL' },
@@ -119,6 +128,15 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_prolabore_out', name: 'Retirada de Pró-Labore', type: 'expense', color: '#6366f1', icon: 'BadgeDollarSign', classification: 'professional', scope: 'BUSINESS' },
 ];
 
+/** Defaults como categorias mãe do sistema (hierarquia Mobills). */
+export const DEFAULT_CATEGORIES: Category[] = RAW_DEFAULT_CATEGORIES.map((c) => ({
+  ...c,
+  parentId: null,
+  isSystem: true,
+}));
+
+export const SYSTEM_CATEGORY_IDS = new Set(DEFAULT_CATEGORIES.map((c) => c.id));
+
 export const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'acc_bb', name: 'Banco do Brasil', type: 'bank', color: '#f59e0b', initialBalance: 1500, enabled: true, scope: 'PERSONAL', vinculo: 'PESSOAL' },
   { id: 'acc_mp', name: 'Mercado Pago (Shows / PJ)', type: 'bank', color: '#06b6d4', initialBalance: 3200, enabled: true, scope: 'BUSINESS', vinculo: 'MUSICO' },
@@ -138,7 +156,9 @@ export const ICON_MAP: Record<string, any> = {
   Gem, BookOpen, Brush, Baby, Cross, Trash, 
   ArrowRightLeft, BadgeDollarSign, Calculator, Globe,
   BarChart3, Fingerprint, LayoutDashboard, Clock,
-  Handshake, CircleHelp, Tag
+  Handshake, CircleHelp, Tag, Wallet, Bike, Shirt,
+  Building2, Film, Bed, Wrench, Phone, Leaf, Dog,
+  Laptop, Target, Sparkles, Trophy,
 };
 
 export const getIcon = (name: string) => ICON_MAP[name] || DollarSign;

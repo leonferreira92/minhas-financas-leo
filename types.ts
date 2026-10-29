@@ -31,6 +31,10 @@ export interface Category {
   type: TransactionType;
   color: string;
   icon: string;
+  /** null = categoria mãe; preenchido = subcategoria vinculada ao pai */
+  parentId?: string | null;
+  /** Categorias padrão do sistema (não deletáveis) */
+  isSystem?: boolean;
   classification?: 'essential' | 'personal' | 'future' | 'professional' | 'extraordinary' | 'discretionary';
   scope?: ScopeType;
 }
@@ -85,8 +89,11 @@ export interface Transaction {
   date: string;
   amount: number;
   type: TransactionType;
+  /** Categoria mãe (sempre preenchida para agrupamentos/relatórios) */
   categoryId: string;
   category?: string; // Para compatibilidade com base legada
+  /** Subcategoria hierárquica (opcional) — distinta de `subcategory` de shows */
+  subcategoryId?: string;
   subcategory?: ShowExpenseSubcategory; // Subcategoria vinculada ao custo do show
   costGroup?: ShowCostGroup; // Grupo de custo do show (logistica | musicos | equipamentos)
   description: string;

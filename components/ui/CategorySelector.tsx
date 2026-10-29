@@ -1,15 +1,24 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Category, ScopeType, TransactionType } from "../../types";
 import { getIcon } from "../../constants";
-import { Check } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
+import {
+  buildCategoryTree,
+  getEffectiveCategorySelectionId,
+  isParentCategory,
+} from "../../services/categoryHierarchy";
 
 interface CategorySelectorProps {
   categories: Category[];
   selectedCategoryId: string;
-  onSelect: (categoryId: string) => void;
-  columns?: "compact" | "modal";
+  /** ID da subcategoria selecionada (opcional) */
+  selectedSubcategoryId?: string;
+  onSelect: (categoryOrSubId: string) => void;
+  columns?: "compact" | "modal" | "grouped";
   scope?: ScopeType;
   transactionType?: TransactionType;
+  /** Exibe árvore mãe + filhas (padrão em modal) */
+  hierarchical?: boolean;
 }
 
 /**
@@ -38,20 +47,35 @@ export const getHighContrastTextColor = (
 export const CategorySelector: React.FC<CategorySelectorProps> = ({
   categories,
   selectedCategoryId,
+  selectedSubcategoryId,
   onSelect,
   columns = "compact",
   scope = "PERSONAL",
   transactionType = "expense",
+  hierarchical,
 }) => {
-  const gridClass =
-    columns === "compact"
-      ? "grid grid-cols-2 sm:grid-cols-4 gap-2"
-      : "grid grid-cols-2 gap-2.5 pr-1";
+  const effectiveSelected = getEffectiveCategorySelectionId(
+    selectedCategoryId,
+    selectedSubcategoryId,
+  );
 
-  // Cor de fundo de seleção ativa com contraste garantido (#000000 ou #FFFFFF)
+  const useTree =
+    hierarchical ?? (columns === "modal" || columns === "grouped");
+
+  const tree = useMemo(
+    () => buildCategoryTree(categories, transactionType),
+    [categories, transactionType],
+  );
+
+  const flatList = useMemo(() => {
+    if (useTree) return [];
+    return categories.filter(
+      (c) => !transactionType || c.type === transactionType,
+    );
+  }, [categories, transactionType, useTree]);
+
   const getSelectedCardClasses = () => {
     if (scope === "BUSINESS") {
-      // Fundo Roxo -> Texto e Ícone Branco Absoluto (#FFFFFF)
       return {
         card: "is-selected is-selected-purple bg-purple-600 border-purple-400 text-white shadow-lg shadow-purple-600/25",
         iconWrap: "bg-black/30 text-white border border-white/25",
@@ -61,7 +85,6 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
       };
     }
     if (transactionType === "expense") {
-      // Fundo Rosa/Vermelho -> Texto e Ícone Branco Absoluto (#FFFFFF)
       return {
         card: "is-selected is-selected-rose bg-rose-600 border-rose-400 text-white shadow-lg shadow-rose-600/25",
         iconWrap: "bg-black/30 text-white border border-white/25",
@@ -70,7 +93,6 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
         checkBadge: "bg-white text-black",
       };
     }
-    // Fundo Verde Neon (Receita / Pessoal) -> Texto e Ícone Preto Absoluto (#000000)
     return {
       card: "is-selected is-selected-green bg-emerald-500 border-emerald-300 text-black shadow-lg shadow-emerald-500/25",
       iconWrap: "bg-black/20 text-black border border-black/20",
@@ -82,70 +104,124 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   const activeStyle = getSelectedCardClasses();
 
+  const renderChip = (cat: Category, opts?: { indented?: boolean; bold?: boolean }) => {
+    const Icon = getIcon(cat.icon);
+    const isSelected = effectiveSelected === cat.id;
+    const badgeBg = cat.color || "#6366f1";
+    const badgeIconContrast = getHighContrastTextColor(badgeBg);
+    const indented = opts?.indented;
+    const bold = opts?.bold ?? isParentCategory(cat);
+
+    return (
+      <button
+        key={cat.id}
+        type="button"
+        aria-selected={isSelected}
+        data-selected={isSelected ? "true" : "false"}
+        onClick={() => onSelect(cat.id)}
+        className={`category-selector-card group w-full ${
+          columns === "compact" ? "p-3" : "p-3.5"
+        } rounded-2xl border-2 flex items-center space-x-2.5 transition-all text-left active:scale-95 ${
+          indented ? "ml-4 w-[calc(100%-1rem)] border-dashed" : ""
+        } ${
+          isSelected
+            ? activeStyle.card
+            : "border-slate-200/80 bg-slate-50/90 text-slate-800 hover:border-emerald-500/60 hover:bg-slate-100 hover:text-black"
+        }`}
+      >
+        <div
+          className={`category-icon-badge ${
+            indented ? "w-7 h-7" : columns === "compact" ? "w-8 h-8" : "w-9 h-9"
+          } rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors ${
+            isSelected ? activeStyle.iconWrap : "ring-1 ring-black/10"
+          }`}
+          style={
+            !isSelected
+              ? { backgroundColor: badgeBg, color: badgeIconContrast }
+              : undefined
+          }
+        >
+          <Icon
+            size={indented ? 14 : columns === "compact" ? 16 : 18}
+            style={{
+              color: isSelected ? activeStyle.iconColor : badgeIconContrast,
+            }}
+            strokeWidth={2.5}
+          />
+        </div>
+
+        <span
+          className={`category-card-label text-xs truncate flex-1 ${
+            isSelected
+              ? activeStyle.label
+              : bold
+                ? "text-slate-800 font-black group-hover:text-black"
+                : "text-slate-700 font-bold group-hover:text-black"
+          }`}
+        >
+          {cat.name}
+        </span>
+
+        {isSelected && (
+          <span
+            className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 shadow-xs ${activeStyle.checkBadge}`}
+          >
+            <Check size={10} strokeWidth={3.5} />
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  if (useTree) {
+    const visibleTree = tree.filter(({ parent, children }) => {
+      const inList =
+        categories.some((c) => c.id === parent.id) ||
+        children.some((ch) => categories.some((c) => c.id === ch.id));
+      return inList;
+    });
+
+    return (
+      <div className="space-y-3">
+        {visibleTree.map(({ parent, children }) => {
+          const parentInFilter = categories.some((c) => c.id === parent.id);
+          const filteredChildren = children.filter((ch) =>
+            categories.some((c) => c.id === ch.id),
+          );
+          // Se a busca/ranking só trouxe filhos, ainda mostra o pai como cabeçalho
+          const showParent = parentInFilter || filteredChildren.length > 0;
+          if (!showParent) return null;
+
+          return (
+            <div key={parent.id} className="space-y-1.5">
+              {parentInFilter ? (
+                renderChip(parent, { bold: true })
+              ) : (
+                <div className="flex items-center gap-1.5 px-1 pt-1">
+                  <ChevronRight size={12} className="text-slate-300" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    {parent.name}
+                  </span>
+                </div>
+              )}
+              {filteredChildren.map((child) =>
+                renderChip(child, { indented: true, bold: false }),
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const gridClass =
+    columns === "compact"
+      ? "grid grid-cols-2 sm:grid-cols-4 gap-2"
+      : "grid grid-cols-2 gap-2.5 pr-1";
+
   return (
     <div className={gridClass}>
-      {categories.map((cat) => {
-        const Icon = getIcon(cat.icon);
-        const isSelected = selectedCategoryId === cat.id;
-        const badgeBg = cat.color || "#6366f1";
-        const badgeIconContrast = getHighContrastTextColor(badgeBg);
-
-        return (
-          <button
-            key={cat.id}
-            type="button"
-            aria-selected={isSelected}
-            data-selected={isSelected ? "true" : "false"}
-            onClick={() => onSelect(cat.id)}
-            className={`category-selector-card group ${
-              columns === "compact" ? "p-3" : "p-3.5"
-            } rounded-2xl border-2 flex items-center space-x-2.5 transition-all text-left active:scale-95 ${
-              isSelected
-                ? activeStyle.card
-                : "border-slate-200/80 bg-slate-50/90 text-slate-800 hover:border-emerald-500/60 hover:bg-slate-100 hover:text-black"
-            }`}
-          >
-            <div
-              className={`category-icon-badge ${
-                columns === "compact" ? "w-8 h-8" : "w-9 h-9"
-              } rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors ${
-                isSelected ? activeStyle.iconWrap : "ring-1 ring-black/10"
-              }`}
-              style={
-                !isSelected
-                  ? { backgroundColor: badgeBg, color: badgeIconContrast }
-                  : undefined
-              }
-            >
-              <Icon
-                size={columns === "compact" ? 16 : 18}
-                style={{
-                  color: isSelected ? activeStyle.iconColor : badgeIconContrast,
-                }}
-                strokeWidth={2.5}
-              />
-            </div>
-
-            <span
-              className={`category-card-label text-xs truncate flex-1 ${
-                isSelected
-                  ? activeStyle.label
-                  : "text-slate-800 font-bold group-hover:text-black"
-              }`}
-            >
-              {cat.name}
-            </span>
-
-            {isSelected && (
-              <span
-                className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 shadow-xs ${activeStyle.checkBadge}`}
-              >
-                <Check size={10} strokeWidth={3.5} />
-              </span>
-            )}
-          </button>
-        );
-      })}
+      {flatList.map((cat) => renderChip(cat))}
     </div>
   );
 };

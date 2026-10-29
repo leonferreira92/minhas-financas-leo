@@ -46,6 +46,10 @@ import { parseCurrencyInput } from "../services/financeAggregator";
 import { GeminiService } from "../services/geminiService";
 import { CalendarModal } from "./CalendarModal";
 import { CategorySelector } from "./ui/CategorySelector";
+import {
+  resolveCategorySelection,
+  getEffectiveCategorySelectionId,
+} from "../services/categoryHierarchy";
 import { generateUUID } from "../services/uuidHelper";
 import { getLocalDateString } from "../services/dateUtils";
 import {
@@ -94,6 +98,9 @@ export const TransactionForm: React.FC<Props> = ({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState(initialCategoryId || "");
+  const [subcategoryId, setSubcategoryId] = useState<string | undefined>(
+    transaction?.subcategoryId,
+  );
   const [accountId, setAccountId] = useState("");
   const [destinationAccountId, setDestinationAccountId] = useState("");
   const [date, setDate] = useState(
@@ -186,6 +193,7 @@ export const TransactionForm: React.FC<Props> = ({
       }
       setDescription(transaction.description);
       setCategoryId(transaction.categoryId);
+      setSubcategoryId(transaction.subcategoryId);
       setAccountId(transaction.accountId || accounts[0]?.id);
       setDestinationAccountId(transaction.destinationAccountId || "");
       setDate(transaction.date);
@@ -404,9 +412,13 @@ export const TransactionForm: React.FC<Props> = ({
     const scores: Record<string, number> = {};
 
     transactions.forEach((t) => {
+      const isRecent = now - (t.createdAt || 0) < thirtyDaysMs;
+      const bump = isRecent ? 3 : 1;
       if (t.categoryId) {
-        const isRecent = now - t.createdAt < thirtyDaysMs;
-        scores[t.categoryId] = (scores[t.categoryId] || 0) + (isRecent ? 3 : 1);
+        scores[t.categoryId] = (scores[t.categoryId] || 0) + bump;
+      }
+      if (t.subcategoryId) {
+        scores[t.subcategoryId] = (scores[t.subcategoryId] || 0) + bump;
       }
     });
 
@@ -446,7 +458,9 @@ export const TransactionForm: React.FC<Props> = ({
   const isAmountInvalid = false;
 
   const handleSelectCategory = (id: string) => {
-    setCategoryId(id);
+    const resolved = resolveCategorySelection(id, categories);
+    setCategoryId(resolved.categoryId);
+    setSubcategoryId(resolved.subcategoryId);
     setUserManuallySetCategory(true);
   };
 
@@ -610,6 +624,15 @@ export const TransactionForm: React.FC<Props> = ({
         ? "income"
         : "expense"
       : type;
+    const hierarchyResolved =
+      type === "transfer" || loanMode
+        ? { categoryId: categoryId, subcategoryId: undefined as string | undefined }
+        : resolveCategorySelection(
+            getEffectiveCategorySelectionId(categoryId, subcategoryId) ||
+              categoryId,
+            categories,
+          );
+
     const resolvedCategoryId =
       type === "transfer"
         ? "cat_transfer"
@@ -617,7 +640,11 @@ export const TransactionForm: React.FC<Props> = ({
           ? resolvedType === "income"
             ? LOAN_IN_CATEGORY_ID
             : LOAN_OUT_CATEGORY_ID
-          : categoryId;
+          : hierarchyResolved.categoryId;
+    const resolvedSubcategoryId =
+      type === "transfer" || loanMode
+        ? undefined
+        : hierarchyResolved.subcategoryId;
 
     // Se o lançamento estiver vinculado a um show, a data é a DATA DO SHOW e o status'pending' se o evento não tiver sido realizado
     let finalDate = date;
@@ -646,6 +673,7 @@ export const TransactionForm: React.FC<Props> = ({
             : `Empréstimo · ${personLabel}`
           : description),
       categoryId: resolvedCategoryId,
+      subcategoryId: resolvedSubcategoryId,
       accountId,
       destinationAccountId:
         type === "transfer" ? destinationAccountId : undefined,
@@ -707,6 +735,14 @@ export const TransactionForm: React.FC<Props> = ({
         ? "income"
         : "expense"
       : type;
+    const hierarchyResolved =
+      type === "transfer" || loanMode
+        ? { categoryId, subcategoryId: undefined as string | undefined }
+        : resolveCategorySelection(
+            getEffectiveCategorySelectionId(categoryId, subcategoryId) ||
+              categoryId,
+            categories,
+          );
     const resolvedCategoryId =
       type === "transfer"
         ? "cat_transfer"
@@ -714,13 +750,18 @@ export const TransactionForm: React.FC<Props> = ({
           ? resolvedType === "income"
             ? LOAN_IN_CATEGORY_ID
             : LOAN_OUT_CATEGORY_ID
-          : categoryId;
+          : hierarchyResolved.categoryId;
+    const resolvedSubcategoryId =
+      type === "transfer" || loanMode
+        ? undefined
+        : hierarchyResolved.subcategoryId;
     const personLabel = loanPerson.trim();
     const data: any = {
       type: resolvedType,
       amount: val,
       description,
       categoryId: resolvedCategoryId,
+      subcategoryId: resolvedSubcategoryId,
       accountId,
       destinationAccountId:
         type === "transfer" ? destinationAccountId : undefined,
@@ -1294,8 +1335,10 @@ export const TransactionForm: React.FC<Props> = ({
                   <CategorySelector
                     categories={topCategories}
                     selectedCategoryId={categoryId}
+                    selectedSubcategoryId={subcategoryId}
                     onSelect={handleSelectCategory}
                     columns="compact"
+                    hierarchical={false}
                     scope={scope}
                     transactionType={type}
                   />
@@ -1626,11 +1669,13 @@ export const TransactionForm: React.FC<Props> = ({
               <CategorySelector
                 categories={searchedCategories}
                 selectedCategoryId={categoryId}
+                selectedSubcategoryId={subcategoryId}
                 onSelect={(id) => {
                   handleSelectCategory(id);
                   setShowAllCategoriesModal(false);
                 }}
                 columns="modal"
+                hierarchical
                 scope={scope}
                 transactionType={type}
               />

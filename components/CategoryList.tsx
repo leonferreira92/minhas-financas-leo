@@ -1,44 +1,30 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useFinance } from "../context/FinanceContext";
 import { Category, TransactionType, ScopeType } from "../types";
-import { getIcon, ICON_MAP } from "../constants";
 import {
-  Trash2,
   Plus,
-  X,
   ChevronLeft,
-  Lock,
-  CheckCircle2,
-  Search,
   ArrowDownCircle,
   ArrowUpCircle,
-  ChevronRight,
   User,
   Music,
-  Sparkles,
   AlertTriangle,
-  Pencil,
+  Trash2,
+  Layers,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
 import { PERSONAL_ONLY_MODE } from "../services/personalOnlyMode";
-
-const COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#f59e0b",
-  "#eab308",
-  "#84cc16",
-  "#10b981",
-  "#06b6d4",
-  "#0ea5e9",
-  "#3b82f6",
-  "#6366f1",
-  "#8b5cf6",
-  "#d946ef",
-  "#ec4899",
-  "#f43f5e",
-  "#64748b",
-];
+import {
+  buildCategoryTree,
+  countCategoryUsage,
+  sumMonthAmountForCategory,
+} from "../services/categoryHierarchy";
+import { getCurrentMonthPrefix } from "../services/dateUtils";
+import {
+  CategoryFormModal,
+  CategoryFormValues,
+} from "./categories/CategoryFormModal";
+import { CategoryAccordion } from "./categories/CategoryAccordion";
 
 export const CategoryList = () => {
   const navigate = useNavigate();
@@ -51,485 +37,368 @@ export const CategoryList = () => {
     activeScope,
   } = useFinance();
 
-  // UI State
   const [activeTab, setActiveTab] = useState<TransactionType>("expense");
-  const [scopeFilter, setScopeFilter] = useState<
-    "ALL" | "PERSONAL" | "BUSINESS"
-  >(PERSONAL_ONLY_MODE ? "PERSONAL" : "ALL");
+  const [scopeFilter, setScopeFilter] = useState<"ALL" | "PERSONAL" | "BUSINESS">(
+    PERSONAL_ONLY_MODE ? "PERSONAL" : "ALL",
+  );
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Category | null>(null);
+  const [forceParentId, setForceParentId] = useState<string | null>(null);
+  const [newChoiceOpen, setNewChoiceOpen] = useState(false);
 
-  // Modal de confirmação
-  const [deleteConfirmationId, setDeleteConfirmationId] = useState<
-    string | null
-  >(null);
-
-  // Form State
-  const [name, setName] = useState("");
-  const [type, setType] = useState<TransactionType>("expense");
-  const [scope, setScope] = useState<ScopeType>("PERSONAL");
-  const [color, setColor] = useState(COLORS[0]);
-  const [icon, setIcon] = useState("DollarSign");
-
-  // Stats for Usage Locking
+  const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(
+    null,
+  );
   const [deleteBlockMessage, setDeleteBlockMessage] = useState<string | null>(
     null,
   );
-  const categoryStats = useMemo(() => {
-    const stats: Record<string, number> = {};
-    transactions.forEach((t) => {
-      stats[t.categoryId] = (stats[t.categoryId] || 0) + 1;
+
+  const monthPrefix = useMemo(() => getCurrentMonthPrefix(), []);
+  const usageStats = useMemo(
+    () => countCategoryUsage(transactions),
+    [transactions],
+  );
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0,
+    }).format(val || 0);
+
+  const scopedCategories = useMemo(() => {
+    return categories.filter((c) => {
+      if (c.type !== activeTab) return false;
+      if (c.type === "transfer" || c.type === "adjustment") return false;
+      if (scopeFilter === "ALL") return true;
+      return (c.scope || "PERSONAL") === scopeFilter;
     });
-    return stats;
-  }, [transactions]);
+  }, [categories, activeTab, scopeFilter]);
 
-  const openNewCategory = () => {
-    setEditingId(null);
-    setName("");
-    setType(activeTab); // Default to current tab
-    setScope(activeScope === "BUSINESS" ? "BUSINESS" : "PERSONAL");
-    setColor(COLORS[Math.floor(Math.random() * COLORS.length)]);
-    setIcon("ShoppingBag");
+  const accordionGroups = useMemo(() => {
+    const tree = buildCategoryTree(scopedCategories, activeTab);
+    // Inclui só mães que passam no filtro de scope (já filtrado)
+    return tree
+      .filter((g) => scopedCategories.some((c) => c.id === g.parent.id))
+      .map((g) => ({
+        parent: g.parent,
+        children: g.children,
+        monthTotal: sumMonthAmountForCategory(
+          transactions,
+          g.parent.id,
+          categories,
+          monthPrefix,
+          activeTab === "income" ? "income" : "expense",
+        ),
+        usageCount: usageStats[g.parent.id] || 0,
+        childUsage: Object.fromEntries(
+          g.children.map((ch) => [ch.id, usageStats[ch.id] || 0]),
+        ),
+      }));
+  }, [
+    scopedCategories,
+    activeTab,
+    transactions,
+    categories,
+    monthPrefix,
+    usageStats,
+  ]);
+
+  const openNewParent = () => {
+    setEditing(null);
+    setForceParentId(null);
+    setNewChoiceOpen(false);
     setIsModalOpen(true);
   };
 
-  const openEditCategory = (cat: Category) => {
-    setEditingId(cat.id);
-    setName(cat.name);
-    setType(cat.type);
-    setScope(cat.scope || "PERSONAL");
-    setColor(cat.color);
-    setIcon(cat.icon);
+  const openNewChild = (parent?: Category) => {
+    setEditing(null);
+    setForceParentId(parent?.id || null);
+    setNewChoiceOpen(false);
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
-    if (!name.trim()) return;
+  const openEdit = (cat: Category) => {
+    setEditing(cat);
+    setForceParentId(null);
+    setIsModalOpen(true);
+  };
 
-    if (editingId) {
-      updateCategory({ id: editingId, name, type, color, icon, scope });
+  const handleSave = (values: CategoryFormValues) => {
+    if (editing) {
+      updateCategory({
+        ...editing,
+        name: values.name,
+        type: values.type,
+        color: values.color,
+        icon: values.icon,
+        scope: values.scope,
+        parentId: values.parentId,
+        isSystem: editing.isSystem,
+      });
     } else {
-      addCategory({ name, type, color, icon, scope });
+      addCategory({
+        name: values.name,
+        type: values.type,
+        color: values.color,
+        icon: values.icon,
+        scope: values.scope,
+        parentId: values.parentId,
+        isSystem: false,
+      });
     }
     setIsModalOpen(false);
+    setEditing(null);
+    setForceParentId(null);
   };
 
-  const handleDeleteClick = (id: string) => {
-    const count = categoryStats[id] || 0;
+  const requestDelete = (cat: Category) => {
+    if (cat.isSystem) {
+      setDeleteBlockMessage(
+        "Categorias do sistema não podem ser excluídas.",
+      );
+      return;
+    }
+    const children = categories.filter((c) => c.parentId === cat.id);
+    if (children.length > 0) {
+      setDeleteBlockMessage(
+        `Exclua ou mova as ${children.length} subcategoria(s) antes de remover esta categoria mãe.`,
+      );
+      return;
+    }
+    const count = usageStats[cat.id] || 0;
     if (count > 0) {
       setDeleteBlockMessage(
         `Esta categoria não pode ser excluída pois possui ${count} lançamento(s) associado(s).`,
       );
       return;
     }
-    setDeleteConfirmationId(id);
+    setDeleteConfirmationId(cat.id);
   };
 
   const confirmDelete = () => {
-    if (deleteConfirmationId) {
-      deleteCategory(deleteConfirmationId);
-      setDeleteConfirmationId(null);
-      setIsModalOpen(false);
-    }
+    if (!deleteConfirmationId) return;
+    deleteCategory(deleteConfirmationId);
+    setDeleteConfirmationId(null);
+    setIsModalOpen(false);
+    setEditing(null);
   };
 
-  const filteredCategories = categories.filter((c) => {
-    if (c.type !== activeTab) return false;
-    if (scopeFilter === "ALL") return true;
-    const catScope = c.scope || "PERSONAL";
-    return catScope === scopeFilter;
-  });
-
-  // Helper to get usage count safely inside render
-  const getUsageCount = (id: string) => categoryStats[id] || 0;
-
-  const openCategoryExtrato = (cat: Category) => {
+  const openExtrato = (cat: Category) => {
     navigate(`/lancamentos?category=${encodeURIComponent(cat.id)}`);
   };
 
   return (
     <div className="pb-24 animate-fade-in text-slate-900 min-h-screen relative max-w-full overflow-x-hidden">
-      {/* --- Header --- */}
       <div className="sticky top-0 bg-slate-50/95 backdrop-blur-md z-20 px-1 pt-2 pb-2">
-        <div className="flex items-center space-x-2 mb-3">
-          <Link
-            to="/settings"
-            className="p-2 hover:bg-white rounded-full transition text-slate-500"
-          >
-            <ChevronLeft size={24} />
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-800">
-              Categorias
-            </h1>
-            <p className="text-[11px] text-slate-400 font-medium">
-              {PERSONAL_ONLY_MODE
-                ? "Organização das categorias pessoais"
-                : "Organização exclusiva por módulo (Pessoal vs Músico)"}
-            </p>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center space-x-2 min-w-0">
+            <Link
+              to="/settings"
+              className="p-2 hover:bg-white rounded-full transition text-slate-500 shrink-0"
+            >
+              <ChevronLeft size={24} />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-800">
+                Categorias
+              </h1>
+              <p className="text-[11px] text-slate-400 font-medium">
+                Estrutura hierárquica · mães e subcategorias
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setNewChoiceOpen(true)}
+            className="shrink-0 px-3 py-2 rounded-xl bg-[#0F388A] text-[#FACC15] text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 shadow-md active:scale-95"
+          >
+            <Plus size={14} />
+            Nova
+          </button>
         </div>
 
-        {/* --- Filtro de Módulo (Pessoal vs Músico) — oculto na Fase 1 --- */}
         {!PERSONAL_ONLY_MODE && (
           <div className="bg-slate-200/80 p-1 rounded-2xl grid grid-cols-3 gap-1 mb-2">
-            <button
-              onClick={() => setScopeFilter("ALL")}
-              className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
-                scopeFilter === "ALL"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <span>Todas</span>
-            </button>
-            <button
-              onClick={() => setScopeFilter("PERSONAL")}
-              className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
-                scopeFilter === "PERSONAL"
-                  ? "bg-[#0F388A] text-[#FACC15] shadow-xs"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <User size={12} />
-              <span>Pessoal</span>
-            </button>
-            <button
-              onClick={() => setScopeFilter("BUSINESS")}
-              className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center space-x-1 ${
-                scopeFilter === "BUSINESS"
-                  ? "bg-purple-600 text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Music size={12} />
-              <span>Músico</span>
-            </button>
+            {(
+              [
+                ["ALL", "Todas"],
+                ["PERSONAL", "Pessoal"],
+                ["BUSINESS", "Músico"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setScopeFilter(id)}
+                className={`py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 ${
+                  scopeFilter === id
+                    ? id === "BUSINESS"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : id === "PERSONAL"
+                        ? "bg-[#0F388A] text-[#FACC15] shadow-xs"
+                        : "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {id === "PERSONAL" && <User size={12} />}
+                {id === "BUSINESS" && <Music size={12} />}
+                {label}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* --- Tabs Despesas vs Receitas --- */}
         <div className="bg-slate-100 p-1 rounded-xl flex space-x-1 border border-slate-200">
           <button
+            type="button"
             onClick={() => setActiveTab("expense")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all active:scale-95 ${activeTab === "expense" ? "bg-white text-rose-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all active:scale-95 ${
+              activeTab === "expense"
+                ? "bg-white text-rose-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
           >
             <ArrowDownCircle size={15} className="mr-1.5" /> Despesas
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("income")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all active:scale-95 ${activeTab === "income" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center transition-all active:scale-95 ${
+              activeTab === "income"
+                ? "bg-white text-emerald-600 shadow-sm"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
           >
             <ArrowUpCircle size={15} className="mr-1.5" /> Receitas
           </button>
         </div>
       </div>
 
-      {/* --- List --- */}
-      <div className="px-1 space-y-2.5 mt-2">
-        {filteredCategories.map((cat) => {
-          const Icon = getIcon(cat.icon);
-          const usageCount = getUsageCount(cat.id);
-          const isInUse = usageCount > 0;
-          const isMusician = cat.scope === "BUSINESS";
-
-          return (
-            <div
-              key={cat.id}
-              onClick={() => openCategoryExtrato(cat)}
-              className="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-transform cursor-pointer"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  openCategoryExtrato(cat);
-                }
-              }}
-              title="Ver lançamentos desta categoria"
-            >
-              <div className="flex items-center space-x-3.5 min-w-0">
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105 shrink-0"
-                  style={{ backgroundColor: cat.color }}
-                >
-                  <Icon size={20} />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <h3 className="font-bold text-slate-800 text-sm truncate">
-                      {cat.name}
-                    </h3>
-                    {!PERSONAL_ONLY_MODE && (
-                      <span
-                        className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center space-x-1 shrink-0 ${
-                          isMusician
-                            ? "bg-purple-100 text-purple-700"
-                            : "bg-blue-50 text-blue-800"
-                        }`}
-                      >
-                        {isMusician ? (
-                          <Music size={10} className="mr-1 inline" />
-                        ) : (
-                          <User size={10} className="mr-1 inline" />
-                        )}
-                        {isMusician ? "Músico" : "Pessoal"}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center mt-0.5">
-                    <span
-                      className={`text-[11px] ${isInUse ? "text-blue-800 font-semibold" : "text-slate-400"}`}
-                    >
-                      {usageCount}{" "}
-                      {usageCount === 1 ? "lançamento" : "lançamentos"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditCategory(cat);
-                  }}
-                  className="p-2 rounded-xl bg-slate-50 border border-slate-100 text-slate-500 hover:text-[#0F388A] hover:bg-blue-50 hover:border-blue-100 transition active:scale-95"
-                  aria-label={`Editar categoria ${cat.name}`}
-                  title="Editar categoria"
-                >
-                  <Pencil size={15} />
-                </button>
-                <ChevronRight size={18} className="text-slate-300" />
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Empty State */}
-        {filteredCategories.length === 0 && (
-          <div className="text-center py-12 opacity-60">
-            <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Search size={24} className="text-slate-400" />
-            </div>
-            <p className="text-sm font-bold text-slate-600">
-              Nenhuma categoria encontrada
-            </p>
-            <p className="text-xs text-slate-400">
-              Toque no botão + para criar a primeira para este módulo.
-            </p>
-          </div>
-        )}
+      <div className="px-1 mt-2">
+        <CategoryAccordion
+          groups={accordionGroups}
+          formatCurrency={formatCurrency}
+          flowType={activeTab === "income" ? "income" : "expense"}
+          onOpenParent={openExtrato}
+          onEditParent={openEdit}
+          onAddChild={openNewChild}
+          onEditChild={openEdit}
+          onDeleteChild={requestDelete}
+        />
       </div>
 
-      {/* --- Floating Action Button --- */}
       <div className="fixed bottom-24 left-0 right-0 z-40 flex justify-end px-6 max-w-md mx-auto pointer-events-none">
         <button
-          onClick={openNewCategory}
-          className="w-14 h-14 bg-[#0F388A] hover:bg-[#0F388A] text-[#FACC15] rounded-full shadow-lg shadow-blue-900/20 flex items-center justify-center pointer-events-auto transition-transform active:scale-90"
+          type="button"
+          onClick={() => setNewChoiceOpen(true)}
+          className="w-14 h-14 bg-[#0F388A] text-[#FACC15] rounded-full shadow-lg shadow-blue-900/20 flex items-center justify-center pointer-events-auto transition-transform active:scale-90"
+          aria-label="Nova categoria"
         >
           <Plus size={28} />
         </button>
       </div>
 
-      {/* --- Modal Form --- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-end sm:items-center justify-center backdrop-blur-sm animate-fade-in p-0 sm:p-4">
-          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl animate-slide-up max-h-[90vh] overflow-y-auto no-scrollbar border border-slate-100">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-black text-slate-800">
-                {editingId ? "Editar Categoria" : "Nova Categoria"}
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition active:scale-95"
-              >
-                <X size={18} className="text-slate-500" />
-              </button>
-            </div>
-
-            <div className="space-y-5">
-              {/* Name Input */}
+      {/* Escolha: mãe ou sub */}
+      {newChoiceOpen && (
+        <div className="fixed inset-0 bg-black/50 z-[55] flex items-end sm:items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3 animate-slide-up">
+            <h3 className="text-base font-black text-slate-800 px-1">
+              O que deseja criar?
+            </h3>
+            <button
+              type="button"
+              onClick={openNewParent}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-[#0F388A]/40 bg-slate-50 text-left active:scale-[0.99] transition"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#0F388A]/10 text-[#0F388A] flex items-center justify-center">
+                <Layers size={18} />
+              </div>
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">
-                  Nome da Categoria
-                </label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl text-base font-bold outline-none transition placeholder:font-normal"
-                  placeholder="Ex: Mercado, Farmácia, Transporte"
-                  autoFocus
-                />
+                <p className="text-sm font-black text-slate-800">
+                  Categoria mãe
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Grupo principal no extrato e relatórios
+                </p>
               </div>
-
-              {/* Module Selector: Pessoal vs Músico — oculto na Fase 1 */}
-              {!PERSONAL_ONLY_MODE && (
-                <div>
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-1">
-                    Módulo Exclusivo
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setScope("PERSONAL")}
-                      className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                        scope === "PERSONAL"
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-xs"
-                          : "border-slate-100 bg-slate-50 text-slate-400"
-                      }`}
-                    >
-                      <User size={14} />
-                      <span>Pessoal</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setScope("BUSINESS")}
-                      className={`py-3 px-3 rounded-2xl border-2 font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                        scope === "BUSINESS"
-                          ? "border-purple-600 bg-purple-50 text-purple-600 shadow-xs"
-                          : "border-slate-100 bg-slate-50 text-slate-400"
-                      }`}
-                    >
-                      <Music size={14} />
-                      <span>Músico / Empresa</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Type Selector (Locked if used) */}
+            </button>
+            <button
+              type="button"
+              onClick={() => openNewChild()}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-[#0F388A]/40 bg-slate-50 text-left active:scale-[0.99] transition"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Plus size={18} />
+              </div>
               <div>
-                <div className="flex justify-between items-center mb-1.5 px-1">
-                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
-                    Tipo de Fluxo
-                  </label>
-                  {editingId && getUsageCount(editingId) > 0 && (
-                    <span className="flex items-center text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-bold">
-                      <Lock size={10} className="mr-1" /> Tipo bloqueado (em
-                      uso)
-                    </span>
-                  )}
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setType("expense")}
-                    disabled={editingId ? getUsageCount(editingId) > 0 : false}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${type === "expense" ? "border-rose-500 bg-rose-50 text-rose-600" : "border-slate-100 bg-white text-slate-400"} disabled:opacity-50`}
-                  >
-                    Despesa
-                  </button>
-                  <button
-                    onClick={() => setType("income")}
-                    disabled={editingId ? getUsageCount(editingId) > 0 : false}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${type === "income" ? "border-emerald-500 bg-emerald-50 text-emerald-600" : "border-slate-100 bg-white text-slate-400"} disabled:opacity-50`}
-                  >
-                    Receita
-                  </button>
-                </div>
+                <p className="text-sm font-black text-slate-800">
+                  Subcategoria
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Detalhe vinculado a uma categoria mãe
+                </p>
               </div>
-
-              {/* Color Picker */}
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
-                  Cor
-                </label>
-                <div className="flex flex-wrap gap-2.5">
-                  {COLORS.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setColor(c)}
-                      className={`w-8 h-8 rounded-full transition-all flex items-center justify-center ${color === c ? "scale-110 ring-2 ring-offset-2 ring-indigo-500 shadow-md" : "hover:scale-105 opacity-80 hover:opacity-100"}`}
-                      style={{ backgroundColor: c }}
-                    >
-                      {color === c && (
-                        <CheckCircle2
-                          size={14}
-                          className="text-white drop-shadow-md"
-                        />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Icon Picker */}
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-1">
-                  Ícone
-                </label>
-                <div className="grid grid-cols-6 gap-2 max-h-36 overflow-y-auto no-scrollbar p-1">
-                  {Object.keys(ICON_MAP).map((iconName) => {
-                    const IconComp = ICON_MAP[iconName];
-                    const isSelected = icon === iconName;
-                    return (
-                      <button
-                        key={iconName}
-                        onClick={() => setIcon(iconName)}
-                        className={`aspect-square rounded-xl flex items-center justify-center transition-all ${isSelected ? "bg-[#0F388A] text-[#FACC15] shadow-lg scale-105" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`}
-                      >
-                        <IconComp size={18} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="pt-2 flex space-x-3">
-                {editingId &&
-                  (getUsageCount(editingId) > 0 ? (
-                    <div className="flex-none p-3 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-[10px] font-bold text-center leading-tight max-w-[100px]">
-                      <span className="flex flex-col items-center">
-                        <Lock size={16} className="mb-1" />
-                        Em uso
-                      </span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleDeleteClick(editingId)}
-                      className="flex-none w-12 h-12 flex items-center justify-center rounded-2xl bg-red-50 text-red-500 hover:bg-red-100 transition"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  ))}
-                <button
-                  onClick={handleSave}
-                  className="flex-1 h-12 bg-[#0F388A] hover:bg-[#0F388A] text-[#FACC15] rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg shadow-blue-900/10 transition-transform active:scale-95 flex items-center justify-center"
-                >
-                  {editingId ? "Salvar Alterações" : "Criar Categoria"}
-                </button>
-              </div>
-            </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewChoiceOpen(false)}
+              className="w-full py-3 text-xs font-bold text-slate-500 uppercase tracking-wider"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      <CategoryFormModal
+        open={isModalOpen}
+        editing={editing}
+        defaultType={activeTab}
+        defaultScope={
+          (activeScope === "BUSINESS" ? "BUSINESS" : "PERSONAL") as ScopeType
+        }
+        forceParentId={forceParentId}
+        categories={categories}
+        usageCount={editing ? usageStats[editing.id] || 0 : 0}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditing(null);
+          setForceParentId(null);
+        }}
+        onSave={handleSave}
+        onDelete={
+          editing
+            ? () => {
+                requestDelete(editing);
+              }
+            : undefined
+        }
+      />
+
       {deleteConfirmationId && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in ">
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 animate-scale-in text-center">
             <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 size={32} />
             </div>
             <h3 className="text-xl font-black text-slate-800 mb-2">
-              Excluir Categoria?
+              Excluir categoria?
             </h3>
             <p className="text-sm text-slate-500 mb-8 font-medium">
-              Você tem certeza que deseja excluir esta categoria
-              permanentemente?
+              Esta ação não pode ser desfeita.
             </p>
-
             <div className="flex space-x-3">
               <button
+                type="button"
                 onClick={() => setDeleteConfirmationId(null)}
                 className="flex-1 py-4 text-slate-500 font-bold bg-slate-100 rounded-2xl text-xs uppercase tracking-wider"
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={confirmDelete}
                 className="flex-1 py-4 text-white font-bold bg-rose-600 rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-rose-200"
               >
@@ -540,23 +409,22 @@ export const CategoryList = () => {
         </div>
       )}
 
-      {/* Delete Blocked Modal (Substitui window.alert) */}
       {deleteBlockMessage && (
-        <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in ">
+        <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl border border-slate-100 animate-scale-in text-center">
             <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />
             </div>
             <h3 className="text-lg font-black text-slate-800 mb-2">
-              Categoria em Uso
+              Não é possível excluir
             </h3>
             <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">
               {deleteBlockMessage}
             </p>
-
             <button
+              type="button"
               onClick={() => setDeleteBlockMessage(null)}
-              className="w-full py-3.5 text-[#FACC15] font-bold bg-[#0F388A] hover:bg-[#0F388A] rounded-2xl text-xs uppercase tracking-wider shadow-md"
+              className="w-full py-3.5 text-[#FACC15] font-bold bg-[#0F388A] rounded-2xl text-xs uppercase tracking-wider shadow-md"
             >
               Entendido
             </button>

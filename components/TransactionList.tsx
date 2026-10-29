@@ -38,6 +38,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Transaction, matchesScope } from "../types";
+import { transactionMatchesCategoryFilter } from "../services/categoryHierarchy";
 import { TransactionForm } from "./TransactionForm";
 import { BankImportModal } from "./BankImportModal";
 import { TransactionItem } from "./ui/TransactionItem";
@@ -277,7 +278,12 @@ export const TransactionList: React.FC = () => {
         return true;
       })
       .filter((t) => {
-        if (categoryIdFilter) return t.categoryId === categoryIdFilter;
+        if (
+          categoryIdFilter &&
+          !transactionMatchesCategoryFilter(t, categoryIdFilter, categories)
+        ) {
+          return false;
+        }
         return true;
       })
       .filter((t) => {
@@ -824,13 +830,31 @@ export const TransactionList: React.FC = () => {
             >
               <option value="">Todas as Categorias</option>
               {categories
+                .filter((c) => !c.parentId)
                 .slice()
                 .sort((a, b) => a.name.localeCompare(b.name))
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                .map((parent) => {
+                  const children = categories
+                    .filter((c) => c.parentId === parent.id)
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                  if (children.length === 0) {
+                    return (
+                      <option key={parent.id} value={parent.id}>
+                        {parent.name}
+                      </option>
+                    );
+                  }
+                  return (
+                    <optgroup key={parent.id} label={parent.name}>
+                      <option value={parent.id}>{parent.name} (todas)</option>
+                      {children.map((ch) => (
+                        <option key={ch.id} value={ch.id}>
+                          {ch.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
             </select>
             <ChevronDown
               size={12}

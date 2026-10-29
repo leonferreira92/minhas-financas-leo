@@ -44,6 +44,11 @@ import {
   isNeutralCashFlowMovement,
 } from "../services/aiReportService";
 import { computeChainedMonthProjection } from "../services/monthCashPanel";
+import {
+  transactionMatchesCategoryFilter,
+  getCategoryBreadcrumb,
+  getDisplayCategory,
+} from "../services/categoryHierarchy";
 
 type TypeStatusFilter = "all" | "paid" | "pending" | "shows" | "accounts";
 type ViewMode = "month" | "future";
@@ -235,10 +240,16 @@ export const ExtratoScreen: React.FC = () => {
         }
 
         if (categoryIdFilter) {
-          const txCat = (t.categoryId || "").trim();
           if (categoryIdFilter === "cat_other") {
+            const txCat = (t.categoryId || "").trim();
             if (txCat && txCat !== "cat_other") return false;
-          } else if (txCat !== categoryIdFilter) {
+          } else if (
+            !transactionMatchesCategoryFilter(
+              t,
+              categoryIdFilter,
+              categories,
+            )
+          ) {
             return false;
           }
         }
@@ -1052,13 +1063,31 @@ export const ExtratoScreen: React.FC = () => {
               >
                 <option value="">Todas as categorias</option>
                 {categories
+                  .filter((c) => !c.parentId)
                   .slice()
                   .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  .map((parent) => {
+                    const children = categories
+                      .filter((c) => c.parentId === parent.id)
+                      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+                    if (children.length === 0) {
+                      return (
+                        <option key={parent.id} value={parent.id}>
+                          {parent.name}
+                        </option>
+                      );
+                    }
+                    return (
+                      <optgroup key={parent.id} label={parent.name}>
+                        <option value={parent.id}>{parent.name} (todas)</option>
+                        {children.map((ch) => (
+                          <option key={ch.id} value={ch.id}>
+                            {ch.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
               </select>
             </div>
             <div className="flex items-center gap-2">
@@ -1168,7 +1197,16 @@ export const ExtratoScreen: React.FC = () => {
 
                 <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden divide-y divide-slate-100 shadow-sm">
                   {group.transactions.map((t) => {
-                    const cat = categories.find((c) => c.id === t.categoryId);
+                    const cat = getDisplayCategory(
+                      categories,
+                      t.categoryId,
+                      t.subcategoryId,
+                    );
+                    const catLabel = getCategoryBreadcrumb(
+                      categories,
+                      t.categoryId,
+                      t.subcategoryId,
+                    );
                     const acc = accounts.find((a) => a.id === t.accountId);
                     const isIncome =
                       t.type === "income" ||
@@ -1237,8 +1275,7 @@ export const ExtratoScreen: React.FC = () => {
                                 </span>
                               )}
                               <span className="text-[10px] text-slate-500 truncate">
-                                {cat?.name || "A Classificar"} ·{" "}
-                                {acc?.name || "Conta"}
+                                {catLabel} · {acc?.name || "Conta"}
                               </span>
                             </div>
                           </div>
