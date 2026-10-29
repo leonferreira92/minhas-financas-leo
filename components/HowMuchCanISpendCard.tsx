@@ -4,373 +4,132 @@ import { useFinance } from "../context/FinanceContext";
 import {
   ShoppingBag,
   ShieldCheck,
-  AlertTriangle,
-  TrendingDown,
   Calendar,
   CreditCard,
   ChevronDown,
   ChevronUp,
   Sliders,
-  HelpCircle,
-  CheckCircle2,
   Lock,
   ArrowRight,
   Sparkles,
   Info,
-  AlertCircle,
-  Banknote,
+  PiggyBank,
 } from "lucide-react";
-import { DEFAULT_FINANCIAL_SETTINGS } from "../constants";
-import { PERSONAL_ONLY_MODE } from "../services/personalOnlyMode";
+import { useFinancialMetrics, SAFE_SPEND_ZERO_MESSAGE } from "../hooks/useFinancialMetrics";
+import { useDebtMetrics } from "../hooks/useDebtMetrics";
+import { getCurrentMonthPrefix, getLocalDateString } from "../services/dateUtils";
 import {
-  isEssentialExpense,
-  isDebtExpense,
   isNeutralCashFlowMovement,
   isGoalMovement,
   isIncomeGuaranteed,
-  isExtraordinaryIncome,
-  isVariableWorkIncome,
-  isRecurringIncome,
 } from "../services/aiReportService";
+import { PERSONAL_ONLY_MODE } from "../services/personalOnlyMode";
 
 export const HowMuchCanISpendCard: React.FC = () => {
-  const {
-    transactions,
-    accounts,
-    categories,
-    debts,
-    shows,
-    settings,
-    isBlurred,
-    getAccountBalance,
-    getDebtProgress,
-  } = useFinance();
-
-  // Modo pessoal: ignora agenda de shows; txs históricas já estão no saldo via extrato
+  const { transactions, categories, shows, isBlurred } = useFinance();
   const effectiveShows = PERSONAL_ONLY_MODE ? [] : shows;
 
   const [showDetail, setShowDetail] = useState(false);
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const currentMonthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
-
-  // Configurações financeiras do usuário (sem inventar dados)
-  const financialSettings = useMemo(() => {
-    return settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
-  }, [settings.financialSettings]);
-
-  // 1. DINHEIRO DISPONÍVEL HOJE EM CONTAS OPERACIONAIS
-  const cashAvailableToday = useMemo(() => {
-    const operational = accounts.filter((a) => a.type !== "savings");
-    return operational.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
-  }, [accounts, getAccountBalance]);
-
-  // Saldo real guardado em poupança
-  const actualReservedInGoals = useMemo(() => {
-    const savingsAccounts = accounts.filter((a) => a.type === "savings");
-    const totalInSavings = savingsAccounts.reduce(
-      (s, a) => s + getAccountBalance(a.id),
-      0,
-    );
-    return totalInSavings;
-  }, [accounts, getAccountBalance]);
-
-  // 2. CUSTO ESSENCIAL MENSAL DE REFERÊNCIA
-  const monthlyEssentialCost = useMemo(() => {
-    const thisMonthTxs = transactions.filter(
-      (t) =>
-        t.date.startsWith(currentMonthPrefix) &&
-        isEssentialExpense(t, categories, debts, financialSettings),
-    );
-    const thisMonthSum = thisMonthTxs.reduce((s, t) => s + Number(t.amount), 0);
-    if (thisMonthSum > 0) return thisMonthSum;
-
-    const pastMonths: string[] = [];
-    const now = new Date();
-    for (let i = 1; i <= 3; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      pastMonths.push(d.toISOString().slice(0, 7));
-    }
-    const pastTxs = transactions.filter(
-      (t) =>
-        pastMonths.some((m) => t.date.startsWith(m)) &&
-        isEssentialExpense(t, categories, debts, financialSettings),
-    );
-    const pastSum = pastTxs.reduce((s, t) => s + Number(t.amount), 0);
-    return pastMonths.length > 0 && pastSum > 0
-      ? pastSum / pastMonths.length
-      : 0;
-  }, [transactions, categories, debts, financialSettings, currentMonthPrefix]);
-
-  // 3. RESERVA MÍNIMA PROTEGIDA (CONFIGURADA PELO USUÁRIO)
-  const minReserveConfigured = financialSettings.minReserveAmount ?? 5000;
-  const targetReserveMonths = financialSettings.targetReserveMonths ?? 6;
-  const targetFromMonths =
-    monthlyEssentialCost > 0 ? targetReserveMonths * monthlyEssentialCost : 0;
-  const targetSafetyReserve = Math.max(minReserveConfigured, targetFromMonths);
-
-  // Déficit da reserva (quanto falta guardar na poupança/reserva para atingir a meta configurada)
-  const reserveDeficit = Math.max(
-    0,
-    targetSafetyReserve - actualReservedInGoals,
+  const todayStr = useMemo(() => getLocalDateString(), []);
+  const currentMonthPrefix = useMemo(
+    () => getCurrentMonthPrefix(todayStr),
+    [todayStr],
   );
 
-  // 4. COMPROMISSOS FUTUROS CONSIDERADOS (Despesas pendentes cadastradas a vencer a partir de hoje)
-  const futureCommitments = useMemo(() => {
-    // Despesas pendentes cadastradas a partir de hoje
-    const pendingFromToday = transactions.filter(
-      (t) =>
-        t.type === "expense" &&
-        t.status === "pending" &&
-        t.date >= todayStr &&
-        !isNeutralCashFlowMovement(t) &&
-        !isGoalMovement(t),
-    );
-
-    // Despesas pendentes do mês atual a vencer
-    const pendingCurrentMonth = transactions.filter(
-      (t) =>
-        t.type === "expense" &&
-        t.status === "pending" &&
-        t.date.startsWith(currentMonthPrefix) &&
-        !isNeutralCashFlowMovement(t) &&
-        !isGoalMovement(t),
-    );
-
-    const totalFromToday = pendingFromToday.reduce(
-      (s, t) => s + Number(t.amount),
-      0,
-    );
-    const totalThisMonth = pendingCurrentMonth.reduce(
-      (s, t) => s + Number(t.amount),
-      0,
-    );
-
-    return {
-      totalFromToday,
-      totalThisMonth,
-      countFromToday: pendingFromToday.length,
-      countThisMonth: pendingCurrentMonth.length,
-      list: pendingFromToday,
-    };
-  }, [transactions, todayStr, currentMonthPrefix]);
-
-  // Dívidas ativas e parcelas mensais
-  const activeDebts = useMemo(() => {
-    return debts.filter((d) => {
-      const prog = getDebtProgress(d.id);
-      return prog.status !== "paid" && prog.remaining > 0.1;
-    });
-  }, [debts, getDebtProgress]);
-
-  const totalMonthlyDebtInstallments = useMemo(() => {
-    return activeDebts.reduce((sum, d) => {
-      if (d.installmentAmount && d.installmentAmount > 0)
-        return sum + Number(d.installmentAmount);
-      const tx = transactions.find(
-        (t) => t.debtId === d.id && t.date.startsWith(currentMonthPrefix),
-      );
-      if (tx) return sum + Number(tx.amount);
-      const count = d.installmentCount || 1;
-      return sum + Number(d.totalAmount) / count;
-    }, 0);
-  }, [activeDebts, transactions, currentMonthPrefix]);
-
-  // 5. PROJEÇÃO DE FLUXO MENSAL DOS PRÓXIMOS 6 MESES
-  // REGRA CRUCIAL: NÃO considerar receitas incertas ou não confirmadas para aumentar limite de compra!
-  const projection = useMemo(() => {
-    const monthsList: string[] = [];
-    const now = new Date();
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-      monthsList.push(d.toISOString().slice(0, 7));
-    }
-
-    let runningBalance = cashAvailableToday;
-    const monthlyData: {
-      monthStr: string;
-      guaranteedInflow: number;
-      outflows: number;
-      net: number;
-      endBalance: number;
-    }[] = [];
-
-    // Shows contratados futuros confirmados a receber
-    const confirmedFutureShows = effectiveShows.filter(
-      (s) =>
-        (s.status === "Confirmado" || s.status === "Realizado") &&
-        s.date >= todayStr,
-    );
-
-    monthsList.forEach((monthStr, idx) => {
-      const isCurrent = idx === 0;
-
-      // ENTRADAS: APENAS RECEITAS GARANTIDAS (exclui incertas / não confirmadas)
-      const monthIncomes = transactions.filter(
-        (t) =>
-          t.type === "income" &&
-          t.date.startsWith(monthStr) &&
-          (isCurrent ? t.status === "pending" && t.date >= todayStr : true) &&
-          !isNeutralCashFlowMovement(t) &&
-          !isGoalMovement(t) &&
-          isIncomeGuaranteed(t, effectiveShows, categories), // Filtro rigoroso: descarta previsões incertas
-      );
-
-      let guaranteedInflow = monthIncomes.reduce(
-        (s, t) => s + Number(t.amount),
-        0,
-      );
-
-      // Shows confirmados do mês caso não estejam em transações pendentes
-      const monthShows = confirmedFutureShows.filter((s) =>
-        s.date.startsWith(monthStr),
-      );
-      monthShows.forEach((s) => {
-        const showToReceive = Math.max(
-          0,
-          (Number(s.totalCache) || 0) - (Number(s.cacheReceived) || 0),
-        );
-        const hasTx = monthIncomes.some(
-          (t) =>
-            (s.receipts && s.receipts.some((r) => r.transactionId === t.id)) ||
-            (t.description &&
-              t.description.toLowerCase().includes(s.name.toLowerCase())),
-        );
-        if (!hasTx && showToReceive > 0) {
-          guaranteedInflow += showToReceive;
-        }
-      });
-
-      // SAÍDAS DO MÊS
-      const monthExpenses = transactions.filter(
-        (t) =>
-          t.type === "expense" &&
-          t.date.startsWith(monthStr) &&
-          (isCurrent ? t.status === "pending" && t.date >= todayStr : true) &&
-          !isNeutralCashFlowMovement(t) &&
-          !isGoalMovement(t),
-      );
-
-      let outflows = monthExpenses.reduce((s, t) => s + Number(t.amount), 0);
-
-      // Se mês futuro ainda não tiver contas cadastradas, projeta o custo essencial + parcelas de dívidas ativas
-      if (!isCurrent && outflows === 0) {
-        outflows = monthlyEssentialCost + totalMonthlyDebtInstallments;
-      }
-
-      const net = guaranteedInflow - outflows;
-      runningBalance += net;
-
-      monthlyData.push({
-        monthStr,
-        guaranteedInflow,
-        outflows,
-        net,
-        endBalance: runningBalance,
-      });
-    });
-
-    // Menor saldo projetado em qualquer ponto da linha do tempo
-    const allPoints = [
-      cashAvailableToday - futureCommitments.totalThisMonth,
-      ...monthlyData.map((m) => m.endBalance),
-    ];
-    const lowestProjected = Math.min(...allPoints);
-
-    // Menor saldo líquido mensal
-    const minMonthlyNet = Math.min(...monthlyData.map((m) => m.net));
-
-    return {
-      monthlyData,
-      lowestProjected,
-      minMonthlyNet,
-    };
-  }, [
-    cashAvailableToday,
-    futureCommitments.totalThisMonth,
-    transactions,
-    effectiveShows,
-    categories,
+  const { safeSpend } = useFinancialMetrics({
+    monthPrefix: currentMonthPrefix,
     todayStr,
-    monthlyEssentialCost,
-    totalMonthlyDebtInstallments,
-  ]);
+  });
+  const debtMetrics = useDebtMetrics({ monthPrefix: currentMonthPrefix });
 
-  // 6. VALOR DISPONÍVEL PARA COMPRA À VISTA (CÁLCULO AUTOMÁTICO RIGOROSO)
-  // O valor máximo que pode ser gasto à vista sem:
-  // - comprometer contas futuras já cadastradas (cashAvailableToday - futureCommitments >= compra)
-  // - causar saldo negativo na projeção (lowestProjected >= compra)
-  // - consumir a reserva mínima configurada (lowestProjected - reserveDeficit >= compra)
-  const spotPurchaseCapacity = useMemo(() => {
-    // Teto 1: Caixa imediato livre de contas do mês
-    const immediateHeadroom =
-      cashAvailableToday - futureCommitments.totalThisMonth;
+  const spotPurchaseCapacity = safeSpend.safeSpotPurchase;
 
-    // Teto 2: Menor saldo que a conta atingirá no horizonte projetado
-    const projectedHeadroom = projection.lowestProjected;
-
-    // Se qualquer teto for negativo, não há capacidade de compra à vista
-    if (immediateHeadroom <= 0 || projectedHeadroom <= 0) {
-      return 0;
-    }
-
-    // Teto base mais restritivo entre liquidez imediata e projeção
-    const rawHeadroom = Math.min(immediateHeadroom, projectedHeadroom);
-
-    // Subtrai o déficit da reserva mínima para que o dinheiro nunca consuma a reserva protegida
-    const safeAfterReserveProtection = rawHeadroom - reserveDeficit;
-
-    return Math.max(0, safeAfterReserveProtection);
-  }, [
-    cashAvailableToday,
-    futureCommitments.totalThisMonth,
-    projection.lowestProjected,
-    reserveDeficit,
-  ]);
-
-  // 7. NOVA PARCELA MENSAL POSSÍVEL (CONSIDERANDO O FLUXO PROJETADO)
+  // Nova parcela mensal poss�vel: folga ap�s contas + d�vidas do m�s (sem inflar com reserva te�rica)
   const maxPossibleInstallment = useMemo(() => {
-    // SÓ É possível assumir nova parcela se:
-    // 1) O menor saldo projetado for positivo
-    // 2) O menor resultado líquido mensal (entradas certas - saídas) for positivo
-    // 3) A reserva mínima estiver preservada
-    if (
-      projection.lowestProjected <= 0 ||
-      projection.minMonthlyNet <= 0 ||
-      spotPurchaseCapacity <= 0
-    ) {
-      return 0;
+    if (spotPurchaseCapacity <= 0) return 0;
+
+    const monthsList: string[] = [];
+    const [y, m] = currentMonthPrefix.split("-").map(Number);
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(y, m - 1 + i, 1);
+      monthsList.push(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      );
     }
 
-    // A parcela mensal máxima deve caber no mês mais apertado do fluxo
-    // Aplicamos uma margem de segurança prudente (70% do superávit mínimo)
-    const safeInstallment = Math.round(projection.minMonthlyNet * 0.7);
-    return Math.max(0, safeInstallment);
+    const nets = monthsList.map((monthStr, idx) => {
+      const isCurrent = idx === 0;
+      const inflow = transactions
+        .filter(
+          (t) =>
+            t.type === "income" &&
+            t.date?.startsWith(monthStr) &&
+            (isCurrent ? t.status === "pending" && t.date >= todayStr : true) &&
+            !isNeutralCashFlowMovement(t) &&
+            !isGoalMovement(t) &&
+            isIncomeGuaranteed(t, effectiveShows, categories),
+        )
+        .reduce((s, t) => s + Number(t.amount), 0);
+
+      const outflowTx = transactions
+        .filter(
+          (t) =>
+            t.type === "expense" &&
+            t.date?.startsWith(monthStr) &&
+            (isCurrent ? t.status === "pending" && t.date >= todayStr : true) &&
+            !isNeutralCashFlowMovement(t) &&
+            !isGoalMovement(t),
+        )
+        .reduce((s, t) => s + Number(t.amount), 0);
+
+      const debtDue =
+        debtMetrics.scheduleByMonth[monthStr] ??
+        (isCurrent ? debtMetrics.monthlyCommitment : 0);
+
+      // Evita double-count: se outflow j� inclui debt txs, debtDue via schedule
+      // para meses futuros sem tx; no m�s atual outflow j� tem pendings.
+      const outflows = isCurrent
+        ? outflowTx
+        : outflowTx > 0
+          ? outflowTx
+          : debtDue;
+
+      return inflow - outflows;
+    });
+
+    const minNet = Math.min(...nets);
+    if (minNet <= 0) return 0;
+    return Math.max(0, Math.round(minNet * 0.7));
   }, [
-    projection.lowestProjected,
-    projection.minMonthlyNet,
     spotPurchaseCapacity,
+    transactions,
+    categories,
+    effectiveShows,
+    todayStr,
+    currentMonthPrefix,
+    debtMetrics,
   ]);
 
   const formatBRL = (val: number) => {
-    if (isBlurred) return "R$ •••••";
+    if (isBlurred) return "R$ �����";
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
     }).format(val);
   };
 
-  // Status visual da capacidade
   const statusConfig = useMemo(() => {
     if (spotPurchaseCapacity > 1000) {
       return {
-        badge: "Margem Disponível",
+        badge: "Margem Dispon�vel",
         badgeClass: "bg-emerald-500/10 text-emerald-700 border-emerald-300",
         textColor: "text-emerald-600",
         bgGradient: "from-emerald-50/50 to-indigo-50/30",
         borderColor: "border-emerald-200",
       };
-    } else if (spotPurchaseCapacity > 0) {
+    }
+    if (spotPurchaseCapacity > 0) {
       return {
         badge: "Margem Limitada",
         badgeClass: "bg-amber-500/10 text-amber-700 border-amber-300",
@@ -378,25 +137,22 @@ export const HowMuchCanISpendCard: React.FC = () => {
         bgGradient: "from-amber-50/50 to-slate-50",
         borderColor: "border-amber-200",
       };
-    } else {
-      return {
-        badge: "Sem Margem Segura",
-        badgeClass: "bg-rose-500/10 text-rose-700 border-rose-300",
-        textColor: "text-rose-600",
-        bgGradient: "from-rose-50/50 to-slate-50",
-        borderColor: "border-rose-200",
-      };
     }
+    return {
+      badge: "Sem Margem Segura",
+      badgeClass: "bg-rose-500/10 text-rose-700 border-rose-300",
+      textColor: "text-rose-600",
+      bgGradient: "from-rose-50/50 to-slate-50",
+      borderColor: "border-rose-200",
+    };
   }, [spotPurchaseCapacity]);
 
   return (
     <section
       className={`rounded-[2.5rem] p-5 sm:p-6 bg-gradient-to-br ${statusConfig.bgGradient} bg-white border ${statusConfig.borderColor} shadow-sm space-y-5 relative overflow-hidden transition-all duration-300`}
     >
-      {/* Glow discreto no topo */}
       <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* HEADER DO CARTÃO */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2.5">
           <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200">
@@ -422,17 +178,16 @@ export const HowMuchCanISpendCard: React.FC = () => {
         <Link
           to="/financial-settings"
           className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition active:scale-95 shadow-xs"
-          title="Ajustar Parâmetros da Reserva"
+          title="Ajustar Par�metros da Reserva"
         >
           <Sliders size={16} />
         </Link>
       </div>
 
-      {/* BLOCO DE DESTAQUE: VALOR DISPONÍVEL PARA COMPRA À VISTA */}
       <div className="p-4 sm:p-5 rounded-[2rem] bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">
-            Valor Disponível para Compra à Vista
+            Valor Dispon�vel para Compra � Vista
           </span>
           <div className="flex items-baseline space-x-2">
             <span
@@ -443,128 +198,103 @@ export const HowMuchCanISpendCard: React.FC = () => {
           </div>
           <span className="text-[11px] text-slate-500 block mt-1">
             {spotPurchaseCapacity > 0
-              ? "Teto máximo liberado hoje sem comprometer contas futuras ou a reserva."
-              : "Nenhum gasto à vista recomendado no momento para preservar a segurança de caixa."}
+              ? "Teto m�ximo liberado hoje sem comprometer contas do m�s ou a reserva."
+              : SAFE_SPEND_ZERO_MESSAGE}
           </span>
         </div>
 
-        {/* NOVA PARCELA MENSAL POSSÍVEL */}
         <div className="sm:border-l sm:border-slate-100 sm:pl-5 pt-3 sm:pt-0 border-t border-slate-100 shrink-0">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1 flex items-center space-x-1">
             <CreditCard size={12} className="text-indigo-500" />
-            <span>Nova Parcela Mensal Possível</span>
+            <span>Nova Parcela Mensal Poss�vel</span>
           </span>
           <span className="text-xl font-black text-indigo-600 tabular-nums block">
             {formatBRL(maxPossibleInstallment)}
-            <span className="text-xs font-bold text-slate-400">/mês</span>
+            <span className="text-xs font-bold text-slate-400">/m�s</span>
           </span>
           <span className="text-[10px] text-slate-400 block mt-0.5">
             {maxPossibleInstallment > 0
-              ? "Cabe no superávit mensal projetado"
+              ? "Cabe no super�vit mensal projetado"
               : "Sem folga mensal para novos parcelamentos"}
           </span>
         </div>
       </div>
 
-      {/* OS 3 PILARES OBRIGATÓRIOS: RESERVA, COMPROMISSOS E MENOR SALDO */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {/* 1. RESERVA MÍNIMA PROTEGIDA */}
         <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1.5">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1">
-              <Lock size={12} className="text-amber-500" />
-              <span>Reserva Protegida</span>
+              <PiggyBank size={12} className="text-amber-500" />
+              <span>Reserva Guardada</span>
             </span>
             <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md">
-              Intocável
+              Real
             </span>
           </div>
           <div>
             <span className="text-sm font-black text-slate-800 tabular-nums block">
-              {formatBRL(targetSafetyReserve)}
+              {formatBRL(safeSpend.actualReserved)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              Configurada: {formatBRL(minReserveConfigured)} (
-              {targetReserveMonths} meses)
+              Saldo efetivo em poupan�a/reserva (n�o a meta te�rica)
             </span>
           </div>
         </div>
 
-        {/* 2. COMPROMISSOS FUTUROS CONSIDERADOS */}
         <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1.5">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1">
               <Calendar size={12} className="text-rose-500" />
-              <span>Contas Futuras Mapeadas</span>
-            </span>
-            <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md">
-              {futureCommitments.countFromToday} contas
+              <span>Contas a Pagar no M�s</span>
             </span>
           </div>
           <div>
             <span className="text-sm font-black text-rose-600 tabular-nums block">
-              {formatBRL(futureCommitments.totalFromToday)}
+              {formatBRL(safeSpend.pendingBillsRestOfMonth)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              Pendências a vencer cadastradas
+              Pend�ncias at� o fim do m�s ativo
             </span>
           </div>
         </div>
 
-        {/* 3. MENOR SALDO PROJETADO */}
         <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-1.5">
             <span className="text-[10px] font-black uppercase tracking-wider flex items-center space-x-1">
-              <TrendingDown size={12} className="text-indigo-500" />
-              <span>Menor Saldo Projetado</span>
-            </span>
-            <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
-              Ponto Mínimo
+              <Lock size={12} className="text-indigo-500" />
+              <span>Parcelas de D�vidas</span>
             </span>
           </div>
           <div>
-            <span
-              className={`text-sm font-black tabular-nums block ${projection.lowestProjected >= 0 ? "text-slate-800" : "text-rose-500"}`}
-            >
-              {formatBRL(projection.lowestProjected)}
+            <span className="text-sm font-black text-indigo-600 tabular-nums block">
+              {formatBRL(safeSpend.debtInstallmentsActiveMonth)}
             </span>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              Piso do caixa no horizonte de 6 meses
+              Que vencem neste m�s (cronograma real)
             </span>
           </div>
         </div>
       </div>
 
-      {/* EXPLICAÇÃO RESUMIDA DO CÁLCULO */}
       <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-1.5">
         <div className="flex items-center space-x-1.5 text-slate-800 font-bold">
           <Info size={14} className="text-indigo-600 shrink-0" />
-          <span>Como este limite é calculado com segurança:</span>
+          <span>Como este limite � calculado com seguran�a:</span>
         </div>
         <p className="text-[11px] leading-relaxed text-slate-500">
-          O valor à vista representa o montante que você pode retirar hoje sem
-          que sua conta fique no vermelho em nenhum mês futuro. Ele deduz todos
-          os{" "}
-          <strong>
-            {futureCommitments.countFromToday} compromissos cadastrados (
-            {formatBRL(futureCommitments.totalFromToday)})
-          </strong>{" "}
-          e blinda integralmente a{" "}
-          <strong>
-            reserva mínima configurada ({formatBRL(targetSafetyReserve)})
-          </strong>
-          .
+          Saldo operacional ? contas a pagar do m�s ? parcelas de d�vidas do m�s.
+          A reserva efetivamente guardada ({formatBRL(safeSpend.actualReserved)})
+          fica fora do caixa operacional e n�o usa a meta te�rica de 6 meses.
         </p>
         <p className="text-[10px] font-medium text-amber-600 flex items-center space-x-1 pt-0.5">
           <ShieldCheck size={12} className="shrink-0" />
           <span>
-            Receitas incertas ou não confirmadas foram totalmente ignoradas para
-            não inflar artificialmente seu limite.
+            Receitas incertas ou n�o confirmadas foram ignoradas no c�lculo de
+            novas parcelas.
           </span>
         </p>
       </div>
 
-      {/* BOTÃO TOGGLE DE DETALHAMENTO DA MEMÓRIA DE CÁLCULO */}
       <div>
         <button
           onClick={() => setShowDetail(!showDetail)}
@@ -574,8 +304,8 @@ export const HowMuchCanISpendCard: React.FC = () => {
             <Sparkles size={14} className="text-indigo-500" />
             <span>
               {showDetail
-                ? "Ocultar memória de cálculo detalhada"
-                : "Ver memória de cálculo detalhada passo a passo"}
+                ? "Ocultar mem�ria de c�lculo detalhada"
+                : "Ver mem�ria de c�lculo detalhada passo a passo"}
             </span>
           </span>
           {showDetail ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -584,82 +314,72 @@ export const HowMuchCanISpendCard: React.FC = () => {
         {showDetail && (
           <div className="mt-3 p-4 rounded-2xl bg-white border border-slate-200 text-xs space-y-3 animate-fade-in ">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-              Auditoria Matemática do Limite
+              Auditoria Matem�tica do Limite
             </span>
 
             <div className="space-y-2 text-xs divide-y divide-slate-100">
               <div className="flex justify-between items-center pt-1.5">
                 <span className="text-slate-500">
-                  (+) Saldo Operacional Hoje
+                  (+) Saldo Operacional Atual
                 </span>
                 <span className="font-bold text-slate-800">
-                  {formatBRL(cashAvailableToday)}
+                  {formatBRL(safeSpend.memory.operationalBalance)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
                 <span className="text-slate-500">
-                  (-) Contas a Pagar no Mês Atual
+                  (-) Contas a Pagar no Restante do M�s
                 </span>
                 <span className="font-bold text-rose-600">
-                  -{formatBRL(futureCommitments.totalThisMonth)}
+                  -{formatBRL(safeSpend.memory.pendingBillsRestOfMonth)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
                 <span className="text-slate-500">
-                  (=) Caixa Imediato Disponível
+                  (-) Parcelas de D�vidas do M�s Ativo
                 </span>
-                <span className="font-bold text-slate-800">
-                  {formatBRL(
-                    Math.max(
-                      0,
-                      cashAvailableToday - futureCommitments.totalThisMonth,
-                    ),
-                  )}
+                <span className="font-bold text-rose-600">
+                  -{formatBRL(safeSpend.memory.debtInstallmentsActiveMonth)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center pt-1.5">
                 <span className="text-slate-500">
-                  (-) Déficit da Reserva Mínima (blindado em reserva)
+                  Reserva Efetivamente Guardada (fora do operacional)
                 </span>
                 <span className="font-bold text-amber-600">
-                  {reserveDeficit > 0
-                    ? `-${formatBRL(reserveDeficit)}`
-                    : "R$ 0,00 (100% coberta)"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center pt-1.5">
-                <span className="text-slate-500">
-                  Piso Mínimo da Projeção de 6 Meses
-                </span>
-                <span className="font-bold text-indigo-600">
-                  {formatBRL(projection.lowestProjected)}
+                  {formatBRL(safeSpend.memory.actualReserved)}
                 </span>
               </div>
 
               <div className="flex justify-between items-center pt-2 font-black text-sm">
                 <span className="text-slate-800">
-                  (=) Limite Seguro para Compra à Vista
+                  (=) Limite Seguro para Compra � Vista
                 </span>
                 <span className={statusConfig.textColor}>
-                  {formatBRL(spotPurchaseCapacity)}
+                  {formatBRL(safeSpend.memory.result)}
                 </span>
               </div>
             </div>
 
+            {safeSpend.message && (
+              <p className="text-[11px] text-rose-600 font-medium pt-1 border-t border-slate-100">
+                {safeSpend.message}
+              </p>
+            )}
+
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
               <span className="text-[10px] text-slate-400">
-                Meta de Reserva: {formatBRL(targetSafetyReserve)} (
-                {targetReserveMonths} meses)
+                Compromisso de d�vidas neste m�s:{" "}
+                {formatBRL(debtMetrics.monthlyCommitment)}
               </span>
               <Link
                 to="/financial-settings"
                 className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center space-x-1"
               >
-                <span>Alterar parâmetros</span>
+                <span>Alterar par�metros</span>
                 <ArrowRight size={12} />
               </Link>
             </div>

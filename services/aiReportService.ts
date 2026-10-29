@@ -7,6 +7,13 @@ import {
   type ScenarioSimulationResult
 } from './decisionScenarioService';
 import { resolveCategoryEssentiality } from './categoryEssentiality';
+import {
+  computeDebtMetricsForMonth,
+  computeSafeSpendMetrics,
+  SAFE_SPEND_ZERO_MESSAGE,
+} from './metricsCalculations';
+import { getLocalDateString, getCurrentMonthPrefix } from './dateUtils';
+import { isSomLeoDebtOrTransaction } from './financeAggregator';
 
 export type { DecisionScenario, DecisionScenarioType, ScenarioSimulationResult };
 export {
@@ -509,8 +516,8 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): Gene
   } = params;
 
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const currentMonthPrefix = todayStr.slice(0, 7);
+  const todayStr = getLocalDateString(now);
+  const currentMonthPrefix = getCurrentMonthPrefix(todayStr);
   const dateRange = getPeriodDateRange(periodType, customStartDate, customEndDate);
   const generationTimestamp = `${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
 
@@ -728,7 +735,17 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): Gene
   });
 
   const totalDebtsRemaining = debtDetails.reduce((s, d) => s + (d.remainingAmount || 0), 0);
-  const totalMonthlyDebtInstallments = debtDetails.reduce((s, d) => s + (d.monthlyInstallment || 0), 0);
+
+  // Compromisso do m�s ativo = parcelas que vencem neste m�s (cronograma real)
+  const debtMonthMetrics = computeDebtMetricsForMonth({
+    debts,
+    transactions,
+    monthPrefix: currentMonthPrefix,
+    horizonMonths: Math.max(12, dateRange.monthsCount + 1),
+    excludeDebt: (d) => isSomLeoDebtOrTransaction(d),
+  });
+  const totalMonthlyDebtInstallments = debtMonthMetrics.monthlyCommitment;
+  const debtScheduleByMonth = debtMonthMetrics.scheduleByMonth;
 
   let debtReliefDateSummary = 'nao informado';
   if (debtDetails.length > 0) {
@@ -905,13 +922,8 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): Gene
       (isCurrent ? t.status === 'pending' && t.date >= todayStr : true)
     );
     let debtExp = monthDebtTxs.reduce((s, t) => s + Number(t.amount), 0);
-    if (!isCurrent && debtExp === 0 && totalMonthlyDebtInstallments > 0) {
-      // Verifica se as dívidas ainda estão ativas no mês em questão
-      const activeInMonth = debtDetails.filter(d => {
-        if (d.endMonthYear === 'nao informado') return true;
-        return d.endMonthYear >= formatMonthYearBR(monthStr);
-      });
-      debtExp = activeInMonth.reduce((s, d) => s + (d.monthlyInstallment || 0), 0);
+    if (debtExp === 0 && debtScheduleByMonth[monthStr]) {
+      debtExp = debtScheduleByMonth[monthStr];
     }
 
     // 4. OUTRAS OBRIGAÇÕES (Fixas recorrentes, investimentos profissionais e compromissos discricionários)
@@ -973,20 +985,17 @@ export const generateFinancialReportForAI = (params: GenerateReportParams): Gene
   const targetSafetyReserveTotal = Math.max(userConfiguredMinReserve, targetReserveFromMonths);
   const reserveDeficit = Math.max(0, targetSafetyReserveTotal - totalMoneyReserved);
 
-  let safePurchaseMargin = 0;
-  // O usuário só pode comprar à vista se houver caixa livre imediato E o menor saldo projetado for positivo
-  const maxSafeCash = Math.min(immediateFreeCash, minProjectedBalance);
-
-  if (maxSafeCash > 0) {
-    if (reserveDeficit === 0) {
-      // Reserva mínima 100% atingida na poupança/reserva!
-      safePurchaseMargin = Math.max(0, Math.round(maxSafeCash * 0.7));
-    } else {
-      // O excedente de caixa operacional precisa cobrir o déficit da reserva antes de liberar compras discricionárias
-      const cashAfterReserveGap = Math.max(0, maxSafeCash - reserveDeficit);
-      safePurchaseMargin = Math.max(0, Math.round(cashAfterReserveGap * 0.7));
-    }
-  }
+  const safeSpendMetrics = computeSafeSpendMetrics({
+    accounts,
+    transactions,
+    debts,
+    getAccountBalance,
+    monthPrefix: currentMonthPrefix,
+    todayStr,
+    excludeDebt: (d) => isSomLeoDebtOrTransaction(d),
+  });
+  const safePurchaseMargin = safeSpendMetrics.safeSpotPurchase;
+  const safeSpendZeroMessage = safeSpendMetrics.message || SAFE_SPEND_ZERO_MESSAGE;
 
   // Margem para novas parcelas mensais
   const minMonthlyNetSurplus = Math.min(...monthlyFlowRows.map(r => r.netResult));
@@ -1016,7 +1025,7 @@ const lines: string[] = [];
   lines.push('Reservado: ' + formatBRL(totalMoneyReserved));
   lines.push('Compromissos imediatos: ' + formatBRL(totalImmediateCommitments));
   lines.push('Custo mensal obrigatório: ' + formatBRL(totalMandatoryMonthlyCost));
-  lines.push('Parcelas de dívidas/mês: ' + formatBRL(totalMonthlyDebtInstallments));
+  lines.push('Parcelas de dívidas no mês ativo: ' + formatBRL(totalMonthlyDebtInstallments));
   lines.push('Receitas futuras garantidas: ' + formatBRL(totalGuaranteedFutureIncome));
   lines.push('Shows futuros contratados: ' + formatBRL(totalFutureShowsToReceive));
   lines.push('Dívidas restantes: ' + formatBRL(totalDebtsRemaining));
@@ -1097,7 +1106,7 @@ const lines: string[] = [];
   lines.push('4. CUSTO MENSAL');
   lines.push('============================================================');
   lines.push('- Custo de manter a vida por mês (essenciais): ' + formatBRL(referenceMonthlyEssentialCost));
-  lines.push('- Parcelas mensais de dívidas: ' + formatBRL(totalMonthlyDebtInstallments));
+  lines.push('- Parcelas de dívidas no mês ativo (' + currentMonthPrefix + '): ' + formatBRL(totalMonthlyDebtInstallments));
   lines.push('- Despesas fixas recorrentes adicionais: ' + formatBRL(thisMonthRecurringOther));
   lines.push('------------------------------------------------------------');
   lines.push('CUSTO MENSAL TOTAL OBRIGATÓRIO: ' + formatBRL(totalMandatoryMonthlyCost));
@@ -1126,7 +1135,7 @@ const lines: string[] = [];
     });
     lines.push('');
     lines.push('- Total de dívidas restantes: ' + formatBRL(totalDebtsRemaining));
-    lines.push('- Total pago mensalmente em parcelas: ' + formatBRL(totalMonthlyDebtInstallments));
+    lines.push('- Compromisso de parcelas no mês ativo: ' + formatBRL(totalMonthlyDebtInstallments));
     lines.push('- Previsão de término (referência): ' + sanitizeReportText(debtReliefDateSummary));
   }
 
@@ -1186,6 +1195,12 @@ const lines: string[] = [];
   lines.push('- Meta total de proteção: ' + formatBRL(targetSafetyReserveTotal));
   lines.push('- Saldo já reservado hoje: ' + formatBRL(totalMoneyReserved) + ' (' + (targetSafetyReserveTotal > 0 ? ((totalMoneyReserved / targetSafetyReserveTotal) * 100).toFixed(0) : '100') + '% coberto)');
   lines.push('- MARGEM SEGURA PARA COMPRAS À VISTA: ' + formatBRL(safePurchaseMargin));
+  if (safePurchaseMargin <= 0) {
+    lines.push('- ' + safeSpendZeroMessage);
+  }
+  lines.push('- Reserva efetivamente guardada: ' + formatBRL(safeSpendMetrics.actualReserved));
+  lines.push('- Contas a pagar no mês: ' + formatBRL(safeSpendMetrics.pendingBillsRestOfMonth));
+  lines.push('- Parcelas de dívidas do mês (pendentes): ' + formatBRL(safeSpendMetrics.debtInstallmentsActiveMonth));
   lines.push('  (Teto à vista sem comprometer contas e preservando a reserva configurada)');
   lines.push('- MARGEM PARA NOVA PARCELA MENSAL: ' + formatBRL(safeMonthlyInstallmentMargin) + '/mês');
 

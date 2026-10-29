@@ -33,6 +33,7 @@ import { MonthCashPanel } from "./MonthCashPanel";
 import { computeMonthCashPanel } from "../services/monthCashPanel";
 import { isNeutralCashFlowMovement } from "../services/aiReportService";
 import { getCurrentMonthPrefix } from "../services/dateUtils";
+import { useDebtMetrics } from "../hooks/useDebtMetrics";
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -40,7 +41,6 @@ export const Dashboard: React.FC = () => {
     accounts,
     transactions,
     categories,
-    debts,
     budgets,
     settings,
     isBlurred,
@@ -48,11 +48,11 @@ export const Dashboard: React.FC = () => {
     activeScope,
     getSystemAlerts,
     getAccountBalance,
-    getDebtProgress,
   } = useFinance();
 
   const userName = settings.userName || "Leo";
   const currentMonthStr = useMemo(() => getCurrentMonthPrefix(), []);
+  const debtMetrics = useDebtMetrics({ monthPrefix: currentMonthStr });
 
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [txInitialType, setTxInitialType] = useState<
@@ -143,31 +143,14 @@ export const Dashboard: React.FC = () => {
     [accounts],
   );
 
-  const debtsMonthMetrics = useMemo(() => {
-    const activeDebts = debts.filter(
-      (d) => getDebtProgress(d.id).status === "active",
-    );
-    const totalRemainingDebts = activeDebts.reduce(
-      (s, d) => s + getDebtProgress(d.id).remaining,
-      0,
-    );
-    const monthDebtPending = transactions
-      .filter(
-        (t) =>
-          t.debtId &&
-          t.status === "pending" &&
-          t.date &&
-          t.date.startsWith(currentMonthStr) &&
-          matchesScope(t.scope, "PERSONAL"),
-      )
-      .reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0);
-
-    return {
-      activeDebtsCount: activeDebts.length,
-      totalRemainingDebts,
-      monthDebtPending,
-    };
-  }, [debts, transactions, currentMonthStr, getDebtProgress]);
+  const debtsMonthMetrics = useMemo(
+    () => ({
+      activeDebtsCount: debtMetrics.activeDebtsCount,
+      totalRemainingDebts: debtMetrics.totalRemainingDebts,
+      monthDebtPending: debtMetrics.monthlyCommitment,
+    }),
+    [debtMetrics],
+  );
 
   const topCategories = useMemo(() => {
     const map = new Map<string, number>();

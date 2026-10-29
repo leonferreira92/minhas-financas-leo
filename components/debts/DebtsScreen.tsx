@@ -15,6 +15,8 @@ import { DebtModal } from "./DebtModal";
 import { DebtDetailModal } from "./DebtDetailModal";
 import { ActiveDebtsPanel } from "../ActiveDebtsPanel";
 import { isSomLeoDebtOrTransaction } from "../../services/financeAggregator";
+import { useDebtMetrics } from "../../hooks/useDebtMetrics";
+import { getCurrentMonthPrefix } from "../../services/dateUtils";
 
 export {
   DebtDetailModal,
@@ -22,11 +24,12 @@ export {
 } from "./DebtDetailModal";
 
 export const DebtList: React.FC = () => {
-  const { debts, transactions, getDebtProgress, isBlurred, toggleBlur } =
-    useFinance();
+  const { debts, getDebtProgress, isBlurred, toggleBlur } = useFinance();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"active" | "paid">("active");
+  const currentMonth = useMemo(() => getCurrentMonthPrefix(), []);
+  const debtMetrics = useDebtMetrics({ monthPrefix: currentMonth });
 
   const formatCurrency = (val: number) => {
     if (isBlurred) return "R$ •••••";
@@ -53,36 +56,10 @@ export const DebtList: React.FC = () => {
       (sum, d) => sum + getDebtProgress(d.id).paid,
       0,
     );
-    const totalRemaining = active.reduce(
-      (sum, d) => sum + getDebtProgress(d.id).remaining,
-      0,
-    );
+    const totalRemaining = debtMetrics.totalRemainingDebts;
 
-    // Compromisso mensal = soma das parcelas das dívidas com saldo > 0
-    const monthlyCommitment = active.reduce((sum, d) => {
-      const { remaining } = getDebtProgress(d.id);
-      if (remaining <= 0.05) return sum;
-
-      if (d.installmentAmount && d.installmentAmount > 0) {
-        return sum + Number(d.installmentAmount);
-      }
-
-      const pendingTxs = transactions
-        .filter((t) => t.debtId === d.id && t.status === "pending")
-        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-      if (pendingTxs.length > 0 && Number(pendingTxs[0].amount) > 0) {
-        return sum + Number(pendingTxs[0].amount);
-      }
-
-      const totalCount =
-        d.installmentCount ||
-        transactions.filter((t) => t.debtId === d.id).length ||
-        1;
-      if (totalCount > 0 && Number(d.totalAmount) > 0) {
-        return sum + Number(d.totalAmount) / totalCount;
-      }
-      return sum;
-    }, 0);
+    // Compromisso mensal = parcelas que vencem no mês ativo (cronograma real)
+    const monthlyCommitment = debtMetrics.monthlyCommitment;
 
     return {
       active,
@@ -94,7 +71,7 @@ export const DebtList: React.FC = () => {
       progress:
         totalDebt > 0 ? Math.min(100, (totalPaid / totalDebt) * 100) : 0,
     };
-  }, [debts, transactions, getDebtProgress]);
+  }, [debts, getDebtProgress, debtMetrics]);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -170,7 +147,7 @@ export const DebtList: React.FC = () => {
                 {formatCurrency(stats.monthlyCommitment)}
               </p>
               <p className="text-[11px] text-blue-200 mt-1 font-medium">
-                Soma das parcelas das {stats.active.length} dívida
+                Parcelas que vencem neste mês · {stats.active.length} dívida
                 {stats.active.length === 1 ? "" : "s"} ativa
                 {stats.active.length === 1 ? "" : "s"}
               </p>

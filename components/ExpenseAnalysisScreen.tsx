@@ -23,8 +23,8 @@ import {
   useFinancialMetrics,
   CategoryPeriodKey,
 } from "../hooks/useFinancialMetrics";
+import { useBurnRate } from "../hooks/useBurnRate";
 import { PERIOD_OPTIONS } from "../services/categoryEssentiality";
-import { getCurrentMonthPrefix } from "../services/dateUtils";
 import { DEFAULT_FINANCIAL_SETTINGS } from "../constants";
 
 const RULE_TARGETS = {
@@ -53,16 +53,11 @@ function formatCurrency(val: number, blurred?: boolean) {
  */
 export const ExpenseAnalysisScreen: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    transactions,
-    accounts,
-    settings,
-    getAccountBalance,
-    isBlurred,
-  } = useFinance();
+  const { accounts, settings, getAccountBalance, isBlurred } = useFinance();
 
   const [period, setPeriod] = useState<CategoryPeriodKey>("1m");
   const metrics = useFinancialMetrics({ period });
+  const burnRate = useBurnRate({ includeGoalDeposit: true });
 
   const financialSettings =
     settings.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
@@ -134,47 +129,6 @@ export const ExpenseAnalysisScreen: React.FC = () => {
       actualPct,
     ],
   );
-
-  const burnRate = useMemo(() => {
-    const now = new Date();
-    const monthPrefix = getCurrentMonthPrefix(now);
-    const dayOfMonth = now.getDate();
-    const daysInMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-    ).getDate();
-
-    let monthExpense = 0;
-    let monthIncome = 0;
-
-    transactions.forEach((t) => {
-      if (!t.date?.startsWith(monthPrefix)) return;
-      if (t.status === "cancelled") return;
-      const amt = Math.abs(Number(t.amount) || 0);
-      if (t.type === "expense" || t.type === "goal_deposit") {
-        monthExpense += amt;
-      } else if (t.type === "income" || t.type === "goal_withdraw") {
-        monthIncome += amt;
-      }
-    });
-
-    const projected =
-      dayOfMonth > 0 ? (monthExpense / dayOfMonth) * daysInMonth : 0;
-    const overBudget = monthIncome > 0 && projected > monthIncome;
-    const overAmount = overBudget ? projected - monthIncome : 0;
-
-    return {
-      monthExpense,
-      monthIncome,
-      projected,
-      dayOfMonth,
-      daysInMonth,
-      overBudget,
-      overAmount,
-      dailyBurn: dayOfMonth > 0 ? monthExpense / dayOfMonth : 0,
-    };
-  }, [transactions]);
 
   const periodLabel =
     PERIOD_OPTIONS.find((p) => p.key === period)?.label || "Período";
@@ -595,8 +549,8 @@ export const ExpenseAnalysisScreen: React.FC = () => {
         </div>
 
         <p className="text-[10px] text-slate-400 mt-3 font-medium">
-          Fórmula: (gasto atual ÷ dia {burnRate.dayOfMonth}) ×{" "}
-          {burnRate.daysInMonth} dias
+          Fórmula: gasto até hoje + (gasto ÷ dia {burnRate.dayOfMonth}) ×{" "}
+          {burnRate.daysRemaining} dias restantes
         </p>
       </div>
     </div>

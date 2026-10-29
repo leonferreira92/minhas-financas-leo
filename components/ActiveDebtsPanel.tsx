@@ -35,6 +35,8 @@ import {
   deleteTransactionFromFirestore,
 } from "../services/firebaseService";
 import { DebtModal } from "./debts/DebtModal";
+import { useDebtMetrics } from "../hooks/useDebtMetrics";
+import { getCurrentMonthPrefix } from "../services/dateUtils";
 
 interface ActiveDebtItem {
   debt: Debt;
@@ -67,6 +69,8 @@ export const ActiveDebtsPanel: React.FC<Props> = ({
     currentUser,
   } = useFinance();
   const [editingDebt, setEditingDebt] = React.useState<Debt | null>(null);
+  const currentMonth = React.useMemo(() => getCurrentMonthPrefix(), []);
+  const debtMetrics = useDebtMetrics({ monthPrefix: currentMonth });
 
   // Unificação automática do contrato único'Viny' e remoção do card duplicado'Som Léo'
   useEffect(() => {
@@ -191,12 +195,9 @@ export const ActiveDebtsPanel: React.FC<Props> = ({
     });
 
     // -------------------------------------------------------------------------
-    // RESUMO: PARCELAS ATUAIS POR MÊS E CRONOGRAMA DE QUEDA
+    // RESUMO: PARCELAS DO MÊS ATIVO (cronograma real) E CRONOGRAMA DE QUEDA
     // -------------------------------------------------------------------------
-    const totalCommittedPerMonth = items.reduce(
-      (sum, item) => sum + item.installmentAmount,
-      0,
-    );
+    const totalCommittedPerMonth = debtMetrics.monthlyCommitment;
 
     // Agrupar dívidas por data/mês de término para calcular como o total mensal cai
     const reliefTimelineMap: Record<
@@ -241,7 +242,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({
       totalCommittedPerMonth,
       reliefSchedule,
     };
-  }, [debts, transactions, isBlurred, getDebtProgress]);
+  }, [debts, transactions, isBlurred, getDebtProgress, debtMetrics.monthlyCommitment]);
 
   if (parsedDebtsData.items.length === 0) {
     return (
@@ -276,7 +277,7 @@ export const ActiveDebtsPanel: React.FC<Props> = ({
                       Comprometimento mensal
                     </span>
                     <h2 className="text-2xl sm:text-3xl font-black tracking-tight tabular-nums text-slate-900">
-                      Parcelas atuais por mês:{" "}
+                      Parcelas que vencem neste mês:{" "}
                       {formatBRL(parsedDebtsData.totalCommittedPerMonth)}
                     </h2>
                   </div>
@@ -289,9 +290,9 @@ export const ActiveDebtsPanel: React.FC<Props> = ({
                 </div>
 
                 <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-                  Soma exata das parcelas mensais de todos os passivos com saldo
-                  devedor pendente. Dívidas com saldo R$ 0,00 são
-                  desconsideradas.
+                  Soma das parcelas com vencimento no mês ativo (cronograma real
+                  de amortização). Dívidas quitadas e parcelas de meses
+                  passados/futuros não entram neste total.
                 </p>
               </>
             )}

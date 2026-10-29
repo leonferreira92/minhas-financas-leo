@@ -6,26 +6,46 @@ import {
   calculateEssentialityTotals,
   getPeriodMonthPrefixes,
 } from '../services/categoryEssentiality';
+import {
+  SafeSpendMetrics,
+  SAFE_SPEND_ZERO_MESSAGE,
+  computeSafeSpendMetrics,
+} from '../services/metricsCalculations';
+import { getCurrentMonthPrefix, getLocalDateString } from '../services/dateUtils';
+import { isSomLeoDebtOrTransaction } from '../services/financeAggregator';
 
 export interface UseFinancialMetricsOptions {
-  /** Janela temporal (padrão: últimos 6 meses). */
+  /** Janela temporal para essencialidade (padrão: últimos 6 meses). */
   period?: CategoryPeriodKey;
+  /** Mês ativo para compra segura (padrão: mês corrente). */
+  monthPrefix?: string;
+  todayStr?: string;
 }
 
 export interface FinancialMetrics extends EssentialityTotals {
   period: CategoryPeriodKey;
   monthPrefixes: string[];
+  /** Limite seguro para compra à vista (fórmula corrigida). */
+  safeSpend: SafeSpendMetrics;
 }
 
 /**
- * Hook de preparação para Relatórios Inteligentes.
- * Expõe totais por essencialidade e o Custo Mínimo de Sobrevivência (survivalCost).
+ * Hook agregador: essencialidade + limite seguro para compra à vista.
  */
 export function useFinancialMetrics(
   options?: UseFinancialMetricsOptions,
 ): FinancialMetrics {
-  const { transactions, categories } = useFinance();
+  const {
+    transactions,
+    categories,
+    accounts,
+    debts,
+    getAccountBalance,
+    getDebtProgress,
+  } = useFinance();
   const period = options?.period ?? '6m';
+  const todayStr = options?.todayStr ?? getLocalDateString();
+  const monthPrefix = options?.monthPrefix ?? getCurrentMonthPrefix(todayStr);
 
   return useMemo(() => {
     const monthPrefixes = getPeriodMonthPrefixes(period);
@@ -33,16 +53,38 @@ export function useFinancialMetrics(
       monthPrefixes,
       expensesOnly: true,
     });
+    const safeSpend = computeSafeSpendMetrics({
+      accounts,
+      transactions,
+      debts,
+      getAccountBalance,
+      getDebtRemaining: (id) => getDebtProgress(id).remaining,
+      monthPrefix,
+      todayStr,
+      excludeDebt: (d) => isSomLeoDebtOrTransaction(d),
+    });
     return {
       ...totals,
       period,
       monthPrefixes,
+      safeSpend,
     };
-  }, [transactions, categories, period]);
+  }, [
+    transactions,
+    categories,
+    accounts,
+    debts,
+    getAccountBalance,
+    getDebtProgress,
+    period,
+    monthPrefix,
+    todayStr,
+  ]);
 }
 
 export {
   calculateEssentialityTotals,
   getPeriodMonthPrefixes,
 } from '../services/categoryEssentiality';
-export type { EssentialityTotals, CategoryPeriodKey };
+export { SAFE_SPEND_ZERO_MESSAGE };
+export type { EssentialityTotals, CategoryPeriodKey, SafeSpendMetrics };
